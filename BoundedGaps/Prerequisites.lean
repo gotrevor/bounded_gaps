@@ -96,4 +96,29 @@ theorem geh_implies_eh (ϑ : ℝ) (_hGEH : GEH ϑ) : EH ϑ := sorry
 theorem eh_implies_mpz {ϖ δ : ℝ} (_hϖ : 0 ≤ ϖ) (_hδ : 0 ≤ δ)
     (_hEH : EH (1 / 2 + 2 * ϖ)) : MPZ ϖ δ := sorry
 
+/-! ## Consuming the axioms — sanity-check demonstrations
+
+These are real proofs that exercise the BV / GBV / MPZ axioms at specific
+parameter values. They confirm the axioms are usable as black-box inputs
+and serve as the smallest "consumer" examples — once the Sieve.lean chain
+is built, downstream theorems will look like these but at scale. -/
+
+/-- BV applied at $\vartheta = 1/3$: yields `EH (1/3)`. -/
+theorem EH_one_third : EH (1 / 3 : ℝ) :=
+  BombieriVinogradov ⟨by norm_num, by norm_num⟩
+
+/-- BV applied at $\vartheta = 0.49$: a useful pre-1/2 level. -/
+theorem EH_at_0_49 : EH (49 / 100 : ℝ) :=
+  BombieriVinogradov ⟨by norm_num, by norm_num⟩
+
+/-- GBV applied at $\vartheta = 1/3$: yields `GEH (1/3)`. -/
+theorem GEH_one_third : GEH (1 / 3 : ℝ) :=
+  GeneralizedBombieriVinogradov ⟨by norm_num, by norm_num⟩
+
+/-- MPZ at small $\varpi, \delta$: $\varpi = \delta = 1/200$ satisfies the
+Polymath8a constraint $600\varpi + 180\delta < 7$ (gives $600/200 + 180/200 =
+3.9 < 7$). -/
+theorem MPZ_small : MPZ (1 / 200 : ℝ) (1 / 200 : ℝ) :=
+  MPZ_polymath8a ⟨by norm_num, by norm_num, by norm_num⟩
+
 end BoundedGaps.Prerequisites
