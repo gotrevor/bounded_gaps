@@ -104,13 +104,23 @@ noncomputable def mkF_denominator (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ 
   ∫ t in simplex k, F t ^ 2
 
 /-- The Rayleigh-ratio numerator $J_k(F)$ of Polymath8b §5:
-$J_k(F) := \sum_{i=1}^{k} \int_{R_{k-1}} \left(\int_0^{1 - \sum_{j \ne i} t_j}
-(\partial_i F)(t) \, dt_i\right)^2 dt_{\setminus i}$.
+$$J_k(F) := \sum_{i=1}^{k} \int_{R_{k-1}}
+  \left(\int_0^{1 - \sum_{j \ne i} t_j} (\partial_i F)(t) \, dt_i\right)^2
+  dt_{\setminus i}$$
+where $R_{k-1}$ is the $(k-1)$-simplex and $t = \mathtt{insertNth}\, i\, t_i\, s$
+embeds the $(k-1)$-coordinate vector $s$ and the singled-out coordinate $t_i$
+back into $\mathbb{R}^k$ at position $i$. Partial derivatives are realized as
+`fderiv ℝ F t (Pi.single i 1)`.
 
-Currently `opaque`. A concrete body ($k$ coordinate-wise integrations using
-`fderiv ℝ F (e_i)`, squared, then integrated over the $(k-1)$-simplex via
-`Fin.removeNth`) is a Pass 3 follow-up; see `sieve-mkf-handoff.md`. -/
-opaque mkF_numerator (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ
+Pattern-matched on $k$: the $k = 0$ case is vacuous (empty sum), and the
+$k = n + 1$ case carries the formula above. -/
+noncomputable def mkF_numerator : (k : ℕ) → ((Fin k → ℝ) → ℝ) → ℝ
+  | 0, _ => 0
+  | n + 1, F =>
+      ∑ i : Fin (n + 1),
+        ∫ s in simplex n,
+          (∫ ti in Set.Icc (0 : ℝ) (1 - ∑ j, s j),
+              fderiv ℝ F (i.insertNth ti s) (Pi.single i 1)) ^ 2
 
 /-- The Maynard quantity $M_k(F)$: a Rayleigh-style ratio for a smooth
 $F$ supported on the $k$-simplex. (Real form: Polymath8b §5.)
