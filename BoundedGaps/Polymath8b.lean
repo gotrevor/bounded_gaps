@@ -18,6 +18,7 @@ import BoundedGaps.Basic
 import BoundedGaps.Prerequisites
 import BoundedGaps.Sieve
 import BoundedGaps.Maynard
+import BoundedGaps.Engelsma
 
 namespace BoundedGaps.Polymath8b
 
@@ -148,8 +149,14 @@ theorem narrowness_3 : narrowness 3 = 6 :=
   le_antisymm narrowness_3_le_six narrowness_3_ge_six
 
 /-- **$H(50) = 246$**: an admissible 50-tuple of diameter 246 exists, and no
-narrower one. The 246 bound. -/
-theorem narrowness_50 : narrowness 50 = 246 := sorry
+narrower one. The 246 bound. The $\le 246$ direction is now proven via
+`Engelsma.narrowness_50_le_246` (the Engelsma 50-tuple witnesses it); the
+$\ge 246$ direction (no admissible 50-tuple has smaller diameter) is exact
+by Clark-Jarvis 2001 for $k \le 342$ but requires exhaustive enumeration. -/
+theorem narrowness_50 : narrowness 50 = 246 := by
+  apply le_antisymm
+  · exact Engelsma.narrowness_50_le_246
+  · sorry  -- ≥ 246: Clark-Jarvis exhaustive enumeration, out of current scope
 
 /-- $H(51) = 252$. -/
 theorem narrowness_51 : narrowness 51 = 252 := sorry

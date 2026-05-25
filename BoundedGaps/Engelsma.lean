@@ -112,4 +112,23 @@ theorem tuple_48_admissible : Admissible tuple_48 := by
       | (exfalso; revert hp; decide)
       | native_decide
 
+/-! ## Narrowness upper bounds
+
+Each Engelsma tuple is an admissible $k$-tuple of known diameter, so it
+witnesses an upper bound on $H(k) = $ `narrowness k`. The matching lower
+bound (e.g. $H(50) \ge 246$) is exact for $k \le 342$ by Clark-Jarvis
+(2001) but requires exhaustive enumeration — out of current scope. -/
+
+/-- $H(50) \le 246$: the Engelsma 50-tuple of diameter 246 is admissible. -/
+theorem narrowness_50_le_246 : narrowness 50 ≤ 246 :=
+  narrowness_le_of_admissible_tuple tuple_50_admissible tuple_50_length tuple_50_diameter
+
+/-- $H(49) \le 240$: the Engelsma 49-tuple of diameter 240 is admissible. -/
+theorem narrowness_49_le_240 : narrowness 49 ≤ 240 :=
+  narrowness_le_of_admissible_tuple tuple_49_admissible tuple_49_length tuple_49_diameter
+
+/-- $H(48) \le 236$: the Engelsma 48-tuple of diameter 236 is admissible. -/
+theorem narrowness_48_le_236 : narrowness 48 ≤ 236 :=
+  narrowness_le_of_admissible_tuple tuple_48_admissible tuple_48_length tuple_48_diameter
+
 end BoundedGaps.Engelsma

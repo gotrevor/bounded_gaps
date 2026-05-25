@@ -118,8 +118,40 @@ theorem admissibleTuple_3_admissible : Admissible (admissibleTuple 3) := by
     · refine ⟨1, ?_⟩; decide
     · refine ⟨1, ?_⟩; decide
 
-/-- Generic admissibility — `sorry` for $k \ne 3$. -/
-theorem admissibleTuple_admissible (k : ℕ) : Admissible (admissibleTuple k) := sorry
+/-- Generic admissibility for all $k$. The function `admissibleTuple` returns
+either the optimal small tuple ($k \in \{0,1,2,3\}$) or the fallback `[0]`
+($k \ge 4$); both are admissible. Single-element and empty lists are
+admissible by pigeonhole (length $<$ every prime); $[0, 2]$ needs an
+explicit mod-2 check (residues $\{0,0\}$ miss class 1). -/
+theorem admissibleTuple_admissible : ∀ k : ℕ, Admissible (admissibleTuple k)
+  | 0 => by
+      refine ⟨List.Pairwise.nil, ?_⟩
+      intro p _hp
+      exact ⟨0, fun _ h => nomatch h⟩
+  | 1 => by
+      refine admissible_of_check_small_primes (by decide) ?_
+      intro p hp hple
+      exfalso
+      have hp2 := hp.two_le
+      have hlen : (admissibleTuple 1).length = 1 := rfl
+      omega
+  | 2 => by
+      refine admissible_of_check_small_primes (by decide) ?_
+      intro p hp hple
+      have hlen : (admissibleTuple 2).length = 2 := rfl
+      rw [hlen] at hple
+      have hp2 := hp.two_le
+      interval_cases p
+      refine ⟨1, ?_⟩; decide
+  | 3 => admissibleTuple_3_admissible
+  | n + 4 => by
+      change Admissible [0]
+      refine admissible_of_check_small_primes (by decide) ?_
+      intro p hp hple
+      exfalso
+      have hp2 := hp.two_le
+      simp at hple
+      omega
 
 /-- $H(3) \le 6$: the tuple $(0, 2, 6)$ is admissible (by
 `admissibleTuple_3_admissible`), has length 3, and diameter 6, so the
@@ -132,6 +164,59 @@ theorem narrowness_3_le_six : narrowness 3 ≤ 6 := by
   refine ⟨[0, 2, 6], admissibleTuple_3_admissible, ?_, ?_⟩
   · rfl
   · decide
+
+/-- **Generic narrowness upper bound**: any admissible $k$-tuple of diameter
+$d$ witnesses `narrowness k ≤ d`. The infimum is at most any specific value
+that the witness predicate achieves. -/
+theorem narrowness_le_of_admissible_tuple {H : List ℕ} {k d : ℕ}
+    (hAdm : Admissible H) (hLen : H.length = k) (hDiam : diameter H = d) :
+    narrowness k ≤ d := by
+  unfold narrowness
+  apply Nat.sInf_le
+  exact ⟨H, hAdm, hLen, hDiam⟩
+
+/-! ### Shift-invariance of admissibility
+
+Translation by `n : ℕ` is an additive bijection on `ZMod p` for every prime
+`p`, so the set of residue classes missed by `H` mod `p` is in bijection
+with the set missed by `H.map (· + n)`. Combined with the obvious
+preservation of strict ordering, this gives full shift-invariance.
+
+Used for lower-bound proofs on `narrowness k`: an arbitrary admissible
+$k$-tuple can be shifted up without loss of generality (the converse
+direction lets one shift "back down" too). -/
+
+/-- **Shift-invariance**: `H` is admissible iff its translate `H.map (· + n)`
+is admissible, for any `n : ℕ`. -/
+theorem admissible_map_add_iff (H : List ℕ) (n : ℕ) :
+    Admissible (H.map (· + n)) ↔ Admissible H := by
+  refine ⟨?_, ?_⟩
+  · -- ←: translate admissible implies original admissible
+    rintro ⟨hpair, hres⟩
+    refine ⟨?_, ?_⟩
+    · rw [List.pairwise_map] at hpair
+      exact hpair.imp (fun {a b} h => by omega)
+    · intro p hp
+      obtain ⟨r, hr⟩ := hres p hp
+      refine ⟨r - (n : ZMod p), ?_⟩
+      intro h hmem hcontra
+      apply hr (h + n) (List.mem_map.mpr ⟨h, hmem, rfl⟩)
+      push_cast
+      rw [hcontra]
+      ring
+  · -- →: original admissible implies translate admissible
+    rintro ⟨hpair, hres⟩
+    refine ⟨?_, ?_⟩
+    · rw [List.pairwise_map]
+      exact hpair.imp (fun {a b} h => by omega)
+    · intro p hp
+      obtain ⟨r, hr⟩ := hres p hp
+      refine ⟨r + (n : ZMod p), ?_⟩
+      intro m hmem hcontra
+      rw [List.mem_map] at hmem
+      obtain ⟨h, hmem_H, rfl⟩ := hmem
+      push_cast at hcontra
+      exact hr h hmem_H (add_right_cancel hcontra)
 
 /-- **Key combinatorial lemma**: any admissible 3-tuple $[a, b, c]$ (sorted) has
 diameter $c - a \ge 6$.

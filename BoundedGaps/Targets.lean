@@ -72,7 +72,17 @@ current bound by 6.
 Status: $M_{49}$ is presumably computable to high accuracy; the question is
 whether the rigorous lower bound can be pushed past 4. Polymath8b §7 item 2
 suggests piecewise-polynomial sieve weights with carefully chosen polytope
-supports are the natural next attempt. -/
+supports are the natural next attempt.
+
+**The wall, honestly** (note added 2026-05-25): Polymath8b explicitly tried
+symmetric polynomials in their sieve weight basis up to degree 23 and could
+not push $M_{49}$ past 4 (they barely cleared 4 for $M_{50}$). 11 years of
+nobody finding a witness $F$ with $M_{49}(F) > 4$ is signal. Anyone retrying
+would need a richer function-space basis — higher-degree polynomials,
+non-symmetric weights, or non-polynomial weights entirely — plus an SDP
+solver to handle the resulting variational problem. Time-scope estimate:
+multi-month numerical project even with modern tools, not a one-afternoon
+hit. (~70% confidence.) The Lean side is ready; the math is the bottleneck. -/
 theorem H1_le_240_if_Mk_49_witness (hMk : Sieve.Mk 49 > 4) :
     liminfGap 1 ≤ (240 : ℕ∞) := by
   have h := H1_le_of_Mk_witness 49 Engelsma.tuple_49
