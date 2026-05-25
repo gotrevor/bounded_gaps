@@ -1,13 +1,15 @@
 /-
 # Explicit narrow admissible tuples.
 
-The three tuples that determine the current and next-step bounds on $H_1$:
+The five tuples that determine the current and adjacent bounds on $H_1$:
 
 | k  | diameter | source                              | bound it gives (if $M_k > 4$) |
 |----|----------|-------------------------------------|-------------------------------|
-| 50 | 246      | Polymath8b §8, Engelsma 50-tuple    | $H_1 \le 246$ (current)       |
-| 49 | 240      | Engelsma table (MIT primegaps)      | $H_1 \le 240$ (would lower by 6)  |
 | 48 | 236      | Engelsma table (MIT primegaps)      | $H_1 \le 236$ (would lower by 10) |
+| 49 | 240      | Engelsma table (MIT primegaps)      | $H_1 \le 240$ (would lower by 6)  |
+| 50 | 246      | Polymath8b §8, Engelsma 50-tuple    | $H_1 \le 246$ (current)       |
+| 51 | 252      | Engelsma table (MIT primegaps)      | $H_1 \le 252$ (loosens by 6)  |
+| 54 | 270      | Engelsma table (MIT primegaps)      | $H_1 \le 270$ (loosens by 24) |
 
 $H(k)$ values are *exact* for $k \le 342$ (Clark-Jarvis 2001, Polymath8b §8.1),
 so these are the actual narrowest tuples — there is no admissible 50-tuple of
@@ -17,6 +19,10 @@ The path to improvement: prove $M_k > 4$ for $k = 49$ (resp. 48). Polymath8b
 hit a wall here with their polynomial sieve weights; an improved basis (e.g.
 piecewise polynomials with carefully chosen polytope supports — see §7
 "Additional remarks", item 2) could plausibly cross the threshold.
+
+The k=51 and k=54 tuples come into play under stronger hypotheses: Polymath8b
+proves $\mathrm{DHL}[51, 3]$ under GEH, giving $H_2 \le 252$, and uses larger
+tuples for the asymptotic chain.
 
 Sources:
 - Polymath8b §8 (the 50-tuple is reproduced explicitly there)
@@ -52,19 +58,38 @@ def tuple_48 : List ℕ :=
    98, 104, 110, 116, 120, 126, 134, 138, 144, 150, 158, 164, 168, 176, 180,
    186, 188, 194, 200, 204, 206, 210, 216, 224, 228, 230, 234, 236]
 
+/-- Engelsma's 51-tuple of diameter 252. Source: MIT primegaps server. -/
+def tuple_51 : List ℕ :=
+  [0, 6, 10, 12, 22, 36, 40, 42, 52, 54, 64, 66, 70, 76, 84, 90, 94, 96, 100, 106,
+   112, 114, 120, 124, 132, 136, 142, 150, 154, 156, 162, 166, 174, 180, 184, 190,
+   196, 202, 204, 210, 216, 220, 222, 226, 232, 234, 240, 244, 246, 250, 252]
+
+/-- Engelsma's 54-tuple of diameter 270. Source: MIT primegaps server. -/
+def tuple_54 : List ℕ :=
+  [0, 4, 10, 18, 24, 28, 30, 40, 54, 58, 60, 70, 72, 82, 84, 88, 94, 102, 108,
+   112, 114, 118, 124, 130, 132, 138, 142, 150, 154, 160, 168, 172, 174, 180,
+   184, 192, 198, 202, 208, 214, 220, 222, 228, 234, 238, 240, 244, 250, 252,
+   258, 262, 264, 268, 270]
+
 /-! ## Length + diameter + sortedness — finite checks, mechanically verified -/
 
 theorem tuple_50_length : tuple_50.length = 50 := by native_decide
 theorem tuple_49_length : tuple_49.length = 49 := by native_decide
 theorem tuple_48_length : tuple_48.length = 48 := by native_decide
+theorem tuple_51_length : tuple_51.length = 51 := by native_decide
+theorem tuple_54_length : tuple_54.length = 54 := by native_decide
 
 theorem tuple_50_diameter : diameter tuple_50 = 246 := by native_decide
 theorem tuple_49_diameter : diameter tuple_49 = 240 := by native_decide
 theorem tuple_48_diameter : diameter tuple_48 = 236 := by native_decide
+theorem tuple_51_diameter : diameter tuple_51 = 252 := by native_decide
+theorem tuple_54_diameter : diameter tuple_54 = 270 := by native_decide
 
 theorem tuple_50_sorted : tuple_50.Pairwise (· < ·) := by native_decide
 theorem tuple_49_sorted : tuple_49.Pairwise (· < ·) := by native_decide
 theorem tuple_48_sorted : tuple_48.Pairwise (· < ·) := by native_decide
+theorem tuple_51_sorted : tuple_51.Pairwise (· < ·) := by native_decide
+theorem tuple_54_sorted : tuple_54.Pairwise (· < ·) := by native_decide
 
 /-! ## Admissibility — the hard part
 
@@ -112,6 +137,26 @@ theorem tuple_48_admissible : Admissible tuple_48 := by
       | (exfalso; revert hp; decide)
       | native_decide
 
+theorem tuple_51_admissible : Admissible tuple_51 := by
+  apply admissible_of_check_small_primes tuple_51_sorted
+  intro p hp hple
+  rw [tuple_51_length] at hple
+  have hp2 := hp.two_le
+  interval_cases p <;>
+    first
+      | (exfalso; revert hp; decide)
+      | native_decide
+
+theorem tuple_54_admissible : Admissible tuple_54 := by
+  apply admissible_of_check_small_primes tuple_54_sorted
+  intro p hp hple
+  rw [tuple_54_length] at hple
+  have hp2 := hp.two_le
+  interval_cases p <;>
+    first
+      | (exfalso; revert hp; decide)
+      | native_decide
+
 /-! ## Narrowness upper bounds
 
 Each Engelsma tuple is an admissible $k$-tuple of known diameter, so it
@@ -130,5 +175,13 @@ theorem narrowness_49_le_240 : narrowness 49 ≤ 240 :=
 /-- $H(48) \le 236$: the Engelsma 48-tuple of diameter 236 is admissible. -/
 theorem narrowness_48_le_236 : narrowness 48 ≤ 236 :=
   narrowness_le_of_admissible_tuple tuple_48_admissible tuple_48_length tuple_48_diameter
+
+/-- $H(51) \le 252$: the Engelsma 51-tuple of diameter 252 is admissible. -/
+theorem narrowness_51_le_252 : narrowness 51 ≤ 252 :=
+  narrowness_le_of_admissible_tuple tuple_51_admissible tuple_51_length tuple_51_diameter
+
+/-- $H(54) \le 270$: the Engelsma 54-tuple of diameter 270 is admissible. -/
+theorem narrowness_54_le_270 : narrowness 54 ≤ 270 :=
+  narrowness_le_of_admissible_tuple tuple_54_admissible tuple_54_length tuple_54_diameter
 
 end BoundedGaps.Engelsma
