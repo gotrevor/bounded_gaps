@@ -221,53 +221,47 @@ theorem admissible_map_add_iff (H : List ℕ) (n : ℕ) :
 /-- **Key combinatorial lemma**: any admissible 3-tuple $[a, b, c]$ (sorted) has
 diameter $c - a \ge 6$.
 
-Proof by simultaneous case analysis on residues mod 2 and mod 3.
-Mod 2 admissibility forces $a, b, c$ to all share the same parity, so
-$c - a$ is even. For $c - a \in \{2, 4\}$ the parity constraint pins
-$b = a + (c-a)/2$, and the resulting tuple $[a, a+\delta/2, a+\delta]$ has
-residues mod 3 hitting every class (when $\delta = 4$, residues are
-$\{a, a+2, a+1\}$ — all of $\mathbb Z/3$). -/
+Strategy: use shift-invariance (`admissible_map_add_iff`) to translate the
+tuple down so the first element is 0. Then the problem reduces to: no
+admissible tuple `[0, β, δ]` with `0 < β < δ < 6` exists. With `β` and `δ`
+ranging over a small finite set, `interval_cases` enumerates all candidates;
+in each branch the residues mod 2 and mod 3 are literal numerals, and
+`decide` handles the remaining finite check on `ZMod 2 × ZMod 3`. -/
 theorem admissible_three_diameter_ge_six
     {a b c : ℕ} (hab : a < b) (hbc : b < c)
     (hAdm : Admissible [a, b, c]) : 6 ≤ c - a := by
   by_contra hlt
   push_neg at hlt
-  obtain ⟨_, hRes⟩ := hAdm
+  -- Shift to a = 0: set β := b - a, δ := c - a, and witness
+  -- [a, b, c] = [0, β, δ].map (· + a), so Admissible [0, β, δ] by shift-invariance.
+  set β := b - a with hβ_def
+  set δ := c - a with hδ_def
+  have hβ_pos : 0 < β := Nat.sub_pos_of_lt hab
+  have hδβ : β < δ := by simp [hβ_def, hδ_def]; omega
+  have hδ_lt : δ < 6 := by simp [hδ_def]; omega
+  have hβ_lt : β < 5 := by omega
+  have hShifted : Admissible [0, β, δ] := by
+    have hEq : [a, b, c] = ([0, β, δ]).map (· + a) := by
+      simp [hβ_def, hδ_def]; omega
+    rw [hEq] at hAdm
+    exact (admissible_map_add_iff _ a).mp hAdm
+  obtain ⟨_, hRes⟩ := hShifted
   obtain ⟨r2, hr2⟩ := hRes 2 Nat.prime_two
   obtain ⟨r3, hr3⟩ := hRes 3 Nat.prime_three
-  have h2a : (a : ZMod 2) ≠ r2 := hr2 a (by simp)
-  have h2b : (b : ZMod 2) ≠ r2 := hr2 b (by simp)
-  have h2c : (c : ZMod 2) ≠ r2 := hr2 c (by simp)
-  have h3a : (a : ZMod 3) ≠ r3 := hr3 a (by simp)
-  have h3b : (b : ZMod 3) ≠ r3 := hr3 b (by simp)
-  have h3c : (c : ZMod 3) ≠ r3 := hr3 c (by simp)
-  clear hr2 hr3 hRes
-  -- Introduce offsets γ := b - a, δ := c - a as fresh variables with bounds
-  obtain ⟨γ, hγ_pos, hγ_lt, hγ_eq⟩ : ∃ γ : ℕ, 1 ≤ γ ∧ γ ≤ 4 ∧ b = a + γ :=
-    ⟨b - a, by omega, by omega, by omega⟩
-  obtain ⟨δ, hδ_lt, hδγ, hδ_eq⟩ : ∃ δ : ℕ, δ ≤ 5 ∧ γ < δ ∧ c = a + δ :=
-    ⟨c - a, by omega, by omega, by omega⟩
-  -- Express residues of b, c via offsets
-  have hb2 : (b : ZMod 2) = (a : ZMod 2) + (γ : ZMod 2) := by
-    rw [hγ_eq]; push_cast; ring
-  have hc2 : (c : ZMod 2) = (a : ZMod 2) + (δ : ZMod 2) := by
-    rw [hδ_eq]; push_cast; ring
-  have hb3 : (b : ZMod 3) = (a : ZMod 3) + (γ : ZMod 3) := by
-    rw [hγ_eq]; push_cast; ring
-  have hc3 : (c : ZMod 3) = (a : ZMod 3) + (δ : ZMod 3) := by
-    rw [hδ_eq]; push_cast; ring
-  rw [hb2] at h2b
-  rw [hc2] at h2c
-  rw [hb3] at h3b
-  rw [hc3] at h3c
-  -- Generalize (a : ZMod p) to fresh fin-cases-able variables
-  generalize (a : ZMod 2) = α2 at h2a h2b h2c
-  generalize (a : ZMod 3) = α3 at h3a h3b h3c
-  -- Case split: γ ∈ {1,2,3,4}, then δ ∈ {γ+1,...,5}. In each branch revert all
-  -- ZMod variables so `decide` can enumerate over the finite ZMod 2 × ZMod 3 space.
-  interval_cases γ <;> interval_cases δ <;>
-    (push_cast at h2b h2c h3b h3c
-     revert h2a h2b h2c h3a h3b h3c α2 α3 r2 r3
+  -- After shifting, residues of the tuple are literal numerals, not a + offset.
+  have h2_0 : (0 : ZMod 2) ≠ r2 := hr2 0 (by simp)
+  have h2_β : (β : ZMod 2) ≠ r2 := hr2 β (by simp)
+  have h2_δ : (δ : ZMod 2) ≠ r2 := hr2 δ (by simp)
+  have h3_0 : (0 : ZMod 3) ≠ r3 := hr3 0 (by simp)
+  have h3_β : (β : ZMod 3) ≠ r3 := hr3 β (by simp)
+  have h3_δ : (δ : ZMod 3) ≠ r3 := hr3 δ (by simp)
+  -- Clean up: drop hypotheses still mentioning a, b, c so the goal is closed
+  -- over (β, δ, r2, r3) only.
+  clear hr2 hr3 hRes hAdm hab hbc hlt hβ_def hδ_def
+  -- Enumerate β ∈ {1,...,4}, δ ∈ {β+1,...,5}, then ZMod 2 × ZMod 3 by decide.
+  interval_cases β <;> interval_cases δ <;>
+    (push_cast at h2_β h2_δ h3_β h3_δ
+     revert h2_0 h2_β h2_δ h3_0 h3_β h3_δ r2 r3
      decide)
 
 /-- **$H(3) \ge 6$**: no admissible 3-tuple has diameter less than 6.
