@@ -137,10 +137,17 @@ theorem MkF_eq_rayleigh (k : ℕ) (F : (Fin k → ℝ) → ℝ) :
 
 /-- $M_k := \sup_F M_k(F)$ over admissible $F$ on the simplex.
 
-Currently declared `opaque`. The intended body is the `sSup` over
-admissible smooth $F$ of `MkF k F` (Pass 4 in `sieve-mkf-handoff.md`). -/
--- TRIAGE: DEF BODY (~1h after MkF) — `iSup MkF` over admissible F.
-opaque Mk (k : ℕ) : ℝ
+Concrete `sSup` over the set of `MkF k F` values where $F$ is smooth,
+supported on the simplex, and has nonzero Rayleigh denominator (so the
+ratio is well-defined). Per `Mathlib`'s `ℝ`-`ConditionallyCompleteLinearOrder`
+convention, an empty or unbounded admissible set yields `0`; in the
+relevant Polymath8b regime ($k \ge 2$) the set is non-empty and bounded. -/
+noncomputable def Mk (k : ℕ) : ℝ :=
+  sSup { v | ∃ F : (Fin k → ℝ) → ℝ,
+              ContDiff ℝ ⊤ F ∧
+              Function.support F ⊆ simplex k ∧
+              mkF_denominator k F > 0 ∧
+              v = MkF k F }
 
 /-- $M_{k, \varepsilon}$: Polymath8b's enlarged-support variant. Under GEH the
 support of $F$ may extend an $\varepsilon$ distance beyond the simplex.
