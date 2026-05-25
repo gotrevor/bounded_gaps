@@ -81,11 +81,18 @@ polynomial-integral expressions; their ratio is computable rationally. -/
 §5, modulo §6 polynomial substitution). Body is a `sorry` placeholder —
 the real definition is a sum of $k$ "drop-$i$" integrals against the squared
 gradient of $F$. -/
+-- TRIAGE: DEF BODY (~2-3h) — sum over i of ∫_{Δ_{k-1}} (drop-i partial
+-- derivative of F)² over (k-1)-simplex. Decomposes into a sum of monomial
+-- integrals via the gradient's polynomial structure. Pure ℚ arithmetic, no
+-- analysis. Independent of BV (good standalone target).
 noncomputable def polynomialMaynardNumerator {k : ℕ}
     (_P : PolynomialSieveWeight k) : ℚ := sorry
 
 /-- Denominator: integral of $F^2$ against a specific measure over the simplex.
 Computable in closed form from the monomial expansion of $F^2$. -/
+-- TRIAGE: DEF BODY (~1-2h) — sister of polynomialMaynardNumerator. Expand
+-- F² into a sum of monomials via PolynomialSieveWeight.terms convolution,
+-- apply monomialIntegral termwise. Simpler than the numerator (no gradient).
 noncomputable def polynomialMaynardDenominator {k : ℕ}
     (_P : PolynomialSieveWeight k) : ℚ := sorry
 
@@ -101,6 +108,10 @@ Cast from `ℚ` to `ℝ` is implicit. Currently `sorry`; the proof requires
 showing that `PolynomialSieveWeight.toFun` is a valid smooth function on the
 simplex (it is, as a polynomial) and that the closed-form integrals match
 the abstract `Sieve.MkF` definition. -/
+-- TRIAGE: NEEDS_SIEVE — depends on Sieve.MkF having a real body. Once both
+-- numerator/denominator above are defined AND Sieve.MkF is defined, this is
+-- ~30 lines (the closed-form integral matches the abstract integral
+-- termwise, monomial-by-monomial).
 theorem polynomialMkF_eq_MkF {k : ℕ} (P : PolynomialSieveWeight k) :
     Sieve.MkF k P.toFun = (polynomialMkF P : ℝ) := sorry
 
@@ -110,6 +121,9 @@ The key target. Given a polynomial $P$ with `polynomialMkF P > 4` as a
 **rational** inequality (decidable, exact), conclude `Sieve.Mk k > 4`. -/
 
 /-- $\sup_F M_k(F) \ge$ any specific $M_k(F)$. -/
+-- TRIAGE: NEEDS_SIEVE — `le_iSup`-style, ~5 lines, but needs Sieve.Mk to be
+-- defined as `iSup` over admissible F (currently sorry def body). Trivial
+-- once Mk has a real body.
 theorem Mk_ge_polynomialMkF {k : ℕ} (P : PolynomialSieveWeight k) :
     Sieve.Mk k ≥ Sieve.MkF k P.toFun := sorry
 

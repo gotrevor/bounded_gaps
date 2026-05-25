@@ -22,6 +22,10 @@ open BoundedGaps
 
 Proof needs MPZ at $\varpi, \delta < 1/1168$ in Zhang's original argument
 (superseded by Polymath8a's $600\varpi + 180\delta < 7$). -/
+-- TRIAGE: NEEDS_SIEVE — Zhang's original GPY+MPZ argument. Uses MPZ as
+-- hypothesis (now a clean axiom). Needs a Zhang-specific sieve weight setup
+-- (different from Maynard's multidimensional sieve). ~bigger ticket; would
+-- not start until the Maynard chain (Sieve.dhl_criterion + maynard_thm) is up.
 theorem H1_le_70M
     (_hMPZ : Prerequisites.MPZ (1 / 1200) (1 / 1200)) :
     liminfGap 1 ≤ (70000000 : ℕ∞) := sorry
