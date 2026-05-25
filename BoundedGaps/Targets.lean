@@ -44,6 +44,9 @@ Proof obligation: compose `Sieve.epsilon_trick` (which gives `DHL k 2` from
 $M_{k, \varepsilon} > 4$, in the BV regime) with `dhl_implies_liminfGap` for
 $m = 1$. The `M_k` vs `M_{k, \varepsilon}` distinction is glossed over; the
 real theorem would split on which Polymath8b criterion is being invoked. -/
+-- TRIAGE: NEEDS_SIEVE — composes epsilon_trick (Sieve.lean) with
+-- dhl_implies_liminfGap (Basic.lean). Both upstream are sorry; this lands as
+-- soon as both do. ~30 min once upstream is done.
 theorem H1_le_of_Mk_witness (k : ℕ) (H : List ℕ)
     (_hAdm : Admissible H) (_hLen : H.length = k)
     (_hMk : Sieve.Mk k > 4) :

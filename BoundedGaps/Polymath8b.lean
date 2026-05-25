@@ -30,45 +30,64 @@ All bounds are stated as `liminfGap m ≤ (constant : ℕ∞)`. -/
 
 /-! ### Unconditional bounds (Theorem main, (i)-(vi)) -/
 
+-- §1 NUMERICAL BOUNDS — all 11 theorems below are NEEDS_SIEVE: they consume
+-- the Sieve.lean dhl→liminfGap chain (dhl_criterion + maynard_thm / variants)
+-- plus specific Mk numerical bounds. Land them after Sieve.lean has real
+-- bodies; each is ~30-60 min of plumbing once the upstream is alive.
+
 /-- **(i)** $H_1 \le 246$. Uses Bombieri-Vinogradov only. -/
+-- TRIAGE: NEEDS_SIEVE — Targets.H1_le_246 already shows the bridge structure.
 theorem H1_le_246 : liminfGap 1 ≤ (246 : ℕ∞) := sorry
 
 /-- **(ii)** $H_2 \le 398{,}130$. Uses Polymath8a MPZ result. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — maynard_trunc + 35410-tuple admissibility.
 theorem H2_le_398130 : liminfGap 2 ≤ (398130 : ℕ∞) := sorry
 
 /-- **(iii)** $H_3 \le 24{,}797{,}814$. Uses Polymath8a MPZ result. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — maynard_trunc + 1649821-tuple.
 theorem H3_le_24797814 : liminfGap 3 ≤ (24797814 : ℕ∞) := sorry
 
 /-- **(iv)** $H_4 \le 1{,}431{,}556{,}072$. Uses Polymath8a MPZ result. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — same pattern, 75845707-tuple.
 theorem H4_le_1431556072 : liminfGap 4 ≤ (1431556072 : ℕ∞) := sorry
 
 /-- **(v)** $H_5 \le 80{,}550{,}202{,}480$. Uses Polymath8a MPZ result. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — same pattern, 3473955908-tuple.
 theorem H5_le_80550202480 : liminfGap 5 ≤ (80550202480 : ℕ∞) := sorry
 
 /-- **(vi)** Asymptotic: $H_m \le C m \exp((4 - 28/157) m)$ for an effective $C$. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — asymptotic Mk + tuple-construction asymptotic.
 theorem Hm_asymptotic_unconditional :
     ∃ C : ℝ, 0 < C ∧ ∀ m : ℕ, m ≥ 1 →
       (liminfGap m : ENNReal) ≤ ENNReal.ofReal (C * m * Real.exp ((4 - 28/157) * m)) := sorry
 
 /-! ### Under EH[ϑ] for all $0 < \vartheta < 1$ (Theorem main, (vii)-(xi)) -/
 
+-- (vii)-(xi): all NEEDS_SIEVE under EH — same chain as (i)-(vi) but consuming
+-- the EH-axiom version of maynard_thm. ε-trick variants kick in here.
+
 /-- **(vii)** Under EH: $H_2 \le 270$. -/
+-- TRIAGE: NEEDS_SIEVE — epsilon_trick / maynard_thm under EH, 54-tuple.
 theorem H2_le_270_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     liminfGap 2 ≤ (270 : ℕ∞) := sorry
 
 /-- **(viii)** Under EH: $H_3 \le 52{,}116$. -/
+-- TRIAGE: NEEDS_SIEVE — same flavor under EH, 5511-tuple.
 theorem H3_le_52116_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     liminfGap 3 ≤ (52116 : ℕ∞) := sorry
 
 /-- **(ix)** Under EH: $H_4 \le 474{,}266$. -/
+-- TRIAGE: NEEDS_SIEVE — same pattern under EH, 41588-tuple.
 theorem H4_le_474266_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     liminfGap 4 ≤ (474266 : ℕ∞) := sorry
 
 /-- **(x)** Under EH: $H_5 \le 4{,}137{,}854$. -/
+-- TRIAGE: NEEDS_SIEVE — same pattern under EH, 309661-tuple.
 theorem H5_le_4137854_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     liminfGap 5 ≤ (4137854 : ℕ∞) := sorry
 
 /-- **(xi)** Under EH, asymptotic: $H_m \le C m \exp(2m)$ for an effective $C$. -/
+-- TRIAGE: NEEDS_SIEVE — asymptotic under EH (exponent 2m vs 4m unconditional).
 theorem Hm_asymptotic_under_EH
     (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     ∃ C : ℝ, 0 < C ∧ ∀ m : ℕ, m ≥ 1 →
@@ -83,10 +102,13 @@ best possible from sieve-theoretic methods alone (Theorem parity_barrier below).
 
 This is the parity-barrier-tight bound. See [parity_barrier] for the matching
 lower bound on what sieves can achieve. -/
+-- TRIAGE: NEEDS_SIEVE — epsilon_beyond under GEH, the parity-tight flagship.
+-- Uses Mk_eps 3 + the strongest variant of the sieve criterion.
 theorem H1_le_6_under_GEH (_hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     liminfGap 1 ≤ (6 : ℕ∞) := sorry
 
 /-- **(xiii)** Under GEH: $H_2 \le 252$. -/
+-- TRIAGE: NEEDS_SIEVE — epsilon_beyond under GEH, 51-tuple (Engelsma).
 theorem H2_le_252_under_GEH (_hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     liminfGap 2 ≤ (252 : ℕ∞) := sorry
 
@@ -94,48 +116,67 @@ theorem H2_le_252_under_GEH (_hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequ
 
 The numerical bounds in Theorem main all factor through DHL[k, j] claims. -/
 
+-- §3 DHL CLAIMS — all 11 below are NEEDS_SIEVE: each is an application of
+-- one of Sieve's maynard_thm / maynard_trunc / epsilon_trick / epsilon_beyond
+-- to a specific (k, m) pair, given the corresponding Mk numerical witness.
+-- The Sieve.lean chain provides the abstraction; these are instantiations.
+
 /-- **DHL[50, 2]** unconditional → $H_1 \le H(50) = 246$. -/
+-- TRIAGE: NEEDS_SIEVE — apply epsilon_trick with M_50 > 4.
 theorem dhl_50_2 : DHL 50 2 := sorry
 
 /-- **DHL[35410, 3]** unconditional. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — maynard_trunc m=2 with M_35410 > 8/(1/2+2ϖ).
 theorem dhl_35410_3 : DHL 35410 3 := sorry
 
 /-- **DHL[1649821, 4]** unconditional. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — same pattern m=3.
 theorem dhl_1649821_4 : DHL 1649821 4 := sorry
 
 /-- **DHL[75845707, 5]** unconditional. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — same pattern m=4.
 theorem dhl_75845707_5 : DHL 75845707 5 := sorry
 
 /-- **DHL[3473955908, 6]** unconditional. -/
+-- TRIAGE: NEEDS_SIEVE + MPZ — same pattern m=5.
 theorem dhl_3473955908_6 : DHL 3473955908 6 := sorry
 
 /-- **DHL[k, m+1]** unconditional asymptotic: holds whenever
 $k \ge C \exp((4 - 28/157) m)$. -/
+-- TRIAGE: NEEDS_SIEVE — asymptotic Mk lower bound + maynard_trunc applied
+-- uniformly in m. Requires asymptotic admissibility (k-tuple construction
+-- at scale).
 theorem dhl_asymptotic_unconditional :
     ∃ C : ℝ, 0 < C ∧ ∀ k m : ℕ, m ≥ 1 →
       (k : ℝ) ≥ C * Real.exp ((4 - 28/157) * m) → DHL k (m + 1) := sorry
 
 /-- Under EH: **DHL[54, 3]**. -/
+-- TRIAGE: NEEDS_SIEVE — epsilon_trick under EH.
 theorem dhl_54_3_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 54 3 := sorry
 
 /-- Under EH: **DHL[5511, 4]**. -/
+-- TRIAGE: NEEDS_SIEVE — same flavor.
 theorem dhl_5511_4_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 5511 4 := sorry
 
 /-- Under EH: **DHL[41588, 5]**. -/
+-- TRIAGE: NEEDS_SIEVE — same flavor.
 theorem dhl_41588_5_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 41588 5 := sorry
 
 /-- Under EH: **DHL[309661, 6]**. -/
+-- TRIAGE: NEEDS_SIEVE — same flavor.
 theorem dhl_309661_6_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 309661 6 := sorry
 
 /-- Under GEH: **DHL[3, 2]**. The flagship parity-tight result. -/
+-- TRIAGE: NEEDS_SIEVE — epsilon_beyond under GEH, the parity-tight k=3 case.
 theorem dhl_3_2_under_GEH (_hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     DHL 3 2 := sorry
 
 /-- Under GEH: **DHL[51, 3]**. -/
+-- TRIAGE: NEEDS_SIEVE — epsilon_beyond under GEH for k=51.
 theorem dhl_51_3_under_GEH (_hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     DHL 51 3 := sorry
 
@@ -163,6 +204,10 @@ by Clark-Jarvis 2001 for $k \le 342$ but requires exhaustive enumeration. -/
 theorem narrowness_50 : narrowness 50 = 246 := by
   apply le_antisymm
   · exact Engelsma.narrowness_50_le_246
+  -- TRIAGE: CLARK_JARVIS — exhaustive enumeration, exact for k ≤ 342 in
+  -- Clark-Jarvis 2001. Stays sorry; not in this project's scope. To replace
+  -- with a real proof you'd need a verified search procedure over candidate
+  -- 50-tuples of diameter < 246 with admissibility check — substantial.
   · sorry  -- ≥ 246: Clark-Jarvis exhaustive enumeration, out of current scope
 
 /-- $H(51) = 252$. The $\le 252$ direction is proven via
@@ -172,6 +217,7 @@ requires exhaustive enumeration. -/
 theorem narrowness_51 : narrowness 51 = 252 := by
   apply le_antisymm
   · exact Engelsma.narrowness_51_le_252
+  -- TRIAGE: CLARK_JARVIS — same status as narrowness_50.
   · sorry  -- ≥ 252: Clark-Jarvis exhaustive enumeration, out of current scope
 
 /-- $H(54) = 270$. The $\le 270$ direction is proven via
@@ -181,36 +227,60 @@ requires exhaustive enumeration. -/
 theorem narrowness_54 : narrowness 54 = 270 := by
   apply le_antisymm
   · exact Engelsma.narrowness_54_le_270
+  -- TRIAGE: CLARK_JARVIS — same status as narrowness_50.
   · sorry  -- ≥ 270: Clark-Jarvis exhaustive enumeration, out of current scope
 
+-- LARGE-k NARROWNESS BOUNDS — all 7 below: each would land if we ran the
+-- tuple harvest at that k (analogous to today's k=51, k=54 harvest from MIT
+-- primegaps). At k > ~1000 the harvest is non-trivial — Engelsma's database
+-- caps at moderate k, and `native_decide` admissibility may stop scaling.
+-- For very large k (35410+) admissibility must use an asymptotic construction
+-- (e.g. greedy/Erdős-style), not direct enumeration.
+
 /-- $H(5511) \le 52116$. -/
+-- TRIAGE: TUPLE_HARVEST — check if MIT primegaps has admissible_5511_52116;
+-- if yes, mechanical extension of today's PR #2. If no, needs construction.
 theorem narrowness_5511_le : narrowness 5511 ≤ 52116 := sorry
 
 /-- $H(35410) \le 398130$. -/
+-- TRIAGE: ASYMPTOTIC_TUPLE — too large for Engelsma database. Needs
+-- explicit asymptotic admissible-tuple construction (Hensley-Richards or
+-- analogous greedy). Larger lift.
 theorem narrowness_35410_le : narrowness 35410 ≤ 398130 := sorry
 
 /-- $H(41588) \le 474266$. -/
+-- TRIAGE: ASYMPTOTIC_TUPLE — same status as 35410.
 theorem narrowness_41588_le : narrowness 41588 ≤ 474266 := sorry
 
 /-- $H(309661) \le 4137854$. -/
+-- TRIAGE: ASYMPTOTIC_TUPLE — same status, larger k.
 theorem narrowness_309661_le : narrowness 309661 ≤ 4137854 := sorry
 
 /-- $H(1649821) \le 24797814$. -/
+-- TRIAGE: ASYMPTOTIC_TUPLE — same status, larger k.
 theorem narrowness_1649821_le : narrowness 1649821 ≤ 24797814 := sorry
 
 /-- $H(75845707) \le 1431556072$. -/
+-- TRIAGE: ASYMPTOTIC_TUPLE — same status, very large k.
 theorem narrowness_75845707_le : narrowness 75845707 ≤ 1431556072 := sorry
 
 /-- $H(3473955908) \le 80550202480$. -/
+-- TRIAGE: ASYMPTOTIC_TUPLE — same status, k ≈ 3.5×10⁹.
 theorem narrowness_3473955908_le : narrowness 3473955908 ≤ 80550202480 := sorry
 
 /-- Asymptotic upper bound: $H(k) \le k \log k + k \log \log k - k + o(k)$. -/
+-- TRIAGE: PROVABLE (~3-5h) — Hensley-Richards 1973 type construction
+-- (admissible tuples from primes in a window). Mathlib has the prerequisites
+-- (PNT-like prime-counting bounds); the construction itself is elementary.
 theorem narrowness_asymptotic_upper :
     (fun k : ℕ => (narrowness k : ℝ))
       =O[Filter.atTop]
       (fun k : ℕ => (k : ℝ) * Real.log k) := sorry
 
 /-- Brun-Titchmarsh lower bound: $H(k) \ge (\tfrac12 + o(1)) k \log k$. -/
+-- TRIAGE: NEEDS_PREREQ — Brun-Titchmarsh sieve bound on primes in short
+-- intervals. Mathlib does not have this; would need to be axiomatized or
+-- separately formalized. Adjacent to BV territory.
 theorem narrowness_asymptotic_lower :
     ∀ ε > (0 : ℝ), ∀ᶠ k : ℕ in Filter.atTop,
       (narrowness k : ℝ) ≥ (1/2 - ε) * k * Real.log k := sorry
@@ -225,6 +295,13 @@ Statement is informal — "sieve-theoretic" isn't a formal predicate. Captured
 here as a propositional placeholder for the paper's heuristic theorem. -/
 axiom SieveTheoreticArgument (proves : Prop) : Prop
 
+-- TRIAGE: META — "sieve-theoretic argument" is not a formal predicate. This
+-- theorem cannot be proven *as stated* without first axiomatizing what it
+-- means for an argument to be sieve-theoretic. Two reasonable end-states:
+-- (a) leave as sorry indefinitely (informal placeholder for the paper's
+-- heuristic claim); (b) reformulate as a precise non-existence claim about a
+-- specific class of weight functions. Stays sorry; consider deletion if
+-- structurally honest.
 theorem parity_barrier :
     ¬ SieveTheoreticArgument (liminfGap 1 ≤ (4 : ℕ∞)) := sorry
 
@@ -250,6 +327,10 @@ def NearMissGoldbach : Prop :=
 
 /-- **Polymath8b Theorem 1.4 (disjunction)**: under GEH, at least one of
 the twin primes conjecture or the near-miss Goldbach statement holds. -/
+-- TRIAGE: BLUEPRINT — Polymath8b §8 proof uses Maynard sieve applied to
+-- pairs (n, n+2) with weight that detects either both prime (twin) or
+-- prime-pair representations (Goldbach). Large lift: depends on the full
+-- maynard/epsilon_beyond + Goldbach-pair density estimates. ~weeks of work.
 theorem twin_primes_or_near_miss_Goldbach
     (_hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     TwinPrimesConjecture ∨ NearMissGoldbach := sorry

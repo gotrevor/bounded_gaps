@@ -83,9 +83,16 @@ axiom MPZ_polymath8a {ϖ δ : ℝ} (h : 0 ≤ ϖ ∧ 0 ≤ δ ∧ 600 * ϖ + 180
 
 /-- **GEH implies EH** (Polymath8b Proposition 2.7).
 Proof sketch uses Vaughan's identity to decompose $\Lambda$. -/
+-- TRIAGE: PROVABLE (~tens of lines, but only once EH and GEH have real bodies
+-- rather than `axiom _ : Prop`). Currently EH/GEH are opaque Props so this
+-- implication is unprovable as stated. Defer until the discrepancy-bound
+-- machinery is in mathlib or we model EH/GEH concretely.
 theorem geh_implies_eh (ϑ : ℝ) (_hGEH : GEH ϑ) : EH ϑ := sorry
 
 /-- **EH[1/2 + 2ϖ] implies MPZ[ϖ, δ]** (trivial direction, Polymath8b §2). -/
+-- TRIAGE: PROVABLE (~10 lines, same EH/MPZ-opaque caveat as above). Trivial
+-- once both Props have real bodies — MPZ at level ϖ is exactly EH at level
+-- 1/2 + 2ϖ restricted to smooth moduli, so EH → MPZ is by restriction.
 theorem eh_implies_mpz {ϖ δ : ℝ} (_hϖ : 0 ≤ ϖ) (_hδ : 0 ≤ δ)
     (_hEH : EH (1 / 2 + 2 * ϖ)) : MPZ ϖ δ := sorry
 

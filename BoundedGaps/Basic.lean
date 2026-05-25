@@ -376,6 +376,8 @@ def BoundedGap (H : ℕ) : Prop :=
 
 /-- `liminfGap 1 ≤ H` iff `BoundedGap H` — bridge between literature notation
 and the set-infinite encoding. -/
+-- TRIAGE: PROVABLE (~1-2h) — real Filter.liminf machinery; sister of
+-- TwinPrimes.twinPrimes_iff_liminfGap_one. Bundle them when tackled.
 theorem liminfGap_one_le_iff (H : ℕ) :
     liminfGap 1 ≤ (H : ℕ∞) ↔ BoundedGap H := sorry
 
@@ -383,11 +385,15 @@ theorem liminfGap_one_le_iff (H : ℕ) :
 $H_1 \le H$ (Polymath8b §3, first paragraph after Theorem 3.1).
 
 More generally, $\DHL[k, m+1]$ implies $H_m \le H(k)$. -/
+-- TRIAGE: PROVABLE (~30 min) — unfold DHL, extract one of the j=2 prime pairs
+-- from each admissible-shifted-set, witness BoundedGap. Pure combinatorial.
 theorem dhl_two_implies_boundedGap (k : ℕ) (_hDHL : DHL k 2)
     (H : List ℕ) (_hAdm : Admissible H) (_hLength : H.length = k) :
     BoundedGap (diameter H) := sorry
 
 /-- General form: $\DHL[k, m+1] \Rightarrow H_m \le H(k)$. -/
+-- TRIAGE: PROVABLE (~1h) — same as above generalized to m+1 primes; requires
+-- liminfGap_one_le_iff for the m=1 case, plus the diameter ↔ narrowness step.
 theorem dhl_implies_liminfGap (k m : ℕ) (_hk : k ≥ m + 1)
     (_hDHL : DHL k (m + 1)) :
     liminfGap m ≤ (narrowness k : ℕ∞) := sorry

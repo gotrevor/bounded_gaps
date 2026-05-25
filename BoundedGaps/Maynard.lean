@@ -22,9 +22,13 @@ open BoundedGaps
 /-! ### Unconditional (Polymath8b Theorem 1.2 (i)-(ii)) -/
 
 /-- **(i)** $H_1 \le 600$. -/
+-- TRIAGE: NEEDS_SIEVE — apply maynard_thm with k=105, M_105 > 4. Numerical Mk
+-- bound is the bottleneck. ~30 min once sieve infrastructure lands.
 theorem H1_le_600 : liminfGap 1 ≤ (600 : ℕ∞) := sorry
 
 /-- **(ii)** $H_m \le C m^3 e^{4m}$ for all $m \ge 1$, effective $C$. -/
+-- TRIAGE: NEEDS_SIEVE — Maynard's asymptotic Mk lower bound + maynard_thm.
+-- ~1h once sieve lands; needs effective Mk asymptotic.
 theorem Hm_asymptotic_unconditional :
     ∃ C : ℝ, 0 < C ∧ ∀ m : ℕ, m ≥ 1 →
       (liminfGap m : ENNReal) ≤
@@ -33,14 +37,18 @@ theorem Hm_asymptotic_unconditional :
 /-! ### Under EH (Polymath8b Theorem 1.2 (iii)-(v)) -/
 
 /-- **(iii)** Under EH: $H_1 \le 12$. -/
+-- TRIAGE: NEEDS_SIEVE — apply maynard_thm with k=5 under EH (ϑ close to 1).
 theorem H1_le_12_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     liminfGap 1 ≤ (12 : ℕ∞) := sorry
 
 /-- **(iv)** Under EH: $H_2 \le 600$. -/
+-- TRIAGE: NEEDS_SIEVE — maynard_thm m=2 under EH; same k=105 admissible tuple.
 theorem H2_le_600_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     liminfGap 2 ≤ (600 : ℕ∞) := sorry
 
 /-- **(v)** Under EH: $H_m \le C m^3 e^{2m}$ for all $m \ge 1$. -/
+-- TRIAGE: NEEDS_SIEVE — asymptotic under EH; Mk bound gets the 2m vs 4m
+-- exponent improvement.
 theorem Hm_asymptotic_under_EH
     (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     ∃ C : ℝ, 0 < C ∧ ∀ m : ℕ, m ≥ 1 →
