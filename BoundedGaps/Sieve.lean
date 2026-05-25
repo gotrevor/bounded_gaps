@@ -89,18 +89,48 @@ theorem dhl_criterion (k m : ℕ) (_hk : k ≥ 2) (_hm : m ≥ 1)
 
 /-! ### The variational problem (Polymath8b §5-§6) -/
 
+/-- The Maynard simplex: $\{ t \in \mathbb{R}^k : t_i \ge 0,\ \sum_i t_i \le 1 \}$.
+
+Polymath8b §5 defines the Maynard variational problem over smooth functions
+$F$ supported on this set. Concrete `Set`-level def — usable in `setIntegral`. -/
+noncomputable def simplex (k : ℕ) : Set (Fin k → ℝ) :=
+  { t | (∀ i, 0 ≤ t i) ∧ ∑ i, t i ≤ 1 }
+
+/-- The Rayleigh-ratio denominator: $\int_{\text{simplex}_k} F^2$.
+
+Polymath8b §5 (eqn defining $M_k(F)$). Concrete measure-theoretic def using
+the default Lebesgue volume on $\mathbb{R}^k$. -/
+noncomputable def mkF_denominator (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
+  ∫ t in simplex k, F t ^ 2
+
+/-- The Rayleigh-ratio numerator $J_k(F)$ of Polymath8b §5:
+$J_k(F) := \sum_{i=1}^{k} \int_{R_{k-1}} \left(\int_0^{1 - \sum_{j \ne i} t_j}
+(\partial_i F)(t) \, dt_i\right)^2 dt_{\setminus i}$.
+
+Currently `opaque`. A concrete body ($k$ coordinate-wise integrations using
+`fderiv ℝ F (e_i)`, squared, then integrated over the $(k-1)$-simplex via
+`Fin.removeNth`) is a Pass 3 follow-up; see `sieve-mkf-handoff.md`. -/
+opaque mkF_numerator (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ
+
 /-- The Maynard quantity $M_k(F)$: a Rayleigh-style ratio for a smooth
 $F$ supported on the $k$-simplex. (Real form: Polymath8b §5.)
 
 Currently declared `opaque` — `MkF k F` is a specific (unknown) real
 number, sufficient to make downstream claims like `Mk k > 4 * m / ϑ`
-*meaningful* rather than vacuous. A concrete body (Rayleigh ratio:
-integral of $|\partial_i F|^2$ over the $k$-simplex divided by integral
-of $F^2$) is Pass 2/3 follow-up; needs MeasureTheory + the specific
-simplex measure. -/
+*meaningful* rather than vacuous. The Rayleigh shape is captured by
+`MkF_eq_rayleigh` below as a cited leaf; once `mkF_numerator` lands
+concretely (Pass 3), the axiom can become a `theorem`. -/
 -- TRIAGE: DEF BODY (~4-6h to fill in concretely; see sieve-mkf-handoff.md
 -- Pass 2/3). Until then the `opaque` declaration is the honesty patch.
 opaque MkF (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ
+
+/-- **Polymath8b §5 definition of $M_k(F)$**: the Maynard quantity is the
+Rayleigh ratio $J_k(F) / \int_{\text{simplex}_k} F^2$. Axiomatized as a
+cited leaf — both numerator and `MkF` are presently `opaque`, so this is
+the definitional commitment that ties them together. Replaceable by a
+`theorem ... rfl`-style proof once both bodies are concrete. -/
+axiom MkF_eq_rayleigh (k : ℕ) (F : (Fin k → ℝ) → ℝ) :
+    MkF k F = mkF_numerator k F / mkF_denominator k F
 
 /-- $M_k := \sup_F M_k(F)$ over admissible $F$ on the simplex.
 
