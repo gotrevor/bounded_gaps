@@ -141,6 +141,13 @@ theorem dhl_51_3_under_GEH (_hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequi
 
 /-! ## §3 — Narrowness bounds (Theorem hk-bound) -/
 
+/-- $H(2) = 2$ (the tuple $(0, 2)$ realizes it). Fully proven:
+the upper bound is `Basic.narrowness_2_le_two` (the tuple $(0, 2)$ witnesses);
+the lower bound is `Basic.narrowness_2_ge_two` (mod-2 parity forces any
+admissible 2-tuple's diameter to be even and positive, hence $\ge 2$). -/
+theorem narrowness_2 : narrowness 2 = 2 :=
+  le_antisymm narrowness_2_le_two narrowness_2_ge_two
+
 /-- $H(3) = 6$ (the tuple $(0, 2, 6)$ realizes it). Fully proven:
 the upper bound is `Basic.narrowness_3_le_six` (the tuple $(0,2,6)$ witnesses);
 the lower bound is `Basic.narrowness_3_ge_six` (no admissible 3-tuple of

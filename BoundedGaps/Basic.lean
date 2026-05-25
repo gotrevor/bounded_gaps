@@ -298,6 +298,57 @@ theorem narrowness_3_ge_six : 6 ≤ narrowness 3 := by
     rw [hdiam]
     exact admissible_three_diameter_ge_six hab hbc hAdm
 
+/-- **$H(2) \ge 2$**: no admissible 2-tuple has diameter less than 2.
+
+By contradiction, if $b - a < 2$ and $a < b$, then $b = a + 1$. Mod 2 the
+two-element tuple becomes $\{\alpha, \alpha + 1\}$ for some $\alpha = (a : \ZMod
+2)$, which hits both classes of $\ZMod 2$ — so no residue $r$ can be avoided,
+contradicting admissibility at $p = 2$. Mirrors the structure of
+`admissible_three_diameter_ge_six`. -/
+theorem admissible_two_diameter_ge_two
+    {a b : ℕ} (hab : a < b) (hAdm : Admissible [a, b]) : 2 ≤ b - a := by
+  by_contra hlt
+  push_neg at hlt
+  -- a < b and b - a < 2 forces b = a + 1
+  have hba1 : b = a + 1 := by omega
+  obtain ⟨_, hRes⟩ := hAdm
+  obtain ⟨r2, hr2⟩ := hRes 2 Nat.prime_two
+  have h2a : (a : ZMod 2) ≠ r2 := hr2 a (by simp)
+  have h2b : (b : ZMod 2) ≠ r2 := hr2 b (by simp)
+  rw [hba1] at h2b
+  push_cast at h2b
+  -- Clear residual hypotheses referencing `a, b` so `decide` sees a closed goal.
+  clear hr2 hRes hba1 hab hlt
+  -- Now h2a : (a : ZMod 2) ≠ r2 and h2b : (a : ZMod 2) + 1 ≠ r2.
+  -- Generalize so `decide` can enumerate ZMod 2 × ZMod 2.
+  generalize (a : ZMod 2) = α2 at h2a h2b
+  revert h2a h2b α2 r2
+  decide
+
+/-- **$H(2) \le 2$**: the tuple $(0, 2)$ is admissible (length 2, diameter 2). -/
+theorem narrowness_2_le_two : narrowness 2 ≤ 2 :=
+  narrowness_le_of_admissible_tuple (admissibleTuple_admissible 2) admissibleTuple_length_2
+    (by decide)
+
+/-- **$H(2) \ge 2$**: no admissible 2-tuple has diameter less than 2. -/
+theorem narrowness_2_ge_two : 2 ≤ narrowness 2 := by
+  unfold narrowness
+  apply le_csInf
+  · exact ⟨2, [0, 2], admissibleTuple_admissible 2, rfl, by decide⟩
+  rintro d ⟨H, hAdm, hLen, rfl⟩
+  match H, hLen, hAdm with
+  | [a, b], _, hAdm =>
+    have hsort := hAdm.1
+    have hab : a < b := by
+      have h := List.pairwise_cons.mp hsort
+      exact h.1 b (by simp)
+    have hdiam : diameter [a, b] = b - a := by
+      unfold diameter
+      simp only [List.foldr_cons, List.foldr_nil]
+      omega
+    rw [hdiam]
+    exact admissible_two_diameter_ge_two hab hAdm
+
 /-! ### Prime gaps and the $H_m$ liminf -/
 
 /-- The $n$-th prime $p_n$. Convention: $p_1 = 2$ (matches Polymath8b §1).
