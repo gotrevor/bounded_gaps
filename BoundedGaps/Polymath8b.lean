@@ -165,11 +165,23 @@ theorem narrowness_50 : narrowness 50 = 246 := by
   · exact Engelsma.narrowness_50_le_246
   · sorry  -- ≥ 246: Clark-Jarvis exhaustive enumeration, out of current scope
 
-/-- $H(51) = 252$. -/
-theorem narrowness_51 : narrowness 51 = 252 := sorry
+/-- $H(51) = 252$. The $\le 252$ direction is proven via
+`Engelsma.narrowness_51_le_252` (the Engelsma 51-tuple witnesses it); the
+$\ge 252$ direction is exact by Clark-Jarvis (2001) for $k \le 342$ but
+requires exhaustive enumeration. -/
+theorem narrowness_51 : narrowness 51 = 252 := by
+  apply le_antisymm
+  · exact Engelsma.narrowness_51_le_252
+  · sorry  -- ≥ 252: Clark-Jarvis exhaustive enumeration, out of current scope
 
-/-- $H(54) = 270$. -/
-theorem narrowness_54 : narrowness 54 = 270 := sorry
+/-- $H(54) = 270$. The $\le 270$ direction is proven via
+`Engelsma.narrowness_54_le_270` (the Engelsma 54-tuple witnesses it); the
+$\ge 270$ direction is exact by Clark-Jarvis (2001) for $k \le 342$ but
+requires exhaustive enumeration. -/
+theorem narrowness_54 : narrowness 54 = 270 := by
+  apply le_antisymm
+  · exact Engelsma.narrowness_54_le_270
+  · sorry  -- ≥ 270: Clark-Jarvis exhaustive enumeration, out of current scope
 
 /-- $H(5511) \le 52116$. -/
 theorem narrowness_5511_le : narrowness 5511 ≤ 52116 := sorry
