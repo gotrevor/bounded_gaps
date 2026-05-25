@@ -90,24 +90,32 @@ theorem dhl_criterion (k m : ℕ) (_hk : k ≥ 2) (_hm : m ≥ 1)
 /-! ### The variational problem (Polymath8b §5-§6) -/
 
 /-- The Maynard quantity $M_k(F)$: a Rayleigh-style ratio for a smooth
-$F$ supported on the $k$-simplex. (Real form: Polymath8b §5.) -/
--- TRIAGE: DEF BODY (~4-6h) — Rayleigh ratio: integral of |partial derivatives|²
--- over the k-simplex divided by integral of F². Needs MeasureTheory + the
--- specific simplex measure. ⚠️ Currently `Mk k > 4 * m / ϑ` is a *vacuous*
--- claim because Mk k is opaque; downstream theorems are structurally hollow
--- until this lands.
-noncomputable def MkF (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ := sorry
+$F$ supported on the $k$-simplex. (Real form: Polymath8b §5.)
 
-/-- $M_k := \sup_F M_k(F)$ over admissible $F$ on the simplex. -/
--- TRIAGE: DEF BODY (~1h after MkF) — `iSup MkF` over admissible F. Same
--- hollow-claim caveat as MkF.
-noncomputable def Mk (k : ℕ) : ℝ := sorry
+Currently declared `opaque` — `MkF k F` is a specific (unknown) real
+number, sufficient to make downstream claims like `Mk k > 4 * m / ϑ`
+*meaningful* rather than vacuous. A concrete body (Rayleigh ratio:
+integral of $|\partial_i F|^2$ over the $k$-simplex divided by integral
+of $F^2$) is Pass 2/3 follow-up; needs MeasureTheory + the specific
+simplex measure. -/
+-- TRIAGE: DEF BODY (~4-6h to fill in concretely; see sieve-mkf-handoff.md
+-- Pass 2/3). Until then the `opaque` declaration is the honesty patch.
+opaque MkF (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ
+
+/-- $M_k := \sup_F M_k(F)$ over admissible $F$ on the simplex.
+
+Currently declared `opaque`. The intended body is the `sSup` over
+admissible smooth $F$ of `MkF k F` (Pass 4 in `sieve-mkf-handoff.md`). -/
+-- TRIAGE: DEF BODY (~1h after MkF) — `iSup MkF` over admissible F.
+opaque Mk (k : ℕ) : ℝ
 
 /-- $M_{k, \varepsilon}$: Polymath8b's enlarged-support variant. Under GEH the
-support of $F$ may extend an $\varepsilon$ distance beyond the simplex. -/
--- TRIAGE: DEF BODY (~2h after Mk) — same shape as Mk but with extended
--- support polytope. Needed by epsilon_trick / epsilon_beyond.
-noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ := sorry
+support of $F$ may extend an $\varepsilon$ distance beyond the simplex.
+
+Currently declared `opaque`. Same shape as `Mk` but over the extended
+support polytope; needed by `epsilon_trick` / `epsilon_beyond`. -/
+-- TRIAGE: DEF BODY (~2h after Mk).
+opaque Mk_eps (k : ℕ) (ε : ℝ) : ℝ
 
 /-! ### The variational lower bounds → DHL conversions
 (Polymath8b §5: Theorems "maynard-thm", "maynard-trunc", "epsilon-trick",
