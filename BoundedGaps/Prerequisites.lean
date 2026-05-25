@@ -3,12 +3,20 @@
 
 The Polymath8b paper (§2) defines a family of parameterized distributional
 hypotheses on primes in arithmetic progressions. We model them here as
-parameterized `Prop`s; bodies are `axiom`-opaque so we can state downstream
-theorems precisely without first formalizing the discrepancy-bound machinery.
+parameterized `Prop`s; their statements are `axiom`-opaque so we can state
+downstream theorems precisely without first formalizing the discrepancy-bound
+machinery.
 
-When mathlib (or PNT+) eventually proves the unconditional members of this
-family (Bombieri-Vinogradov, Motohashi-Pintz-Zhang, Generalized Bombieri-
-Vinogradov), the `axiom` becomes a `theorem` and these stubs go away.
+The three unconditional members of this family — **Bombieri-Vinogradov**,
+**Generalized Bombieri-Vinogradov**, and **Polymath8a's MPZ estimate** — are
+themselves declared as `axiom` rather than `theorem := sorry`. This is an
+honest representation of the project's dependency surface: we *consume* these
+deep analytic-NT results, we don't reprove them. When mathlib (or PNT+)
+eventually ships proofs, the `axiom` lines become `theorem` lines and the
+project's `#print axioms` shrinks accordingly.
+
+By contrast, the *trivial* implications between EH, GEH, and MPZ remain
+`theorem := sorry` — those are our work to do.
 
 References (local copies):
 - [../papers/pdf/polymath8b-2014-variants.pdf](../papers/pdf/polymath8b-2014-variants.pdf), §2
@@ -50,19 +58,28 @@ Used in the Zhang/Polymath8a proof path. Bypassed by Maynard's proof. -/
 axiom MPZ (ϖ δ : ℝ) : Prop
 
 /-- **Bombieri-Vinogradov theorem** (1965). EH holds unconditionally for
-every fixed $0 < \vartheta < 1/2$. Polymath8b Theorem 2.4. -/
-theorem BombieriVinogradov {ϑ : ℝ} (_h : 0 < ϑ ∧ ϑ < 1 / 2) : EH ϑ := sorry
+every fixed $0 < \vartheta < 1/2$. Polymath8b Theorem 2.4.
+
+Declared as `axiom`: this project consumes BV as a black-box analytic-NT
+input. When PNT+ (or mathlib) ships a proof, this declaration becomes
+`theorem BombieriVinogradov ... := PNT.bombieriVinogradov` (or similar). -/
+axiom BombieriVinogradov {ϑ : ℝ} (h : 0 < ϑ ∧ ϑ < 1 / 2) : EH ϑ
 
 /-- **Generalized Bombieri-Vinogradov** (Motohashi 1976). GEH holds
-unconditionally for every fixed $0 < \vartheta < 1/2$. Polymath8b Theorem 2.8. -/
-theorem GeneralizedBombieriVinogradov {ϑ : ℝ} (_h : 0 < ϑ ∧ ϑ < 1 / 2) :
-    GEH ϑ := sorry
+unconditionally for every fixed $0 < \vartheta < 1/2$. Polymath8b Theorem 2.8.
+
+Declared as `axiom` for the same reason as `BombieriVinogradov`. -/
+axiom GeneralizedBombieriVinogradov {ϑ : ℝ} (h : 0 < ϑ ∧ ϑ < 1 / 2) : GEH ϑ
 
 /-- **Polymath8a Theorem 2.17**: MPZ holds for every fixed $\varpi, \delta \ge 0$
 with $600\varpi + 180\delta < 7$. In particular, $\varpi$ can be taken
-arbitrarily close to $7/600 \approx 0.01167$. -/
-theorem MPZ_polymath8a {ϖ δ : ℝ} (_h : 0 ≤ ϖ ∧ 0 ≤ δ ∧ 600 * ϖ + 180 * δ < 7) :
-    MPZ ϖ δ := sorry
+arbitrarily close to $7/600 \approx 0.01167$.
+
+Declared as `axiom`: Polymath8a's proof is the most analytically demanding
+input we use (exponential sums on smooth moduli, far outside mathlib's
+current reach). -/
+axiom MPZ_polymath8a {ϖ δ : ℝ} (h : 0 ≤ ϖ ∧ 0 ≤ δ ∧ 600 * ϖ + 180 * δ < 7) :
+    MPZ ϖ δ
 
 /-- **GEH implies EH** (Polymath8b Proposition 2.7).
 Proof sketch uses Vaughan's identity to decompose $\Lambda$. -/
