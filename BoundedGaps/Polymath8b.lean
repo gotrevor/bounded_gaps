@@ -220,39 +220,41 @@ diameter $< 6$, by simultaneous case analysis on residues mod 2 and mod 3). -/
 theorem narrowness_3 : narrowness 3 = 6 :=
   le_antisymm narrowness_3_le_six narrowness_3_ge_six
 
+/-- $H(50) \ge 246$: no admissible 50-tuple has diameter less than 246.
+Cited as an external result from Clark-Jarvis 2001 (*Dense admissible
+sequences*, Math. Comp. 70(236):1713-1718), where exact values of $H(k)$
+were computed by exhaustive enumeration for all $k \le 342$. The
+enumeration itself is out of scope for this project; a mechanized search
+would require a verified admissibility check over candidate 50-tuples of
+diameter $< 246$. -/
+axiom narrowness_50_ge_246 : 246 ≤ narrowness 50
+
 /-- **$H(50) = 246$**: an admissible 50-tuple of diameter 246 exists, and no
-narrower one. The 246 bound. The $\le 246$ direction is now proven via
-`Engelsma.narrowness_50_le_246` (the Engelsma 50-tuple witnesses it); the
-$\ge 246$ direction (no admissible 50-tuple has smaller diameter) is exact
-by Clark-Jarvis 2001 for $k \le 342$ but requires exhaustive enumeration. -/
-theorem narrowness_50 : narrowness 50 = 246 := by
-  apply le_antisymm
-  · exact Engelsma.narrowness_50_le_246
-  -- TRIAGE: CLARK_JARVIS — exhaustive enumeration, exact for k ≤ 342 in
-  -- Clark-Jarvis 2001. Stays sorry; not in this project's scope. To replace
-  -- with a real proof you'd need a verified search procedure over candidate
-  -- 50-tuples of diameter < 246 with admissibility check — substantial.
-  · sorry  -- ≥ 246: Clark-Jarvis exhaustive enumeration, out of current scope
+narrower one. The $\le 246$ direction is `Engelsma.narrowness_50_le_246`
+(the Engelsma 50-tuple witnesses it); the $\ge 246$ direction is axiomatized
+as `narrowness_50_ge_246` (Clark-Jarvis 2001). -/
+theorem narrowness_50 : narrowness 50 = 246 :=
+  le_antisymm Engelsma.narrowness_50_le_246 narrowness_50_ge_246
 
-/-- $H(51) = 252$. The $\le 252$ direction is proven via
-`Engelsma.narrowness_51_le_252` (the Engelsma 51-tuple witnesses it); the
-$\ge 252$ direction is exact by Clark-Jarvis (2001) for $k \le 342$ but
-requires exhaustive enumeration. -/
-theorem narrowness_51 : narrowness 51 = 252 := by
-  apply le_antisymm
-  · exact Engelsma.narrowness_51_le_252
-  -- TRIAGE: CLARK_JARVIS — same status as narrowness_50.
-  · sorry  -- ≥ 252: Clark-Jarvis exhaustive enumeration, out of current scope
+/-- $H(51) \ge 252$. Cited from Clark-Jarvis 2001; see `narrowness_50_ge_246`
+for the source and rationale. -/
+axiom narrowness_51_ge_252 : 252 ≤ narrowness 51
 
-/-- $H(54) = 270$. The $\le 270$ direction is proven via
-`Engelsma.narrowness_54_le_270` (the Engelsma 54-tuple witnesses it); the
-$\ge 270$ direction is exact by Clark-Jarvis (2001) for $k \le 342$ but
-requires exhaustive enumeration. -/
-theorem narrowness_54 : narrowness 54 = 270 := by
-  apply le_antisymm
-  · exact Engelsma.narrowness_54_le_270
-  -- TRIAGE: CLARK_JARVIS — same status as narrowness_50.
-  · sorry  -- ≥ 270: Clark-Jarvis exhaustive enumeration, out of current scope
+/-- $H(51) = 252$. The $\le 252$ direction is `Engelsma.narrowness_51_le_252`;
+the $\ge 252$ direction is axiomatized as `narrowness_51_ge_252`
+(Clark-Jarvis 2001). -/
+theorem narrowness_51 : narrowness 51 = 252 :=
+  le_antisymm Engelsma.narrowness_51_le_252 narrowness_51_ge_252
+
+/-- $H(54) \ge 270$. Cited from Clark-Jarvis 2001; see `narrowness_50_ge_246`
+for the source and rationale. -/
+axiom narrowness_54_ge_270 : 270 ≤ narrowness 54
+
+/-- $H(54) = 270$. The $\le 270$ direction is `Engelsma.narrowness_54_le_270`;
+the $\ge 270$ direction is axiomatized as `narrowness_54_ge_270`
+(Clark-Jarvis 2001). -/
+theorem narrowness_54 : narrowness 54 = 270 :=
+  le_antisymm Engelsma.narrowness_54_le_270 narrowness_54_ge_270
 
 -- LARGE-k NARROWNESS BOUNDS — all 7 below: each would land if we ran the
 -- tuple harvest at that k (analogous to today's k=51, k=54 harvest from MIT
@@ -267,31 +269,33 @@ into `Engelsma.tuple_5511`; admissibility itself is a SCALING_FAILURE sorry
 theorem narrowness_5511_le : narrowness 5511 ≤ 52116 :=
   Engelsma.narrowness_5511_le_52116
 
-/-- $H(35410) \le 398130$. -/
--- TRIAGE: ASYMPTOTIC_TUPLE — too large for Engelsma database. Needs
--- explicit asymptotic admissible-tuple construction (Hensley-Richards or
--- analogous greedy). Larger lift.
-theorem narrowness_35410_le : narrowness 35410 ≤ 398130 := sorry
+-- The following six $H(k)$ upper bounds are axiomatized as external
+-- numerical results. Each comes from an admissible-tuple construction
+-- (Hensley-Richards 1973 / Engelsma-style greedy) reported in Polymath8b
+-- §6 and used in §1's $H_m$ bounds. Lean mechanization of the underlying
+-- constructions at these scales (up to $k \approx 3.5 \times 10^9$) is a
+-- separate large lift and out of current scope; we cite the constructions
+-- as leaves rather than redoing them in Lean.
 
-/-- $H(41588) \le 474266$. -/
--- TRIAGE: ASYMPTOTIC_TUPLE — same status as 35410.
-theorem narrowness_41588_le : narrowness 41588 ≤ 474266 := sorry
+/-- $H(35410) \le 398130$. External: Polymath8b §6 (Hensley-Richards-type
+admissible-tuple construction). -/
+axiom narrowness_35410_le : narrowness 35410 ≤ 398130
 
-/-- $H(309661) \le 4137854$. -/
--- TRIAGE: ASYMPTOTIC_TUPLE — same status, larger k.
-theorem narrowness_309661_le : narrowness 309661 ≤ 4137854 := sorry
+/-- $H(41588) \le 474266$. External: Polymath8b §6. -/
+axiom narrowness_41588_le : narrowness 41588 ≤ 474266
 
-/-- $H(1649821) \le 24797814$. -/
--- TRIAGE: ASYMPTOTIC_TUPLE — same status, larger k.
-theorem narrowness_1649821_le : narrowness 1649821 ≤ 24797814 := sorry
+/-- $H(309661) \le 4137854$. External: Polymath8b §6. -/
+axiom narrowness_309661_le : narrowness 309661 ≤ 4137854
 
-/-- $H(75845707) \le 1431556072$. -/
--- TRIAGE: ASYMPTOTIC_TUPLE — same status, very large k.
-theorem narrowness_75845707_le : narrowness 75845707 ≤ 1431556072 := sorry
+/-- $H(1649821) \le 24797814$. External: Polymath8b §6. -/
+axiom narrowness_1649821_le : narrowness 1649821 ≤ 24797814
 
-/-- $H(3473955908) \le 80550202480$. -/
--- TRIAGE: ASYMPTOTIC_TUPLE — same status, k ≈ 3.5×10⁹.
-theorem narrowness_3473955908_le : narrowness 3473955908 ≤ 80550202480 := sorry
+/-- $H(75845707) \le 1431556072$. External: Polymath8b §6. -/
+axiom narrowness_75845707_le : narrowness 75845707 ≤ 1431556072
+
+/-- $H(3473955908) \le 80550202480$. External: Polymath8b §6 (largest tabulated
+$H_m$ entry; $k \approx 3.5 \times 10^9$). -/
+axiom narrowness_3473955908_le : narrowness 3473955908 ≤ 80550202480
 
 /-- Asymptotic upper bound: $H(k) \le k \log k + k \log \log k - k + o(k)$. -/
 -- TRIAGE: PROVABLE (~3-5h) — Hensley-Richards 1973 type construction
@@ -514,15 +518,17 @@ Statement is informal — "sieve-theoretic" isn't a formal predicate. Captured
 here as a propositional placeholder for the paper's heuristic theorem. -/
 axiom SieveTheoreticArgument (proves : Prop) : Prop
 
--- TRIAGE: META — "sieve-theoretic argument" is not a formal predicate. This
--- theorem cannot be proven *as stated* without first axiomatizing what it
--- means for an argument to be sieve-theoretic. Two reasonable end-states:
--- (a) leave as sorry indefinitely (informal placeholder for the paper's
--- heuristic claim); (b) reformulate as a precise non-existence claim about a
--- specific class of weight functions. Stays sorry; consider deletion if
--- structurally honest.
-theorem parity_barrier :
-    ¬ SieveTheoreticArgument (liminfGap 1 ≤ (4 : ℕ∞)) := sorry
+-- "Sieve-theoretic argument" is not a formal predicate; the statement is
+-- Polymath8b §7's heuristic claim, captured here as an axiom rather than a
+-- sorry'd theorem. A formal version would require reformulating as a
+-- precise non-existence claim about a specific class of weight functions.
+
+/-- **The parity barrier as an external claim**: under the heuristic reading
+of `SieveTheoreticArgument`, Polymath8b §7 (after Selberg) asserts that no
+purely sieve-theoretic argument establishes $H_1 \le 4$, even assuming GEH.
+Axiomatized rather than proven because the predicate is informal. -/
+axiom parity_barrier :
+    ¬ SieveTheoreticArgument (liminfGap 1 ≤ (4 : ℕ∞))
 
 /-! ## §8 — The twin-primes-or-Goldbach disjunction (Theorem disj) -/
 

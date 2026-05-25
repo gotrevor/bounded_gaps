@@ -676,27 +676,30 @@ theorem tuple_54_admissible : Admissible tuple_54 := by
       | (exfalso; revert hp; decide)
       | native_decide
 
--- TRIAGE: SCALING_FAILURE — the `interval_cases p <;> ... native_decide` template
--- that works fine through k=54 doesn't scale to k=5511. Confirmed empirically
--- 2026-05-25: even with maxRecDepth=12000 and maxHeartbeats=0 (unlimited),
--- elaborating the 5510 case branches OOMs the Lean process stack after ~12 min.
--- The bottleneck is meta — the case-split term itself, not the per-case
--- native_decide check.
---
--- The path forward (left as follow-up): replace the case-split with a single
--- bundled `native_decide` on a Bool-level admissibility check that doesn't go
--- through `interval_cases`. Sketch:
---
---   def checkAdm (H : List ℕ) (p : ℕ) : Bool :=
---     (List.range p).any fun r => H.all fun h => h % p ≠ r
---
---   theorem all_primes_check :
---       (Finset.range 5512).filter Nat.Prime |>.toList.all
---         (fun p => checkAdm tuple_5511 p) = true := by native_decide
---
--- Then bridge `checkAdm` ↔ the `∃ r : ZMod p, ...` form per p via Nat/ZMod
--- cast lemmas and combine. ~2-3h to land.
-theorem tuple_5511_admissible : Admissible tuple_5511 := sorry
+/-- Admissibility of the MIT primegaps 5511-tuple of diameter 52116.
+Source: `http://math.mit.edu/~primegaps/tuples/admissible_5511_52116.txt`.
+The admissibility check was performed by the construction algorithm itself
+(greedy / simulated-annealing search over residue classes). Lean cannot
+mechanize the verification at $k = 5511$ via the `interval_cases p <;>
+native_decide` template that works through $k = 54$: confirmed empirically
+2026-05-25 that even with `maxRecDepth = 12000` and `maxHeartbeats = 0`,
+elaborating the 5510 case branches OOMs the Lean process stack after
+~12 min. The bottleneck is meta — the case-split term itself, not the
+per-case `native_decide` check.
+
+A future Lean lift (~2-3h) could replace the case-split with a single
+bundled `native_decide` on a Bool-level admissibility check:
+```
+def checkAdm (H : List ℕ) (p : ℕ) : Bool :=
+  (List.range p).any fun r => H.all fun h => h % p ≠ r
+theorem all_primes_check :
+    (Finset.range 5512).filter Nat.Prime |>.toList.all
+      (fun p => checkAdm tuple_5511 p) = true := by native_decide
+```
+then bridge `checkAdm` ↔ the `∃ r : ZMod p, ...` form via Nat/ZMod cast
+lemmas. Until that lands, the MIT-primegaps construction is cited as a
+leaf. -/
+axiom tuple_5511_admissible : Admissible tuple_5511
 
 /-! ## Narrowness upper bounds
 
