@@ -122,25 +122,18 @@ noncomputable def mkF_numerator : (k : ℕ) → ((Fin k → ℝ) → ℝ) → �
           (∫ ti in Set.Icc (0 : ℝ) (1 - ∑ j, s j),
               fderiv ℝ F (i.insertNth ti s) (Pi.single i 1)) ^ 2
 
-/-- The Maynard quantity $M_k(F)$: a Rayleigh-style ratio for a smooth
-$F$ supported on the $k$-simplex. (Real form: Polymath8b §5.)
-
-Currently declared `opaque` — `MkF k F` is a specific (unknown) real
-number, sufficient to make downstream claims like `Mk k > 4 * m / ϑ`
-*meaningful* rather than vacuous. The Rayleigh shape is captured by
-`MkF_eq_rayleigh` below as a cited leaf; once `mkF_numerator` lands
-concretely (Pass 3), the axiom can become a `theorem`. -/
--- TRIAGE: DEF BODY (~4-6h to fill in concretely; see sieve-mkf-handoff.md
--- Pass 2/3). Until then the `opaque` declaration is the honesty patch.
-opaque MkF (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ
+/-- The Maynard quantity $M_k(F) := J_k(F) / \int_{\text{simplex}_k} F^2$:
+a Rayleigh-style ratio for a smooth $F$ supported on the $k$-simplex.
+(Polymath8b §5.) Fully concrete — both numerator and denominator are
+real definitions. -/
+noncomputable def MkF (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
+  mkF_numerator k F / mkF_denominator k F
 
 /-- **Polymath8b §5 definition of $M_k(F)$**: the Maynard quantity is the
-Rayleigh ratio $J_k(F) / \int_{\text{simplex}_k} F^2$. Axiomatized as a
-cited leaf — both numerator and `MkF` are presently `opaque`, so this is
-the definitional commitment that ties them together. Replaceable by a
-`theorem ... rfl`-style proof once both bodies are concrete. -/
-axiom MkF_eq_rayleigh (k : ℕ) (F : (Fin k → ℝ) → ℝ) :
-    MkF k F = mkF_numerator k F / mkF_denominator k F
+Rayleigh ratio $J_k(F) / \int_{\text{simplex}_k} F^2$. Now a theorem
+discharged by `rfl` — was an axiom while either side was opaque. -/
+theorem MkF_eq_rayleigh (k : ℕ) (F : (Fin k → ℝ) → ℝ) :
+    MkF k F = mkF_numerator k F / mkF_denominator k F := rfl
 
 /-- $M_k := \sup_F M_k(F)$ over admissible $F$ on the simplex.
 
