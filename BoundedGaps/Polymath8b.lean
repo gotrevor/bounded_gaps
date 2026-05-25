@@ -261,10 +261,11 @@ theorem narrowness_54 : narrowness 54 = 270 := by
 -- For very large k (35410+) admissibility must use an asymptotic construction
 -- (e.g. greedy/Erdős-style), not direct enumeration.
 
-/-- $H(5511) \le 52116$. -/
--- TRIAGE: TUPLE_HARVEST — check if MIT primegaps has admissible_5511_52116;
--- if yes, mechanical extension of today's PR #2. If no, needs construction.
-theorem narrowness_5511_le : narrowness 5511 ≤ 52116 := sorry
+/-- $H(5511) \le 52116$. Chains through the MIT primegaps tuple harvested
+into `Engelsma.tuple_5511`; admissibility itself is a SCALING_FAILURE sorry
+(`interval_cases` over 5510 primes overflows Lean's elaborator). -/
+theorem narrowness_5511_le : narrowness 5511 ≤ 52116 :=
+  Engelsma.narrowness_5511_le_52116
 
 /-- $H(35410) \le 398130$. -/
 -- TRIAGE: ASYMPTOTIC_TUPLE — too large for Engelsma database. Needs
