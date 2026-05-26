@@ -119,14 +119,22 @@ theorem witness_eventually_from_sieve_data
 /-- **Step 2 of Lemma crit (topological wrap-up)**: per-$N$ witnesses in
 $[N, 2N]$ give an infinite set of witnesses. Polymath8b §3 final paragraph
 of the Lemma crit proof. -/
--- TRIAGE: PROVABLE (~30-60 min) — bridge `∀ᶠ N, ∃ n ∈ [N, 2N], P n` →
--- `Set.Infinite {n | P n}`. Likely chains through `Filter.frequently_atTop`.
--- Pure Mathlib utility, no analytic NT needed.
 theorem infinite_witnesses_of_eventual_witness
     {H : List ℕ} {j : ℕ}
-    (_h : ∀ᶠ N : ℕ in Filter.atTop, ∃ n : ℕ, N ≤ n ∧ n ≤ 2 * N ∧
+    (h : ∀ᶠ N : ℕ in Filter.atTop, ∃ n : ℕ, N ≤ n ∧ n ≤ 2 * N ∧
       H.countP (fun h => (n + h).Prime) ≥ j) :
-    Set.Infinite { n : ℕ | H.countP (fun h => (n + h).Prime) ≥ j } := sorry
+    Set.Infinite { n : ℕ | H.countP (fun h => (n + h).Prime) ≥ j } := by
+  -- Unbounded subsets of ℕ are infinite. Given any putative upper bound M,
+  -- the eventual-witness hypothesis at N = M + 1 produces an n ≥ M + 1 in
+  -- the set, contradicting the bound.
+  apply Set.infinite_of_not_bddAbove
+  rintro ⟨M, hM⟩
+  rw [Filter.eventually_atTop] at h
+  obtain ⟨N₀, hN₀⟩ := h
+  obtain ⟨n, hNn, _, hP⟩ := hN₀ (max N₀ (M + 1)) (le_max_left _ _)
+  have hMlt : M + 1 ≤ n := (le_max_right N₀ (M + 1)).trans hNn
+  have hnLeM : n ≤ M := hM hP
+  omega
 
 /-- **"Lemma crit"** (Polymath8b §3 Lemma 3.3): pigeonhole criterion for DHL.
 
