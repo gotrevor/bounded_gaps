@@ -218,19 +218,42 @@ discharged by `rfl` — was an axiom while either side was opaque. -/
 theorem MkF_eq_rayleigh (k : ℕ) (F : (Fin k → ℝ) → ℝ) :
     MkF k F = mkF_numerator k F / mkF_denominator k F := rfl
 
+/-- The admissible set of `MkF k F` values: smooth `F` supported on
+the simplex with nonzero Rayleigh denominator. Factored out of `Mk` so
+the `sSup` extraction lemma can name it. -/
+def MkSet (k : ℕ) : Set ℝ :=
+  { v | ∃ F : (Fin k → ℝ) → ℝ,
+          ContDiff ℝ ⊤ F ∧
+          Function.support F ⊆ simplex k ∧
+          mkF_denominator k F > 0 ∧
+          v = MkF k F }
+
 /-- $M_k := \sup_F M_k(F)$ over admissible $F$ on the simplex.
 
-Concrete `sSup` over the set of `MkF k F` values where $F$ is smooth,
-supported on the simplex, and has nonzero Rayleigh denominator (so the
-ratio is well-defined). Per `Mathlib`'s `ℝ`-`ConditionallyCompleteLinearOrder`
+Concrete `sSup` over `MkSet k`. Per `Mathlib`'s `ℝ`-`ConditionallyCompleteLinearOrder`
 convention, an empty or unbounded admissible set yields `0`; in the
-relevant Polymath8b regime ($k \ge 2$) the set is non-empty and bounded. -/
-noncomputable def Mk (k : ℕ) : ℝ :=
-  sSup { v | ∃ F : (Fin k → ℝ) → ℝ,
-              ContDiff ℝ ⊤ F ∧
-              Function.support F ⊆ simplex k ∧
-              mkF_denominator k F > 0 ∧
-              v = MkF k F }
+relevant Polymath8b regime ($k \ge 2$) the set is non-empty and bounded —
+see axioms `MkSet_nonempty` and `MkSet_bddAbove`. -/
+noncomputable def Mk (k : ℕ) : ℝ := sSup (MkSet k)
+
+/-- For $k \ge 2$, the admissible-F set for $M_k$ is non-empty.
+
+Polymath8b §5 implicitly assumes this: any smooth bump supported on the
+interior of the simplex with nonzero $\int F^2$ realizes some
+$\mathrm{MkF}(k, F) > 0$. Formally proving nonemptiness requires
+constructing such an $F$ (smooth-bump construction, several mathlib
+imports). Axiomatized at this leaf per the project's "axioms at leaves"
+principle; a future PR could replace with a real proof. -/
+axiom MkSet_nonempty (k : ℕ) (hk : 2 ≤ k) : (MkSet k).Nonempty
+
+/-- The admissible-F set for $M_k$ is bounded above.
+
+Polymath8b Corollary `mk-upper` (the converse direction to `mlower`):
+$M_k \le \frac{k}{k-1} \log k$ for all $k \ge 2$. This implies any
+realized value is bounded by $\frac{k}{k-1} \log k$, so the set is
+`BddAbove`. Axiomatized; cf. Polymath8b §5 + Hensley-Richards 1973
+(which gives the asymptotic). -/
+axiom MkSet_bddAbove (k : ℕ) : BddAbove (MkSet k)
 
 /-! ### The ε-enlarged variant (Polymath8b §5, epsilon-trick)
 
@@ -274,17 +297,32 @@ noncomputable def mkF_eps_denominator (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) 
 noncomputable def MkF_eps (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
   mkF_eps_numerator k ε F / mkF_eps_denominator k ε F
 
+/-- The admissible set of $\mathrm{MkF}_\varepsilon$ values: smooth $F$
+supported on $(1+\varepsilon)\mathcal{R}_k$ with nonzero
+$\mathrm{mkF\_eps\_denominator}$. Sister of `MkSet`. -/
+def MkSet_eps (k : ℕ) (ε : ℝ) : Set ℝ :=
+  { v | ∃ F : (Fin k → ℝ) → ℝ,
+          ContDiff ℝ ⊤ F ∧
+          Function.support F ⊆ simplex_eps k ε ∧
+          mkF_eps_denominator k ε F > 0 ∧
+          v = MkF_eps k ε F }
+
 /-- $M_{k, \varepsilon}$: Polymath8b's enlarged-support variant of $M_k$.
-Concrete `sSup` over $F$ smooth, supported on $(1+\varepsilon) R_k$, with
-nonzero $I(F)$. Per `Mathlib`'s `ℝ`-`ConditionallyCompleteLinearOrder`,
-empty/unbounded yields $0$; for $k \ge 2$ and $0 < \varepsilon < 1$ the
-admissible set is non-empty and bounded. -/
-noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ :=
-  sSup { v | ∃ F : (Fin k → ℝ) → ℝ,
-              ContDiff ℝ ⊤ F ∧
-              Function.support F ⊆ simplex_eps k ε ∧
-              mkF_eps_denominator k ε F > 0 ∧
-              v = MkF_eps k ε F }
+Concrete `sSup` over `MkSet_eps k ε`. -/
+noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ := sSup (MkSet_eps k ε)
+
+/-- For $k \ge 2$ and $\varepsilon > 0$, the admissible-F set for
+$M_{k,\varepsilon}$ is non-empty. Sister axiom of `MkSet_nonempty`;
+the $(1+\varepsilon)$-enlargement only enlarges the admissible support
+polytope, so any witness for $M_k$ also witnesses $M_{k,\varepsilon}$. -/
+axiom MkSet_eps_nonempty (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε) :
+    (MkSet_eps k ε).Nonempty
+
+/-- The admissible-F set for $M_{k,\varepsilon}$ is bounded above.
+Sister of `MkSet_bddAbove`. Polymath8b §5: $M_{k,\varepsilon}$ admits
+the same asymptotic upper bound as $M_k$ up to a factor of
+$(1+\varepsilon)/(1-\varepsilon)$. -/
+axiom MkSet_eps_bddAbove (k : ℕ) (ε : ℝ) : BddAbove (MkSet_eps k ε)
 
 /-! ### The variational lower bounds → DHL conversions
 (Polymath8b §5: Theorems "maynard-thm", "maynard-trunc", "epsilon-trick",
@@ -293,18 +331,17 @@ noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ :=
 /-- **sSup extraction**: if $c < M_k$ then there is a specific admissible
 $F$ on the simplex realizing $\mathrm{MkF}(k, F) > c$.
 
-This is the standard `lt_csSup_iff` unfolding for the variational
-problem. Currently `sorry` — the side conditions `Nonempty` and
-`BddAbove` of the admissible-F set are not yet proven (for $k \ge 2$
-both hold, but the lemmas are not in the project). -/
--- TRIAGE: PROVABLE (~30 min) once `Mk_nonempty` and `Mk_bddAbove` are
--- in scope. For now this is the seam where the variational set-theoretic
--- prerequisites enter; isolating them here means `maynard_thm` doesn't
--- need them in its proof body.
-theorem exists_F_of_Mk_gt (k : ℕ) (c : ℝ) (_hc : c < Mk k) :
+Real proof via mathlib's `lt_csSup_iff`, consuming the cited axioms
+`MkSet_nonempty` (for $k \ge 2$) and `MkSet_bddAbove` as leaves. -/
+theorem exists_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
     ∃ F : (Fin k → ℝ) → ℝ,
       ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex k ∧
-      mkF_denominator k F > 0 ∧ c < MkF k F := sorry
+      mkF_denominator k F > 0 ∧ c < MkF k F := by
+  have hLt : c < sSup (MkSet k) := hc
+  obtain ⟨v, hvMem, hcv⟩ :=
+    (lt_csSup_iff (MkSet_bddAbove k) (MkSet_nonempty k hk)).mp hLt
+  obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
+  exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
 /-- **The analytic core of Maynard's theorem** (Polymath8b §3 + §5).
 Given an admissible $F$ on the simplex with $\mathrm{MkF}(k, F) > 2m/\vartheta$
@@ -363,7 +400,7 @@ theorem maynard_thm (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϑ : ℝ)
   apply dhl_criterion k m hk hm
   intro H hAdm hLen
   obtain ⟨F, hSmooth, hSupp, hDen, hMkF⟩ :=
-    exists_F_of_Mk_gt k (2 * m / ϑ) hMk
+    exists_F_of_Mk_gt k hk (2 * m / ϑ) hMk
   exact selberg_sieve_data_from_F hk hm hϑ hEH hSmooth hSupp hDen hMkF hAdm hLen
 
 /-- **Theorem 5.3 / "maynard-trunc"** (under MPZ): truncated variant suitable
@@ -378,14 +415,18 @@ theorem maynard_trunc (k m : ℕ) (ϖ δ : ℝ)
 then there is a specific admissible $F$ supported on $(1+\varepsilon)
 \mathcal{R}_k$ realizing $\mathrm{MkF}_\varepsilon(k, \varepsilon, F) > c$.
 
-Sister of `exists_F_of_Mk_gt`. Same TRIAGE: needs `Mk_eps_nonempty`
-and `Mk_eps_bddAbove` side lemmas (for $k \ge 2$ and $0 < \varepsilon < 1$
-the admissible-F set is non-empty and bounded). -/
-theorem exists_F_eps_of_Mk_eps_gt (k : ℕ) (ε : ℝ) (c : ℝ)
-    (_hc : c < Mk_eps k ε) :
+Sister of `exists_F_of_Mk_gt`. Same `lt_csSup_iff` discharge, consuming
+`MkSet_eps_nonempty` and `MkSet_eps_bddAbove`. -/
+theorem exists_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
+    (ε : ℝ) (hε : 0 < ε) (c : ℝ) (hc : c < Mk_eps k ε) :
     ∃ F : (Fin k → ℝ) → ℝ,
       ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_eps k ε ∧
-      mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F := sorry
+      mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F := by
+  have hLt : c < sSup (MkSet_eps k ε) := hc
+  obtain ⟨v, hvMem, hcv⟩ :=
+    (lt_csSup_iff (MkSet_eps_bddAbove k ε) (MkSet_eps_nonempty k hk ε hε)).mp hLt
+  obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
+  exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
 /-- **The analytic core of the ε-trick** (Polymath8b §5).
 
@@ -436,7 +477,7 @@ theorem epsilon_trick (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
   apply dhl_criterion k m hk hm
   intro H hAdm hLen
   obtain ⟨F, hSmooth, hSupp', hDen, hMkF⟩ :=
-    exists_F_eps_of_Mk_eps_gt k ε (2 * m / ϑ) hMk
+    exists_F_eps_of_Mk_eps_gt k hk ε hε (2 * m / ϑ) hMk
   exact selberg_sieve_data_eps_from_F hk hm hε hϑ hEH hSupp hSmooth hSupp'
     hDen hMkF hAdm hLen
 
