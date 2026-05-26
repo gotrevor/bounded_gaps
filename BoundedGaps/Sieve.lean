@@ -255,6 +255,14 @@ realized value is bounded by $\frac{k}{k-1} \log k$, so the set is
 (which gives the asymptotic). -/
 axiom MkSet_bddAbove (k : ℕ) : BddAbove (MkSet k)
 
+/-- $M_k \le 1$ for $k \le 1$. Standard variational bound: for $k = 0$,
+$M_0 = 0$ by definition (the numerator `mkF_numerator 0` is identically 0);
+for $k = 1$, the Maynard ratio is $(\int F)^2 / \int F^2 \le 1$ by
+Cauchy-Schwarz on the unit interval. Axiomatized — the $k = 0$ case is
+elementary but the $k = 1$ Cauchy-Schwarz argument requires measure-theoretic
+setup not currently in the project. -/
+axiom Mk_le_one_of_k_le_one (k : ℕ) (hk : k ≤ 1) : Mk k ≤ 1
+
 /-! ### The ε-enlarged variant (Polymath8b §5, epsilon-trick)
 
 In the GEH-enabled refinement, $F$'s support may extend out to the
