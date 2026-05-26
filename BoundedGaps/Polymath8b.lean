@@ -30,7 +30,6 @@ import Mathlib
 import BoundedGaps.Basic
 import BoundedGaps.Prerequisites
 import BoundedGaps.Sieve
-import BoundedGaps.Maynard
 import BoundedGaps.Engelsma
 
 namespace BoundedGaps.Polymath8b
