@@ -381,15 +381,91 @@ and the set-infinite encoding. -/
 theorem liminfGap_one_le_iff (H : ℕ) :
     liminfGap 1 ≤ (H : ℕ∞) ↔ BoundedGap H := sorry
 
-/-- **DHL[k, 2]** for an admissible $k$-tuple of diameter $H$ implies
-$H_1 \le H$ (Polymath8b §3, first paragraph after Theorem 3.1).
+/-- Helper: if `h ∈ H`, then `h ≤ H.foldr max 0`. Used for the diameter bound. -/
+private lemma le_foldr_max (h : ℕ) (H : List ℕ) (hmem : h ∈ H) :
+    h ≤ H.foldr max 0 := by
+  induction H with
+  | nil => simp at hmem
+  | cons a t ih =>
+    simp only [List.foldr_cons]
+    rcases List.mem_cons.mp hmem with rfl | h_in_t
+    · exact le_max_left _ _
+    · exact (ih h_in_t).trans (le_max_right _ _)
 
-More generally, $\DHL[k, m+1]$ implies $H_m \le H(k)$. -/
--- TRIAGE: PROVABLE (~30 min) — unfold DHL, extract one of the j=2 prime pairs
--- from each admissible-shifted-set, witness BoundedGap. Pure combinatorial.
-theorem dhl_two_implies_boundedGap (k : ℕ) (_hDHL : DHL k 2)
-    (H : List ℕ) (_hAdm : Admissible H) (_hLength : H.length = k) :
-    BoundedGap (diameter H) := sorry
+/-- Helper: if `h ∈ H` and `H` is nonempty, then `H.foldr min init ≤ h` for
+`init ≥ all of H`. Specialized to `init = H.foldr max 0` (which is `≥ h`)
+gives `H.foldr min (H.foldr max 0) ≤ h` — the min of `H` is `≤` any
+element of `H`. -/
+private lemma foldr_min_le (h : ℕ) (H : List ℕ) (init : ℕ) (hmem : h ∈ H) :
+    H.foldr min init ≤ h := by
+  induction H with
+  | nil => simp at hmem
+  | cons a t ih =>
+    simp only [List.foldr_cons]
+    rcases List.mem_cons.mp hmem with rfl | h_in_t
+    · exact min_le_left _ _
+    · exact (min_le_right _ _).trans (ih h_in_t)
+
+/-- Combinatorial extraction: a `Pairwise (· < ·)` list with at least two
+`P`-satisfying elements contains two distinct elements $h_1 < h_2$ with both
+satisfying $P$. Used in `dhl_two_implies_boundedGap` to pull two ordered
+prime-offset witnesses out of an admissible $k$-tuple. -/
+theorem exists_two_increasing_of_countP_two_le
+    {α : Type*} [LinearOrder α] (L : List α) (hSorted : L.Pairwise (· < ·))
+    (P : α → Bool) (hCount : 2 ≤ L.countP P) :
+    ∃ h₁ h₂, h₁ ∈ L ∧ h₂ ∈ L ∧ h₁ < h₂ ∧ P h₁ = true ∧ P h₂ = true := by
+  -- The filtered list inherits sortedness from L and has length ≥ 2.
+  have hFL : 2 ≤ (L.filter P).length := by
+    rw [← List.countP_eq_length_filter]; exact hCount
+  have hPair : (L.filter P).Pairwise (· < ·) := hSorted.sublist List.filter_sublist
+  -- Destructure L.filter P as h₁ :: h₂ :: rest
+  match hF : L.filter P, hFL with
+  | h₁ :: h₂ :: _, _ =>
+    have h₁_in_filter : h₁ ∈ L.filter P := by rw [hF]; exact List.mem_cons_self
+    have h₂_in_filter : h₂ ∈ L.filter P := by
+      rw [hF]; exact List.mem_cons_of_mem _ List.mem_cons_self
+    have h₁_in_L : h₁ ∈ L := (List.mem_filter.mp h₁_in_filter).1
+    have h₂_in_L : h₂ ∈ L := (List.mem_filter.mp h₂_in_filter).1
+    have h₁_P : P h₁ = true := (List.mem_filter.mp h₁_in_filter).2
+    have h₂_P : P h₂ = true := (List.mem_filter.mp h₂_in_filter).2
+    have h12 : h₁ < h₂ := by
+      rw [hF] at hPair
+      exact (List.pairwise_cons.mp hPair).1 h₂ List.mem_cons_self
+    exact ⟨h₁, h₂, h₁_in_L, h₂_in_L, h12, h₁_P, h₂_P⟩
+
+/-- **DHL[k, 2]** for an admissible $k$-tuple of diameter $H$ implies
+$H_1 \le H$ (Polymath8b §3, first paragraph after Theorem 3.1). -/
+theorem dhl_two_implies_boundedGap (k : ℕ) (hDHL : DHL k 2)
+    (H : List ℕ) (hAdm : Admissible H) (hLength : H.length = k) :
+    BoundedGap (diameter H) := by
+  unfold BoundedGap
+  apply Set.infinite_of_forall_exists_gt
+  intro N
+  -- DHL gives infinitely many n with ≥ 2 primes among n + h_i
+  obtain ⟨n, hn_mem, hn_gt⟩ := (hDHL H hAdm hLength).exists_gt N
+  simp only [Set.mem_setOf_eq] at hn_mem
+  -- hn_mem : 2 ≤ H.countP (fun h => (n + h).Prime)
+  -- Convert to Bool-form for the helper
+  have hn_bool : 2 ≤ H.countP (fun h => decide (n + h).Prime) := by
+    convert hn_mem using 1
+  -- Extract two ordered prime-offsets via the helper
+  obtain ⟨h₁, h₂, h₁_in_H, h₂_in_H, h12, h₁_prime_b, h₂_prime_b⟩ :=
+    exists_two_increasing_of_countP_two_le H hAdm.1
+      (fun h => decide (n + h).Prime) hn_bool
+  have h₁_prime : (n + h₁).Prime := by simpa using h₁_prime_b
+  have h₂_prime : (n + h₂).Prime := by simpa using h₂_prime_b
+  -- Construct the BoundedGap witness: p = n + h₁, q = n + h₂
+  refine ⟨n + h₁, ⟨h₁_prime, n + h₂, h₂_prime, ?_, ?_⟩, ?_⟩
+  · -- n + h₁ < n + h₂
+    exact Nat.add_lt_add_left h12 n
+  · -- (n + h₂) - (n + h₁) ≤ diameter H
+    unfold diameter
+    have hh₂ : h₂ ≤ H.foldr max 0 := le_foldr_max h₂ H h₂_in_H
+    have hh₁ : H.foldr min (H.foldr max 0) ≤ h₁ :=
+      foldr_min_le h₁ H (H.foldr max 0) h₁_in_H
+    omega
+  · -- N < n + h₁
+    omega
 
 /-- General form: $\DHL[k, m+1] \Rightarrow H_m \le H(k)$. -/
 -- TRIAGE: PROVABLE (~1h) — same as above generalized to m+1 primes; requires
