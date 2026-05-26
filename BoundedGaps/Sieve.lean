@@ -290,21 +290,81 @@ noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ :=
 (Polymath8b §5: Theorems "maynard-thm", "maynard-trunc", "epsilon-trick",
 "epsilon-beyond") -/
 
+/-- **sSup extraction**: if $c < M_k$ then there is a specific admissible
+$F$ on the simplex realizing $\mathrm{MkF}(k, F) > c$.
+
+This is the standard `lt_csSup_iff` unfolding for the variational
+problem. Currently `sorry` — the side conditions `Nonempty` and
+`BddAbove` of the admissible-F set are not yet proven (for $k \ge 2$
+both hold, but the lemmas are not in the project). -/
+-- TRIAGE: PROVABLE (~30 min) once `Mk_nonempty` and `Mk_bddAbove` are
+-- in scope. For now this is the seam where the variational set-theoretic
+-- prerequisites enter; isolating them here means `maynard_thm` doesn't
+-- need them in its proof body.
+theorem exists_F_of_Mk_gt (k : ℕ) (c : ℝ) (_hc : c < Mk k) :
+    ∃ F : (Fin k → ℝ) → ℝ,
+      ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex k ∧
+      mkF_denominator k F > 0 ∧ c < MkF k F := sorry
+
+/-- **The analytic core of Maynard's theorem** (Polymath8b §3 + §5).
+Given an admissible $F$ on the simplex with $\mathrm{MkF}(k, F) > 2m/\vartheta$
+under $\EH[\vartheta]$, construct Selberg sieve data $(b, W, \nu,
+\alpha, \beta)$ over an admissible $k$-tuple satisfying (s1), (s2),
+and the key ratio $\sum_i \beta_i / \alpha > m$.
+
+Paper structure: Polymath8b §3-§5.
+1. Define $\nu(n)$ from $F$ via the Selberg-sieve form `nuform`
+   (Polymath8b §3, end of intro to §3).
+2. Set $\alpha := \int_{\mathcal{R}_k} F^2$ (the Maynard denominator).
+3. Set $\beta_i := J_i(F)$ (the marginal numerators).
+4. Verify (s1) `alphaBound` from Polymath8b Theorem `nonprime-asym`
+   (line 889).
+5. Verify (s2) `betaBound` from Polymath8b Theorem `prime-asym`
+   (line 862). Here EH[ϑ] enters as the equidistribution input that
+   `prime-asym` consumes.
+6. Key ratio: $\sum_i \beta_i / \alpha = \mathrm{MkF}(k, F) >
+   2m/\vartheta$, which after scaling out the factor from Selberg
+   asymptotics gives $\sum_i \beta_i / \alpha > m$.
+
+This is **the** substantive sieve-construction lemma. Polymath8b §3
+Theorems `prime-asym` and `nonprime-asym` are not yet in the project;
+they would appear as cited-axiom leaves when this lemma is further
+decomposed. -/
+-- TRIAGE: HARD_ANALYTIC — Polymath8b §3-§5 sieve construction.
+-- Sub-decomposition (future PRs): ν_def_from_F, s1_holds_from_nonprime_asym,
+-- s2_holds_from_prime_asym, key_from_MkF. Each consumes prime-asym /
+-- nonprime-asym (Polymath8b §3 deep theorems) as cited leaves.
+theorem selberg_sieve_data_from_F {k m : ℕ} (_hk : k ≥ 2) (_hm : m ≥ 1)
+    {ϑ : ℝ} (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hEH : Prerequisites.EH ϑ)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex k)
+    (_hF_den : mkF_denominator k F > 0)
+    (_hF_Mk : MkF k F > 2 * m / ϑ)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k) :
+    ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
+      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
+      (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
+          betaBound k ν H b W i.val x (β i)) := sorry
+
 /-- **Theorem 5.2 / "maynard-thm"** (under EH): if $M_k > 2m/\vartheta$ for
 some $\vartheta < 1$, and EH[ϑ] holds for that $\vartheta$, then $\DHL[k, m+1]$.
 
-Paper reference: Polymath8b §5 line 935 (`\label{maynard-thm}`). The
-hypothesis is `M_k > 2m/ϑ`, NOT `4m/ϑ` (an earlier encoding had this 2×
-too strong; the consumer witness axioms in `Polymath8b.lean` were inflated
-to match, but the inflated values are not what Polymath8b §6 mlower proves —
-e.g. mlower(viii) gives $M_{5511} > 6$, which is `2·3/ϑ` for ϑ → 1, not
-`4·3/ϑ`). Threshold corrected 2026-05-26. -/
--- TRIAGE: NEEDS_SIEVE — follows from dhl_criterion once the variational
--- machinery (Mk, MkF) has real bodies. Maynard's original argument, ~1-2h
--- after the prerequisites land.
-theorem maynard_thm (k m : ℕ) (ϑ : ℝ) (_hϑ : 0 < ϑ ∧ ϑ < 1)
-    (_hEH : Prerequisites.EH ϑ)
-    (_hMk : Mk k > 2 * m / ϑ) : DHL k (m + 1) := sorry
+Paper reference: Polymath8b §5 line 935 (`\label{maynard-thm}`).
+
+Proof: 3-step composition. (1) Extract an admissible $F$ with
+$\mathrm{MkF}(k, F) > 2m/\vartheta$ via `exists_F_of_Mk_gt`. (2) Apply
+`selberg_sieve_data_from_F` to build the per-$H$ sieve data. (3) Feed
+into `dhl_criterion`. -/
+theorem maynard_thm (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϑ : ℝ)
+    (hϑ : 0 < ϑ ∧ ϑ < 1) (hEH : Prerequisites.EH ϑ)
+    (hMk : Mk k > 2 * m / ϑ) : DHL k (m + 1) := by
+  apply dhl_criterion k m hk hm
+  intro H hAdm hLen
+  obtain ⟨F, hSmooth, hSupp, hDen, hMkF⟩ :=
+    exists_F_of_Mk_gt k (2 * m / ϑ) hMk
+  exact selberg_sieve_data_from_F hk hm hϑ hEH hSmooth hSupp hDen hMkF hAdm hLen
 
 /-- **Theorem 5.3 / "maynard-trunc"** (under MPZ): truncated variant suitable
 for the Zhang/Polymath8a regime. -/
