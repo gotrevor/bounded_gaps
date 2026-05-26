@@ -56,36 +56,106 @@ noncomputable def maynardWeight (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : Lis
     n + (H[i.val]?).getD 0
   (∏ i, lambdaF (marginal i) x (shifted i)) ^ 2
 
-/-! ### The pigeonhole criterion (Polymath8b Lemma 3.3 — "Lemma crit") -/
+/-! ### The pigeonhole criterion (Polymath8b §3 — "Lemma crit")
 
-/-- Sum bound (Polymath8b eqn (3.4)): the numerator-style upper bound. -/
--- TRIAGE: DEF BODY (~2-3h) — has a precise statement (asymptotic sum of ν
--- against a residue class), should be defined properly when sieve scaffolding
--- lands. Could be `opaque def alphaBound : ... → Prop` short-term to make
--- consumers honest, but a real definition is the right end-state.
-def alphaBound (k : ℕ) (ν : ℕ → ℝ) (b W : ℕ) (x : ℝ) (α : ℝ) : Prop := sorry
+The pigeonhole reduction from sieve weight existence to DHL is split into
+two named sub-lemmas mirroring the seams of Polymath8b §3's proof:
 
-/-- Sum bound (Polymath8b eqn (3.5)): the per-shift lower bound, $i = 1, \ldots, k$. -/
--- TRIAGE: DEF BODY (~2-3h) — sister of alphaBound. Same `opaque def` vs
--- "define properly" choice. Bundle with alphaBound.
-def betaBound (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ) (x : ℝ) (β : ℝ) : Prop := sorry
+1. `witness_eventually_from_sieve_data` — analytic/algebraic core: from
+   (s1), (s2), and the key ratio, derive that for arbitrarily large $N$
+   there is a witness $n \in [N, 2N]$ with $\ge m + 1$ of $n + h_i$ prime.
+2. `infinite_witnesses_of_eventual_witness` — topological wrap-up: per-$N$
+   witnesses give `Set.Infinite`.
 
-/-- **"Lemma crit"** (Polymath8b Lemma 3.3): pigeonhole criterion for DHL.
+`dhl_criterion` is a 3-line composition of these two over an arbitrary
+admissible $\mathcal{H}$.
 
-If for every admissible $k$-tuple $\mathcal{H}$ and every coprime residue
-class $b \pmod{W}$ one can find non-negative weights $\nu$ and positive
+Sources: Polymath8b §3 (Lemma `crit`); the original pigeonhole step appears
+in Maynard 2015 ("Small gaps between primes") §4. -/
+
+/-- The asymptotic upper bound (Polymath8b §3 eqn (s1)):
+$$\sum_{\substack{x \le n \le 2x \\ n \equiv b\ (W)}} \nu(n)
+   \le (\alpha + o(1)) B^{-k} \frac{x}{W}$$
+as $x \to \infty$, where $B := \phi(W)/W \cdot \log x$. Currently declared
+`opaque` — a real def needs `Asymptotics.IsLittleO` plus the Mertens
+product $W$ as a sieve parameter; out of current scope. -/
+opaque alphaBound (k : ℕ) (ν : ℕ → ℝ) (b W : ℕ) (x : ℝ) (α : ℝ) : Prop
+
+/-- The asymptotic lower bound (Polymath8b §3 eqn (s2)):
+$$\sum_{\substack{x \le n \le 2x \\ n \equiv b\ (W)}} \nu(n)\, \theta(n + h_i)
+   \ge (\beta_i - o(1)) B^{1-k} \frac{x}{\phi(W)}$$
+as $x \to \infty$, for $i = 1, \ldots, k$. Sister of `alphaBound`. -/
+opaque betaBound (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ) (x : ℝ)
+    (β : ℝ) : Prop
+
+/-- **Step 1 of Lemma crit (Polymath8b §3, analytic core)**: from the sieve
+bounds (s1) and (s2), and the key ratio $(\beta_1 + \cdots + \beta_k)/\alpha > m$,
+one deduces that for arbitrarily large $N$ there exists $n \in [N, 2N]$ with
+at least $m + 1$ of $n + h_i$ prime.
+
+Paper proof structure (Polymath8b §3, proof of Lemma crit, paragraphs 1-3):
+1. Combine (s1) and (s2) to lower-bound
+   $$N(x) := \sum_{\substack{x \le n \le 2x \\ n \equiv b\ (W)}} \nu(n)
+              \left( \sum_i \theta(n + h_i) - m \log 3x \right).$$
+2. Substituting $B := \phi(W)/W \cdot \log x$ and using the key ratio,
+   $N(x) > 0$ for $x$ sufficiently large.
+3. The parenthetical $\sum_i \theta(n+h_i) - m \log 3x$ can be positive
+   only when at least $m + 1$ of $n + h_i$ are prime, so at least one
+   such $n$ exists in $[x, 2x]$. -/
+-- TRIAGE: PROVABLE (~2-3h once a project-level Chebyshev-θ def exists). The
+-- pigeonhole step also needs a small `(p.Prime → log p ≤ θ p)` type bridge.
+-- Polymath8b §3 Lemma crit, paragraphs 1-3.
+theorem witness_eventually_from_sieve_data
+    {k : ℕ} (H : List ℕ) (_hAdm : Admissible H) (_hLen : H.length = k)
+    {m : ℕ} {b W : ℕ} {ν : ℕ → ℝ} {α : ℝ} {β : Fin k → ℝ}
+    (_hα : 0 < α) (_hβ : ∀ i, 0 ≤ β i)
+    (_hKey : (∑ i, β i) / α > m)
+    (_hS1 : ∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α)
+    (_hS2 : ∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
+              betaBound k ν H b W i.val x (β i)) :
+    ∀ᶠ N : ℕ in Filter.atTop, ∃ n : ℕ, N ≤ n ∧ n ≤ 2 * N ∧
+      H.countP (fun h => (n + h).Prime) ≥ m + 1 := sorry
+
+/-- **Step 2 of Lemma crit (topological wrap-up)**: per-$N$ witnesses in
+$[N, 2N]$ give an infinite set of witnesses. Polymath8b §3 final paragraph
+of the Lemma crit proof. -/
+-- TRIAGE: PROVABLE (~30-60 min) — bridge `∀ᶠ N, ∃ n ∈ [N, 2N], P n` →
+-- `Set.Infinite {n | P n}`. Likely chains through `Filter.frequently_atTop`.
+-- Pure Mathlib utility, no analytic NT needed.
+theorem infinite_witnesses_of_eventual_witness
+    {H : List ℕ} {j : ℕ}
+    (_h : ∀ᶠ N : ℕ in Filter.atTop, ∃ n : ℕ, N ≤ n ∧ n ≤ 2 * N ∧
+      H.countP (fun h => (n + h).Prime) ≥ j) :
+    Set.Infinite { n : ℕ | H.countP (fun h => (n + h).Prime) ≥ j } := sorry
+
+/-- **"Lemma crit"** (Polymath8b §3 Lemma 3.3): pigeonhole criterion for DHL.
+
+If for every admissible $k$-tuple $\mathcal{H}$ one can find a coprime
+residue class $b \pmod{W}$, non-negative weights $\nu$, and positive
 quantities $\alpha, \beta_1, \ldots, \beta_k$ with the asymptotic bounds
-`alphaBound` and `betaBound`, satisfying the **key inequality**
-$\frac{\beta_1 + \cdots + \beta_k}{\alpha} > m$, then $\DHL[k, m+1]$ holds. -/
--- TRIAGE: PROVABLE (~3-4h) — Polymath8b's Lemma 3.3 pigeonhole argument.
--- Requires alphaBound/betaBound to be real defs first. This is the heart of
--- the sieve→DHL reduction; once done, all maynard_thm variants below become
--- 30-line follow-ons.
+`alphaBound` (s1) and `betaBound` (s2) holding for arbitrarily large $x$,
+satisfying the **key inequality** $\frac{\beta_1 + \cdots + \beta_k}{\alpha} > m$,
+then $\DHL[k, m+1]$ holds.
+
+Note: the hypothesis was strengthened in this PR to include the (s1) and
+(s2) bounds. Previously the hypothesis was just the key ratio, which made
+the theorem trivially false (any constant choice of $\alpha, \beta_i$
+satisfies it without implying DHL).
+
+Proof: 3-line composition of `witness_eventually_from_sieve_data` and
+`infinite_witnesses_of_eventual_witness`. -/
 theorem dhl_criterion (k m : ℕ) (_hk : k ≥ 2) (_hm : m ≥ 1)
-    (_hWeights : ∀ H : List ℕ, Admissible H → H.length = k →
-      ∃ (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
-        α > 0 ∧ (∀ i, β i ≥ 0) ∧ (∑ i, β i) / α > m) :
-    DHL k (m + 1) := sorry
+    (hSieve : ∀ H : List ℕ, Admissible H → H.length = k →
+      ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
+        0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+        (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
+        (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
+            betaBound k ν H b W i.val x (β i))) :
+    DHL k (m + 1) := by
+  intro H hAdm hLen
+  obtain ⟨b, W, ν, α, β, hα, hβ, hKey, hS1, hS2⟩ := hSieve H hAdm hLen
+  exact infinite_witnesses_of_eventual_witness
+    (witness_eventually_from_sieve_data H hAdm hLen hα hβ hKey hS1 hS2)
 
 /-! ### The variational problem (Polymath8b §5-§6) -/
 
