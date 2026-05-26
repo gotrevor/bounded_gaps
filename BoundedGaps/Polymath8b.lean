@@ -184,25 +184,25 @@ at the chosen $\vartheta$. -/
 theorem dhl_54_3_under_EH (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 54 3 := by
   obtain ⟨ϑ, hϑ, hMk⟩ := mk_54_witness_under_EH
-  exact Sieve.maynard_thm 54 2 ϑ hϑ (hEH ϑ hϑ) hMk
+  exact Sieve.maynard_thm 54 2 (by norm_num) (by norm_num) ϑ hϑ (hEH ϑ hϑ) hMk
 
 /-- Under EH: **DHL[5511, 4]**. -/
 theorem dhl_5511_4_under_EH (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 5511 4 := by
   obtain ⟨ϑ, hϑ, hMk⟩ := mk_5511_witness_under_EH
-  exact Sieve.maynard_thm 5511 3 ϑ hϑ (hEH ϑ hϑ) hMk
+  exact Sieve.maynard_thm 5511 3 (by norm_num) (by norm_num) ϑ hϑ (hEH ϑ hϑ) hMk
 
 /-- Under EH: **DHL[41588, 5]**. -/
 theorem dhl_41588_5_under_EH (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 41588 5 := by
   obtain ⟨ϑ, hϑ, hMk⟩ := mk_41588_witness_under_EH
-  exact Sieve.maynard_thm 41588 4 ϑ hϑ (hEH ϑ hϑ) hMk
+  exact Sieve.maynard_thm 41588 4 (by norm_num) (by norm_num) ϑ hϑ (hEH ϑ hϑ) hMk
 
 /-- Under EH: **DHL[309661, 6]**. -/
 theorem dhl_309661_6_under_EH (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     DHL 309661 6 := by
   obtain ⟨ϑ, hϑ, hMk⟩ := mk_309661_witness_under_EH
-  exact Sieve.maynard_thm 309661 5 ϑ hϑ (hEH ϑ hϑ) hMk
+  exact Sieve.maynard_thm 309661 5 (by norm_num) (by norm_num) ϑ hϑ (hEH ϑ hϑ) hMk
 
 /-- Under EH, asymptotic DHL: exponent $2m$ instead of $(4 - 28/157)m$. -/
 -- TRIAGE: NEEDS_SIEVE — asymptotic version of maynard_thm under EH. Single leaf.
