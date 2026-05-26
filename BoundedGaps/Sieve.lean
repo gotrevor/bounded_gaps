@@ -154,13 +154,59 @@ noncomputable def Mk (k : ℕ) : ℝ :=
               mkF_denominator k F > 0 ∧
               v = MkF k F }
 
-/-- $M_{k, \varepsilon}$: Polymath8b's enlarged-support variant. Under GEH the
-support of $F$ may extend an $\varepsilon$ distance beyond the simplex.
+/-! ### The ε-enlarged variant (Polymath8b §5, epsilon-trick)
 
-Currently declared `opaque`. Same shape as `Mk` but over the extended
-support polytope; needed by `epsilon_trick` / `epsilon_beyond`. -/
--- TRIAGE: DEF BODY (~2h after Mk).
-opaque Mk_eps (k : ℕ) (ε : ℝ) : ℝ
+In the GEH-enabled refinement, $F$'s support may extend out to the
+$(1+\varepsilon)$-scaled simplex, at the cost of integrating the
+numerator's outer integrals only over the $(1-\varepsilon)$-scaled
+$(k-1)$-simplex. -/
+
+/-- The $(1+\varepsilon)$-enlarged simplex: $(1+\varepsilon) \cdot R_k$.
+Polymath8b §5 (Theorem `epsilon-trick`) support polytope. -/
+noncomputable def simplex_eps (k : ℕ) (ε : ℝ) : Set (Fin k → ℝ) :=
+  { t | (∀ i, 0 ≤ t i) ∧ ∑ i, t i ≤ 1 + ε }
+
+/-- The $(1-\varepsilon)$-shrunken simplex: $(1-\varepsilon) \cdot R_k$.
+Used as the outer integration domain in $J_{i, 1-\varepsilon}(F)$. -/
+noncomputable def simplex_shrunk (k : ℕ) (ε : ℝ) : Set (Fin k → ℝ) :=
+  { t | (∀ i, 0 ≤ t i) ∧ ∑ i, t i ≤ 1 - ε }
+
+/-- The Rayleigh-ratio numerator for $M_{k,\varepsilon}$:
+$$\sum_i J_{i, 1-\varepsilon}(F) := \sum_i \int_{(1-\varepsilon) R_{k-1}}
+  \left(\int_0^\infty F(t)\, dt_i\right)^2 dt_{\setminus i}.$$
+(Polymath8b §5 Theorem `epsilon-trick`, eqn just before (J_{i,1-ε}).)
+
+For $F$ supported on $(1+\varepsilon) R_k$, the inner $[0,\infty)$ integral
+equals the integral over $[0, 1 + \varepsilon - \sum_{j \ne i} t_j]$; the
+clamped form below is equivalent in value to the paper formulation. -/
+noncomputable def mkF_eps_numerator : (k : ℕ) → ℝ → ((Fin k → ℝ) → ℝ) → ℝ
+  | 0, _, _ => 0
+  | n + 1, ε, F =>
+      ∑ i : Fin (n + 1),
+        ∫ s in simplex_shrunk n ε,
+          (∫ ti in Set.Icc (0 : ℝ) (1 + ε - ∑ j, s j),
+              F (i.insertNth ti s)) ^ 2
+
+/-- The Rayleigh-ratio denominator $I(F)$ for $M_{k,\varepsilon}$:
+$\int_{(1+\varepsilon) R_k} F^2$. -/
+noncomputable def mkF_eps_denominator (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
+  ∫ t in simplex_eps k ε, F t ^ 2
+
+/-- $M_{k,\varepsilon}(F) := \left(\sum_i J_{i,1-\varepsilon}(F)\right) / I(F)$. -/
+noncomputable def MkF_eps (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
+  mkF_eps_numerator k ε F / mkF_eps_denominator k ε F
+
+/-- $M_{k, \varepsilon}$: Polymath8b's enlarged-support variant of $M_k$.
+Concrete `sSup` over $F$ smooth, supported on $(1+\varepsilon) R_k$, with
+nonzero $I(F)$. Per `Mathlib`'s `ℝ`-`ConditionallyCompleteLinearOrder`,
+empty/unbounded yields $0$; for $k \ge 2$ and $0 < \varepsilon < 1$ the
+admissible set is non-empty and bounded. -/
+noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ :=
+  sSup { v | ∃ F : (Fin k → ℝ) → ℝ,
+              ContDiff ℝ ⊤ F ∧
+              Function.support F ⊆ simplex_eps k ε ∧
+              mkF_eps_denominator k ε F > 0 ∧
+              v = MkF_eps k ε F }
 
 /-! ### The variational lower bounds → DHL conversions
 (Polymath8b §5: Theorems "maynard-thm", "maynard-trunc", "epsilon-trick",
