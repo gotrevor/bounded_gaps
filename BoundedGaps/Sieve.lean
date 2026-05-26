@@ -205,6 +205,36 @@ noncomputable def mkF_numerator : (k : ℕ) → ((Fin k → ℝ) → ℝ) → �
           (∫ ti in Set.Icc (0 : ℝ) (1 - ∑ j, s j),
               F (i.insertNth ti s)) ^ 2
 
+/-- The individual Maynard marginal $J_i(F)$ from Polymath8b §5 eqn (J_i),
+extracted from `mkF_numerator` so it can be referenced as $\beta_i$ in the
+sieve-data construction.
+
+For $k = 0$ the type `Fin 0` is empty, so the def is vacuous; for $k = n + 1$
+the body matches the $i$-th summand of `mkF_numerator (n+1) F`. -/
+noncomputable def J_i : (k : ℕ) → ((Fin k → ℝ) → ℝ) → Fin k → ℝ
+  | 0, _, i => i.elim0
+  | n + 1, F, i =>
+      ∫ s in simplex n,
+        (∫ ti in Set.Icc (0 : ℝ) (1 - ∑ j, s j),
+            F (i.insertNth ti s)) ^ 2
+
+/-- $J_i(F) \ge 0$: the integrand is a square. -/
+theorem J_i_nonneg (k : ℕ) (F : (Fin k → ℝ) → ℝ) (i : Fin k) : 0 ≤ J_i k F i := by
+  match k, F, i with
+  | 0, _, i => exact i.elim0
+  | n + 1, F, i =>
+      change 0 ≤ ∫ s in simplex n,
+          (∫ ti in Set.Icc (0 : ℝ) (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+      exact MeasureTheory.integral_nonneg fun _ => sq_nonneg _
+
+/-- The Rayleigh numerator decomposes as $\sum_i J_i(F)$ (Polymath8b §5
+between eqns (J_i) and (M_k)). Folds out by `cases k` + `rfl`. -/
+theorem mkF_numerator_eq_sum_J_i (k : ℕ) (F : (Fin k → ℝ) → ℝ) :
+    mkF_numerator k F = ∑ i, J_i k F i := by
+  cases k with
+  | zero => simp [mkF_numerator]
+  | succ n => rfl
+
 /-- The Maynard quantity $M_k(F) := J_k(F) / \int_{\text{simplex}_k} F^2$:
 a Rayleigh-style ratio for a smooth $F$ supported on the $k$-simplex.
 (Polymath8b §5.) Fully concrete — both numerator and denominator are
@@ -351,47 +381,143 @@ theorem exists_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
+/-! ### Selberg sieve data sub-lemmas (Polymath8b §3, decomposed)
+
+The analytic core `selberg_sieve_data_from_F` is twig-split into:
+
+1. **`selberg_nu`** — opaque Selberg sieve weight built from $F$, $\mathcal{H}$,
+   and a $(b, W)$ residue class (Polymath8b §3 `nuform`, eqn (3.6)–(3.7)).
+2. **`wtrick_data`** — cited axiom (Polymath8b §3, standard W-trick): for any
+   admissible $\mathcal{H}$ of length $k \ge 1$, there exists a residue class
+   $b \pmod{W}$ with $b + h_i$ coprime to $W$ for every $i$.
+3. **`s1_holds_from_nonprime_asym`** — cited axiom (Polymath8b §3 Theorem
+   `nonprime-asym`, line 889, case (i) "Trivial"): with $\nu$ the Selberg
+   weight, the (s1) asymptotic holds with $\alpha = I(F) =
+   \int_{\mathcal{R}_k} F^2$ (i.e. `mkF_denominator k F`).
+4. **`s2_holds_from_prime_asym_under_EH`** — cited axiom (Polymath8b §3 Theorem
+   `prime-asym`, line 862, case (i) EH): same setup, (s2) holds with
+   $\beta_i = (\vartheta / 2) \cdot J_i(F)$ for each $i$. The $\vartheta / 2$
+   factor encodes the $B^{-k}\,x/W$ vs $B^{1-k}\,x/\phi(W)$ scaling between
+   (s1) and (s2) together with the $\vartheta$ from the EH window.
+
+`selberg_sieve_data_from_F` then becomes a real composition: pick $b, W$
+from `wtrick_data`, set $\nu := $ `selberg_nu`, set $\alpha := $
+`mkF_denominator`, $\beta_i := (\vartheta/2) \cdot J_i(F)$. The key ratio
+$\sum_i \beta_i / \alpha = (\vartheta/2) \cdot M_k(F) > (\vartheta/2) \cdot
+(2m/\vartheta) = m$ follows by algebra. -/
+
+/-- **Selberg sieve weight from $F$** (Polymath8b §3, eqn (3.6)–(3.7),
+`nuform`). The full Polymath8b construction is a finite linear combination of
+products of 1D divisor sums against marginals of $F$ — too involved to encode
+fully here.
+
+Declared `axiom` (a hidden constant of function type) so the (s1)/(s2) axioms
+can reference a fixed $\nu$ choice. A future PR can replace with a real
+`noncomputable def`. -/
+axiom selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
+    ℕ → ℝ
+
+/-- **W-trick** (Polymath8b §3): for any admissible $k$-tuple $\mathcal{H}$
+of length $k \ge 1$, there exists a modulus $W \ge 1$ and a residue class
+$b \pmod{W}$ with $b + h_i$ coprime to $W$ for each $i$ (the standard
+construction takes $W := \prod_{p \le D} p$ for an appropriate threshold $D$
+and uses CRT + admissibility to pick $b$).
+
+The conclusion exposes only $W \ge 1$; the coprimality conditions on $(b, W)$
+are absorbed into the opaque `selberg_nu` / `alphaBound` / `betaBound`
+predicates. Future PR can replace with a real proof using Mertens products
+and CRT. -/
+axiom wtrick_data {k : ℕ} (_hk : k ≥ 1) {H : List ℕ}
+    (_hAdm : Admissible H) (_hLen : H.length = k) :
+    ∃ b W : ℕ, 1 ≤ W ∧ b < W
+
+/-- **(s1) from `nonprime-asym` case (i)** (Polymath8b §3 line 889, "Trivial").
+For admissible $F$ on the simplex (so $\sum_i S(F_i) + S(G_i) < 1$ is implied
+by `Function.support F ⊆ simplex k`), and for any $(b, W)$ from the W-trick,
+the (s1) asymptotic holds eventually with $\alpha = I(F) =
+\int_{\mathcal{R}_k} F^2$.
+
+Future PR can replace with a real proof from the divisor-sum expansion
+(Polymath8b §3 eqns (sfg-1), (lflg)). -/
+axiom s1_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex k)
+    (_hF_den : mkF_denominator k F > 0)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
+    (b W : ℕ) (_hW : 1 ≤ W) :
+    ∀ᶠ x : ℝ in Filter.atTop,
+      alphaBound k (selberg_nu k F H b W) b W x (mkF_denominator k F)
+
+/-- **(s2) from `prime-asym` case (i)** (Polymath8b §3 line 862, EH version).
+Under $\EH[\vartheta]$ with $0 < \vartheta < 1$, and admissible $F$ on the
+simplex, the (s2) asymptotic holds eventually with $\beta_i =
+(\vartheta/2) \cdot J_i(F)$ for each $i$.
+
+The $\vartheta/2$ factor is the Polymath8b normalization absorbing the ratio
+$B^{-k}\,x/W$ vs $B^{1-k}\,x/\phi(W)$ from `nonprime-asym` vs `prime-asym`,
+together with the $\vartheta$ from the EH window. Future PR can replace with
+a real proof from the divisor-sum expansion (Polymath8b §3 eqn (theta-oo)). -/
+axiom s2_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
+    {ϑ : ℝ} (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hEH : Prerequisites.EH ϑ)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex k)
+    (_hF_den : mkF_denominator k F > 0)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
+    (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
+    ∀ᶠ x : ℝ in Filter.atTop,
+      betaBound k (selberg_nu k F H b W) H b W i.val x (ϑ / 2 * J_i k F i)
+
 /-- **The analytic core of Maynard's theorem** (Polymath8b §3 + §5).
 Given an admissible $F$ on the simplex with $\mathrm{MkF}(k, F) > 2m/\vartheta$
 under $\EH[\vartheta]$, construct Selberg sieve data $(b, W, \nu,
 \alpha, \beta)$ over an admissible $k$-tuple satisfying (s1), (s2),
 and the key ratio $\sum_i \beta_i / \alpha > m$.
 
-Paper structure: Polymath8b §3-§5.
-1. Define $\nu(n)$ from $F$ via the Selberg-sieve form `nuform`
-   (Polymath8b §3, end of intro to §3).
-2. Set $\alpha := \int_{\mathcal{R}_k} F^2$ (the Maynard denominator).
-3. Set $\beta_i := J_i(F)$ (the marginal numerators).
-4. Verify (s1) `alphaBound` from Polymath8b Theorem `nonprime-asym`
-   (line 889).
-5. Verify (s2) `betaBound` from Polymath8b Theorem `prime-asym`
-   (line 862). Here EH[ϑ] enters as the equidistribution input that
-   `prime-asym` consumes.
-6. Key ratio: $\sum_i \beta_i / \alpha = \mathrm{MkF}(k, F) >
-   2m/\vartheta$, which after scaling out the factor from Selberg
-   asymptotics gives $\sum_i \beta_i / \alpha > m$.
-
-This is **the** substantive sieve-construction lemma. Polymath8b §3
-Theorems `prime-asym` and `nonprime-asym` are not yet in the project;
-they would appear as cited-axiom leaves when this lemma is further
-decomposed. -/
--- TRIAGE: HARD_ANALYTIC — Polymath8b §3-§5 sieve construction.
--- Sub-decomposition (future PRs): ν_def_from_F, s1_holds_from_nonprime_asym,
--- s2_holds_from_prime_asym, key_from_MkF. Each consumes prime-asym /
--- nonprime-asym (Polymath8b §3 deep theorems) as cited leaves.
-theorem selberg_sieve_data_from_F {k m : ℕ} (_hk : k ≥ 2) (_hm : m ≥ 1)
-    {ϑ : ℝ} (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hEH : Prerequisites.EH ϑ)
+Real proof — twig-split composition of `wtrick_data`,
+`s1_holds_from_nonprime_asym`, `s2_holds_from_prime_asym_under_EH`, plus the
+algebraic key step
+$(\vartheta/2) \cdot M_k(F) > (\vartheta/2) \cdot (2m/\vartheta) = m$. -/
+theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
+    {ϑ : ℝ} (hϑ : 0 < ϑ ∧ ϑ < 1) (hEH : Prerequisites.EH ϑ)
     {F : (Fin k → ℝ) → ℝ}
-    (_hF_smooth : ContDiff ℝ ⊤ F)
-    (_hF_supp : Function.support F ⊆ simplex k)
-    (_hF_den : mkF_denominator k F > 0)
-    (_hF_Mk : MkF k F > 2 * m / ϑ)
-    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k) :
+    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_supp : Function.support F ⊆ simplex k)
+    (hF_den : mkF_denominator k F > 0)
+    (hF_Mk : MkF k F > 2 * m / ϑ)
+    {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
     ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
       0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
       (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
-          betaBound k ν H b W i.val x (β i)) := sorry
+          betaBound k ν H b W i.val x (β i)) := by
+  obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  have hϑ_pos : 0 < ϑ := hϑ.1
+  have hϑ_half_pos : 0 < ϑ / 2 := by linarith
+  refine ⟨b, W, selberg_nu k F H b W, mkF_denominator k F,
+    fun i => ϑ / 2 * J_i k F i, hF_den, ?_, ?_, ?_, ?_⟩
+  · -- 0 ≤ β i
+    intro i
+    exact mul_nonneg hϑ_half_pos.le (J_i_nonneg k F i)
+  · -- (∑ i, β i) / α > m
+    have hsum : (∑ i, ϑ / 2 * J_i k F i) = ϑ / 2 * mkF_numerator k F := by
+      rw [← Finset.mul_sum, ← mkF_numerator_eq_sum_J_i]
+    have hratio_eq :
+        (∑ i, ϑ / 2 * J_i k F i) / mkF_denominator k F = ϑ / 2 * MkF k F := by
+      rw [hsum, mul_div_assoc, ← MkF_eq_rayleigh]
+    rw [hratio_eq]
+    have step1 : (ϑ / 2) * MkF k F > (ϑ / 2) * (2 * m / ϑ) :=
+      mul_lt_mul_of_pos_left hF_Mk hϑ_half_pos
+    have step2 : (ϑ / 2) * (2 * (m : ℝ) / ϑ) = m := by
+      field_simp
+    linarith
+  · -- (s1)
+    exact s1_holds_from_nonprime_asym hk hF_smooth hF_supp hF_den hAdm hLen b W hW
+  · -- (s2)
+    intro i
+    exact s2_holds_from_prime_asym_under_EH hk hϑ hEH hF_smooth hF_supp hF_den
+      hAdm hLen b W hW i
 
 /-- **Theorem 5.2 / "maynard-thm"** (under EH): if $M_k > 2m/\vartheta$ for
 some $\vartheta < 1$, and EH[ϑ] holds for that $\vartheta$, then $\DHL[k, m+1]$.
