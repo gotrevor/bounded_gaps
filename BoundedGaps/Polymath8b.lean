@@ -55,11 +55,19 @@ numerical computation on the Maynard quadratic form on the simplex — often
 via Maple-style integration over piecewise polynomials. Axiomatized as
 cited external evidence per the project's "axioms at leaves" principle. -/
 
-/-- Polymath8b §6: $\exists \varepsilon > 0$ with $M_{50, \varepsilon} > 4$.
-Polymath8b §6 reports $M_{50, \varepsilon} \approx 4.0043$ (Theorem
-`mke-lower`(i), $M_{50, 1/25} > 4.0043$). Drives DHL[50, 2] via
-`Sieve.epsilon_trick`, which gives $H_1 \le 246$. -/
-axiom mk_eps_50_witness : ∃ ε : ℝ, 0 < ε ∧ Sieve.Mk_eps 50 ε > 4 * 1
+/-- Polymath8b §6 + Bombieri-Vinogradov: $\exists \varepsilon, \vartheta$ with
+$0 < \vartheta < 1/2$ (so $\EH[\vartheta]$ holds via BV), $1 + \varepsilon
+< 1/\vartheta$, and $M_{50, \varepsilon} > 2/\vartheta$ (threshold for
+`epsilon_trick` at $m=1$).
+
+Polymath8b Theorem `mke-lower`(i) gives $M_{50, 1/25} > 4.0043$. Choosing
+$\varepsilon = 1/25$ and $\vartheta$ slightly below $1/2$ (say
+$\vartheta = 1/2 - \eta$ for small $\eta$) satisfies all conditions:
+$1 + 1/25 = 1.04 < 1/\vartheta \approx 2$ and $2/\vartheta \approx 4 < 4.0043$.
+Drives DHL[50, 2] → $H_1 \le 246$. -/
+axiom mk_eps_50_witness :
+    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1 / 2) ∧
+      1 + ε < 1 / ϑ ∧ Sieve.Mk_eps 50 ε > 2 / ϑ
 
 /-- Polymath8b §6: $\exists$ MPZ parameters $\varpi, \delta$ with
 $M_{35410} > 8/(1/2 + 2\varpi)$. Combines Polymath8a §2 (MPZ existence at
@@ -83,26 +91,30 @@ parameters. Drives DHL[3473955908, 6]; the largest tabulated case. -/
 axiom mk_3473955908_witness :
     ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 3473955908 > 4 * 5 / (1/2 + 2 * ϖ)
 
-/-- Polymath8b §6: $\vartheta \in (0, 1)$ with $M_{54} > 8/\vartheta$, under
-EH. Drives DHL[54, 3] via `Sieve.maynard_thm`. Polymath8b Theorem `mlower`
-reports $M_{54} > 4.00238$. -/
+/-- Polymath8b §6: $\vartheta \in (0, 1)$ with $M_{54} > 4/\vartheta$, under
+EH. Drives DHL[54, 3] via `Sieve.maynard_thm` (threshold `2m/ϑ` with $m=2$).
+Polymath8b Theorem `mlower`(vii) reports $M_{54} > 4.00238$, so for ϑ
+sufficiently close to 1, $4/\vartheta < 4.00238$. -/
 axiom mk_54_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 4 * 2 / ϑ
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 2 * 2 / ϑ
 
-/-- Polymath8b §6: $M_{5511} > 12/\vartheta$ under EH. Polymath8b
-Theorem `mlower`(viii) reports $M_{5511} > 6$. Drives DHL[5511, 4] under EH. -/
+/-- Polymath8b §6: $M_{5511} > 6/\vartheta$ under EH. Drives DHL[5511, 4]
+via `Sieve.maynard_thm` (threshold `2m/ϑ` with $m=3$). Polymath8b Theorem
+`mlower`(viii) reports $M_{5511} > 6$, achievable for ϑ → 1. -/
 axiom mk_5511_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 5511 > 4 * 3 / ϑ
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 5511 > 2 * 3 / ϑ
 
-/-- Polymath8b §6: $M_{41588} > 16/\vartheta$ under EH. Polymath8b
-Theorem `mlower`(ix) reports $M_{41588} > 8$. Drives DHL[41588, 5] under EH. -/
+/-- Polymath8b §6: $M_{41588} > 8/\vartheta$ under EH. Drives DHL[41588, 5]
+via `Sieve.maynard_thm` (threshold `2m/ϑ` with $m=4$). Polymath8b Theorem
+`mlower`(ix) reports $M_{41588} > 8$, achievable for ϑ → 1. -/
 axiom mk_41588_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 41588 > 4 * 4 / ϑ
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 41588 > 2 * 4 / ϑ
 
-/-- Polymath8b §6: $M_{309661} > 20/\vartheta$ under EH. Polymath8b
-Theorem `mlower`(x) reports $M_{309661} > 10$. Drives DHL[309661, 6] under EH. -/
+/-- Polymath8b §6: $M_{309661} > 10/\vartheta$ under EH. Drives DHL[309661, 6]
+via `Sieve.maynard_thm` (threshold `2m/ϑ` with $m=5$). Polymath8b Theorem
+`mlower`(x) reports $M_{309661} > 10$, achievable for ϑ → 1. -/
 axiom mk_309661_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 309661 > 4 * 5 / ϑ
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 309661 > 2 * 5 / ϑ
 
 /-- Polymath8b §6: $\varepsilon, \vartheta$ with $M_{3, \varepsilon} > 2/\vartheta$
 under GEH — the parity-tight flagship that yields $H_1 \le 6$. Polymath8b
@@ -121,10 +133,18 @@ axiom mk_eps_51_witness_under_GEH :
 
 /-- **DHL[50, 2]** unconditional → $H_1 \le H(50) = 246$.
 
-Blueprint: ε-trick at $k=50, m=1$ with the §6 numerical witness `mk_eps_50_witness`. -/
+Blueprint: ε-trick at $k=50, m=1$ with the §6 numerical witness
+`mk_eps_50_witness`. The witness provides $(ε, ϑ)$ with $ϑ < 1/2$, so
+EH[ϑ] is unconditional (Bombieri-Vinogradov). -/
 theorem dhl_50_2 : DHL 50 2 := by
-  obtain ⟨ε, hε, hMk⟩ := mk_eps_50_witness
-  exact Sieve.epsilon_trick 50 1 ε hε (by exact_mod_cast hMk)
+  obtain ⟨ε, ϑ, hε, hϑBV, hSupp, hMk⟩ := mk_eps_50_witness
+  have hEH : Prerequisites.EH ϑ := Prerequisites.BombieriVinogradov hϑBV
+  have hϑ : 0 < ϑ ∧ ϑ < 1 :=
+    ⟨hϑBV.1, hϑBV.2.trans (by norm_num : (1 / 2 : ℝ) < 1)⟩
+  have hMk' : Sieve.Mk_eps 50 ε > 2 * (1 : ℕ) / ϑ := by
+    have : (2 * (1 : ℕ) : ℝ) / ϑ = 2 / ϑ := by push_cast; ring
+    rw [this]; exact hMk
+  exact Sieve.epsilon_trick 50 1 ε ϑ hε hϑ hEH hSupp hMk'
 
 /-- **DHL[35410, 3]** unconditional.
 
