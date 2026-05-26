@@ -408,6 +408,31 @@ lemma primeAt_succ_le_of_prime_gt (n : ℕ) (hn : 1 ≤ n) {q : ℕ}
 
 /-! ### The DHL[k, j] family (Polymath8b §3) -/
 
+/-- For $n \ge 2$, the $n$-th prime is odd (only the first prime, $p_1 = 2$,
+is even). Used in the "consecutive primes have even gaps" argument. -/
+lemma primeAt_odd_of_ge_two (n : ℕ) (hn : 2 ≤ n) : Odd (primeAt n) := by
+  have hPrime : (primeAt n).Prime := primeAt_prime n (by omega)
+  apply hPrime.odd_of_ne_two
+  -- primeAt n = Nat.nth Nat.Prime (n-1) where n - 1 ≥ 1, and Nat.nth Nat.Prime 0 = 2.
+  -- Strict monotonicity gives Nat.nth Nat.Prime (n-1) > 2.
+  unfold primeAt
+  have hStep : 0 < n - 1 := by omega
+  have hGt : Nat.nth Nat.Prime 0 < Nat.nth Nat.Prime (n - 1) :=
+    Nat.nth_strictMono Nat.infinite_setOf_prime hStep
+  rw [Nat.nth_prime_zero_eq_two] at hGt
+  omega
+
+/-- For $n \ge 2$, the gap between consecutive primes $p_{n+1} - p_n \ge 2$.
+Both primes are odd, so their difference is even and positive. -/
+lemma primeAt_gap_ge_two (n : ℕ) (hn : 2 ≤ n) : 2 ≤ primeAt (n + 1) - primeAt n := by
+  have hStrict : primeAt n < primeAt (n + 1) := primeAt_lt_succ n (by omega)
+  have hOddN : Odd (primeAt n) := primeAt_odd_of_ge_two n hn
+  have hOddS : Odd (primeAt (n + 1)) := primeAt_odd_of_ge_two (n + 1) (by omega)
+  -- Two odd naturals with strict <: difference is even and ≥ 2.
+  obtain ⟨k, hk⟩ := hOddN
+  obtain ⟨k', hk'⟩ := hOddS
+  omega
+
 /-- **Dickson-Hardy-Littlewood predicate** $\DHL[k, j]$: for every admissible
 $k$-tuple $\mathcal{H}$, there exist infinitely many $n$ such that the shifted
 tuple $n + \mathcal{H}$ contains at least $j$ primes.
@@ -417,6 +442,19 @@ The bounded-gap program proves $\DHL[k, 2]$ (and beyond) for specific $k$. -/
 def DHL (k j : ℕ) : Prop :=
   ∀ H : List ℕ, Admissible H → H.length = k →
     Set.Infinite { n : ℕ | (H.countP (fun h => (n + h).Prime)) ≥ j }
+
+/-- **Unconditional lower bound**: $\liminf_n (p_{n+1} - p_n) \ge 2$. Gaps
+between consecutive primes are eventually $\ge 2$ since all primes after
+$p_1 = 2$ are odd. -/
+lemma liminfGap_one_ge_two : (2 : ℕ∞) ≤ liminfGap 1 := by
+  unfold liminfGap
+  rw [Filter.le_liminf_iff]
+  intro y hy
+  rw [Filter.eventually_atTop]
+  refine ⟨2, fun n hn => ?_⟩
+  calc y < (2 : ℕ∞) := hy
+    _ ≤ ((primeAt (n + 1) - primeAt n : ℕ) : ℕ∞) := by
+        exact_mod_cast (primeAt_gap_ge_two n hn)
 
 /-! ### BoundedGap, liminfGap, DHL equivalences -/
 
