@@ -297,22 +297,30 @@ axiom narrowness_75845707_le : narrowness 75845707 ≤ 1431556072
 $H_m$ entry; $k \approx 3.5 \times 10^9$). -/
 axiom narrowness_3473955908_le : narrowness 3473955908 ≤ 80550202480
 
-/-- Asymptotic upper bound: $H(k) \le k \log k + k \log \log k - k + o(k)$. -/
--- TRIAGE: PROVABLE (~3-5h) — Hensley-Richards 1973 type construction
--- (admissible tuples from primes in a window). Mathlib has the prerequisites
--- (PNT-like prime-counting bounds); the construction itself is elementary.
-theorem narrowness_asymptotic_upper :
+/-- Asymptotic upper bound: $H(k) = O(k \log k)$. External: Hensley-Richards
+1973 (*"Primes in intervals"*, Acta Arith. 25(4):375-391), which constructs
+admissible $k$-tuples from primes in a window of length $\sim k \log k$ and
+in fact establishes the sharper $H(k) \le k \log k + k \log \log k - k + o(k)$.
+We cite the $O(k \log k)$ form as the leaf consumed by the §1 asymptotic
+combinator; the sharper form is available from the same source if needed. -/
+axiom narrowness_asymptotic_upper :
     (fun k : ℕ => (narrowness k : ℝ))
       =O[Filter.atTop]
-      (fun k : ℕ => (k : ℝ) * Real.log k) := sorry
+      (fun k : ℕ => (k : ℝ) * Real.log k)
 
-/-- Brun-Titchmarsh lower bound: $H(k) \ge (\tfrac12 + o(1)) k \log k$. -/
--- TRIAGE: NEEDS_PREREQ — Brun-Titchmarsh sieve bound on primes in short
--- intervals. Mathlib does not have this; would need to be axiomatized or
--- separately formalized. Adjacent to BV territory.
-theorem narrowness_asymptotic_lower :
+/-- Asymptotic lower bound: $H(k) \ge (\tfrac12 - \varepsilon) k \log k$
+eventually, for any $\varepsilon > 0$. External: classical Brun-Titchmarsh
+sieve bound on primes in short intervals (see e.g. Halberstam-Richert,
+*Sieve Methods*, 1974, Thm 3.7-3.8; or Iwaniec-Kowalski, *Analytic Number
+Theory*, AMS 2004, §6.4). The bound follows because an admissible $k$-tuple
+of diameter $H(k)$ implies $\ge k$ primes-or-residue-avoiders in
+$[1, H(k)]$, which Brun-Titchmarsh upper-bounds by $\le (2 + o(1))H(k)/\log H(k)$,
+forcing $H(k) \ge (\tfrac12 - o(1)) k \log k$. Cited as a leaf;
+project-internal mechanization would need a Lean Brun-Titchmarsh
+(not in current Mathlib). -/
+axiom narrowness_asymptotic_lower :
     ∀ ε > (0 : ℝ), ∀ᶠ k : ℕ in Filter.atTop,
-      (narrowness k : ℝ) ≥ (1/2 - ε) * k * Real.log k := sorry
+      (narrowness k : ℝ) ≥ (1/2 - ε) * k * Real.log k
 
 /-! ## §1 — Main Theorem (Theorem 1.3 in the paper, labeled `main`)
 
