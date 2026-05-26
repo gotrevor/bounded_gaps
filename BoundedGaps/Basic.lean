@@ -356,6 +356,56 @@ noncomputable def primeAt (n : ℕ) : ℕ := Nat.nth Nat.Prime (n - 1)
 noncomputable def liminfGap (m : ℕ) : ℕ∞ :=
   liminf (fun n : ℕ => (primeAt (n + m) - primeAt n : ℕ∞)) atTop
 
+/-! ### primeAt helpers -/
+
+/-- The $n$-th prime is prime, for $n \ge 1$. -/
+lemma primeAt_prime (n : ℕ) (_hn : 1 ≤ n) : (primeAt n).Prime :=
+  Nat.nth_mem_of_infinite Nat.infinite_setOf_prime _
+
+/-- For $n \ge 1$, $p_n < p_{n+1}$ (consecutive primes are strictly increasing). -/
+lemma primeAt_lt_succ (n : ℕ) (hn : 1 ≤ n) : primeAt n < primeAt (n + 1) := by
+  unfold primeAt
+  have hStep : n - 1 < n + 1 - 1 := by omega
+  exact Nat.nth_strictMono Nat.infinite_setOf_prime hStep
+
+/-- For $n \ge 1$, the $(n+1)$-th prime is the smallest prime strictly greater
+than the $n$-th prime — i.e. if $q$ is prime and $p_n < q$, then $p_{n+1} \le q$. -/
+lemma primeAt_succ_le_of_prime_gt (n : ℕ) (hn : 1 ≤ n) {q : ℕ}
+    (hqPrime : q.Prime) (hqGt : primeAt n < q) :
+    primeAt (n + 1) ≤ q := by
+  -- Translate to `Nat.nth Nat.Prime`: primeAt (n+1) = Nat.nth Nat.Prime n.
+  -- If primeAt n < q and q prime, then Nat.count Nat.Prime q > n - 1 + 1 = n,
+  -- so Nat.count Nat.Prime q ≥ n + 1, and Nat.nth Nat.Prime n ≤ q via standard
+  -- nth-count duality.
+  change Nat.nth Nat.Prime ((n + 1) - 1) ≤ q
+  simp only [Nat.add_sub_cancel]
+  -- Goal: Nat.nth Nat.Prime n ≤ q.
+  -- Strategy: rewrite q = Nat.nth Nat.Prime (Nat.count Nat.Prime q) (since q prime),
+  -- then use nth-monotonicity reduction to count.
+  rw [show q = Nat.nth Nat.Prime (Nat.count Nat.Prime q) from
+        (Nat.nth_count hqPrime).symm]
+  apply (Nat.nth_strictMono Nat.infinite_setOf_prime).le_iff_le.mpr
+  -- Goal: n ≤ Nat.count Nat.Prime q
+  -- We have primeAt n < q, i.e., Nat.nth Nat.Prime (n-1) < q.
+  -- This implies Nat.count Nat.Prime q ≥ n: counts of primes < q exceed (n-1).
+  have hCountGt : n - 1 < Nat.count Nat.Prime q := by
+    -- Nat.count Nat.Prime q > n - 1 iff Nat.nth Nat.Prime (n - 1) < q.
+    have := Nat.nth_lt_of_lt_count (p := Nat.Prime) (k := n - 1) (n := q)
+    -- nth_lt_of_lt_count: k < count p n → nth p k < n
+    -- contrapositive: nth p k ≥ n → k ≥ count p n
+    -- but we want forward: from nth p (n-1) < q, get n - 1 < count p q
+    -- Use Nat.count_nth_of_infinite + monotonicity
+    by_contra hLe
+    push_neg at hLe
+    -- hLe : Nat.count Nat.Prime q ≤ n - 1
+    have hMono : Nat.nth Nat.Prime (Nat.count Nat.Prime q) ≤ Nat.nth Nat.Prime (n - 1) :=
+      (Nat.nth_strictMono Nat.infinite_setOf_prime).monotone hLe
+    rw [Nat.nth_count hqPrime] at hMono
+    -- hMono : q ≤ Nat.nth Nat.Prime (n - 1) = primeAt n
+    -- but hqGt : primeAt n < q — contradiction
+    exact absurd hMono (not_le.mpr hqGt)
+  omega
+
 /-! ### The DHL[k, j] family (Polymath8b §3) -/
 
 /-- **Dickson-Hardy-Littlewood predicate** $\DHL[k, j]$: for every admissible
@@ -374,12 +424,116 @@ def DHL (k j : ℕ) : Prop :=
 def BoundedGap (H : ℕ) : Prop :=
   Set.Infinite { p : ℕ | p.Prime ∧ ∃ q : ℕ, q.Prime ∧ p < q ∧ q - p ≤ H }
 
+/-- The "frequently bounded gap" predicate, sitting between `liminfGap 1 ≤ H`
+and `BoundedGap H`. Provides a `∃ᶠ n in atTop`-shaped intermediate that both
+sides reduce to. -/
+private def FreqGapLe (H : ℕ) : Prop :=
+  ∃ᶠ n : ℕ in atTop, primeAt (n + 1) - primeAt n ≤ H
+
+private lemma liminfGap_one_le_iff_freqGap (H : ℕ) :
+    liminfGap 1 ≤ (H : ℕ∞) ↔ FreqGapLe H := by
+  unfold liminfGap FreqGapLe
+  rw [Filter.liminf_le_iff]
+  constructor
+  · intro h
+    have hLt : (H : ℕ∞) < ((H + 1 : ℕ) : ℕ∞) := by exact_mod_cast Nat.lt_succ_self H
+    refine (h ((H + 1 : ℕ) : ℕ∞) hLt).mono fun n hGap => ?_
+    have hCast : ((primeAt (n + 1) - primeAt n : ℕ) : ℕ∞) < ((H + 1 : ℕ) : ℕ∞) := hGap
+    have : primeAt (n + 1) - primeAt n < H + 1 := by exact_mod_cast hCast
+    omega
+  · intro hFreq y hyH
+    refine hFreq.mono fun n hGap => ?_
+    calc ((primeAt (n + 1) - primeAt n : ℕ) : ℕ∞)
+        ≤ (H : ℕ∞) := by exact_mod_cast hGap
+      _ < y := hyH
+
+private lemma freqGap_le_iff_boundedGap (H : ℕ) :
+    FreqGapLe H ↔ BoundedGap H := by
+  unfold FreqGapLe BoundedGap
+  constructor
+  · -- Forward: ∃ᶠ n, gap_n ≤ H → Set.Infinite { p : prime with bounded gap to some prime }
+    intro hFreq
+    apply Set.infinite_of_forall_exists_gt
+    intro N
+    -- Need: ∃ p > N, p prime ∧ ∃ q prime > p, q - p ≤ H
+    -- Pick n large enough that primeAt n > N AND gap_n ≤ H.
+    rw [Filter.frequently_atTop] at hFreq
+    -- hFreq : ∀ a, ∃ b ≥ a, primeAt(b+1) - primeAt b ≤ H
+    -- We need n big enough that primeAt n > N. Since primes are unbounded
+    -- and primeAt n ≥ n - 1 + 2 (the (n-1)-th prime is ≥ 2 + (n-1) since each
+    -- prime is at least 2 more than its index slot... wait that's not quite right).
+    -- Simpler: primeAt n = Nat.nth Nat.Prime (n-1), and `n ≤ Nat.nth p n` for
+    -- infinite p containing 0. Actually the cleanest is to pick n = max 1 (N + 2).
+    -- Then primeAt n ≥ ? — at least, n ≥ 1 and the (n-1)-th prime ≥ 2, but
+    -- we need primeAt n > N specifically.
+    -- Use: there are infinitely many primes, so ∃ a prime > N, take its index.
+    obtain ⟨p, hpPrime, hpGt⟩ := Nat.infinite_setOf_prime.exists_gt N
+    -- p is prime, p > N. Let n_p = count of primes ≤ p.
+    -- Strategy: pick the n s.t. primeAt n = p, then use the frequently
+    -- hypothesis to find n' ≥ n with gap_n' ≤ H, where primeAt n' ≥ p > N.
+    set m := Nat.count Nat.Prime p + 1 with hm_def
+    have hm_ge_one : 1 ≤ m := by omega
+    have hprimeAt_m : primeAt m = p := by
+      unfold primeAt
+      rw [hm_def, Nat.add_sub_cancel]
+      exact Nat.nth_count hpPrime
+    obtain ⟨n, hn_ge, hn_gap⟩ := hFreq m
+    have hn_ge_one : 1 ≤ n := le_trans hm_ge_one hn_ge
+    -- primeAt n ≥ primeAt m = p > N (using strict mono on n - 1 ≥ m - 1)
+    have hPrimeAt_n_ge : primeAt n ≥ p := by
+      rw [← hprimeAt_m]
+      unfold primeAt
+      apply (Nat.nth_strictMono Nat.infinite_setOf_prime).monotone
+      omega
+    have hPrimeAt_n_gt : N < primeAt n := lt_of_lt_of_le hpGt hPrimeAt_n_ge
+    refine ⟨primeAt n, ⟨primeAt_prime n hn_ge_one, primeAt (n + 1),
+        primeAt_prime (n + 1) (by omega), primeAt_lt_succ n hn_ge_one, hn_gap⟩,
+        hPrimeAt_n_gt⟩
+  · -- Backward: BoundedGap H → ∃ᶠ n, gap_n ≤ H
+    intro hBG
+    rw [Filter.frequently_atTop]
+    intro a
+    -- Need: ∃ n ≥ a, primeAt(n+1) - primeAt n ≤ H
+    -- Strategy: from BoundedGap, get a prime p > primeAt a (or a-1 etc), then
+    -- p = primeAt n_p for some n_p ≥ a, and gap_{n_p} ≤ q - p ≤ H.
+    -- Get a witness from BoundedGap that's > primeAt(a) - 1 (to ensure n_p ≥ a):
+    obtain ⟨p, ⟨hpPrime, q, hqPrime, hpLtQ, hqp_le_H⟩, hpGt⟩ :=
+      hBG.exists_gt (primeAt (max a 1))
+    set n := Nat.count Nat.Prime p + 1 with hn_def
+    have hn_ge_one : 1 ≤ n := by omega
+    -- Show n ≥ a:
+    have hPrimeAt_n : primeAt n = p := by
+      unfold primeAt
+      rw [hn_def, Nat.add_sub_cancel]
+      exact Nat.nth_count hpPrime
+    have hn_ge_a : a ≤ n := by
+      -- primeAt n = p > primeAt (max a 1) ≥ primeAt a (since primeAt is monotone for ≥ 1)
+      -- So primeAt n > primeAt a, hence n > a (by strict-monotonicity contrapositive).
+      -- For a = 0: trivially 0 ≤ n.
+      by_contra hLt
+      push_neg at hLt
+      -- hLt : n < a
+      -- primeAt n ≤ primeAt (max a 1) since n ≤ max a 1 (because n < a ≤ max a 1)
+      have hLeMax : n ≤ max a 1 := by omega
+      have hMono_aux : primeAt n ≤ primeAt (max a 1) := by
+        unfold primeAt
+        exact (Nat.nth_strictMono Nat.infinite_setOf_prime).monotone (by omega)
+      rw [hPrimeAt_n] at hMono_aux
+      exact absurd hMono_aux (not_le.mpr hpGt)
+    -- gap from primeAt n to primeAt (n+1):
+    -- primeAt (n+1) ≤ q (smallest prime > p = primeAt n)
+    have hSuccLeQ : primeAt (n + 1) ≤ q :=
+      primeAt_succ_le_of_prime_gt n hn_ge_one hqPrime (hPrimeAt_n ▸ hpLtQ)
+    refine ⟨n, hn_ge_a, ?_⟩
+    -- primeAt(n+1) - primeAt n ≤ q - p ≤ H
+    rw [hPrimeAt_n]
+    omega
+
 /-- `liminfGap 1 ≤ H` iff `BoundedGap H` — bridge between literature notation
-and the set-infinite encoding. -/
--- TRIAGE: PROVABLE (~1-2h) — real Filter.liminf machinery; sister of
--- TwinPrimes.twinPrimes_iff_liminfGap_one. Bundle them when tackled.
+and the set-infinite encoding (Polymath8b §1). -/
 theorem liminfGap_one_le_iff (H : ℕ) :
-    liminfGap 1 ≤ (H : ℕ∞) ↔ BoundedGap H := sorry
+    liminfGap 1 ≤ (H : ℕ∞) ↔ BoundedGap H :=
+  (liminfGap_one_le_iff_freqGap H).trans (freqGap_le_iff_boundedGap H)
 
 /-- Helper: if `h ∈ H`, then `h ≤ H.foldr max 0`. Used for the diameter bound. -/
 private lemma le_foldr_max (h : ℕ) (H : List ℕ) (hmem : h ∈ H) :
