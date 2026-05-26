@@ -40,17 +40,57 @@ open BoundedGaps
 /-- **Bridge theorem**: an admissible $k$-tuple $H$ and a verified $M_k > 4$
 yields the bound $H_1 \le \mathrm{diameter}(H)$.
 
-Proof obligation: compose `Sieve.epsilon_trick` (which gives `DHL k 2` from
-$M_{k, \varepsilon} > 4$, in the BV regime) with `dhl_implies_liminfGap` for
-$m = 1$. The `M_k` vs `M_{k, \varepsilon}` distinction is glossed over; the
-real theorem would split on which Polymath8b criterion is being invoked. -/
--- TRIAGE: NEEDS_SIEVE — composes epsilon_trick (Sieve.lean) with
--- dhl_implies_liminfGap (Basic.lean). Both upstream are sorry; this lands as
--- soon as both do. ~30 min once upstream is done.
+Proof: compose `Sieve.maynard_thm` (which gives `DHL k 2` from `Mk k > 2/ϑ`
+with `EH[ϑ]`, picking $\vartheta < 1/2$ — automatic via Bombieri-Vinogradov)
+with `dhl_two_implies_boundedGap` + `liminfGap_one_le_iff`. The 2× threshold
+condition `Mk k > 4` is the boundary case: any `ϑ ∈ (2/Mk k, 1/2)` works,
+e.g. `ϑ := 1/Mk k + 1/4`. -/
 theorem H1_le_of_Mk_witness (k : ℕ) (H : List ℕ)
-    (_hAdm : Admissible H) (_hLen : H.length = k)
-    (_hMk : Sieve.Mk k > 4) :
-    liminfGap 1 ≤ (diameter H : ℕ∞) := sorry
+    (hAdm : Admissible H) (hLen : H.length = k)
+    (hMk : Sieve.Mk k > 4) :
+    liminfGap 1 ≤ (diameter H : ℕ∞) := by
+  -- Step 1: derive k ≥ 2 (Mk k ≤ 1 for k ≤ 1 by Cauchy-Schwarz).
+  have hkGe2 : 2 ≤ k := by
+    by_contra hlt
+    push_neg at hlt
+    have hMkLe : Sieve.Mk k ≤ 1 := Sieve.Mk_le_one_of_k_le_one k (by omega)
+    linarith
+  -- Step 2: pick ϑ := 1/Mk + 1/4. Then 2/Mk < ϑ < 1/2.
+  set MkV := Sieve.Mk k with hMkV
+  have hMkPos : (0 : ℝ) < MkV := lt_trans (by norm_num) hMk
+  set ϑ : ℝ := 1 / MkV + 1 / 4
+  have hϑPos : 0 < ϑ := by positivity
+  have hϑLtHalf : ϑ < 1 / 2 := by
+    have h1Mk : 1 / MkV < 1 / 4 := by
+      rw [one_div_lt_one_div hMkPos (by norm_num : (0:ℝ) < 4)]
+      linarith
+    show 1 / MkV + 1 / 4 < 1 / 2
+    linarith
+  have hϑBV : 0 < ϑ ∧ ϑ < 1 / 2 := ⟨hϑPos, hϑLtHalf⟩
+  have hEH : Prerequisites.EH ϑ := Prerequisites.BombieriVinogradov hϑBV
+  have hϑLtOne : 0 < ϑ ∧ ϑ < 1 :=
+    ⟨hϑPos, hϑLtHalf.trans (by norm_num)⟩
+  -- Step 3: MkV > 2 * 1 / ϑ. Algebra: MkV * ϑ = MkV * (1/MkV + 1/4) = 1 + MkV/4 > 2.
+  have hMkGt : MkV > 2 * (1 : ℕ) / ϑ := by
+    have hKey : 2 < MkV * ϑ := by
+      have hExpand : MkV * ϑ = 1 + MkV / 4 := by
+        show MkV * (1 / MkV + 1 / 4) = 1 + MkV / 4
+        field_simp
+      linarith
+    have : (2 : ℝ) * (1 : ℕ) / ϑ < MkV := by
+      rw [show (2 * (1 : ℕ) : ℝ) / ϑ = 2 / ϑ from by push_cast; ring]
+      rw [div_lt_iff₀ hϑPos]
+      linarith
+    exact this
+  -- Step 4: apply maynard_thm to get DHL[k, 2].
+  have hDHL : DHL k 2 := by
+    have h := Sieve.maynard_thm k 1 hkGe2 (by norm_num : 1 ≤ 1) ϑ hϑLtOne hEH hMkGt
+    convert h using 1
+  -- Step 5: DHL[k, 2] + admissibility → BoundedGap (diameter H).
+  have hBG : BoundedGap (diameter H) :=
+    dhl_two_implies_boundedGap k hDHL H hAdm hLen
+  -- Step 6: BoundedGap → liminfGap 1 ≤ diameter H.
+  exact (liminfGap_one_le_iff (diameter H)).mpr hBG
 
 /-! ## Current record: $H_1 \le 246$ (Polymath8b 2014) -/
 
