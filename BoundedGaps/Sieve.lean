@@ -409,9 +409,12 @@ $\sum_i \beta_i / \alpha = (\vartheta/2) \cdot M_k(F) > (\vartheta/2) \cdot
 /-- **Selberg sieve weight from $F$** (Polymath8b §3, eqn (3.6)–(3.7),
 `nuform`). The full Polymath8b construction is a finite linear combination of
 products of 1D divisor sums against marginals of $F$ — too involved to encode
-fully here. Declared `opaque` so the (s1)/(s2) axioms can reference a fixed
-$\nu$ choice; a future PR can supply a real body. -/
-opaque selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
+fully here.
+
+Declared `axiom` (a hidden constant of function type) so the (s1)/(s2) axioms
+can reference a fixed $\nu$ choice. A future PR can replace with a real
+`noncomputable def`. -/
+axiom selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
     ℕ → ℝ
 
 /-- **W-trick** (Polymath8b §3): for any admissible $k$-tuple $\mathcal{H}$
