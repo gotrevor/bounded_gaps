@@ -374,6 +374,48 @@ theorem maynard_trunc (k m : ℕ) (ϖ δ : ℝ)
     (_hMPZ : Prerequisites.MPZ ϖ δ) (_hMk : Mk k > 4 * m / (1 / 2 + 2 * ϖ)) :
     DHL k (m + 1) := sorry
 
+/-- **sSup extraction for $M_{k,\varepsilon}$**: if $c < M_{k,\varepsilon}$
+then there is a specific admissible $F$ supported on $(1+\varepsilon)
+\mathcal{R}_k$ realizing $\mathrm{MkF}_\varepsilon(k, \varepsilon, F) > c$.
+
+Sister of `exists_F_of_Mk_gt`. Same TRIAGE: needs `Mk_eps_nonempty`
+and `Mk_eps_bddAbove` side lemmas (for $k \ge 2$ and $0 < \varepsilon < 1$
+the admissible-F set is non-empty and bounded). -/
+theorem exists_F_eps_of_Mk_eps_gt (k : ℕ) (ε : ℝ) (c : ℝ)
+    (_hc : c < Mk_eps k ε) :
+    ∃ F : (Fin k → ℝ) → ℝ,
+      ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_eps k ε ∧
+      mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F := sorry
+
+/-- **The analytic core of the ε-trick** (Polymath8b §5).
+
+Sister of `selberg_sieve_data_from_F` — same shape, with the
+$(1+\varepsilon)$-enlarged support and the $(1-\varepsilon)$-shrunken
+$J_{i,1-\varepsilon}$ numerator from `mkF_eps_numerator`.
+
+Paper structure: Polymath8b §5 Theorem `epsilon-trick` (line 997). The
+support condition $1 + \varepsilon < 1/\vartheta$ ensures the
+$(1+\varepsilon)$-enlargement still fits inside the equidistribution
+window $\EH[\vartheta]$ provides; below that line the sieve construction
+is the same as `maynard_thm`. -/
+-- TRIAGE: HARD_ANALYTIC — Polymath8b §3 + §5. Same level of substance
+-- as `selberg_sieve_data_from_F`; consumes `prime-asym` + `nonprime-asym`
+-- when further decomposed.
+theorem selberg_sieve_data_eps_from_F {k m : ℕ} (_hk : k ≥ 2) (_hm : m ≥ 1)
+    {ε ϑ : ℝ} (_hε : 0 < ε) (_hϑ : 0 < ϑ ∧ ϑ < 1)
+    (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex_eps k ε)
+    (_hF_den : mkF_eps_denominator k ε F > 0)
+    (_hF_Mk : MkF_eps k ε F > 2 * m / ϑ)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k) :
+    ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
+      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
+      (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
+          betaBound k ν H b W i.val x (β i)) := sorry
+
 /-- **Theorem 5.4 / "epsilon-trick"** (Polymath8b §5 line 997,
 `\label{epsilon-trick}`, variant (i) — EH-flavored).
 
@@ -381,18 +423,22 @@ If $0 < \varepsilon$, $0 < \vartheta < 1$, $\EH[\vartheta]$ holds,
 $1 + \varepsilon < 1/\vartheta$, and $M_{k,\varepsilon} > 2m/\vartheta$,
 then $\DHL[k, m+1]$ holds.
 
-The previous encoding had `Mk_eps k ε > 4*m` with no $\vartheta$ / EH
-hypothesis — wrong on both counts (2× threshold AND missing the
-EH-or-GEH precondition the paper requires). Threshold corrected
-2026-05-26.
+Proof: parallel to `maynard_thm`. (1) Extract an $F$ via
+`exists_F_eps_of_Mk_eps_gt`. (2) Build per-$H$ sieve data via
+`selberg_sieve_data_eps_from_F`. (3) Feed into `dhl_criterion`.
 
 The GEH-flavored variant (ii) — $\GEH[\vartheta]$ + $\varepsilon < 1/(k-1)$ —
 is not encoded here; consumers under GEH go through `epsilon_beyond`. -/
--- TRIAGE: NEEDS_SIEVE — uses Mk_eps. Polymath8b's ε-refinement of Maynard.
-theorem epsilon_trick (k m : ℕ) (ε ϑ : ℝ)
-    (_hε : 0 < ε) (_hϑ : 0 < ϑ ∧ ϑ < 1)
-    (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
-    (_hMk : Mk_eps k ε > 2 * m / ϑ) : DHL k (m + 1) := sorry
+theorem epsilon_trick (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
+    (ε ϑ : ℝ) (hε : 0 < ε) (hϑ : 0 < ϑ ∧ ϑ < 1)
+    (hEH : Prerequisites.EH ϑ) (hSupp : 1 + ε < 1 / ϑ)
+    (hMk : Mk_eps k ε > 2 * m / ϑ) : DHL k (m + 1) := by
+  apply dhl_criterion k m hk hm
+  intro H hAdm hLen
+  obtain ⟨F, hSmooth, hSupp', hDen, hMkF⟩ :=
+    exists_F_eps_of_Mk_eps_gt k ε (2 * m / ϑ) hMk
+  exact selberg_sieve_data_eps_from_F hk hm hε hϑ hEH hSupp hSmooth hSupp'
+    hDen hMkF hAdm hLen
 
 /-- **Theorem 5.5 / "epsilon-beyond"** (under GEH, the strongest variant). -/
 -- TRIAGE: NEEDS_SIEVE — strongest variant, uses GEH + Mk_eps. Yields the

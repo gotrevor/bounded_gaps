@@ -144,7 +144,8 @@ theorem dhl_50_2 : DHL 50 2 := by
   have hMk' : Sieve.Mk_eps 50 ε > 2 * (1 : ℕ) / ϑ := by
     have : (2 * (1 : ℕ) : ℝ) / ϑ = 2 / ϑ := by push_cast; ring
     rw [this]; exact hMk
-  exact Sieve.epsilon_trick 50 1 ε ϑ hε hϑ hEH hSupp hMk'
+  exact Sieve.epsilon_trick 50 1 (by norm_num) (by norm_num)
+    ε ϑ hε hϑ hEH hSupp hMk'
 
 /-- **DHL[35410, 3]** unconditional.
 
