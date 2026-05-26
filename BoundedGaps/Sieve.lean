@@ -103,16 +103,21 @@ the default Lebesgue volume on $\mathbb{R}^k$. -/
 noncomputable def mkF_denominator (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
   ∫ t in simplex k, F t ^ 2
 
-/-- The Rayleigh-ratio numerator $J_k(F)$ of Polymath8b §5:
-$$J_k(F) := \sum_{i=1}^{k} \int_{R_{k-1}}
-  \left(\int_0^{1 - \sum_{j \ne i} t_j} (\partial_i F)(t) \, dt_i\right)^2
-  dt_{\setminus i}$$
-where $R_{k-1}$ is the $(k-1)$-simplex and $t = \mathtt{insertNth}\, i\, t_i\, s$
-embeds the $(k-1)$-coordinate vector $s$ and the singled-out coordinate $t_i$
-back into $\mathbb{R}^k$ at position $i$. Partial derivatives are realized as
-`fderiv ℝ F t (Pi.single i 1)`.
+/-- The Rayleigh-ratio numerator $\sum_i J_i(F)$ of Polymath8b §5, where
+$$J_i(F) := \int_{[0,\infty)^{k-1}} \left(\int_0^\infty F(t_1,\dots,t_k)
+                                          \, dt_i\right)^2 \, dt_{\setminus i}.$$
+Here $t = \mathtt{insertNth}\, i\, t_i\, s$ embeds the $(k-1)$-coordinate
+vector $s$ and the singled-out coordinate $t_i$ back into $\mathbb{R}^k$
+at position $i$.
 
-Pattern-matched on $k$: the $k = 0$ case is vacuous (empty sum), and the
+Note: the integrand is $F$ itself, *not* a partial derivative — Polymath8b
+§5 (Theorem `maynard-thm`, eqns (I), (J_i)). For admissible $F$ supported
+on the $k$-simplex, the inner $[0,\infty)$ integral equals the integral
+over $[0, 1 - \sum_{j \ne i} t_j]$ (and the outer over $[0,\infty)^{k-1}$
+matches the $(k-1)$-simplex), so the simpler simplex-clamped form below is
+equivalent in value to the paper formulation.
+
+Pattern-matched on $k$: the $k = 0$ case is vacuous (empty sum); the
 $k = n + 1$ case carries the formula above. -/
 noncomputable def mkF_numerator : (k : ℕ) → ((Fin k → ℝ) → ℝ) → ℝ
   | 0, _ => 0
@@ -120,7 +125,7 @@ noncomputable def mkF_numerator : (k : ℕ) → ((Fin k → ℝ) → ℝ) → �
       ∑ i : Fin (n + 1),
         ∫ s in simplex n,
           (∫ ti in Set.Icc (0 : ℝ) (1 - ∑ j, s j),
-              fderiv ℝ F (i.insertNth ti s) (Pi.single i 1)) ^ 2
+              F (i.insertNth ti s)) ^ 2
 
 /-- The Maynard quantity $M_k(F) := J_k(F) / \int_{\text{simplex}_k} F^2$:
 a Rayleigh-style ratio for a smooth $F$ supported on the $k$-simplex.
