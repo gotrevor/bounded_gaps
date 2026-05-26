@@ -47,73 +47,75 @@ with the matching $M_k$ (or $M_{k, \varepsilon}$) numerical witness — a
 focused sorry stating the specific variational inequality Polymath8b §6
 establishes by direct numerical (Maple) computation. -/
 
-/-! ### Mk-witness leaves (Polymath8b §6 numerical claims)
+/-! ### Mk-witness leaves (Polymath8b §6 numerical claims, axiomatized)
 
-These are the leaf sorries the §3 DHL chains route through. Each captures a
+These are the leaf claims the §3 DHL chains route through. Each captures a
 specific variational inequality that Polymath8b §6 establishes via direct
-numerical computation on the Maynard quadratic form on the simplex. -/
+numerical computation on the Maynard quadratic form on the simplex — often
+via Maple-style integration over piecewise polynomials. Axiomatized as
+cited external evidence per the project's "axioms at leaves" principle. -/
 
 /-- Polymath8b §6: $\exists \varepsilon > 0$ with $M_{50, \varepsilon} > 4$.
-Drives DHL[50, 2] via `Sieve.epsilon_trick`. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical; Polymath8b reports M_{50,ε} ≈ 4.0019.
-theorem mk_eps_50_witness : ∃ ε : ℝ, 0 < ε ∧ Sieve.Mk_eps 50 ε > 4 * 1 := sorry
+Polymath8b §6 reports $M_{50, \varepsilon} \approx 4.0043$ (Theorem
+`mke-lower`(i), $M_{50, 1/25} > 4.0043$). Drives DHL[50, 2] via
+`Sieve.epsilon_trick`, which gives $H_1 \le 246$. -/
+axiom mk_eps_50_witness : ∃ ε : ℝ, 0 < ε ∧ Sieve.Mk_eps 50 ε > 4 * 1
 
-/-- Polymath8b §6: MPZ parameters $\varpi, \delta$ with $M_{35410} > 8/(1/2 + 2\varpi)$.
-Drives DHL[35410, 3] via `Sieve.maynard_trunc`. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical; Polymath8a §2 + Polymath8b §6.
-theorem mk_35410_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 35410 > 4 * 2 / (1/2 + 2 * ϖ) := sorry
+/-- Polymath8b §6: $\exists$ MPZ parameters $\varpi, \delta$ with
+$M_{35410} > 8/(1/2 + 2\varpi)$. Combines Polymath8a §2 (MPZ existence at
+specific parameters) with Polymath8b §6 (variational bound). Drives
+DHL[35410, 3] via `Sieve.maynard_trunc`. -/
+axiom mk_35410_witness :
+    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 35410 > 4 * 2 / (1/2 + 2 * ϖ)
 
-/-- Polymath8b §6: MPZ parameters and $M_{1649821} > 12/(1/2 + 2\varpi)$.
-Drives DHL[1649821, 4] via `Sieve.maynard_trunc`. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical.
-theorem mk_1649821_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 1649821 > 4 * 3 / (1/2 + 2 * ϖ) := sorry
+/-- Polymath8b §6: $M_{1649821} > 12/(1/2 + 2\varpi)$ at suitable MPZ
+parameters. Drives DHL[1649821, 4]. -/
+axiom mk_1649821_witness :
+    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 1649821 > 4 * 3 / (1/2 + 2 * ϖ)
 
-/-- Polymath8b §6: MPZ parameters and $M_{75845707} > 16/(1/2 + 2\varpi)$.
-Drives DHL[75845707, 5] via `Sieve.maynard_trunc`. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical.
-theorem mk_75845707_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 75845707 > 4 * 4 / (1/2 + 2 * ϖ) := sorry
+/-- Polymath8b §6: $M_{75845707} > 16/(1/2 + 2\varpi)$ at suitable MPZ
+parameters. Drives DHL[75845707, 5]. -/
+axiom mk_75845707_witness :
+    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 75845707 > 4 * 4 / (1/2 + 2 * ϖ)
 
-/-- Polymath8b §6: MPZ parameters and $M_{3473955908} > 20/(1/2 + 2\varpi)$.
-Drives DHL[3473955908, 6] via `Sieve.maynard_trunc`. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical.
-theorem mk_3473955908_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 3473955908 > 4 * 5 / (1/2 + 2 * ϖ) := sorry
+/-- Polymath8b §6: $M_{3473955908} > 20/(1/2 + 2\varpi)$ at suitable MPZ
+parameters. Drives DHL[3473955908, 6]; the largest tabulated case. -/
+axiom mk_3473955908_witness :
+    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧ Sieve.Mk 3473955908 > 4 * 5 / (1/2 + 2 * ϖ)
 
-/-- Polymath8b §6: $\vartheta \in (0, 1)$ with $M_{54} > 8/\vartheta$ for DHL[54, 3]
-under EH. Drives `dhl_54_3_under_EH` via `Sieve.maynard_thm`. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical, EH-flavored.
-theorem mk_54_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 4 * 2 / ϑ := sorry
+/-- Polymath8b §6: $\vartheta \in (0, 1)$ with $M_{54} > 8/\vartheta$, under
+EH. Drives DHL[54, 3] via `Sieve.maynard_thm`. Polymath8b Theorem `mlower`
+reports $M_{54} > 4.00238$. -/
+axiom mk_54_witness_under_EH :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 4 * 2 / ϑ
 
-/-- Polymath8b §6: $M_{5511} > 12/\vartheta$ for DHL[5511, 4] under EH. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical, EH-flavored.
-theorem mk_5511_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 5511 > 4 * 3 / ϑ := sorry
+/-- Polymath8b §6: $M_{5511} > 12/\vartheta$ under EH. Polymath8b
+Theorem `mlower`(viii) reports $M_{5511} > 6$. Drives DHL[5511, 4] under EH. -/
+axiom mk_5511_witness_under_EH :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 5511 > 4 * 3 / ϑ
 
-/-- Polymath8b §6: $M_{41588} > 16/\vartheta$ for DHL[41588, 5] under EH. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical, EH-flavored.
-theorem mk_41588_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 41588 > 4 * 4 / ϑ := sorry
+/-- Polymath8b §6: $M_{41588} > 16/\vartheta$ under EH. Polymath8b
+Theorem `mlower`(ix) reports $M_{41588} > 8$. Drives DHL[41588, 5] under EH. -/
+axiom mk_41588_witness_under_EH :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 41588 > 4 * 4 / ϑ
 
-/-- Polymath8b §6: $M_{309661} > 20/\vartheta$ for DHL[309661, 6] under EH. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical, EH-flavored.
-theorem mk_309661_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 309661 > 4 * 5 / ϑ := sorry
+/-- Polymath8b §6: $M_{309661} > 20/\vartheta$ under EH. Polymath8b
+Theorem `mlower`(x) reports $M_{309661} > 10$. Drives DHL[309661, 6] under EH. -/
+axiom mk_309661_witness_under_EH :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 309661 > 4 * 5 / ϑ
 
 /-- Polymath8b §6: $\varepsilon, \vartheta$ with $M_{3, \varepsilon} > 2/\vartheta$
-for DHL[3, 2] under GEH. The parity-tight flagship. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical, GEH-flavored, the parity-tight k=3 case.
-theorem mk_eps_3_witness_under_GEH :
-    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk_eps 3 ε > 2 * 1 / ϑ := sorry
+under GEH — the parity-tight flagship that yields $H_1 \le 6$. Polymath8b
+Theorem `piece` constructs a piecewise-polynomial $F$ on the $3$-simplex
+realizing this. -/
+axiom mk_eps_3_witness_under_GEH :
+    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk_eps 3 ε > 2 * 1 / ϑ
 
 /-- Polymath8b §6: $\varepsilon, \vartheta$ with $M_{51, \varepsilon} > 4/\vartheta$
-for DHL[51, 3] under GEH. -/
--- TRIAGE: BLUEPRINT_LEAF — numerical, GEH-flavored.
-theorem mk_eps_51_witness_under_GEH :
-    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk_eps 51 ε > 2 * 2 / ϑ := sorry
+under GEH. Drives DHL[51, 3] under GEH. Polymath8b Theorem `mke-lower`(xiii)
+reports $M_{51, 1/50} > 4.00156$. -/
+axiom mk_eps_51_witness_under_GEH :
+    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk_eps 51 ε > 2 * 2 / ϑ
 
 /-! ### DHL[k, m+1] claims (chained through Sieve.maynard_* + Mk witnesses) -/
 
