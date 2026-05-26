@@ -290,14 +290,21 @@ noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ :=
 (Polymath8b §5: Theorems "maynard-thm", "maynard-trunc", "epsilon-trick",
 "epsilon-beyond") -/
 
-/-- **Theorem 5.2 / "maynard-thm"** (under EH): if $M_k > 4m/\vartheta$ for
-some $\vartheta < 1$, and EH[ϑ] holds for that $\vartheta$, then $\DHL[k, m+1]$. -/
+/-- **Theorem 5.2 / "maynard-thm"** (under EH): if $M_k > 2m/\vartheta$ for
+some $\vartheta < 1$, and EH[ϑ] holds for that $\vartheta$, then $\DHL[k, m+1]$.
+
+Paper reference: Polymath8b §5 line 935 (`\label{maynard-thm}`). The
+hypothesis is `M_k > 2m/ϑ`, NOT `4m/ϑ` (an earlier encoding had this 2×
+too strong; the consumer witness axioms in `Polymath8b.lean` were inflated
+to match, but the inflated values are not what Polymath8b §6 mlower proves —
+e.g. mlower(viii) gives $M_{5511} > 6$, which is `2·3/ϑ` for ϑ → 1, not
+`4·3/ϑ`). Threshold corrected 2026-05-26. -/
 -- TRIAGE: NEEDS_SIEVE — follows from dhl_criterion once the variational
 -- machinery (Mk, MkF) has real bodies. Maynard's original argument, ~1-2h
 -- after the prerequisites land.
 theorem maynard_thm (k m : ℕ) (ϑ : ℝ) (_hϑ : 0 < ϑ ∧ ϑ < 1)
     (_hEH : Prerequisites.EH ϑ)
-    (_hMk : Mk k > 4 * m / ϑ) : DHL k (m + 1) := sorry
+    (_hMk : Mk k > 2 * m / ϑ) : DHL k (m + 1) := sorry
 
 /-- **Theorem 5.3 / "maynard-trunc"** (under MPZ): truncated variant suitable
 for the Zhang/Polymath8a regime. -/
@@ -307,10 +314,25 @@ theorem maynard_trunc (k m : ℕ) (ϖ δ : ℝ)
     (_hMPZ : Prerequisites.MPZ ϖ δ) (_hMk : Mk k > 4 * m / (1 / 2 + 2 * ϖ)) :
     DHL k (m + 1) := sorry
 
-/-- **Theorem 5.4 / "epsilon-trick"** (under BV alone, ε refinement). -/
+/-- **Theorem 5.4 / "epsilon-trick"** (Polymath8b §5 line 997,
+`\label{epsilon-trick}`, variant (i) — EH-flavored).
+
+If $0 < \varepsilon$, $0 < \vartheta < 1$, $\EH[\vartheta]$ holds,
+$1 + \varepsilon < 1/\vartheta$, and $M_{k,\varepsilon} > 2m/\vartheta$,
+then $\DHL[k, m+1]$ holds.
+
+The previous encoding had `Mk_eps k ε > 4*m` with no $\vartheta$ / EH
+hypothesis — wrong on both counts (2× threshold AND missing the
+EH-or-GEH precondition the paper requires). Threshold corrected
+2026-05-26.
+
+The GEH-flavored variant (ii) — $\GEH[\vartheta]$ + $\varepsilon < 1/(k-1)$ —
+is not encoded here; consumers under GEH go through `epsilon_beyond`. -/
 -- TRIAGE: NEEDS_SIEVE — uses Mk_eps. Polymath8b's ε-refinement of Maynard.
-theorem epsilon_trick (k m : ℕ) (ε : ℝ) (_hε : 0 < ε)
-    (_hMk : Mk_eps k ε > 4 * m) : DHL k (m + 1) := sorry
+theorem epsilon_trick (k m : ℕ) (ε ϑ : ℝ)
+    (_hε : 0 < ε) (_hϑ : 0 < ϑ ∧ ϑ < 1)
+    (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
+    (_hMk : Mk_eps k ε > 2 * m / ϑ) : DHL k (m + 1) := sorry
 
 /-- **Theorem 5.5 / "epsilon-beyond"** (under GEH, the strongest variant). -/
 -- TRIAGE: NEEDS_SIEVE — strongest variant, uses GEH + Mk_eps. Yields the

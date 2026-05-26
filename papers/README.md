@@ -4,6 +4,37 @@ Local copies of the bounded-gaps literature. PDFs + arXiv LaTeX source where ava
 
 The literature uses **$H_m \coloneqq \liminf_{n \to \infty} (p_{n+m} - p_n)$** as the standard quantity. Our Lean `BoundedGap H` predicate is the set-infinite version; equivalent, but the literature's `H_m` notation is the one you'll see when reading these papers.
 
+## Why Polymath8b is the formalization target (and not a newer paper)
+
+A reasonable instinct: "formalize the most recent paper — older results fall
+out of it." That instinct is right in principle and was test-run against the
+literature on 2026-05-26. The conclusion: **Polymath8b (2014) is the most
+recent paper for the $H_1$ / $H_m$ bounds, despite being 12 years old.**
+
+The post-2014 literature branched sideways from the $H_1$ frontier rather
+than improving it:
+
+| Year | Paper | Direction relative to $H_1$ |
+|---|---|---|
+| 2015 | Granville survey | expository, no new bounds |
+| 2016 | BFM "Limit points" | limit points of normalized gaps (different question) |
+| 2016 | Maynard "Dense clusters" | sieve applied to subsets (different problem) |
+| 2019 | Maynard "Restricted digits" | primes with digit constraints (different problem) |
+| 2020s | Maynard "Large gaps" line | $H_1$'s mirror image — primes can be far apart |
+
+No one has improved on $H_1 \le 246$ (Polymath8b unconditional) or $H_1 \le 6$
+(Polymath8b under GEH) in the intervening decade. The $H_1$ frontier sat
+still while the sieve technology was redeployed elsewhere.
+
+**Inverse application of the same principle**: among the papers that *do*
+sit on the $H_1$ line, Maynard 2014's `maynard-thm` is structurally the same
+theorem as Polymath8b §5's `maynard-thm`, just with weaker numerical inputs.
+Polymath8b's proof body subsumes Maynard's. Formalizing the Polymath8b
+version automatically gives the Maynard version — no separate effort needed.
+
+So: keep going on Polymath8b. The only paper that would supersede the
+formalization target is one that hasn't been written yet.
+
 ## The chain
 
 ```
