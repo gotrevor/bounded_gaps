@@ -293,6 +293,45 @@ elementary but the $k = 1$ Cauchy-Schwarz argument requires measure-theoretic
 setup not currently in the project. -/
 axiom Mk_le_one_of_k_le_one (k : ℕ) (hk : k ≤ 1) : Mk k ≤ 1
 
+/-! ### The truncated variant (Polymath8b §5, `maynard-trunc`)
+
+In the MPZ/Polymath8a regime, the Selberg-sieve support is restricted to
+each coordinate $t_i \le \alpha$ (in addition to $\sum t_i \le 1$) to handle
+the smooth-moduli constraint. The Maynard quantity becomes $M_k^{[\alpha]}$,
+the sup of $M_k(F)$ over $F$ supported on the truncated simplex
+$\{t \in [0, \alpha]^k : \sum_i t_i \le 1\}$. -/
+
+/-- The truncated simplex: $\{t \in [0, \alpha]^k : \sum_i t_i \le 1\}$.
+Polymath8b §5 Theorem `maynard-trunc` support polytope (line 961). -/
+noncomputable def simplex_truncated (k : ℕ) (α : ℝ) : Set (Fin k → ℝ) :=
+  { t | (∀ i, 0 ≤ t i) ∧ (∀ i, t i ≤ α) ∧ ∑ i, t i ≤ 1 }
+
+/-- The admissible set of $\mathrm{MkF}(k, F)$ values for $F$ supported on the
+**truncated** simplex. Sister of `MkSet`; same Rayleigh ratio, restricted
+support polytope. -/
+def MkSet_truncated (k : ℕ) (α : ℝ) : Set ℝ :=
+  { v | ∃ F : (Fin k → ℝ) → ℝ,
+          ContDiff ℝ ⊤ F ∧
+          Function.support F ⊆ simplex_truncated k α ∧
+          mkF_denominator k F > 0 ∧
+          v = MkF k F }
+
+/-- $M_k^{[\alpha]} := \sup_F M_k(F)$ over admissible $F$ on the truncated
+simplex. Polymath8b §5 `maynard-trunc` (line 959). Concrete `sSup` over
+`MkSet_truncated k α`; sister of `Mk`. -/
+noncomputable def Mk_truncated (k : ℕ) (α : ℝ) : ℝ := sSup (MkSet_truncated k α)
+
+/-- For $k \ge 2$ and $\alpha > 0$, the admissible-F set for $M_k^{[\alpha]}$
+is non-empty. Sister axiom of `MkSet_nonempty`; smooth-bump construction
+inside the (sufficiently small) truncated simplex provides a witness. -/
+axiom MkSet_truncated_nonempty (k : ℕ) (hk : 2 ≤ k) (α : ℝ) (hα : 0 < α) :
+    (MkSet_truncated k α).Nonempty
+
+/-- The admissible-F set for $M_k^{[\alpha]}$ is bounded above. Sister of
+`MkSet_bddAbove`; since `simplex_truncated k α ⊆ simplex k` (for $\alpha > 0$),
+the same upper bound from `mk-upper` applies. -/
+axiom MkSet_truncated_bddAbove (k : ℕ) (α : ℝ) : BddAbove (MkSet_truncated k α)
+
 /-! ### The ε-enlarged variant (Polymath8b §5, epsilon-trick)
 
 In the GEH-enabled refinement, $F$'s support may extend out to the
@@ -578,11 +617,27 @@ theorem maynard_thm (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϑ : ℝ)
   exact selberg_sieve_data_from_F hk hm hϑ hEH hSmooth hSupp hDen hMkF hAdm hLen
 
 /-- **Theorem 5.3 / "maynard-trunc"** (under MPZ): truncated variant suitable
-for the Zhang/Polymath8a regime. -/
+for the Zhang/Polymath8a regime.
+
+Paper reference: Polymath8b §5 line 957–966 (`\label{maynard-trunc}`):
+$$\text{If } M_k^{[\delta/(1/4+\varpi)]} > \frac{m}{1/4+\varpi} \text{ then } \DHL[k,m+1].$$
+
+Previously stated with `Mk k > 4m/(1/2+2ϖ)` (unrestricted simplex + 2× higher
+threshold), which had two distinct paper-faithfulness bugs:
+- `Mk` not `Mk_truncated` — paper sup is over truncated simplex, not the
+  full one. `Mk ≥ Mk_truncated` so the unrestricted-Mk hypothesis is
+  *weaker* (can hold without the true paper hypothesis).
+- 2× threshold: `4m/(1/2+2ϖ) = 2m/(1/4+ϖ)`, paper has `m/(1/4+ϖ)`.
+
+Restated to match the paper: `Mk_truncated k (δ/(1/4+ϖ)) > m/(1/4+ϖ)`.
+Still a sorry — the body is the same Polymath8a sieve construction, blocked
+on the same `selberg_sieve_data_*` analytic-core chain. Future PR will
+discharge it via a `selberg_sieve_data_truncated_from_F` sister lemma. -/
 -- TRIAGE: NEEDS_SIEVE — Polymath8a-flavored variant; truncated weights to
 -- handle smooth-moduli regime. Same blocker chain as maynard_thm.
 theorem maynard_trunc (k m : ℕ) (ϖ δ : ℝ)
-    (_hMPZ : Prerequisites.MPZ ϖ δ) (_hMk : Mk k > 4 * m / (1 / 2 + 2 * ϖ)) :
+    (_hMPZ : Prerequisites.MPZ ϖ δ)
+    (_hMk : Mk_truncated k (δ / (1/4 + ϖ)) > m / (1/4 + ϖ)) :
     DHL k (m + 1) := sorry
 
 /-- **sSup extraction for $M_{k,\varepsilon}$**: if $c < M_{k,\varepsilon}$
