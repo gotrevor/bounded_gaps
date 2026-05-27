@@ -1,8 +1,9 @@
 # HANDOFF.md — Bounded Gaps Lean project
 
-Written 2026-05-26 (evening), superseding the 2026-05-26 afternoon version.
-Reflects state at `master` commit `b3157db` (PR #37 merged), 4 PRs after
-the previous handoff (#34, #35, #36, #37).
+Written 2026-05-27 (early morning), superseding the 2026-05-26 evening
+version. Reflects state at `master` commit `3507f0e` (PR #43 merged),
+**6 PRs after the previous handoff** (#39, #40, #41, #42, #43, plus
+this refresh #44).
 
 This document is self-contained: a fresh session can read it and start
 working without scrolling history.
@@ -13,25 +14,43 @@ working without scrolling history.
 
 ## TL;DR
 
-- **Sorries: 15.** **Axioms: 45.** **Opaques: 3** (`alphaBound`, `betaBound`,
+- **Sorries: 23.** **Axioms: 34.** **Opaques: 3** (`alphaBound`, `betaBound`,
   `selberg_nu` — all real-but-unencoded defs, by project convention).
-- **Front A analytic cores are now real** (PR-A5 #34 + PR-A6 #35):
-  both `selberg_sieve_data_from_F` and `selberg_sieve_data_eps_from_F` are
-  decomposed into 4 cited axioms each (Selberg `nuform` opaque + W-trick +
-  `nonprime-asym` + `prime-asym`-under-EH) plus a real algebra step. ε
-  sister reuses `selberg_nu` and `wtrick_data` so its decomposition adds
-  only 2 new cited axioms.
-- **`maynard_trunc` is paper-faithful** (PR-A1b-i #37): now uses
-  `Mk_truncated k (δ/(1/4+ϖ)) > m/(1/4+ϖ)` on the truncated simplex
-  $\{t \in [0,\alpha]^k : \sum t_i \le 1\}$, matching Polymath8b §5
-  `maynard-trunc` (line 957-966). The 4 `mk_*_witness` axioms (35410,
-  1649821, 75845707, 3473955908) were restated to match. Body still a sorry
-  pending a `selberg_sieve_data_truncated_from_F` sister.
-- **`epsilon_beyond` is still statement-buggy** (PR-A1b-ii blocked, see
-  *Open work* below) — needs a 3rd numerator def (paper's $J_{i,1-\varepsilon}$
-  uses inner $[0,\infty)$ which only matches my `J_i_eps`'s clamped
-  $[0, 1+\varepsilon - \sum]$ when F is supported on $(1+\varepsilon)\cdot R_k$;
-  epsilon-beyond's F is on the larger $(k/(k-1))\cdot R_k$).
+- **The project has a `ROADMAP.md` now** (PR #40). Replaces sorry-count
+  with "depth into the sieve" as the strategic metric. 4 axiom-buckets:
+  - **A (28)** = forever-cite by design (BV/EH/GEH/MPZ, paper §6 numerical,
+    Engelsma, admissibility bounds, asymptotic narrowness)
+  - **B & C** = formerly mis-typed; **reclassified as sorries 2026-05-27**
+    (PR #41). 9 axioms → 9 sorries; honest-debt unchanged but metric
+    stops lying.
+  - **D (5 axioms + 3 opaques)** = the actual sieve core. This is the
+    real bar; ROADMAP Tier 1 (encode opaques) + Tier 3-4 (discharge
+    `wtrick_data`, first `s1`/`s2`) are the real-progress milestones.
+- **`epsilon_beyond` is paper-faithful** (PR #39, PR-A1b-ii): explicit $F$
+  witness + vanishing-marginal predicate + `J_i_beyond` (third marginal
+  def with unclamped inner $[0,\infty)$). Body still a sorry; same blocker
+  as `maynard_trunc` (needs a `selberg_sieve_data_*_from_F` sister).
+- **`maynard_trunc` is paper-faithful** (PR-A1b-i #37, prior session): now
+  uses `Mk_truncated` on the truncated simplex. Body still a sorry.
+- **Mid-session structural wins (PR #42, #43):**
+  - `Mk_zero_le_one` extracted as standalone discharged theorem
+    ($M_0 \le 1$ via `mkF_numerator | 0, _ => 0`).
+  - `MkSet_truncated_bddAbove` discharged via subset of `MkSet`
+    (routes through `MkSet_bddAbove`'s sorry; local body is real).
+  - `SieveTheoreticArgument` + `parity_barrier` removed as
+    documentation-as-axiom (never consumed, pure trust-base shrink).
+
+## Session ledger (since 2026-05-26 evening)
+
+| PR | What | Net effect |
+|---|---|---|
+| #38 | HANDOFF refresh (covers PRs #34-#37) | doc only |
+| #39 | epsilon_beyond paper-faithful (PR-A1b-ii) | restate; axioms unchanged |
+| #40 | Add ROADMAP.md (depth-into-sieve reframe) | doc only |
+| #41 | Reclassify 9 mis-typed axioms → sorries | axioms 45→36, sorries 15→24 |
+| #42 | `MkSet_truncated_bddAbove` discharge + `Mk_zero_le_one` extract | sorries 24→23 |
+| #43 | Remove `SieveTheoreticArgument` + `parity_barrier` | axioms 36→34 |
+| #44 | This HANDOFF refresh + ledger update | doc only |
 
 ## Operating principles (locked in, keep)
 
@@ -177,52 +196,13 @@ BoundedGaps/Zhang.lean:34             H1_le_70M             (method-faithful, le
 
 ### Open work — recommended next moves
 
-#### **PR-A1b-ii: `epsilon_beyond` statement fix** (~1-2h)
+#### **PR-A1b-ii: `epsilon_beyond` statement fix** ✅ Done (PR #39)
 
-Paper Polymath8b §5 `epsilon-beyond` (line 1028-1037):
-
-> Let $k \ge 2$, $m \ge 1$, $0 < \vartheta < 1$ with $\GEH[\vartheta]$,
-> $0 < \varepsilon < 1/(k-1)$. Suppose there is a fixed non-zero
-> square-integrable $F: [0,\infty)^k \to \mathbb{R}$ supported in
-> $(k/(k-1)) \cdot \mathcal{R}_k$, such that for $i = 1, \ldots, k$ the
-> **vanishing marginal condition** $\int_0^\infty F(t_1, \ldots, t_k)\,dt_i
-> = 0$ holds whenever $\sum_{j \ne i} t_j > 1 + \varepsilon$. Suppose also
-> that $\sum_i J_{i,1-\varepsilon}(F) / I(F) > 2m/\vartheta$. Then
-> $\DHL[k, m+1]$ holds.
-
-Current Lean uses `Mk_eps k ε > 2m/ϑ` (sup over F on the smaller
-$(1+\varepsilon) \cdot R_k$ polytope) which is the wrong shape entirely.
-Fix needs:
-
-1. **`simplex_scaled k r := {t | (∀ i, 0 ≤ t i) ∧ ∑ t_i ≤ r}`** — generic
-   r-scaled simplex. Refactor `simplex`/`simplex_eps` to use it if desired.
-2. **`HasVanishingMarginal k ε F : Prop`** — the eqn 1029 predicate:
-   ```
-   ∀ i, ∀ s : Fin (k-1) → ℝ, (∀ j, 0 ≤ s j) → (∑ j, s j > 1 + ε) →
-     ∫ ti in Set.Ici 0, F (i.insertNth ti s) = 0
-   ```
-3. **`J_i_beyond k F i`** or **`J_i_eps_unclamped k ε F i`** — a third
-   marginal def with inner integral over $[0, \infty)$ (not clamped to
-   $[0, 1+\varepsilon - \sum s_j]$ as `J_i_eps` is). For F supported on
-   $(k/(k-1)) \cdot R_k$ with vanishing marginal, this is the paper's
-   $J_{i,1-\varepsilon}(F)$. **Critical**: the existing `J_i_eps` cuts off
-   the inner integral at $1+\varepsilon - \sum$ which only matches the
-   paper for F on $(1+\varepsilon) \cdot R_k$; epsilon-beyond's F is on a
-   larger polytope. Without this third def the existing `J_i_eps` would
-   *undercount* the inner integral.
-4. **`mkF_beyond_denominator k F := ∫ t in simplex_scaled k (k/(k-1)), F² `**
-   — or just `∫ t, F²` since F has bounded support.
-5. **Restate `epsilon_beyond`** to take `(F, ε, ϑ)` + the conditions
-   (smooth, supported, nonzero, vanishing-marginal, denom > 0, threshold).
-   Still sorry; same selberg-sieve blocker as `maynard_trunc`.
-6. **Restate `mk_eps_3_witness_under_GEH` + `mk_eps_51_witness_under_GEH`**
-   to package the F witness.
-7. **Update `dhl_3_2_under_GEH` + `dhl_51_3_under_GEH`** consumers (the
-   `obtain` shape changes).
-
-Net: +2 axioms (`MkSet_beyond_*`? Or just keep witness-axiom form),
-+3 real defs (simplex_scaled, HasVanishingMarginal, J_i_beyond), sorry
-count unchanged (still a sorry, just paper-faithful).
+`Sieve.epsilon_beyond` restated to match Polymath8b §5 line 1028-1037.
+Three new defs added (`simplex_scaled`, `HasVanishingMarginal`,
+`J_i_beyond`) plus `mkF_beyond_denominator`. Witness axioms
+`mk_eps_{3,51}_witness_under_GEH` and consumers `dhl_{3_2,51_3}_under_GEH`
+updated. Body still a `sorry` (same blocker as `maynard_trunc`).
 
 #### **PR-A1b-iii: Discharge `maynard_trunc`'s body** (~1-2h)
 
@@ -237,21 +217,34 @@ case (i) trivial. Adds 2-3 cited axioms; turns `maynard_trunc` real.
 Now achievable since `dhl_implies_liminfGap` is real (PR #30). Substantive
 `IsBigO` + `Real.log` + ceiling arithmetic. Future PR can replace.
 
-#### **Cited-axiom dischargements over time**
+#### **Structural sorry discharges** (now sorries, not axioms — per PR #41)
 
-Turn the structural axioms into real proofs. Each self-contained:
+All of these were `axiom` until PR #41 reclassified them as
+`theorem := sorry`. PR #42 discharged the first two:
+
+| Theorem | Status | Effort |
+|---|---|---|
+| `Mk_le_one_of_k_le_one` (k = 0 case) | ✅ Done (PR #42 via `Mk_zero_le_one`) | trivial — `mkF_numerator 0 = 0` |
+| `Mk_le_one_of_k_le_one` (k = 1 case) | sorry | smallish — Cauchy-Schwarz on $[0,1]$. Future PR; sketch in docstring. |
+| `MkSet_truncated_bddAbove` | ✅ Done (PR #42 via subset) | routes through `MkSet_bddAbove` |
+| `MkSet_nonempty` | sorry | medium — smooth-bump construction. Future PR. |
+| `MkSet_bddAbove` | sorry | medium — Polymath8b Cor `mk-upper`. Future PR. |
+| `MkSet_truncated_nonempty` | sorry | medium — bump inside truncated simplex |
+| `MkSet_eps_nonempty` | sorry | tried PR #42, backed out: needs `Continuous.integrable_of_hasCompactSupport` chain. Future PR. |
+| `MkSet_eps_bddAbove` | sorry | needs separate Polymath8b §5 `(1+ε)/(1-ε)` factor |
+| `narrowness_realized` | sorry | medium — Hensley-Richards / Erdős |
+| `DHL_gives_freq_primeAt_gap` | sorry | large — ~200 lines `Finset` bookkeeping |
+
+#### **Sieve-core axioms (Bucket D — the real math)**
 
 | Axiom | Effort |
 |---|---|
-| `Mk_le_one_of_k_le_one` | smallish — Cauchy-Schwarz on unit interval |
-| `MkSet_nonempty` | medium — smooth-bump construction |
-| `MkSet_bddAbove` | medium — Polymath8b Cor `mk-upper` |
-| `MkSet_eps_*`, `MkSet_truncated_*` | sisters of above |
-| `narrowness_realized` | medium — Hensley-Richards / Erdős |
-| `DHL_gives_freq_primeAt_gap` | large — ~200 lines `Finset` bookkeeping |
-| `wtrick_data` | medium — Mertens products + CRT |
-| `s1_holds_from_nonprime_asym` + sisters | large — divisor-sum expansion |
-| `s2_holds_from_prime_asym_under_EH` + sisters | large — divisor-sum |
+| `selberg_nu` (opaque → real def) | 1-2 sessions — Polymath8b §3 `nuform` (3.6)-(3.7) explicit formula |
+| `alphaBound` (opaque → real def) | 2-3 sessions — `Asymptotics.IsLittleO` shape for (s1) |
+| `betaBound` (opaque → real def) | 2-3 sessions — sister of `alphaBound` for (s2) |
+| `wtrick_data` | 5-15 sessions — Mertens products + CRT; needs mathlib API |
+| `s1_holds_from_nonprime_asym` + sisters | 10-30 sessions — divisor-sum expansion |
+| `s2_holds_from_prime_asym_under_EH` + sisters | 10-30 sessions — sister + EH |
 
 Together: 12+ honest-debt reductions over time.
 
@@ -329,33 +322,49 @@ against the paper at every threshold.
 
 Suggested order:
 
-1. **Warm-up** (~10 min): re-derive sorry count + locations; confirm Front A
-   selberg cores are real; confirm `maynard_trunc` is paper-faithful.
-2. **PR-A1b-ii: `epsilon_beyond` statement fix** (~1-2h, see *Open work*
-   above) — add `simplex_scaled`, `HasVanishingMarginal`, `J_i_beyond`,
-   `mkF_beyond_denominator`; restate `epsilon_beyond` to take an explicit
-   F witness; restate 2 `mk_eps_*_witness_under_GEH` axioms; update 2
-   downstream `dhl_*_under_GEH` consumers. Still a sorry but paper-faithful.
-3. **PR-A1b-iii: discharge `maynard_trunc`** (~1-2h) — sister
-   `selberg_sieve_data_truncated_from_F` lemma using `Mk_truncated`
-   infrastructure now in place. Polymath8b §3 prime-asym/nonprime-asym
-   case (ii) under MPZ.
-4. **PR-E: `hm_asymp_from_dhl_and_narrowness`** (~1-2h) — substantive
-   `IsBigO` + `Real.log` + ceiling arithmetic. Now achievable since
-   `dhl_implies_liminfGap` is real.
-5. **Cited-axiom dischargements over time** — each is a self-contained PR.
-   `Mk_le_one_of_k_le_one` is the smallest (Cauchy-Schwarz on unit interval);
-   that's the easiest single discharge to land first.
+1. **Warm-up** (~10 min): re-derive sorry count + locations; read
+   `ROADMAP.md` to align on Bucket A/B/C/D and tier framework.
+2. **PR-A1b-iii: discharge `maynard_trunc` + `epsilon_beyond` bodies**
+   (~1-3h) — both blocked on the same `selberg_sieve_data_*_from_F` sister
+   pattern. Two sub-options:
+   - **PR-A1b-iii-a (truncated)**: build `selberg_sieve_data_truncated_from_F`
+     using `Mk_truncated` infrastructure. Polymath8b §3 prime-asym/
+     nonprime-asym case (ii) under MPZ.
+   - **PR-A1b-iii-b (beyond)**: build `selberg_sieve_data_beyond_from_F`
+     using `J_i_beyond` + `HasVanishingMarginal`. Polymath8b §3 under GEH.
+   Both add 2-3 cited axioms each; turn their respective flagship bodies real.
+3. **PR-E: `hm_asymp_from_dhl_and_narrowness`** (~1-2h) — substantive
+   `IsBigO` + `Real.log` + ceiling arithmetic. Achievable since
+   `dhl_implies_liminfGap` is real (PR #30).
+4. **Tier 1 — encode the opaques** (~5-8 sessions total per ROADMAP)
+   `selberg_nu` → `noncomputable def` via Polymath8b §3 `nuform` (3.6)-(3.7);
+   then `alphaBound` and `betaBound` via `Asymptotics.IsLittleO`. Real
+   structural milestone; "depth into sieve" 0/8 → 3/8.
+5. **Small structural discharges** (each ~0.5-1 session):
+   - `Mk_le_one_of_k_le_one` k=1 case via L²-Cauchy-Schwarz on $[0,1]$
+     (sketch in Sieve.lean docstring).
+   - `MkSet_eps_nonempty` via shared F witness from `MkSet_nonempty`
+     (needs `Continuous.integrable_of_hasCompactSupport` chain, attempted
+     and backed out in PR #42).
+   - `MkSet_eps_bddAbove`: separate (1+ε)/(1-ε) factor argument.
+6. **Tier 3 — `wtrick_data` discharge** (~5-15 sessions) — Mertens
+   products + CRT density. The first sieve-core axiom discharge would
+   be the first "Lean has touched the sieve" milestone — outside
+   audiences would care.
 
 ## Pointers outside the repo
 
+- **In-repo strategy doc**: `~/src/bounded_gaps/ROADMAP.md` — bucket
+  classification + tier framework + 2026-06-26 measurement checkpoint.
+  Read this before deciding what to work on.
 - Knowledge base: `~/personal/claude/knowledge/core/projects/lean-journey/side-quests/`
   - `bounded-gaps.md` — project arc.
-  - `bounded-gaps-threads.md` — thread tracker (current through PR #37).
+  - `bounded-gaps-threads.md` — thread tracker (current through PR #37,
+    stale w.r.t. PRs #38-#44).
 - Memory: `~/personal/claude/memory/` (also linked from MEMORY.md):
   - `feedback_axioms_at_leaves.md` — the operating principle.
   - `feedback_verify_against_paper.md` — the threshold-bug lesson.
-  - `feedback_lean_opaque_vs_axiom.md` (new) — `opaque` vs `axiom`
+  - `feedback_lean_opaque_vs_axiom.md` — `opaque` vs `axiom`
     distinction; don't auto-convert.
   - `reference_formalization_metrics.md` — better-than-sorry-count metrics.
   - `reference_lean_tactics_gotchas.md` — Lean v4.29.1 / mathlib landmines.
@@ -365,7 +374,8 @@ Suggested order:
 
 ---
 
-🪷 Last commit on `master` when this file was written: `b3157db` (merge of
-PR #37 *maynard_trunc paper-faithful*). 4 PRs since the prior HANDOFF
-(#34 PR-A5, #35 PR-A6, #36 selberg_nu revert, #37 PR-A1b-i + this file's
-PR).
+🪷 Last commit on `master` when this file was written: `3507f0e` (merge of
+PR #43 *SieveTheoreticArgument removal*). 6 PRs since the prior HANDOFF
+(#39 epsilon_beyond, #40 ROADMAP, #41 reclassification, #42
+MkSet_truncated_bddAbove + Mk_zero_le_one, #43 SieveTheoreticArgument
+removal, #44 this refresh).
