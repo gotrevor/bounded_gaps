@@ -67,6 +67,60 @@ theorem Hm_asymptotic_unconditional :
     positivity
   exact h1
 
+/-! ### Maynard's $k = 5$ flagship infrastructure (for `H1_le_12_under_EH`)
+
+The optimal $5$-tuple is $(0, 4, 6, 10, 12)$ — admissible, diameter $12$.
+Together with $M_5 > 2/\vartheta$ (Maynard 2015 §1, cited as
+`mk_5_witness_under_EH`) and `Sieve.maynard_thm` under EH, this gives
+$\DHL[5, 2]$ → $H_1 \le 12$ under EH. -/
+
+/-- Maynard's optimal 5-tuple of diameter 12. -/
+def tuple_5 : List ℕ := [0, 4, 6, 10, 12]
+
+theorem tuple_5_length : tuple_5.length = 5 := by decide
+theorem tuple_5_diameter : diameter tuple_5 = 12 := by decide
+theorem tuple_5_sorted : tuple_5.Pairwise (· < ·) := by decide
+
+/-- $(0, 4, 6, 10, 12)$ is admissible: misses class 1 mod 2 (all even),
+class 2 mod 3 ($\{0,1,0,1,0\}$), class 3 mod 5 ($\{0,4,1,0,2\}$).
+For $p \ge 7$, pigeonhole closes it (5 offsets, $\ge 7$ classes). -/
+theorem tuple_5_admissible : Admissible tuple_5 := by
+  apply admissible_of_check_small_primes tuple_5_sorted
+  intro p hp hple
+  rw [tuple_5_length] at hple
+  have hp2 := hp.two_le
+  interval_cases p <;>
+    first
+      | (exfalso; revert hp; decide)
+      | native_decide
+
+/-- $H(5) \le 12$: the Maynard 5-tuple of diameter 12 is admissible.
+
+The matching lower bound $H(5) \ge 12$ (so equality, $H(5) = 12$) is a
+classical observation cited in Maynard 2015 §1 — not needed for
+`H1_le_12_under_EH`, which only consumes the upper bound. -/
+theorem narrowness_5_le_12 : narrowness 5 ≤ 12 :=
+  narrowness_le_of_admissible_tuple tuple_5_admissible tuple_5_length tuple_5_diameter
+
+/-- **$M_5 > 2/\vartheta$ under EH** (Maynard 2015 Theorem 1.1 + §1
+discussion). The $5$-dimensional Selberg-sieve variational problem on
+$[0,1]^5 \cap \{\sum t_i \le 1\}$ attains a sup $M_5 > 2$ at a
+piecewise polynomial witness $F$, hence for any
+$\vartheta \in (2/M_5, 1) \subset (0, 1)$ the threshold inequality
+$M_5 > 2/\vartheta$ holds. Cited as a paper-§ numerical witness
+(Bucket A — citation-permanent). -/
+axiom mk_5_witness_under_EH :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 5 > 2 * 1 / ϑ
+
+/-- Under EH: **$\DHL[5, 2]$**. Blueprint: `Sieve.maynard_thm` at
+$k = 5, m = 1$ with the Maynard $M_5 > 2/\vartheta$ witness. Parallel
+to the existing `Polymath8b.dhl_*_under_EH` chain for $k = 54$, etc. -/
+theorem dhl_5_2_under_EH (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
+    DHL 5 2 := by
+  obtain ⟨ϑ, hϑ, hMk⟩ := mk_5_witness_under_EH
+  exact Sieve.maynard_thm 5 1 (by norm_num) (by norm_num) ϑ hϑ (hEH ϑ hϑ)
+    (by exact_mod_cast hMk)
+
 /-! ### Under EH (Polymath8b Theorem 1.2 (iii)-(v)) -/
 
 /-- **(iii)** Under EH: $H_1 \le 12$.
@@ -78,13 +132,16 @@ $(0, 4, 6, 10, 12)$ has diameter 12). Polymath8b's stronger
 the **GEH** $H_1 \le 6$ requires the stronger GEH hypothesis. Genuinely
 Maynard-specific.
 
-Currently `sorry`; requires a `dhl_5_2_under_EH` flagship (not yet in
-the project) and `narrowness_5 ≤ 12`. -/
--- TRIAGE: NEEDS_NEW_FLAGSHIP — requires adding mk_5_witness_under_EH +
--- dhl_5_2_under_EH at k = 5 plus narrowness 5 ≤ 12. ~1 PR of focused
--- work, parallel to the existing dhl_*_under_EH chain for k = 54, etc.
-theorem H1_le_12_under_EH (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
-    liminfGap 1 ≤ (12 : ℕ∞) := sorry
+**Discharged 2026-05-27** via the new k=5 flagship chain above
+(`dhl_5_2_under_EH` + `narrowness_5_le_12`). -/
+theorem H1_le_12_under_EH (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
+    liminfGap 1 ≤ (12 : ℕ∞) := by
+  have hDHL : DHL 5 2 := dhl_5_2_under_EH hEH
+  have h1 : liminfGap 1 ≤ (narrowness 5 : ℕ∞) :=
+    dhl_implies_liminfGap 5 1 (by norm_num) hDHL
+  calc liminfGap 1
+      ≤ (narrowness 5 : ℕ∞) := h1
+    _ ≤ (12 : ℕ∞) := by exact_mod_cast narrowness_5_le_12
 
 /-- **(iv)** Under EH: $H_2 \le 600$. Subsumed by Polymath8b's
 $H_2 \le 270$ under EH. -/
