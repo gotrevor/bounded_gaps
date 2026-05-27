@@ -124,18 +124,56 @@ via `Sieve.maynard_thm` (threshold `2m/ϑ` with $m=5$). Polymath8b Theorem
 axiom mk_309661_witness_under_EH :
     ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 309661 > 2 * 5 / ϑ
 
-/-- Polymath8b §6: $\varepsilon, \vartheta$ with $M_{3, \varepsilon} > 2/\vartheta$
-under GEH — the parity-tight flagship that yields $H_1 \le 6$. Polymath8b
-Theorem `piece` constructs a piecewise-polynomial $F$ on the $3$-simplex
-realizing this. -/
-axiom mk_eps_3_witness_under_GEH :
-    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk_eps 3 ε > 2 * 1 / ϑ
+/-- Polymath8b §6 + Theorem `piece`: an explicit $F$ witness for
+`epsilon_beyond` at $k = 3, m = 1$ — the parity-tight flagship yielding
+$H_1 \le 6$ under GEH.
 
-/-- Polymath8b §6: $\varepsilon, \vartheta$ with $M_{51, \varepsilon} > 4/\vartheta$
-under GEH. Drives DHL[51, 3] under GEH. Polymath8b Theorem `mke-lower`(xiii)
-reports $M_{51, 1/50} > 4.00156$. -/
+Packages the full hypothesis bundle that `Sieve.epsilon_beyond` requires
+(F on $\frac{3}{2} \mathcal{R}_3$, vanishing marginal, $\sum J_{i,1-\varepsilon}
+/ I(F) > 2/\vartheta$).
+
+Citation: Polymath8b Theorem `piece` (§6) produces a piecewise polynomial
+$F$ symmetric in $(t_1, t_2, t_3)$, supported on the $\frac{3}{2}$-scaled
+simplex, with the vanishing marginal property and the threshold
+inequality. Regularization to $C^\infty$ is part of the proof of
+`epsilon-beyond` (§5 line 1581) and is absorbed into this axiom for the
+purposes of the present statement.
+
+**PR-A1b-ii restate**: superseded the previous `Sieve.Mk_eps 3 ε > 2/ϑ`
+shape — `epsilon-beyond` has no $M_{k, \varepsilon}$ Rayleigh sup, only
+an explicit $F$. -/
+axiom mk_eps_3_witness_under_GEH :
+    ∃ (ε ϑ : ℝ) (F : (Fin 3 → ℝ) → ℝ),
+      0 < ε ∧ ε < 1 / ((3 : ℝ) - 1) ∧
+      (0 < ϑ ∧ ϑ < 1) ∧
+      ContDiff ℝ ⊤ F ∧
+      Function.support F ⊆ Sieve.simplex_scaled 3 ((3 : ℝ) / ((3 : ℝ) - 1)) ∧
+      Sieve.HasVanishingMarginal 3 ε F ∧
+      Sieve.mkF_beyond_denominator 3 F > 0 ∧
+      (∑ i, Sieve.J_i_beyond 3 ε F i) / Sieve.mkF_beyond_denominator 3 F >
+        2 * 1 / ϑ
+
+/-- Polymath8b §6 / `mke-lower`(xiii): an explicit $F$ witness for
+`epsilon_beyond` at $k = 51, m = 2$ — drives $\DHL[51, 3]$ under GEH.
+
+Citation: Polymath8b Theorem `mke-lower`(xiii) reports $M_{51, 1/50} >
+4.00156$, but `epsilon-beyond` consumes the upstream $F$ witness (with
+vanishing marginal) rather than the bare $M_{k,\varepsilon}$ Rayleigh sup.
+Both come from the same Krylov-subspace construction; this axiom packages
+the $F$ + vanishing marginal directly.
+
+**PR-A1b-ii restate**: superseded the previous `Sieve.Mk_eps 51 ε > 4/ϑ`
+shape. -/
 axiom mk_eps_51_witness_under_GEH :
-    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk_eps 51 ε > 2 * 2 / ϑ
+    ∃ (ε ϑ : ℝ) (F : (Fin 51 → ℝ) → ℝ),
+      0 < ε ∧ ε < 1 / ((51 : ℝ) - 1) ∧
+      (0 < ϑ ∧ ϑ < 1) ∧
+      ContDiff ℝ ⊤ F ∧
+      Function.support F ⊆ Sieve.simplex_scaled 51 ((51 : ℝ) / ((51 : ℝ) - 1)) ∧
+      Sieve.HasVanishingMarginal 51 ε F ∧
+      Sieve.mkF_beyond_denominator 51 F > 0 ∧
+      (∑ i, Sieve.J_i_beyond 51 ε F i) / Sieve.mkF_beyond_denominator 51 F >
+        2 * 2 / ϑ
 
 /-! ### DHL[k, m+1] claims (chained through Sieve.maynard_* + Mk witnesses) -/
 
@@ -226,14 +264,18 @@ Blueprint: epsilon_beyond at $k=3, m=1$ with `mk_eps_3_witness_under_GEH` and
 GEH at the chosen $\vartheta$. -/
 theorem dhl_3_2_under_GEH (hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     DHL 3 2 := by
-  obtain ⟨ε, ϑ, hε, hϑ, hMk⟩ := mk_eps_3_witness_under_GEH
-  exact Sieve.epsilon_beyond 3 1 ε ϑ (hGEH ϑ hϑ) hε (by exact_mod_cast hMk)
+  obtain ⟨ε, ϑ, F, hε_pos, hε_lt, hϑ, hSmooth, hSupp, hVanish, hDen, hThresh⟩ :=
+    mk_eps_3_witness_under_GEH
+  exact Sieve.epsilon_beyond 3 1 (by norm_num) (by norm_num) ε ϑ hε_pos hε_lt
+    hϑ (hGEH ϑ hϑ) F hSmooth hSupp hVanish hDen (by exact_mod_cast hThresh)
 
 /-- Under GEH: **DHL[51, 3]**. -/
 theorem dhl_51_3_under_GEH (hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     DHL 51 3 := by
-  obtain ⟨ε, ϑ, hε, hϑ, hMk⟩ := mk_eps_51_witness_under_GEH
-  exact Sieve.epsilon_beyond 51 2 ε ϑ (hGEH ϑ hϑ) hε hMk
+  obtain ⟨ε, ϑ, F, hε_pos, hε_lt, hϑ, hSmooth, hSupp, hVanish, hDen, hThresh⟩ :=
+    mk_eps_51_witness_under_GEH
+  exact Sieve.epsilon_beyond 51 2 (by norm_num) (by norm_num) ε ϑ hε_pos hε_lt
+    hϑ (hGEH ϑ hϑ) F hSmooth hSupp hVanish hDen (by exact_mod_cast hThresh)
 
 /-! ## §3 — Narrowness bounds (Theorem hk-bound) -/
 
