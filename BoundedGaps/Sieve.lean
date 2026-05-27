@@ -444,14 +444,17 @@ $\sum_i \beta_i / \alpha = (\vartheta/2) \cdot M_k(F) > (\vartheta/2) \cdot
 (2m/\vartheta) = m$ follows by algebra. -/
 
 /-- **Selberg sieve weight from $F$** (Polymath8b §3, eqn (3.6)–(3.7),
-`nuform`). The full Polymath8b construction is a finite linear combination of
-products of 1D divisor sums against marginals of $F$ — too involved to encode
-fully here.
+`nuform`): $\nu(n) = \left(\sum_j c_j \prod_i \lambda_{F_{j,i}}(n + h_i)
+\right)^2$ — a finite linear combination of products of 1D divisor sums
+against marginals of $F$.
 
-Declared `axiom` (a hidden constant of function type) so the (s1)/(s2) axioms
-can reference a fixed $\nu$ choice. A future PR can replace with a real
-`noncomputable def`. -/
-axiom selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
+Declared `opaque` (a hidden constant of function type, sister of
+`alphaBound`/`betaBound`) because the nuform IS a real construction; the
+project just hasn't encoded the full multidimensional Selberg machinery
+yet. A future PR can supply a real `noncomputable def` body. Project
+convention: `opaque` for leaves with real-but-unencoded definitions,
+`axiom` for leaves citing external truths. -/
+opaque selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
     ℕ → ℝ
 
 /-- **W-trick** (Polymath8b §3): for any admissible $k$-tuple $\mathcal{H}$
