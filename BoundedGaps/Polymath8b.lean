@@ -559,7 +559,8 @@ theorem Hm_asymptotic_under_EH
 /-! ### Under GEH[ϑ] for all $0 < \vartheta < 1$ (Theorem main, (xii)-(xiii))
 
 These are the **parity-barrier optimal** results. The bound $H_1 \le 6$ is the
-best possible from sieve-theoretic methods alone (Theorem parity_barrier below). -/
+best possible from sieve-theoretic methods alone (Polymath8b §7, heuristic;
+see §7 comment block below — not formalized in this project). -/
 
 /-- **(xii)** Under GEH: $H_1 \le 6$.
 
@@ -589,27 +590,29 @@ theorem H2_le_252_under_GEH (hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequi
       ≤ (narrowness 51 : ℕ∞) := h1
     _ = (252 : ℕ∞) := by rw [narrowness_51]; norm_cast
 
-/-! ## §7 — The parity barrier -/
+/-! ## §7 — The parity barrier (heuristic; not formalized)
 
-/-- **The parity barrier** (Polymath8b §7, after Selberg): no purely
+**Polymath8b §7 (after Selberg) — the parity barrier.** No purely
 sieve-theoretic argument can establish $H_1 \le 4$, even under the
-generalized Elliott-Halberstam conjecture.
+generalized Elliott-Halberstam conjecture. Equivalently, the parity-tight
+bound from this framework is $H_1 \le 6$ (Theorem `H1_le_6_under_GEH`
+above).
 
-Statement is informal — "sieve-theoretic" isn't a formal predicate. Captured
-here as a propositional placeholder for the paper's heuristic theorem. -/
-axiom SieveTheoreticArgument (proves : Prop) : Prop
+**Why this is a comment block, not an `axiom`** (cleanup 2026-05-27,
+ROADMAP Tier 2): "sieve-theoretic argument" is not a formal predicate
+in Lean. A previous version encoded the barrier as a pair of axioms
+(`SieveTheoreticArgument : Prop → Prop` + `parity_barrier : ¬ STA (H_1
+≤ 4)`), but the wrapper was opaque with no destructor, so `parity_barrier`
+asserted nothing checkable — pure documentation-as-axiom, never consumed
+by any theorem. Removed because `axiom` should be for citations the
+trust base needs; not for heuristic prose.
 
--- "Sieve-theoretic argument" is not a formal predicate; the statement is
--- Polymath8b §7's heuristic claim, captured here as an axiom rather than a
--- sorry'd theorem. A formal version would require reformulating as a
--- precise non-existence claim about a specific class of weight functions.
-
-/-- **The parity barrier as an external claim**: under the heuristic reading
-of `SieveTheoreticArgument`, Polymath8b §7 (after Selberg) asserts that no
-purely sieve-theoretic argument establishes $H_1 \le 4$, even assuming GEH.
-Axiomatized rather than proven because the predicate is informal. -/
-axiom parity_barrier :
-    ¬ SieveTheoreticArgument (liminfGap 1 ≤ (4 : ℕ∞))
+A *formal* version would require reformulating the parity barrier as a
+precise non-existence claim about a specific class of weight functions
+(e.g. Selberg-type squares $\nu = (\sum_j c_j \prod_i \lambda_{F_{j,i}})^2$
+and a precise asymptotic threshold). Polymath8b doesn't do this either;
+the §7 statement is informal. Future PR could attempt the formal version
+if the substantive Polymath8b §7 argument is mechanized. -/
 
 /-! ## §8 — The twin-primes-or-Goldbach disjunction (Theorem disj) -/
 
