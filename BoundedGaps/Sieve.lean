@@ -474,22 +474,74 @@ def MkSet_eps (k : ℕ) (ε : ℝ) : Set ℝ :=
 Concrete `sSup` over `MkSet_eps k ε`. -/
 noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ := sSup (MkSet_eps k ε)
 
+/-- The standard simplex is closed in `Fin k → ℝ`. Helper for compactness. -/
+private theorem simplex_isClosed (k : ℕ) : IsClosed (simplex k) := by
+  have h_eq : simplex k =
+      (⋂ i : Fin k, {t : Fin k → ℝ | 0 ≤ t i}) ∩ {t | ∑ i, t i ≤ 1} := by
+    unfold simplex
+    ext t
+    simp [Set.mem_iInter]
+  rw [h_eq]
+  refine IsClosed.inter ?_ ?_
+  · exact isClosed_iInter (fun i => isClosed_Ici.preimage (continuous_apply i))
+  · have h_cont : Continuous (fun (t : Fin k → ℝ) => ∑ i, t i) :=
+      continuous_finset_sum Finset.univ (fun i _ => continuous_apply i)
+    exact isClosed_Iic.preimage h_cont
+
+/-- The standard simplex is contained in $[0, 1]^k$, hence bounded.
+Combined with `simplex_isClosed`, this gives compactness. -/
+private theorem simplex_isCompact (k : ℕ) : IsCompact (simplex k) := by
+  apply IsCompact.of_isClosed_subset
+    (s := Set.pi Set.univ (fun (_ : Fin k) => Set.Icc (0 : ℝ) 1))
+  · exact isCompact_univ_pi (fun _ => isCompact_Icc)
+  · exact simplex_isClosed k
+  · rintro t ⟨h_nn, h_sum⟩ i _
+    refine ⟨h_nn i, ?_⟩
+    -- t i ≤ ∑ j, t j ≤ 1
+    have h_sum_ge : t i ≤ ∑ j, t j :=
+      Finset.single_le_sum (f := t) (s := Finset.univ)
+        (fun j _ => h_nn j) (Finset.mem_univ i)
+    linarith
+
 /-- For $k \ge 2$ and $\varepsilon > 0$, the admissible-F set for
 $M_{k,\varepsilon}$ is non-empty. Sister of `MkSet_nonempty`;
 the $(1+\varepsilon)$-enlargement only enlarges the admissible support
-polytope.
+polytope, so an `MkSet_nonempty` witness $F$ (supported on `simplex k
+⊆ simplex_eps k ε`) is also a valid F for `MkSet_eps`.
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2).
-
-Discharge attempted 2026-05-26 via shared F witness from `MkSet_nonempty`,
-backed out: the eps-denom positivity argument
-$\int_{\text{simplex\_eps}} F^2 \ge \int_{\text{simplex}} F^2$ via
-`setIntegral_mono_set` needs an integrability lemma chain
-(`Continuous.integrable_of_hasCompactSupport` + compactness of
-simplex_eps) that's larger than a one-line discharge. Future PR. -/
+**Discharged 2026-05-27** (ROADMAP Tier 2): real local proof routing
+through `MkSet_nonempty`. Key step: `mkF_eps_denominator k ε F ≥
+mkF_denominator k F > 0` via `setIntegral_mono_set`. Integrability of
+$F^2$ comes from $F$ continuous (`ContDiff ⊤ → Continuous`) + $F$ has
+compact support (since `support F ⊆ simplex k` and `simplex k` is
+compact by `simplex_isCompact`). -/
 theorem MkSet_eps_nonempty (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε) :
     (MkSet_eps k ε).Nonempty := by
-  let _ := hk; let _ := hε; sorry
+  obtain ⟨_v, F, hSmooth, hSupp, hDen, _hvEq⟩ := MkSet_nonempty k hk
+  refine ⟨MkF_eps k ε F, F, hSmooth, ?_, ?_, rfl⟩
+  -- (1) support widening: simplex k ⊆ simplex_eps k ε
+  · have hSubset : simplex k ⊆ simplex_eps k ε := fun t ⟨h_nn, h_sum⟩ =>
+      ⟨h_nn, h_sum.trans (by linarith)⟩
+    exact hSupp.trans hSubset
+  -- (2) eps-denom positivity via setIntegral_mono_set
+  · have hSubset : simplex k ⊆ simplex_eps k ε := fun t ⟨h_nn, h_sum⟩ =>
+      ⟨h_nn, h_sum.trans (by linarith)⟩
+    have hF_cont : Continuous F := hSmooth.continuous
+    have hF2_cont : Continuous (fun t => F t ^ 2) := hF_cont.pow 2
+    have hSupp_compact : HasCompactSupport F :=
+      HasCompactSupport.of_support_subset_isCompact (simplex_isCompact k) hSupp
+    have hSupp2_compact : HasCompactSupport (fun t => F t ^ 2) :=
+      hSupp_compact.comp_left (g := fun x : ℝ => x ^ 2) (by simp)
+    have hF2_int : MeasureTheory.Integrable (fun t => F t ^ 2) MeasureTheory.volume :=
+      hF2_cont.integrable_of_hasCompactSupport hSupp2_compact
+    have hF2_intOn : MeasureTheory.IntegrableOn (fun t => F t ^ 2) (simplex_eps k ε)
+        MeasureTheory.volume := hF2_int.integrableOn
+    have hMono : mkF_denominator k F ≤ mkF_eps_denominator k ε F := by
+      unfold mkF_denominator mkF_eps_denominator
+      exact MeasureTheory.setIntegral_mono_set hF2_intOn
+        (Filter.Eventually.of_forall fun _ => sq_nonneg _)
+        (Filter.Eventually.of_forall hSubset)
+    linarith
 
 /-- The admissible-F set for $M_{k,\varepsilon}$ is bounded above.
 Sister of `MkSet_bddAbove`. Polymath8b §5: $M_{k,\varepsilon}$ admits
