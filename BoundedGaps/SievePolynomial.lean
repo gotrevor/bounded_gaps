@@ -77,24 +77,59 @@ noncomputable def polynomialSimplexIntegral {k : ℕ} (P : PolynomialSieveWeight
 For $F$ polynomial, both numerator and denominator of $M_k(F)$ are
 polynomial-integral expressions; their ratio is computable rationally. -/
 
-/-- Numerator of the Maynard ratio for a polynomial sieve weight (Polymath8b
-§5, modulo §6 polynomial substitution). Body is a `sorry` placeholder —
-the real definition is a sum of $k$ "drop-$i$" integrals against the squared
-gradient of $F$. -/
--- TRIAGE: DEF BODY (~2-3h) — sum over i of ∫_{Δ_{k-1}} (drop-i partial
--- derivative of F)² over (k-1)-simplex. Decomposes into a sum of monomial
--- integrals via the gradient's polynomial structure. Pure ℚ arithmetic, no
--- analysis. Independent of BV (good standalone target).
-noncomputable def polynomialMaynardNumerator {k : ℕ}
-    (_P : PolynomialSieveWeight k) : ℚ := sorry
+/-- Generalized Dirichlet integral with a "slack" exponent: the integral
+of $\prod_i t_i^{\alpha_i} \cdot (1 - \sum_i t_i)^\beta$ over the standard
+$n$-simplex in $\mathbb{R}^n$ has closed form
 
-/-- Denominator: integral of $F^2$ against a specific measure over the simplex.
-Computable in closed form from the monomial expansion of $F^2$. -/
--- TRIAGE: DEF BODY (~1-2h) — sister of polynomialMaynardNumerator. Expand
--- F² into a sum of monomials via PolynomialSieveWeight.terms convolution,
--- apply monomialIntegral termwise. Simpler than the numerator (no gradient).
+$$\int_{\Delta_n} \prod_i t_i^{\alpha_i} (1 - \sum)^\beta \, dt
+  = \frac{\prod_i \alpha_i! \cdot \beta!}{(n + |\alpha| + \beta)!}$$
+
+Specialises to `monomialIntegral` when $\beta = 0$. Used in the numerator
+of the polynomial Maynard ratio: after the "drop-i" antiderivative, the
+inner term's square produces a power of $(1 - \sum_{j \ne i} t_j)$. -/
+noncomputable def dirichletIntegralWithSlack {n : ℕ}
+    (α : Fin n → ℕ) (β : ℕ) : ℚ :=
+  (∏ i, ((α i).factorial : ℚ)) * (β.factorial : ℚ) /
+    ((n + (∑ i, α i) + β).factorial : ℚ)
+
+/-- Numerator of the Maynard ratio for a polynomial sieve weight (Polymath8b
+§5, modulo §6 polynomial substitution).
+
+For $F = \sum_p c_p \prod_j t_j^{p_j}$, the inner antiderivative in $t_i$
+from $0$ to $T = 1 - \sum_{j \ne i} s_j$ is
+$\sum_p c_p \prod_{j \ne i} s_j^{p_j} \cdot T^{p_i + 1} / (p_i + 1)$.
+Squaring and integrating over the $(k-1)$-simplex in $s_{j \ne i}$ gives
+
+$$J_i(F) = \sum_{p, q} \frac{c_p c_q}{(p_i+1)(q_i+1)} \cdot
+  \int_{\Delta_{k-1}} \prod_{j \ne i} s_j^{p_j + q_j} (1 - \sum_{j \ne i} s_j)^{p_i + q_i + 2} ds.$$
+
+The inner integral is `dirichletIntegralWithSlack` applied to the
+removed-$i$ multi-index `Fin.removeNth i (p + q)` and slack exponent
+$p_i + q_i + 2$.
+
+For $k = 0$, `Fin 0` is empty so the numerator is $0$. -/
+noncomputable def polynomialMaynardNumerator {k : ℕ}
+    (P : PolynomialSieveWeight k) : ℚ :=
+  match k, P with
+  | 0, _ => 0
+  | n + 1, P =>
+      ∑ i : Fin (n + 1),
+        ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+          (p.2 * q.2 : ℚ) /
+            (((p.1 i + 1 : ℕ) : ℚ) * ((q.1 i + 1 : ℕ) : ℚ)) *
+          dirichletIntegralWithSlack
+            (Fin.removeNth i (p.1 + q.1))
+            (p.1 i + q.1 i + 2)
+
+/-- Denominator: integral of $F^2$ against Lebesgue on the $k$-simplex.
+
+For $F = \sum_p c_p \prod_i t_i^{p_i}$,
+$F^2 = \sum_{p, q} c_p c_q \prod_i t_i^{p_i + q_i}$, so
+$\int_{\Delta_k} F^2 = \sum_{p, q} c_p c_q \cdot \mathrm{monomialIntegral}(p + q)$
+by termwise integration. -/
 noncomputable def polynomialMaynardDenominator {k : ℕ}
-    (_P : PolynomialSieveWeight k) : ℚ := sorry
+    (P : PolynomialSieveWeight k) : ℚ :=
+  ∑ p ∈ P.terms, ∑ q ∈ P.terms, p.2 * q.2 * monomialIntegral (p.1 + q.1)
 
 /-- The Maynard ratio $M_k(F) = N / D$ for polynomial $F$, as a rational. -/
 noncomputable def polynomialMkF {k : ℕ} (P : PolynomialSieveWeight k) : ℚ :=
