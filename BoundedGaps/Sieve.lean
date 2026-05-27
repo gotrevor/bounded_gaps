@@ -290,17 +290,42 @@ realized value is bounded by $\frac{k}{k-1} \log k$, so the set is
 theorem MkSet_bddAbove (k : ℕ) : BddAbove (MkSet k) := by
   let _ := k; sorry
 
+/-- $M_0 = 0$: when $k = 0$, the numerator `mkF_numerator 0 _ = 0` by
+pattern-match, so `MkF 0 F = 0 / _ = 0` for every $F$, hence
+`MkSet 0 ⊆ {0}` and $M_0 = \sup \mathrm{MkSet}\, 0 = 0$.
+
+(Even if `MkSet 0` is empty in some pathological setup,
+`Real.sSup_empty = 0` matches.) -/
+theorem Mk_zero_le_one : Mk 0 ≤ 1 := by
+  change sSup (MkSet 0) ≤ 1
+  have hbd : ∀ v ∈ MkSet 0, v ≤ 1 := by
+    rintro v ⟨F, _, _, _, rfl⟩
+    change MkF 0 F ≤ 1
+    unfold MkF mkF_numerator
+    simp
+  by_cases hne : (MkSet 0).Nonempty
+  · exact csSup_le hne hbd
+  · rw [Set.not_nonempty_iff_eq_empty.mp hne, Real.sSup_empty]; norm_num
+
 /-- $M_k \le 1$ for $k \le 1$. Standard variational bound: for $k = 0$,
 $M_0 = 0$ by definition (the numerator `mkF_numerator 0` is identically 0);
 for $k = 1$, the Maynard ratio is $(\int F)^2 / \int F^2 \le 1$ by
-Cauchy-Schwarz on the unit interval. The $k = 0$ case is elementary but
-the $k = 1$ Cauchy-Schwarz argument requires measure-theoretic setup not
-currently in the project.
+Cauchy-Schwarz on $[0, 1]$.
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2):
-this is the smallest discharge in the project (Cauchy-Schwarz on $[0,1]$). -/
+**Discharge status (2026-05-26, ROADMAP Tier 2)**:
+- $k = 0$ case: **real** via `Mk_zero_le_one` above (`MkF 0 _ = 0/_ = 0`).
+- $k = 1$ case: still `sorry`. The Cauchy-Schwarz step is genuine
+  measure-theoretic content. Sketch: for $g(t) := F(\text{fun}\_ => t)$
+  supported on $[0,1]$,
+  $(\int_0^1 g)^2 \le (\int_0^1 1^2)(\int_0^1 g^2) = \int_0^1 g^2$
+  by `MeasureTheory.inner_mul_le_norm_mul_norm` (L²-Cauchy-Schwarz)
+  specialised to the indicator of $[0,1]$ against $g$, then unfolding
+  the `Fin 0`-volume = 1 simplification on `mkF_numerator 1`. Future PR. -/
 theorem Mk_le_one_of_k_le_one (k : ℕ) (hk : k ≤ 1) : Mk k ≤ 1 := by
-  let _ := hk; sorry
+  interval_cases k
+  · exact Mk_zero_le_one
+  · -- k = 1: Cauchy-Schwarz on [0,1]. Future PR; see docstring.
+    sorry
 
 /-! ### The truncated variant (Polymath8b §5, `maynard-trunc`)
 
@@ -340,12 +365,21 @@ theorem MkSet_truncated_nonempty (k : ℕ) (hk : 2 ≤ k) (α : ℝ) (hα : 0 < 
   let _ := hk; let _ := hα; sorry
 
 /-- The admissible-F set for $M_k^{[\alpha]}$ is bounded above. Sister of
-`MkSet_bddAbove`; since `simplex_truncated k α ⊆ simplex k` (for $\alpha > 0$),
-the same upper bound from `mk-upper` applies.
+`MkSet_bddAbove`; since `simplex_truncated k α ⊆ simplex k`, every witness
+$F$ for `MkSet_truncated k α` is also a witness for `MkSet k` with the
+same value, so `MkSet_truncated k α ⊆ MkSet k` and the bound is inherited.
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+**Discharged 2026-05-26** (ROADMAP Tier 2): real local proof routing
+through `MkSet_bddAbove` (which is still a sorry — the substantive
+Polymath8b Cor `mk-upper` bound — but transitive sorries don't count
+against this theorem's body). -/
 theorem MkSet_truncated_bddAbove (k : ℕ) (α : ℝ) : BddAbove (MkSet_truncated k α) := by
-  let _ := k; let _ := α; sorry
+  refine (MkSet_bddAbove k).mono ?_
+  rintro v ⟨F, hSmooth, hSupp, hDen, rfl⟩
+  refine ⟨F, hSmooth, ?_, hDen, rfl⟩
+  intro t ht
+  obtain ⟨h_nonneg, _h_lealpha, h_sumle⟩ := hSupp ht
+  exact ⟨h_nonneg, h_sumle⟩
 
 /-! ### The ε-enlarged variant (Polymath8b §5, epsilon-trick)
 
@@ -443,9 +477,16 @@ noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ := sSup (MkSet_eps k ε)
 /-- For $k \ge 2$ and $\varepsilon > 0$, the admissible-F set for
 $M_{k,\varepsilon}$ is non-empty. Sister of `MkSet_nonempty`;
 the $(1+\varepsilon)$-enlargement only enlarges the admissible support
-polytope, so any witness for $M_k$ also witnesses $M_{k,\varepsilon}$.
+polytope.
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2).
+
+Discharge attempted 2026-05-26 via shared F witness from `MkSet_nonempty`,
+backed out: the eps-denom positivity argument
+$\int_{\text{simplex\_eps}} F^2 \ge \int_{\text{simplex}} F^2$ via
+`setIntegral_mono_set` needs an integrability lemma chain
+(`Continuous.integrable_of_hasCompactSupport` + compactness of
+simplex_eps) that's larger than a one-line discharge. Future PR. -/
 theorem MkSet_eps_nonempty (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε) :
     (MkSet_eps k ε).Nonempty := by
   let _ := hk; let _ := hε; sorry
