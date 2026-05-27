@@ -667,10 +667,15 @@ admissible $k$-tuple of diameter exactly `narrowness k`.
 Standard result. For $k$ small (≤ 3) the project's `admissibleTuple` is the
 witness; for $k \ge 4$ explicit constructions (Hensley-Richards 1973, Erdős)
 give admissible $k$-tuples for every $k$, so the inf in $\mathbb{N}$ is
-realized via Nat well-ordering. Axiomatized as a cited leaf because the
-$k \ge 4$ construction is substantial and not currently mechanized. -/
-axiom narrowness_realized (k : ℕ) (hk : 1 ≤ k) :
-    ∃ H : List ℕ, Admissible H ∧ H.length = k ∧ diameter H = narrowness k
+realized via Nat well-ordering. The $k \ge 4$ construction is substantial
+and not currently mechanized.
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2):
+this is an in-project proof we owe, not a citation we can `import`.
+Hensley-Richards is a *method*, not an external library. -/
+theorem narrowness_realized (k : ℕ) (hk : 1 ≤ k) :
+    ∃ H : List ℕ, Admissible H ∧ H.length = k ∧ diameter H = narrowness k := by
+  let _ := hk; sorry
 
 /-- **Prime-count → primeAt translation**: if there are at least $j + m$
 primes in $[0, q]$ (i.e. `Nat.count Nat.Prime (q + 1) ≥ j + m`), then the
@@ -716,14 +721,18 @@ into the prime sequence between $\min$ and $\max$, giving the count
 inequality; applying `primeAt_add_m_le_of_count` produces the indexed bound;
 infinitely many $n$ give infinitely many distinct $j(n)$.
 
-Axiomatized as a cited leaf — the structural argument is ~200 lines of
-Lean (Finset min/max + List.countP-to-count translation + injection of
-$n \mapsto j(n)$), and the *substance* is just prime-counting bookkeeping
-already standard in the literature. A future PR can replace with a real
+The structural argument is ~200 lines of Lean (Finset min/max +
+List.countP-to-count translation + injection of $n \mapsto j(n)$), and
+the *substance* is just prime-counting bookkeeping already standard in
+the literature.
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2):
+in-project bookkeeping is `sorry`'s job. A future PR replaces with a real
 proof using `Nat.count`, `Finset.min'`, and `Finset.max'`. -/
-axiom DHL_gives_freq_primeAt_gap (k m : ℕ) (hk : 1 ≤ k) (hm : 1 ≤ m)
+theorem DHL_gives_freq_primeAt_gap (k m : ℕ) (hk : 1 ≤ k) (hm : 1 ≤ m)
     (hDHL : DHL k (m + 1)) :
-    ∃ᶠ j : ℕ in atTop, primeAt (j + m) - primeAt j ≤ narrowness k
+    ∃ᶠ j : ℕ in atTop, primeAt (j + m) - primeAt j ≤ narrowness k := by
+  let _ := hk; let _ := hm; let _ := hDHL; sorry
 
 /-- **General form: $\DHL[k, m+1] \Rightarrow H_m \le H(k)$** (Polymath8b §3
 bridge).

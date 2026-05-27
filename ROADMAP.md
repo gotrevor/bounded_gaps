@@ -29,7 +29,14 @@ This file is a **falsifiable commitment**: tier-by-tier estimates of work,
 with a measurement checkpoint in one month (2026-06-26) to compare
 estimate vs actual.
 
-## Current axiom inventory (45 axioms, 3 opaques, 15 sorries)
+## Current axiom inventory
+
+**As of 2026-05-26 (post-reclassification)**: 36 axioms, 3 opaques, 24 sorries.
+**Pre-reclassification snapshot (when this doc was first written)**: 45 axioms, 3 opaques, 15 sorries.
+
+The 9-axiom decrease comes from reclassifying Buckets B and C below (the
+mis-typed in-project proof obligations) as `theorem := sorry`. Honest-debt
+sum unchanged; the metric stops lying.
 
 Classified into four buckets:
 
@@ -55,10 +62,11 @@ stay axioms unless an upstream project lands a mathlib-importable version.
 **These should never count against the project's debt.** They're what
 makes the proof a citation chain, like any normal math paper.
 
-### Bucket B — Mis-classified: should be sorries (7 axioms)
+### Bucket B — Mis-classified: should be sorries (7 axioms) ✅ Reclassified 2026-05-26
 
-"Small proofs we haven't gotten to." Using `axiom` here inflates the
-trust base. Cleanup pass: re-classify as `theorem ... := sorry`.
+"Small proofs we haven't gotten to." Using `axiom` here inflated the
+trust base. **Done**: re-classified as `theorem ... := sorry` (PR #41).
+Discharge proofs are still pending; see Tier 2 below.
 
 | Axiom | File:line | Real cost |
 |---|---|---|
@@ -71,9 +79,13 @@ trust base. Cleanup pass: re-classify as `theorem ... := sorry`.
 **Expected effect on metrics**: axioms 45 → 38, sorries 15 → 22, honest-
 debt sum unchanged. The point is the metric stops lying.
 
-### Bucket C — Substantive bookkeeping (2 axioms)
+### Bucket C — Substantive bookkeeping (2 axioms) ✅ Reclassified 2026-05-26
 
 Real proofs, but mostly `Finset`/`Nat` bookkeeping rather than math.
+**Reclassified as sorries** (PR #41): same logical category as Bucket B —
+in-project proofs we owe, not citation contracts to external libraries
+we can `import`. Size doesn't grant citation status. Discharge proofs
+still pending (Tier 2 / Tier 3).
 
 | Axiom | File:line | Cost |
 |---|---|---|
@@ -200,6 +212,7 @@ Format: `YYYY-MM-DD | tier | what landed | session-equivalents (1.0 = full eveni
 | Date | Tier | What landed | Sessions |
 |---|---|---|---|
 | 2026-05-26 | 0 | This ROADMAP.md; PR-A1b-ii epsilon_beyond statement fix (PR #39); HANDOFF refresh PR #38 | 1.0 |
+| 2026-05-26 | 2 (reclassification only) | Reclassify 9 mis-typed axioms → `theorem := sorry`: 7 Bucket B (`MkSet_nonempty`/`bddAbove` + ε/trunc sisters, `Mk_le_one_of_k_le_one`) + 2 Bucket C (`DHL_gives_freq_primeAt_gap`, `narrowness_realized`). Axioms 45→36, sorries 15→24, honest-debt unchanged. No discharges yet, metric just stops lying. | 0.2 |
 
 (One row per work-unit. Tier 0 = scaffolding, planning, statement fixes
 that don't discharge axioms. Tiers 1-5 = real depth-into-sieve progress.)

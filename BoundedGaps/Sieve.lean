@@ -272,26 +272,35 @@ Polymath8b §5 implicitly assumes this: any smooth bump supported on the
 interior of the simplex with nonzero $\int F^2$ realizes some
 $\mathrm{MkF}(k, F) > 0$. Formally proving nonemptiness requires
 constructing such an $F$ (smooth-bump construction, several mathlib
-imports). Axiomatized at this leaf per the project's "axioms at leaves"
-principle; a future PR could replace with a real proof. -/
-axiom MkSet_nonempty (k : ℕ) (hk : 2 ≤ k) : (MkSet k).Nonempty
+imports).
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2): a
+small-proof-we-haven't-gotten-to is `sorry`'s job. Future PR discharges. -/
+theorem MkSet_nonempty (k : ℕ) (hk : 2 ≤ k) : (MkSet k).Nonempty := by
+  let _ := hk; sorry
 
 /-- The admissible-F set for $M_k$ is bounded above.
 
 Polymath8b Corollary `mk-upper` (the converse direction to `mlower`):
 $M_k \le \frac{k}{k-1} \log k$ for all $k \ge 2$. This implies any
 realized value is bounded by $\frac{k}{k-1} \log k$, so the set is
-`BddAbove`. Axiomatized; cf. Polymath8b §5 + Hensley-Richards 1973
-(which gives the asymptotic). -/
-axiom MkSet_bddAbove (k : ℕ) : BddAbove (MkSet k)
+`BddAbove`. cf. Polymath8b §5 + Hensley-Richards 1973 (asymptotic).
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+theorem MkSet_bddAbove (k : ℕ) : BddAbove (MkSet k) := by
+  let _ := k; sorry
 
 /-- $M_k \le 1$ for $k \le 1$. Standard variational bound: for $k = 0$,
 $M_0 = 0$ by definition (the numerator `mkF_numerator 0` is identically 0);
 for $k = 1$, the Maynard ratio is $(\int F)^2 / \int F^2 \le 1$ by
-Cauchy-Schwarz on the unit interval. Axiomatized — the $k = 0$ case is
-elementary but the $k = 1$ Cauchy-Schwarz argument requires measure-theoretic
-setup not currently in the project. -/
-axiom Mk_le_one_of_k_le_one (k : ℕ) (hk : k ≤ 1) : Mk k ≤ 1
+Cauchy-Schwarz on the unit interval. The $k = 0$ case is elementary but
+the $k = 1$ Cauchy-Schwarz argument requires measure-theoretic setup not
+currently in the project.
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2):
+this is the smallest discharge in the project (Cauchy-Schwarz on $[0,1]$). -/
+theorem Mk_le_one_of_k_le_one (k : ℕ) (hk : k ≤ 1) : Mk k ≤ 1 := by
+  let _ := hk; sorry
 
 /-! ### The truncated variant (Polymath8b §5, `maynard-trunc`)
 
@@ -322,15 +331,21 @@ simplex. Polymath8b §5 `maynard-trunc` (line 959). Concrete `sSup` over
 noncomputable def Mk_truncated (k : ℕ) (α : ℝ) : ℝ := sSup (MkSet_truncated k α)
 
 /-- For $k \ge 2$ and $\alpha > 0$, the admissible-F set for $M_k^{[\alpha]}$
-is non-empty. Sister axiom of `MkSet_nonempty`; smooth-bump construction
-inside the (sufficiently small) truncated simplex provides a witness. -/
-axiom MkSet_truncated_nonempty (k : ℕ) (hk : 2 ≤ k) (α : ℝ) (hα : 0 < α) :
-    (MkSet_truncated k α).Nonempty
+is non-empty. Sister of `MkSet_nonempty`; smooth-bump construction inside
+the (sufficiently small) truncated simplex provides a witness.
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+theorem MkSet_truncated_nonempty (k : ℕ) (hk : 2 ≤ k) (α : ℝ) (hα : 0 < α) :
+    (MkSet_truncated k α).Nonempty := by
+  let _ := hk; let _ := hα; sorry
 
 /-- The admissible-F set for $M_k^{[\alpha]}$ is bounded above. Sister of
 `MkSet_bddAbove`; since `simplex_truncated k α ⊆ simplex k` (for $\alpha > 0$),
-the same upper bound from `mk-upper` applies. -/
-axiom MkSet_truncated_bddAbove (k : ℕ) (α : ℝ) : BddAbove (MkSet_truncated k α)
+the same upper bound from `mk-upper` applies.
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+theorem MkSet_truncated_bddAbove (k : ℕ) (α : ℝ) : BddAbove (MkSet_truncated k α) := by
+  let _ := k; let _ := α; sorry
 
 /-! ### The ε-enlarged variant (Polymath8b §5, epsilon-trick)
 
@@ -426,17 +441,23 @@ Concrete `sSup` over `MkSet_eps k ε`. -/
 noncomputable def Mk_eps (k : ℕ) (ε : ℝ) : ℝ := sSup (MkSet_eps k ε)
 
 /-- For $k \ge 2$ and $\varepsilon > 0$, the admissible-F set for
-$M_{k,\varepsilon}$ is non-empty. Sister axiom of `MkSet_nonempty`;
+$M_{k,\varepsilon}$ is non-empty. Sister of `MkSet_nonempty`;
 the $(1+\varepsilon)$-enlargement only enlarges the admissible support
-polytope, so any witness for $M_k$ also witnesses $M_{k,\varepsilon}$. -/
-axiom MkSet_eps_nonempty (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε) :
-    (MkSet_eps k ε).Nonempty
+polytope, so any witness for $M_k$ also witnesses $M_{k,\varepsilon}$.
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+theorem MkSet_eps_nonempty (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε) :
+    (MkSet_eps k ε).Nonempty := by
+  let _ := hk; let _ := hε; sorry
 
 /-- The admissible-F set for $M_{k,\varepsilon}$ is bounded above.
 Sister of `MkSet_bddAbove`. Polymath8b §5: $M_{k,\varepsilon}$ admits
 the same asymptotic upper bound as $M_k$ up to a factor of
-$(1+\varepsilon)/(1-\varepsilon)$. -/
-axiom MkSet_eps_bddAbove (k : ℕ) (ε : ℝ) : BddAbove (MkSet_eps k ε)
+$(1+\varepsilon)/(1-\varepsilon)$.
+
+**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+theorem MkSet_eps_bddAbove (k : ℕ) (ε : ℝ) : BddAbove (MkSet_eps k ε) := by
+  let _ := k; let _ := ε; sorry
 
 /-! ### The epsilon-beyond enlargement (Polymath8b §5, Theorem `epsilon-beyond`)
 
