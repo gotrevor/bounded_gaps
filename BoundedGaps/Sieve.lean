@@ -326,6 +326,37 @@ noncomputable def mkF_eps_numerator : (k : ℕ) → ℝ → ((Fin k → ℝ) →
           (∫ ti in Set.Icc (0 : ℝ) (1 + ε - ∑ j, s j),
               F (i.insertNth ti s)) ^ 2
 
+/-- The individual Maynard marginal $J_{i,1-\varepsilon}(F)$ from Polymath8b
+§5 Theorem `epsilon-trick`, extracted from `mkF_eps_numerator` so it can be
+referenced as $\beta_i$ in the $\varepsilon$-flavored sieve-data construction.
+
+Sister of `J_i`; outer integration over `simplex_shrunk n ε`, inner over
+$[0, 1 + \varepsilon - \sum_{j \ne i} t_j]$. -/
+noncomputable def J_i_eps : (k : ℕ) → ℝ → ((Fin k → ℝ) → ℝ) → Fin k → ℝ
+  | 0, _, _, i => i.elim0
+  | n + 1, ε, F, i =>
+      ∫ s in simplex_shrunk n ε,
+        (∫ ti in Set.Icc (0 : ℝ) (1 + ε - ∑ j, s j),
+            F (i.insertNth ti s)) ^ 2
+
+/-- $J_{i,1-\varepsilon}(F) \ge 0$: the integrand is a square. -/
+theorem J_i_eps_nonneg (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) (i : Fin k) :
+    0 ≤ J_i_eps k ε F i := by
+  match k, ε, F, i with
+  | 0, _, _, i => exact i.elim0
+  | n + 1, ε, F, i =>
+      change 0 ≤ ∫ s in simplex_shrunk n ε,
+          (∫ ti in Set.Icc (0 : ℝ) (1 + ε - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+      exact MeasureTheory.integral_nonneg fun _ => sq_nonneg _
+
+/-- The ε-flavored Rayleigh numerator decomposes as $\sum_i J_{i,1-\varepsilon}(F)$
+(Polymath8b §5 Theorem `epsilon-trick`, between the J_{i,1-ε} defs and M_{k,ε}). -/
+theorem mkF_eps_numerator_eq_sum_J_i_eps (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) :
+    mkF_eps_numerator k ε F = ∑ i, J_i_eps k ε F i := by
+  cases k with
+  | zero => simp [mkF_eps_numerator]
+  | succ n => rfl
+
 /-- The Rayleigh-ratio denominator $I(F)$ for $M_{k,\varepsilon}$:
 $\int_{(1+\varepsilon) R_k} F^2$. -/
 noncomputable def mkF_eps_denominator (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
@@ -334,6 +365,12 @@ noncomputable def mkF_eps_denominator (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) 
 /-- $M_{k,\varepsilon}(F) := \left(\sum_i J_{i,1-\varepsilon}(F)\right) / I(F)$. -/
 noncomputable def MkF_eps (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
   mkF_eps_numerator k ε F / mkF_eps_denominator k ε F
+
+/-- **Polymath8b §5 definition of $M_{k,\varepsilon}(F)$**: the ε-flavored
+Maynard quantity is the Rayleigh ratio $\left(\sum_i J_{i,1-\varepsilon}(F)
+\right) / I(F)$. `rfl`-discharged sister of `MkF_eq_rayleigh`. -/
+theorem MkF_eps_eq_rayleigh (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) :
+    MkF_eps k ε F = mkF_eps_numerator k ε F / mkF_eps_denominator k ε F := rfl
 
 /-- The admissible set of $\mathrm{MkF}_\varepsilon$ values: smooth $F$
 supported on $(1+\varepsilon)\mathcal{R}_k$ with nonzero
@@ -562,6 +599,55 @@ theorem exists_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
+/-! ### Selberg sieve data sub-lemmas (ε-flavored, Polymath8b §5 `epsilon-trick`)
+
+ε sister of the non-ε decomposition above. Reuses `selberg_nu` and
+`wtrick_data` (both ε-agnostic) and adds two ε-specific (s1)/(s2) cited
+axioms. -/
+
+/-- **(s1ε) from `nonprime-asym` case (i)** (Polymath8b §3 line 889, applied
+through the §5 `epsilon-trick` reduction).
+
+For admissible $F$ on the $(1+\varepsilon)$-enlarged simplex, (s1) holds
+eventually with $\alpha = I(F) = \int_{(1+\varepsilon)\mathcal{R}_k} F^2$
+(i.e. `mkF_eps_denominator k ε F`).
+
+The constraint $1 + \varepsilon < 1/\vartheta$ does NOT enter here — it is
+needed only for (s2) via the prime-asym window. Future PR can replace with
+a real proof from the divisor-sum expansion. -/
+axiom s1_eps_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
+    {ε : ℝ} (_hε : 0 < ε)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex_eps k ε)
+    (_hF_den : mkF_eps_denominator k ε F > 0)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
+    (b W : ℕ) (_hW : 1 ≤ W) :
+    ∀ᶠ x : ℝ in Filter.atTop,
+      alphaBound k (selberg_nu k F H b W) b W x (mkF_eps_denominator k ε F)
+
+/-- **(s2ε) from `prime-asym` case (i) under EH[ϑ]** (Polymath8b §3 line 862
++ §5 `epsilon-trick` reduction).
+
+Under $\EH[\vartheta]$ and the support-fitting condition $1 + \varepsilon <
+1/\vartheta$, (s2) holds eventually with $\beta_i = (\vartheta/2) \cdot
+J_{i,1-\varepsilon}(F)$. The $(1-\varepsilon)$-shrunken outer integration in
+the numerator is what lets prime-asym case (i)'s support bound be satisfied
+even with the $(1+\varepsilon)$-enlarged $F$. Future PR can replace with a
+real proof. -/
+axiom s2_eps_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
+    {ε ϑ : ℝ} (_hε : 0 < ε) (_hϑ : 0 < ϑ ∧ ϑ < 1)
+    (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex_eps k ε)
+    (_hF_den : mkF_eps_denominator k ε F > 0)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
+    (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
+    ∀ᶠ x : ℝ in Filter.atTop,
+      betaBound k (selberg_nu k F H b W) H b W i.val x
+        (ϑ / 2 * J_i_eps k ε F i)
+
 /-- **The analytic core of the ε-trick** (Polymath8b §5).
 
 Sister of `selberg_sieve_data_from_F` — same shape, with the
@@ -572,24 +658,55 @@ Paper structure: Polymath8b §5 Theorem `epsilon-trick` (line 997). The
 support condition $1 + \varepsilon < 1/\vartheta$ ensures the
 $(1+\varepsilon)$-enlargement still fits inside the equidistribution
 window $\EH[\vartheta]$ provides; below that line the sieve construction
-is the same as `maynard_thm`. -/
--- TRIAGE: HARD_ANALYTIC — Polymath8b §3 + §5. Same level of substance
--- as `selberg_sieve_data_from_F`; consumes `prime-asym` + `nonprime-asym`
--- when further decomposed.
-theorem selberg_sieve_data_eps_from_F {k m : ℕ} (_hk : k ≥ 2) (_hm : m ≥ 1)
-    {ε ϑ : ℝ} (_hε : 0 < ε) (_hϑ : 0 < ϑ ∧ ϑ < 1)
-    (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
+is the same as `maynard_thm`.
+
+Real proof — mirror of `selberg_sieve_data_from_F` (PR-A5). Uses
+`wtrick_data` + `s1_eps_holds_from_nonprime_asym` + `s2_eps_holds_from_prime_asym_under_EH`
++ the algebraic key step $(\vartheta/2) \cdot M_{k,\varepsilon}(F)
+> (\vartheta/2) \cdot (2m/\vartheta) = m$. -/
+theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
+    {ε ϑ : ℝ} (hε : 0 < ε) (hϑ : 0 < ϑ ∧ ϑ < 1)
+    (hEH : Prerequisites.EH ϑ) (hSupp : 1 + ε < 1 / ϑ)
     {F : (Fin k → ℝ) → ℝ}
-    (_hF_smooth : ContDiff ℝ ⊤ F)
-    (_hF_supp : Function.support F ⊆ simplex_eps k ε)
-    (_hF_den : mkF_eps_denominator k ε F > 0)
-    (_hF_Mk : MkF_eps k ε F > 2 * m / ϑ)
-    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k) :
+    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_supp : Function.support F ⊆ simplex_eps k ε)
+    (hF_den : mkF_eps_denominator k ε F > 0)
+    (hF_Mk : MkF_eps k ε F > 2 * m / ϑ)
+    {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
     ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
       0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
       (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
-          betaBound k ν H b W i.val x (β i)) := sorry
+          betaBound k ν H b W i.val x (β i)) := by
+  obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  have hϑ_pos : 0 < ϑ := hϑ.1
+  have hϑ_half_pos : 0 < ϑ / 2 := by linarith
+  refine ⟨b, W, selberg_nu k F H b W, mkF_eps_denominator k ε F,
+    fun i => ϑ / 2 * J_i_eps k ε F i, hF_den, ?_, ?_, ?_, ?_⟩
+  · -- 0 ≤ β i
+    intro i
+    exact mul_nonneg hϑ_half_pos.le (J_i_eps_nonneg k ε F i)
+  · -- (∑ i, β i) / α > m
+    have hsum : (∑ i, ϑ / 2 * J_i_eps k ε F i) =
+        ϑ / 2 * mkF_eps_numerator k ε F := by
+      rw [← Finset.mul_sum, ← mkF_eps_numerator_eq_sum_J_i_eps]
+    have hratio_eq :
+        (∑ i, ϑ / 2 * J_i_eps k ε F i) / mkF_eps_denominator k ε F
+          = ϑ / 2 * MkF_eps k ε F := by
+      rw [hsum, mul_div_assoc, ← MkF_eps_eq_rayleigh]
+    rw [hratio_eq]
+    have step1 : (ϑ / 2) * MkF_eps k ε F > (ϑ / 2) * (2 * m / ϑ) :=
+      mul_lt_mul_of_pos_left hF_Mk hϑ_half_pos
+    have step2 : (ϑ / 2) * (2 * (m : ℝ) / ϑ) = m := by
+      field_simp
+    linarith
+  · -- (s1ε)
+    exact s1_eps_holds_from_nonprime_asym hk hε hF_smooth hF_supp hF_den
+      hAdm hLen b W hW
+  · -- (s2ε)
+    intro i
+    exact s2_eps_holds_from_prime_asym_under_EH hk hε hϑ hEH hSupp
+      hF_smooth hF_supp hF_den hAdm hLen b W hW i
 
 /-- **Theorem 5.4 / "epsilon-trick"** (Polymath8b §5 line 997,
 `\label{epsilon-trick}`, variant (i) — EH-flavored).
