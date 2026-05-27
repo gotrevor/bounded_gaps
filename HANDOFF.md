@@ -1,9 +1,9 @@
 # HANDOFF.md — Bounded Gaps Lean project
 
-Written 2026-05-27 (early morning), superseding the 2026-05-26 evening
-version. Reflects state at `master` commit `3507f0e` (PR #43 merged),
-**6 PRs after the previous handoff** (#39, #40, #41, #42, #43, plus
-this refresh #44).
+Written 2026-05-27 (later in the session), superseding the 2026-05-27
+early-morning version. Reflects state at `master` commit `cab9bab` (PR
+#47 merged), **3 PRs after the previous handoff** (#45, #46, #47, plus
+this refresh #48).
 
 This document is self-contained: a fresh session can read it and start
 working without scrolling history.
@@ -14,7 +14,7 @@ working without scrolling history.
 
 ## TL;DR
 
-- **Sorries: 23.** **Axioms: 34.** **Opaques: 3** (`alphaBound`, `betaBound`,
+- **Sorries: 19.** **Axioms: 35.** **Opaques: 3** (`alphaBound`, `betaBound`,
   `selberg_nu` — all real-but-unencoded defs, by project convention).
 - **The project has a `ROADMAP.md` now** (PR #40). Replaces sorry-count
   with "depth into the sieve" as the strategic metric. 4 axiom-buckets:
@@ -32,13 +32,24 @@ working without scrolling history.
   as `maynard_trunc` (needs a `selberg_sieve_data_*_from_F` sister).
 - **`maynard_trunc` is paper-faithful** (PR-A1b-i #37, prior session): now
   uses `Mk_truncated` on the truncated simplex. Body still a sorry.
-- **Mid-session structural wins (PR #42, #43):**
+- **Mid-session structural wins (PR #42-#47):**
   - `Mk_zero_le_one` extracted as standalone discharged theorem
     ($M_0 \le 1$ via `mkF_numerator | 0, _ => 0`).
   - `MkSet_truncated_bddAbove` discharged via subset of `MkSet`
     (routes through `MkSet_bddAbove`'s sorry; local body is real).
   - `SieveTheoreticArgument` + `parity_barrier` removed as
     documentation-as-axiom (never consumed, pure trust-base shrink).
+  - **`MkSet_eps_nonempty`** discharged (PR #45) via shared F witness from
+    `MkSet_nonempty` + `setIntegral_mono_set` integrability chain. Added
+    reusable `simplex_isClosed` / `simplex_isCompact` private helpers.
+  - **`H1_le_12_under_EH`** discharged (PR #46) via new Maynard k=5 chain:
+    `tuple_5 := [0, 4, 6, 10, 12]` + `tuple_5_admissible` (real proof via
+    `admissible_of_check_small_primes` + `native_decide` on residues mod
+    {2, 3, 5}) + `narrowness_5_le_12` (real) + `mk_5_witness_under_EH`
+    (Bucket A citation) + `dhl_5_2_under_EH` (real).
+  - **`polynomialMaynardNumerator` + `polynomialMaynardDenominator`**
+    real def bodies (PR #47) — closed-form rational integrals via
+    `monomialIntegral` and new `dirichletIntegralWithSlack` helper.
 
 ## Session ledger (since 2026-05-26 evening)
 
@@ -50,7 +61,11 @@ working without scrolling history.
 | #41 | Reclassify 9 mis-typed axioms → sorries | axioms 45→36, sorries 15→24 |
 | #42 | `MkSet_truncated_bddAbove` discharge + `Mk_zero_le_one` extract | sorries 24→23 |
 | #43 | Remove `SieveTheoreticArgument` + `parity_barrier` | axioms 36→34 |
-| #44 | This HANDOFF refresh + ledger update | doc only |
+| #44 | HANDOFF + ROADMAP ledger refresh | doc only |
+| #45 | `MkSet_eps_nonempty` discharge + `simplex_isCompact` infrastructure | sorries 23→22 |
+| #46 | Maynard k=5 chain: `tuple_5`, `narrowness_5_le_12` (real), `mk_5_witness_under_EH` (axiom), `dhl_5_2_under_EH` (real), `H1_le_12_under_EH` discharged | sorries 22→21, axioms 34→35 |
+| #47 | `polynomialMaynardNumerator` + `polynomialMaynardDenominator` real def bodies + `dirichletIntegralWithSlack` helper | sorries 21→19 |
+| #48 | This HANDOFF refresh | doc only |
 
 ## Operating principles (locked in, keep)
 

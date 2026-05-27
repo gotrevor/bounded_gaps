@@ -31,21 +31,25 @@ estimate vs actual.
 
 ## Current axiom inventory
 
-**As of 2026-05-27**: **34 axioms, 3 opaques, 23 sorries.**
+**As of 2026-05-27 (post-PR #47)**: **35 axioms, 3 opaques, 19 sorries.**
 **Pre-reclassification snapshot (when this doc was first written 2026-05-26)**:
 45 axioms, 3 opaques, 15 sorries.
 
-Net delta over the 2026-05-26 → 2026-05-27 session:
-- Axioms 45 → 34 (-11): 9 from Bucket B/C reclassification (PR #41),
+Net delta over the 2026-05-26 → 2026-05-27 session (PRs #39-#48):
+- Axioms 45 → 35 (-10): 9 from Bucket B/C reclassification (PR #41),
   2 from Bucket A trim (PR #43, `SieveTheoreticArgument` + `parity_barrier`
-  documentation-as-axiom removal).
-- Sorries 15 → 23 (+8): 9 from reclassification, -1 from
-  `MkSet_truncated_bddAbove` real discharge (PR #42).
+  documentation-as-axiom removal), +1 new Bucket A citation
+  (`mk_5_witness_under_EH`, PR #46).
+- Sorries 15 → 19 (+4): 9 from reclassification, -5 from real
+  discharges (`MkSet_truncated_bddAbove`, `MkSet_eps_nonempty`,
+  `H1_le_12_under_EH`, `polynomialMaynardNumerator`,
+  `polynomialMaynardDenominator`).
 - Opaques 3 → 3 (unchanged; no Tier 1 work yet).
 
-Honest-debt sum (axioms + sorries + opaques): 63 → 60. The 3 unit drop
-is real (vacuous documentation-as-axiom removal); the rest of the
-movement is reclassification, not progress.
+Honest-debt sum (axioms + sorries + opaques): 63 → 57.
+- -3 from documentation-as-axiom removal (PR #43).
+- -3 from real discharges net of the +1 citation axiom (PRs #45-47).
+- Reclassification (PR #41) was honest-debt-sum-neutral by design.
 
 Classified into four buckets:
 
@@ -224,7 +228,11 @@ Format: `YYYY-MM-DD | tier | what landed | session-equivalents (1.0 = full eveni
 | 2026-05-26 | 2 (reclassification only) | Reclassify 9 mis-typed axioms → `theorem := sorry`: 7 Bucket B (`MkSet_nonempty`/`bddAbove` + ε/trunc sisters, `Mk_le_one_of_k_le_one`) + 2 Bucket C (`DHL_gives_freq_primeAt_gap`, `narrowness_realized`). Axioms 45→36, sorries 15→24, honest-debt unchanged. No discharges yet, metric just stops lying. (PR #41) | 0.2 |
 | 2026-05-27 | 2 | `MkSet_truncated_bddAbove` discharged via `BddAbove.mono` + subset (`simplex_truncated k α ⊆ simplex k`, same value function). Routes through `MkSet_bddAbove`'s sorry; local body is real. Also extracted `Mk_zero_le_one` (new no-sorry theorem) and split `Mk_le_one_of_k_le_one` into `k=0` (discharged) + `k=1` (sorry, Cauchy-Schwarz future PR). Sorries 24→23 (real -1). (PR #42) | 0.2 |
 | 2026-05-27 | A-trim | Removed `SieveTheoreticArgument` + `parity_barrier`: pure documentation-as-axiom, never consumed by any theorem. Pure trust-base shrink. Axioms 36→34 (-2), sorries unchanged. (PR #43) | 0.2 |
-| 2026-05-27 | meta | This HANDOFF refresh + ledger update (PR #44 — session wrap-up). | 0.1 |
+| 2026-05-27 | meta | HANDOFF refresh + ledger update (PR #44). | 0.1 |
+| 2026-05-27 | 2 | `MkSet_eps_nonempty` discharged via shared F + `setIntegral_mono_set`. Added `simplex_isClosed` / `simplex_isCompact` reusable helpers. Sorries 23→22 (real -1). (PR #45) | 0.3 |
+| 2026-05-27 | "new flagship" | Maynard k=5 chain: `tuple_5` admissibility (real, decide-based), `narrowness_5_le_12` (real, no axiom), `mk_5_witness_under_EH` (Bucket A citation), `dhl_5_2_under_EH` (real), `H1_le_12_under_EH` discharged. Sorries 22→21, axioms 34→35. (PR #46) | 0.4 |
+| 2026-05-27 | "polynomial def bodies" | `polynomialMaynardNumerator` + `polynomialMaynardDenominator` real `noncomputable def`s with closed-form rational formulas; new `dirichletIntegralWithSlack` helper. Sorries 21→19 (real -2). Unblocks `polynomialMkF_eq_MkF` (~30 lines per TRIAGE). (PR #47) | 0.3 |
+| 2026-05-27 | meta | This HANDOFF refresh #48 — session wrap-up. | 0.1 |
 
 (One row per work-unit. Tier 0 = scaffolding, planning, statement fixes
 that don't discharge axioms. Tiers 1-5 = real depth-into-sieve progress.)
