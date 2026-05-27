@@ -438,6 +438,91 @@ the same asymptotic upper bound as $M_k$ up to a factor of
 $(1+\varepsilon)/(1-\varepsilon)$. -/
 axiom MkSet_eps_bddAbove (k : ℕ) (ε : ℝ) : BddAbove (MkSet_eps k ε)
 
+/-! ### The epsilon-beyond enlargement (Polymath8b §5, Theorem `epsilon-beyond`)
+
+In the GEH refinement, $F$'s support may extend further to the
+$\frac{k}{k-1}$-scaled simplex, provided $F$ satisfies the vanishing
+marginal condition (eqn 1029) that kills its $i$-th 1-D integral on the
+region where the remaining coordinates exceed $1 + \varepsilon$.
+
+Unlike `epsilon-trick`, there is no Rayleigh-sup `Mk_beyond`; the
+theorem takes an explicit $F$ witness with the marginal condition baked in.
+Three new pieces vs `epsilon-trick`:
+
+1. `simplex_scaled k r` — the generic $r$-scaled simplex.
+2. `HasVanishingMarginal k ε F` — the eqn (1029) predicate.
+3. `J_i_beyond k ε F i` — third marginal def: outer over $(1-\varepsilon)
+   R_{k-1}$ (same as `J_i_eps`), inner integral over **$[0, \infty)$**
+   rather than the clamped $[0, 1+\varepsilon - \sum]$ used in `J_i_eps`.
+   For $F$ supported on $\frac{k}{k-1} R_k$ (paper's epsilon-beyond
+   polytope), only the unclamped form matches the paper. -/
+
+/-- The generic $r$-scaled simplex $r \cdot \mathcal{R}_k$:
+$\{t \in [0, \infty)^k : \sum t_i \le r\}$. Specialises to `simplex`
+($r = 1$), `simplex_eps` ($r = 1 + \varepsilon$), and `simplex_shrunk`
+($r = 1 - \varepsilon$) but kept distinct to avoid disturbing earlier
+defs and to support Polymath8b §5 epsilon-beyond's $r = k/(k-1)$. -/
+noncomputable def simplex_scaled (k : ℕ) (r : ℝ) : Set (Fin k → ℝ) :=
+  { t | (∀ i, 0 ≤ t i) ∧ ∑ i, t i ≤ r }
+
+/-- **Vanishing marginal condition** (Polymath8b §5 eqn `vanishing-marginal`,
+1029-1037). For $i = 1, \ldots, k$, the $i$-th 1-D integral of $F$ along
+$[0, \infty)$ vanishes whenever the remaining coordinates sum to more than
+$1 + \varepsilon$:
+$$\int_0^\infty F(t_1, \ldots, t_k)\, dt_i = 0 \quad\text{when}\quad
+  \sum_{j \ne i} t_j > 1 + \varepsilon.$$
+
+This is the key hypothesis of `epsilon-beyond`: it lets us enlarge $F$'s
+support polytope from $(1 + \varepsilon) R_k$ (used in `epsilon-trick`) to
+the larger $\frac{k}{k-1} R_k$, while keeping the Rayleigh ratio's
+numerator finite (the marginal-vanishing forces the inner integrand to
+zero on the part of the enlarged polytope outside $(1 + \varepsilon) R_k$). -/
+def HasVanishingMarginal : (k : ℕ) → ℝ → ((Fin k → ℝ) → ℝ) → Prop
+  | 0, _, _ => True
+  | n + 1, ε, F =>
+      ∀ i : Fin (n + 1), ∀ s : Fin n → ℝ,
+        (∀ j, 0 ≤ s j) → (∑ j, s j > 1 + ε) →
+        ∫ ti in Set.Ici (0 : ℝ), F (i.insertNth ti s) = 0
+
+/-- The individual Maynard marginal $J_{i, 1-\varepsilon}(F)$ as it
+appears in Polymath8b §5 Theorem `epsilon-beyond`: outer integration over
+the $(1-\varepsilon)$-shrunk $(k-1)$-simplex, **inner integration over
+$[0, \infty)$ (unclamped)**.
+
+Sister of `J_i_eps`. The difference: `J_i_eps` clamps the inner integral
+to $[0, 1 + \varepsilon - \sum_{j \ne i} t_j]$, which equals the paper's
+$[0, \infty)$ form precisely when $F$ is supported on
+$(1 + \varepsilon) \mathcal{R}_k$. For `epsilon-beyond` $F$ is supported
+on the larger $\frac{k}{k-1} \mathcal{R}_k$, so the clamped form would
+**undercount**; the unclamped form here is the correct one.
+
+When `HasVanishingMarginal k ε F` holds, the inner integrand
+$\int_0^\infty F(t_1, \ldots, t_k)\, dt_i$ is automatically zero on the
+part of the outer domain where $\sum_{j \ne i} t_j > 1 + \varepsilon$, so
+the value depends only on the $(1-\varepsilon)$-shrunk piece even though
+the inner domain is the full $[0, \infty)$. -/
+noncomputable def J_i_beyond : (k : ℕ) → ℝ → ((Fin k → ℝ) → ℝ) → Fin k → ℝ
+  | 0, _, _, i => i.elim0
+  | n + 1, ε, F, i =>
+      ∫ s in simplex_shrunk n ε,
+        (∫ ti in Set.Ici (0 : ℝ), F (i.insertNth ti s)) ^ 2
+
+/-- $J_{i, 1-\varepsilon}(F) \ge 0$ — integrand is a square. -/
+theorem J_i_beyond_nonneg (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ) (i : Fin k) :
+    0 ≤ J_i_beyond k ε F i := by
+  match k, ε, F, i with
+  | 0, _, _, i => exact i.elim0
+  | n + 1, ε, F, i =>
+      change 0 ≤ ∫ s in simplex_shrunk n ε,
+          (∫ ti in Set.Ici (0 : ℝ), F (i.insertNth ti s)) ^ 2
+      exact MeasureTheory.integral_nonneg fun _ => sq_nonneg _
+
+/-- The Rayleigh-ratio denominator $I(F) = \int F^2$ for `epsilon-beyond`,
+restricted to $F$'s support polytope $\frac{k}{k-1} \mathcal{R}_k$.
+(Equivalent to $\int_{[0,\infty)^k} F^2$ when $F$ has the stated support.) -/
+noncomputable def mkF_beyond_denominator (k : ℕ) (F : (Fin k → ℝ) → ℝ) : ℝ :=
+  ∫ t in simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)), F t ^ 2
+
 /-! ### The variational lower bounds → DHL conversions
 (Polymath8b §5: Theorems "maynard-thm", "maynard-trunc", "epsilon-trick",
 "epsilon-beyond") -/
@@ -790,11 +875,51 @@ theorem epsilon_trick (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
   exact selberg_sieve_data_eps_from_F hk hm hε hϑ hEH hSupp hSmooth hSupp'
     hDen hMkF hAdm hLen
 
-/-- **Theorem 5.5 / "epsilon-beyond"** (under GEH, the strongest variant). -/
--- TRIAGE: NEEDS_SIEVE — strongest variant, uses GEH + Mk_eps. Yields the
--- parity-tight H_1 ≤ 6 under GEH.
-theorem epsilon_beyond (k m : ℕ) (ε : ℝ) (ϑ : ℝ)
-    (_hGEH : Prerequisites.GEH ϑ) (_hε : 0 < ε)
-    (_hMk : Mk_eps k ε > 2 * m / ϑ) : DHL k (m + 1) := sorry
+/-- **Theorem 5.5 / "epsilon-beyond"** (Polymath8b §5, line 1028-1037 of
+`papers/src/polymath8b-1407.4897/newergap-submitted.tex`,
+`\label{epsilon-beyond}`).
+
+Let $k \ge 2$, $m \ge 1$, $0 < \vartheta < 1$ with $\GEH[\vartheta]$, and
+$0 < \varepsilon < \frac{1}{k-1}$. Suppose $F : [0,\infty)^k \to \mathbb{R}$
+is non-zero square-integrable (here: $C^\infty$ for compatibility with the
+sieve scaffolding), supported in $\frac{k}{k-1} \mathcal{R}_k$, and
+satisfies the **vanishing marginal condition**:
+$\int_0^\infty F(t_1, \ldots, t_k)\, dt_i = 0$ whenever $\sum_{j \ne i}
+t_j > 1 + \varepsilon$. If
+$\frac{\sum_i J_{i, 1-\varepsilon}(F)}{I(F)} > \frac{2m}{\vartheta}$,
+then $\DHL[k, m+1]$ holds.
+
+**Statement-fix history.** PR-A1b-ii (this PR): restated to match the paper
+TeX. Previous signature used `Mk_eps k ε > 2m/ϑ` as a Rayleigh-sup
+threshold, which is the wrong shape entirely — `epsilon-beyond` has no
+Rayleigh-sup (would need a `MkSet_beyond` with vanishing-marginal baked
+in). The paper takes an explicit $F$ with the marginal condition. The
+inner integral in $J_{i, 1-\varepsilon}$ runs over $[0, \infty)$ (unclamped),
+not the $[0, 1+\varepsilon - \sum]$ used in `J_i_eps`'s clamped form,
+because `epsilon-beyond` enlarges the support polytope from
+$(1 + \varepsilon) \mathcal{R}_k$ to $\frac{k}{k-1} \mathcal{R}_k$
+(strictly larger when $\varepsilon < \frac{1}{k-1}$).
+
+**Body still a `sorry`.** Discharge sketch (PR-A1b-iii sister): build a
+`selberg_sieve_data_beyond_from_F` analytic-core lemma — same template as
+`selberg_sieve_data_from_F` / `_eps_from_F` (PRs #34, #35), but with
+$(b, W, \nu)$ tuned for GEH instead of EH and the vanishing-marginal
+condition routed through the W-trick. Then feed into `dhl_criterion`. -/
+-- TRIAGE: NEEDS_SIEVE — strongest variant, GEH + explicit F + vanishing
+-- marginal. Yields the parity-tight $H_1 \le 6$ under GEH.
+theorem epsilon_beyond (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
+    (ε ϑ : ℝ) (hε_pos : 0 < ε) (hε_lt : ε < 1 / ((k : ℝ) - 1))
+    (hϑ : 0 < ϑ ∧ ϑ < 1) (_hGEH : Prerequisites.GEH ϑ)
+    (F : (Fin k → ℝ) → ℝ)
+    (_hSmooth : ContDiff ℝ ⊤ F)
+    (_hSupp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
+    (_hVanish : HasVanishingMarginal k ε F)
+    (_hDen : mkF_beyond_denominator k F > 0)
+    (_hThresh :
+      (∑ i, J_i_beyond k ε F i) / mkF_beyond_denominator k F > 2 * m / ϑ) :
+    DHL k (m + 1) := by
+  -- Silence "unused" linter warnings on inputs that the discharge will use.
+  let _ := hk; let _ := hm; let _ := hε_pos; let _ := hε_lt; let _ := hϑ
+  sorry
 
 end BoundedGaps.Sieve
