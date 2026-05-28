@@ -656,6 +656,26 @@ theorem exists_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
+/-- **sSup extraction for $M_k^{[\alpha]}$** (truncated variant): if
+$c < M_k^{[\alpha]}$ then there is a specific admissible $F$ supported on
+the truncated simplex $\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$ realizing
+$\mathrm{MkF}(k, F) > c$.
+
+Sister of `exists_F_of_Mk_gt`, same `lt_csSup_iff` discharge consuming
+`MkSet_truncated_nonempty` (for $k \ge 2$, $\alpha > 0$) and
+`MkSet_truncated_bddAbove` as leaves. -/
+theorem exists_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
+    (α : ℝ) (hα : 0 < α) (c : ℝ) (hc : c < Mk_truncated k α) :
+    ∃ F : (Fin k → ℝ) → ℝ,
+      ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_truncated k α ∧
+      mkF_denominator k F > 0 ∧ c < MkF k F := by
+  have hLt : c < sSup (MkSet_truncated k α) := hc
+  obtain ⟨v, hvMem, hcv⟩ :=
+    (lt_csSup_iff (MkSet_truncated_bddAbove k α)
+      (MkSet_truncated_nonempty k hk α hα)).mp hLt
+  obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
+  exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
+
 /-! ### Selberg sieve data sub-lemmas (Polymath8b §3, decomposed)
 
 The analytic core `selberg_sieve_data_from_F` is twig-split into:
@@ -747,6 +767,31 @@ axiom s2_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
     ∀ᶠ x : ℝ in Filter.atTop,
       betaBound k (selberg_nu k F H b W) H b W i.val x (ϑ / 2 * J_i k F i)
 
+/-- **(s2) from `prime-asym` case (ii)** (Polymath8b §3, MPZ smooth-moduli
+window). Under $\MPZ[\varpi, \delta]$ with $0 < 1/4 + \varpi$, and $F$
+supported on the truncated simplex $\{t \in [0, \delta/(1/4+\varpi)]^k :
+\sum_i t_i \le 1\}$, the (s2) asymptotic holds eventually with
+$\beta_i = (1/4 + \varpi) \cdot J_i(F)$ for each $i$.
+
+This is the MPZ analog of `s2_holds_from_prime_asym_under_EH`: the effective
+EH level is $\vartheta := 1/2 + 2\varpi$, the $\vartheta/2$ factor becomes
+$1/4 + \varpi$, and the smooth-moduli restriction is encoded by F's
+per-coordinate truncation at $\delta/(1/4+\varpi)$.
+
+Future PR can replace with a real proof from Polymath8a's smooth-modulus
+prime-asym estimate (Polymath8a Theorem 2.17 plus the divisor-sum
+expansion of Polymath8b §3 eqn (theta-oo)). -/
+axiom s2_holds_from_prime_asym_under_MPZ {k : ℕ} (_hk : k ≥ 2)
+    {ϖ δ : ℝ} (_hϖ : 0 < 1/4 + ϖ) (_hMPZ : Prerequisites.MPZ ϖ δ)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1/4 + ϖ)))
+    (_hF_den : mkF_denominator k F > 0)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
+    (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
+    ∀ᶠ x : ℝ in Filter.atTop,
+      betaBound k (selberg_nu k F H b W) H b W i.val x ((1/4 + ϖ) * J_i k F i)
+
 /-- **The analytic core of Maynard's theorem** (Polymath8b §3 + §5).
 Given an admissible $F$ on the simplex with $\mathrm{MkF}(k, F) > 2m/\vartheta$
 under $\EH[\vartheta]$, construct Selberg sieve data $(b, W, \nu,
@@ -815,6 +860,71 @@ theorem maynard_thm (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϑ : ℝ)
     exists_F_of_Mk_gt k hk (2 * m / ϑ) hMk
   exact selberg_sieve_data_from_F hk hm hϑ hEH hSmooth hSupp hDen hMkF hAdm hLen
 
+/-- **Analytic core of Maynard's truncated theorem** (Polymath8b §3 + §5,
+MPZ flavor). Sister of `selberg_sieve_data_from_F`.
+
+Given an admissible $F$ on the **truncated** simplex $\{t \in [0,
+\delta/(1/4+\varpi)]^k : \sum_i t_i \le 1\}$ with $\mathrm{MkF}(k, F) >
+m/(1/4+\varpi)$, under $\MPZ[\varpi, \delta]$ with $0 < 1/4 + \varpi$,
+construct Selberg sieve data $(b, W, \nu, \alpha, \beta)$ over an
+admissible $k$-tuple satisfying (s1), (s2), and the key ratio
+$\sum_i \beta_i / \alpha > m$.
+
+Real proof — twig-split composition of `wtrick_data`,
+`s1_holds_from_nonprime_asym` (reused; truncated-supp ⊂ simplex-supp),
+`s2_holds_from_prime_asym_under_MPZ` (new MPZ analog), plus the algebraic
+key step $(1/4 + \varpi) \cdot M_k(F) > (1/4 + \varpi) \cdot
+(m/(1/4+\varpi)) = m$.
+
+Mirrors PR-A5 / `selberg_sieve_data_from_F` with the substitution
+$\vartheta/2 \mapsto 1/4 + \varpi$ (effective theta = $1/2 + 2\varpi$
+from the MPZ window). -/
+theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
+    {ϖ δ : ℝ} (hϖ : 0 < 1/4 + ϖ) (hMPZ : Prerequisites.MPZ ϖ δ)
+    {F : (Fin k → ℝ) → ℝ}
+    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1/4 + ϖ)))
+    (hF_den : mkF_denominator k F > 0)
+    (hF_Mk : MkF k F > m / (1/4 + ϖ))
+    {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
+    ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
+      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
+      (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
+          betaBound k ν H b W i.val x (β i)) := by
+  obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  -- Coerce F's support from truncated simplex into the full simplex; the
+  -- per-coordinate constraint t_i ≤ α is stricter than the open simplex.
+  have hF_supp_simplex : Function.support F ⊆ simplex k := by
+    intro t ht
+    obtain ⟨h_nonneg, _h_lealpha, h_sumle⟩ := hF_supp ht
+    exact ⟨h_nonneg, h_sumle⟩
+  refine ⟨b, W, selberg_nu k F H b W, mkF_denominator k F,
+    fun i => (1/4 + ϖ) * J_i k F i, hF_den, ?_, ?_, ?_, ?_⟩
+  · -- 0 ≤ β i
+    intro i
+    exact mul_nonneg hϖ.le (J_i_nonneg k F i)
+  · -- (∑ i, β i) / α > m
+    have hsum : (∑ i, (1/4 + ϖ) * J_i k F i) = (1/4 + ϖ) * mkF_numerator k F := by
+      rw [← Finset.mul_sum, ← mkF_numerator_eq_sum_J_i]
+    have hratio_eq :
+        (∑ i, (1/4 + ϖ) * J_i k F i) / mkF_denominator k F = (1/4 + ϖ) * MkF k F := by
+      rw [hsum, mul_div_assoc, ← MkF_eq_rayleigh]
+    rw [hratio_eq]
+    have step1 : (1/4 + ϖ) * MkF k F > (1/4 + ϖ) * ((m : ℝ) / (1/4 + ϖ)) :=
+      mul_lt_mul_of_pos_left hF_Mk hϖ
+    have hne : (1/4 + ϖ : ℝ) ≠ 0 := ne_of_gt hϖ
+    have step2 : (1/4 + ϖ) * ((m : ℝ) / (1/4 + ϖ)) = m := by
+      rw [mul_div_assoc', mul_comm, mul_div_assoc, div_self hne, mul_one]
+    linarith
+  · -- (s1): reuse the non-truncated axiom; truncated F's support sits inside
+    -- the full simplex by the coercion above.
+    exact s1_holds_from_nonprime_asym hk hF_smooth hF_supp_simplex hF_den hAdm hLen b W hW
+  · -- (s2) MPZ version
+    intro i
+    exact s2_holds_from_prime_asym_under_MPZ hk hϖ hMPZ hF_smooth hF_supp hF_den
+      hAdm hLen b W hW i
+
 /-- **Theorem 5.3 / "maynard-trunc"** (under MPZ): truncated variant suitable
 for the Zhang/Polymath8a regime.
 
@@ -822,22 +932,34 @@ Paper reference: Polymath8b §5 line 957–966 (`\label{maynard-trunc}`):
 $$\text{If } M_k^{[\delta/(1/4+\varpi)]} > \frac{m}{1/4+\varpi} \text{ then } \DHL[k,m+1].$$
 
 Previously stated with `Mk k > 4m/(1/2+2ϖ)` (unrestricted simplex + 2× higher
-threshold), which had two distinct paper-faithfulness bugs:
+threshold), which had two distinct paper-faithfulness bugs (fixed in
+PR-A1b-i):
 - `Mk` not `Mk_truncated` — paper sup is over truncated simplex, not the
   full one. `Mk ≥ Mk_truncated` so the unrestricted-Mk hypothesis is
   *weaker* (can hold without the true paper hypothesis).
 - 2× threshold: `4m/(1/2+2ϖ) = 2m/(1/4+ϖ)`, paper has `m/(1/4+ϖ)`.
 
-Restated to match the paper: `Mk_truncated k (δ/(1/4+ϖ)) > m/(1/4+ϖ)`.
-Still a sorry — the body is the same Polymath8a sieve construction, blocked
-on the same `selberg_sieve_data_*` analytic-core chain. Future PR will
-discharge it via a `selberg_sieve_data_truncated_from_F` sister lemma. -/
--- TRIAGE: NEEDS_SIEVE — Polymath8a-flavored variant; truncated weights to
--- handle smooth-moduli regime. Same blocker chain as maynard_thm.
-theorem maynard_trunc (k m : ℕ) (ϖ δ : ℝ)
-    (_hMPZ : Prerequisites.MPZ ϖ δ)
-    (_hMk : Mk_truncated k (δ / (1/4 + ϖ)) > m / (1/4 + ϖ)) :
-    DHL k (m + 1) := sorry
+**Discharged 2026-05-27** (PR-A1b-iii): real composition through
+`exists_F_truncated_of_Mk_truncated_gt`, `selberg_sieve_data_truncated_from_F`,
+`dhl_criterion`. Mirrors `maynard_thm`'s body modulo the truncated-simplex
+extraction and the MPZ flavor.
+
+Signature requires `0 < 1/4 + \varpi` and `0 < \delta` (paper-faithful;
+Polymath8b §5 line 957 has $0 < \varpi < 1/4$, $0 < \delta < 1/4 + \varpi$).
+The 4 truncated-Mk witness axioms in `Polymath8b.lean` were updated to
+expose these positivity components. -/
+theorem maynard_trunc (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϖ δ : ℝ)
+    (hϖ : 0 < 1/4 + ϖ) (hδ : 0 < δ) (hMPZ : Prerequisites.MPZ ϖ δ)
+    (hMk : Mk_truncated k (δ / (1/4 + ϖ)) > m / (1/4 + ϖ)) :
+    DHL k (m + 1) := by
+  apply dhl_criterion k m hk hm
+  intro H hAdm hLen
+  have hα_pos : 0 < δ / (1/4 + ϖ) := div_pos hδ hϖ
+  obtain ⟨F, hSmooth, hSupp, hDen, hMkF⟩ :=
+    exists_F_truncated_of_Mk_truncated_gt k hk (δ / (1/4 + ϖ)) hα_pos
+      (m / (1/4 + ϖ)) hMk
+  exact selberg_sieve_data_truncated_from_F hk hm hϖ hMPZ hSmooth hSupp hDen
+    hMkF hAdm hLen
 
 /-- **sSup extraction for $M_{k,\varepsilon}$**: if $c < M_{k,\varepsilon}$
 then there is a specific admissible $F$ supported on $(1+\varepsilon)
