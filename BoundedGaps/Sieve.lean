@@ -701,17 +701,50 @@ from `wtrick_data`, set $\nu := $ `selberg_nu`, set $\alpha := $
 $\sum_i \beta_i / \alpha = (\vartheta/2) \cdot M_k(F) > (\vartheta/2) \cdot
 (2m/\vartheta) = m$ follows by algebra. -/
 
+/-- **The 1D Möbius-divisor transform** (Polymath8b §3, the $\lambda$
+operator underlying eqn (3.6)–(3.7) `nuform`):
+$$\lambda_g(R, n) := \sum_{d \mid n} \mu(d)\, g\!\left(\frac{\log d}{\log R}\right).$$
+
+This is the per-coordinate building block of the Selberg sieve weight: the
+multidimensional weight `selberg_nu` is a squared finite linear combination
+of products $\prod_i \lambda_{F_{j,i}}(R, n + h_i)$ over a basis
+decomposition $F = \sum_j c_j \prod_i F_{j,i}$.
+
+Fully concrete `noncomputable def` (Tier-1 ROADMAP entry point, 2026-05-27):
+sum over `Nat.divisors n` of the mathlib Möbius function `μ` cast to ℝ,
+weighted by $g$ evaluated at the normalized log-divisor. The sieve
+threshold $R$ enters through the $\log d / \log R$ rescaling. -/
+noncomputable def lambdaTransform (g : ℝ → ℝ) (R : ℝ) (n : ℕ) : ℝ :=
+  ∑ d ∈ n.divisors,
+    (ArithmeticFunction.moebius d : ℝ) * g (Real.log d / Real.log R)
+
+/-- $\lambda_g(R, 0) = 0$: the empty divisor set. -/
+@[simp] theorem lambdaTransform_zero (g : ℝ → ℝ) (R : ℝ) :
+    lambdaTransform g R 0 = 0 := by
+  unfold lambdaTransform; rw [Nat.divisors_zero]; simp
+
+/-- $\lambda_g(R, 1) = g(0)$: the only divisor is $1$, with $\mu(1) = 1$
+and $\log 1 = 0$. -/
+@[simp] theorem lambdaTransform_one (g : ℝ → ℝ) (R : ℝ) :
+    lambdaTransform g R 1 = g 0 := by
+  unfold lambdaTransform; rw [Nat.divisors_one]; simp
+
 /-- **Selberg sieve weight from $F$** (Polymath8b §3, eqn (3.6)–(3.7),
 `nuform`): $\nu(n) = \left(\sum_j c_j \prod_i \lambda_{F_{j,i}}(n + h_i)
 \right)^2$ — a finite linear combination of products of 1D divisor sums
-against marginals of $F$.
+(`lambdaTransform`) against marginals of $F$.
 
 Declared `opaque` (a hidden constant of function type, sister of
 `alphaBound`/`betaBound`) because the nuform IS a real construction; the
 project just hasn't encoded the full multidimensional Selberg machinery
-yet. A future PR can supply a real `noncomputable def` body. Project
-convention: `opaque` for leaves with real-but-unencoded definitions,
-`axiom` for leaves citing external truths. -/
+yet. The 1D building block is now real (`lambdaTransform` above); the
+remaining gap is the **basis decomposition** $F = \sum_j c_j \prod_i
+F_{j,i}$, which is only finite for separable $F$ — general $F$ needs a
+separable approximation (a design decision deferred to a future PR: encode
+the separable case + a "separable approximates general" cited axiom, vs.
+carry the basis as part of the type). Project convention: `opaque` for
+leaves with real-but-unencoded definitions, `axiom` for leaves citing
+external truths. -/
 opaque selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
     ℕ → ℝ
 
