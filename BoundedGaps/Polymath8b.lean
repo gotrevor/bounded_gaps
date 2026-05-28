@@ -407,19 +407,135 @@ The chain is type-checked even though individual leaves remain `sorry`. -/
 
 /-- Bookkeeping combinator: an asymptotic DHL claim together with the
 narrowness $=O(k \log k)$ bound produces an asymptotic $H_m$ bound at the
-matching exponent. -/
--- TRIAGE: BLUEPRINT_LEAF — pure bookkeeping (pick k = ⌈C * exp(α m)⌉, apply
--- DHL there, transfer narrowness bound through `dhl_implies_liminfGap`,
--- absorb constants into the output `C`). ~50 lines of Filter/asymptotics
--- plumbing; no deep math beyond the asymptotics calculus already in mathlib.
-theorem hm_asymp_from_dhl_and_narrowness (α : ℝ)
-    (Cdhl : ℝ) (_hCdhl_pos : 0 < Cdhl)
-    (_hDHL_asymp : ∀ k m : ℕ, m ≥ 1 →
+matching exponent.
+
+**Discharged 2026-05-28**: real proof. For each $m$, take
+$k_m = \max(\lceil C_{\mathrm{dhl}} e^{\alpha m}\rceil, m + 1 + k_0)$ where
+$k_0$ is the `IsBigO` window threshold. The three `max` clauses give
+respectively: (a) $k_m \ge C_{\mathrm{dhl}} e^{\alpha m}$ so DHL fires;
+(b) $k_m \ge m + 1$ so `dhl_implies_liminfGap` applies; (c) $k_m \ge k_0$
+so the narrowness $O(k\log k)$ bound applies. Then
+$k_m \le C_3 e^{\alpha m}$ and $\log k_m \le \log C_3 + \alpha m$ give
+$k_m \log k_m \le C_5\, m\, e^{\alpha m}$, and the chain
+$\mathrm{liminfGap}\,m \le \mathrm{narrowness}\,k_m \le C_0 k_m \log k_m$
+closes after the $\mathbb{N}_\infty \to \mathbb{R}_{\ge 0}^\infty$
+coercion.
+
+The `0 < α` hypothesis is essential: with $\alpha \le 0$ the $m+1$ lower
+bound on a usable $k$ would outgrow the $m\,e^{\alpha m}$ target. Both call
+sites (`Hm_asymptotic_unconditional` at $\alpha = 4 - 28/157$,
+`Hm_asymptotic_under_EH` at $\alpha = 2$) satisfy it. -/
+theorem hm_asymp_from_dhl_and_narrowness (α : ℝ) (hα : 0 < α)
+    (Cdhl : ℝ) (hCdhl_pos : 0 < Cdhl)
+    (hDHL_asymp : ∀ k m : ℕ, m ≥ 1 →
       (k : ℝ) ≥ Cdhl * Real.exp (α * m) → DHL k (m + 1))
-    (_hNarrow_asymp : (fun k : ℕ => (narrowness k : ℝ))
+    (hNarrow_asymp : (fun k : ℕ => (narrowness k : ℝ))
         =O[Filter.atTop] (fun k : ℕ => (k : ℝ) * Real.log k)) :
     ∃ C : ℝ, 0 < C ∧ ∀ m : ℕ, m ≥ 1 →
-      (liminfGap m : ENNReal) ≤ ENNReal.ofReal (C * m * Real.exp (α * m)) := sorry
+      (liminfGap m : ENNReal) ≤ ENNReal.ofReal (C * m * Real.exp (α * m)) := by
+  -- IsBigO witness, normalized to a nonneg constant.
+  obtain ⟨C₀, hC₀⟩ := hNarrow_asymp.bound
+  rw [Filter.eventually_atTop] at hC₀
+  obtain ⟨k₀, hk₀⟩ := hC₀
+  set C₀' := max C₀ 0 with hC₀'def
+  have hC₀'_nonneg : 0 ≤ C₀' := le_max_right _ _
+  -- uniform bound coefficients
+  set C₃ : ℝ := Cdhl + 1/α + (k₀ : ℝ) + 3 with hC₃def
+  have hC₃_ge1 : 1 ≤ C₃ := by
+    have h1 : 0 < 1/α := by positivity
+    have h2 : (0:ℝ) ≤ (k₀:ℝ) := by positivity
+    rw [hC₃def]; nlinarith
+  have hC₃_pos : 0 < C₃ := by linarith
+  have hlogC₃_nonneg : 0 ≤ Real.log C₃ := Real.log_nonneg hC₃_ge1
+  set C₅ : ℝ := C₃ * (Real.log C₃ + α) with hC₅def
+  have hC₅_pos : 0 < C₅ := by rw [hC₅def]; positivity
+  refine ⟨C₀' * C₅ + 1, by positivity, fun m hm => ?_⟩
+  -- choose k large enough for DHL, the bridge, and the IsBigO window
+  set km : ℕ := max (Nat.ceil (Cdhl * Real.exp (α * m))) (m + 1 + k₀) with hkmdef
+  have hkm_ge_m1 : m + 1 ≤ km := le_trans (by omega) (le_max_right _ _)
+  have hkm_ge_k0 : k₀ ≤ km := le_trans (by omega) (le_max_right _ _)
+  have hkm_ge1 : 1 ≤ km := by omega
+  have hkmR_pos : (0:ℝ) < (km:ℝ) := by exact_mod_cast hkm_ge1
+  have hexp_pos : (0:ℝ) < Real.exp (α * m) := Real.exp_pos _
+  have hexp_ge1 : (1:ℝ) ≤ Real.exp (α * m) := by
+    apply Real.one_le_exp; positivity
+  -- A) k ≥ Cdhl exp(αm)
+  have hA : Cdhl * Real.exp (α * m) ≤ (km : ℝ) := by
+    calc Cdhl * Real.exp (α*m) ≤ (Nat.ceil (Cdhl * Real.exp (α*m)) : ℝ) := Nat.le_ceil _
+      _ ≤ (km : ℝ) := by exact_mod_cast le_max_left _ _
+  -- DHL + the §3 bridge
+  have hDHL : DHL km (m+1) := hDHL_asymp km m hm hA
+  have hLim : liminfGap m ≤ (narrowness km : ℕ∞) :=
+    dhl_implies_liminfGap km m hkm_ge_m1 hDHL
+  -- narrowness bound from IsBigO
+  have hNarrowReal : (narrowness km : ℝ) ≤ C₀' * ((km:ℝ) * Real.log km) := by
+    have h := hk₀ km hkm_ge_k0
+    rw [Real.norm_of_nonneg (by positivity), Real.norm_of_nonneg
+      (by positivity : (0:ℝ) ≤ (km:ℝ) * Real.log km)] at h
+    calc (narrowness km : ℝ) ≤ C₀ * ((km:ℝ) * Real.log km) := h
+      _ ≤ C₀' * ((km:ℝ) * Real.log km) := by
+          gcongr ?_ * _
+          exact le_max_left _ _
+  -- B) k ≤ C₃ exp(αm)
+  have hceil_bd : (Nat.ceil (Cdhl * Real.exp (α*m)) : ℝ) ≤ (Cdhl + 1) * Real.exp (α*m) := by
+    have h1 : (Nat.ceil (Cdhl * Real.exp (α*m)) : ℝ) ≤ Cdhl * Real.exp (α*m) + 1 :=
+      le_of_lt (Nat.ceil_lt_add_one (by positivity))
+    nlinarith [hexp_ge1, hCdhl_pos]
+  have hm1k0_bd : ((m + 1 + k₀ : ℕ) : ℝ) ≤ (1/α + 1 + (k₀:ℝ)) * Real.exp (α*m) := by
+    have hmbd : (m : ℝ) + 1 ≤ (1/α + 1) * Real.exp (α * m) := by
+      have hαm : (0:ℝ) ≤ α * m := by positivity
+      have hexp_ge : 1 + α * m ≤ Real.exp (α * m) := by
+        have := Real.add_one_le_exp (α * m); linarith
+      have hm_bd : (m : ℝ) ≤ Real.exp (α * m) / α := by
+        rw [le_div_iff₀ hα]; nlinarith [hexp_ge]
+      calc (m : ℝ) + 1 ≤ Real.exp (α * m) / α + Real.exp (α * m) := by gcongr
+        _ = (1/α + 1) * Real.exp (α * m) := by ring
+    have hk0bd : (k₀:ℝ) ≤ (k₀:ℝ) * Real.exp (α*m) := by nlinarith [hexp_ge1]
+    push_cast
+    nlinarith [hmbd, hk0bd]
+  have hkm_bd : (km : ℝ) ≤ C₃ * Real.exp (α * m) := by
+    rw [hkmdef]
+    push_cast [Nat.cast_max]
+    rw [max_le_iff]
+    refine ⟨?_, ?_⟩
+    · calc (Nat.ceil (Cdhl * Real.exp (α*m)) : ℝ) ≤ (Cdhl + 1) * Real.exp (α*m) := hceil_bd
+        _ ≤ C₃ * Real.exp (α*m) := by
+            rw [hC₃def]
+            nlinarith [hexp_pos, (by positivity : (0:ℝ) ≤ 1/α), (by positivity : (0:ℝ) ≤ (k₀:ℝ))]
+    · calc ((m:ℝ) + 1 + (k₀:ℝ)) ≤ (1/α + 1 + (k₀:ℝ)) * Real.exp (α*m) := by
+            have := hm1k0_bd; push_cast at this; linarith
+        _ ≤ C₃ * Real.exp (α*m) := by rw [hC₃def]; nlinarith [hexp_pos, hCdhl_pos]
+  -- C) log k ≤ log C₃ + αm
+  have hlogkm : Real.log km ≤ Real.log C₃ + α * m := by
+    have h1 : Real.log km ≤ Real.log (C₃ * Real.exp (α*m)) :=
+      Real.log_le_log hkmR_pos hkm_bd
+    rwa [Real.log_mul (ne_of_gt hC₃_pos) (ne_of_gt hexp_pos), Real.log_exp] at h1
+  have hlogkm_nonneg : 0 ≤ Real.log km := Real.log_nonneg (by exact_mod_cast hkm_ge1)
+  -- D) k log k ≤ C₅ m exp(αm)
+  have hprod : (km:ℝ) * Real.log km ≤ C₅ * m * Real.exp (α*m) := by
+    have hmul : (km:ℝ) * Real.log km ≤ (C₃ * Real.exp (α*m)) * (Real.log C₃ + α * m) :=
+      mul_le_mul hkm_bd hlogkm hlogkm_nonneg (by positivity)
+    have hmR1 : (1:ℝ) ≤ (m:ℝ) := by exact_mod_cast hm
+    rw [hC₅def]
+    nlinarith [hmul, hlogC₃_nonneg, hexp_pos, hmR1, hC₃_pos,
+      mul_nonneg (mul_nonneg hlogC₃_nonneg (le_of_lt hC₃_pos)) (le_of_lt hexp_pos)]
+  -- combine real bounds
+  have hfinal_real : (narrowness km : ℝ) ≤ (C₀'*C₅ + 1) * m * Real.exp (α*m) := by
+    have hmR1 : (1:ℝ) ≤ (m:ℝ) := by exact_mod_cast hm
+    calc (narrowness km : ℝ) ≤ C₀' * ((km:ℝ) * Real.log km) := hNarrowReal
+      _ ≤ C₀' * (C₅ * m * Real.exp (α*m)) := by gcongr
+      _ ≤ (C₀'*C₅ + 1) * m * Real.exp (α*m) := by
+          nlinarith [hexp_pos, hmR1, mul_nonneg hC₀'_nonneg (le_of_lt hC₅_pos)]
+  -- coerce ℕ∞ → ENNReal
+  have step1 : (liminfGap m : ENNReal) ≤ ((narrowness km : ℕ∞) : ENNReal) :=
+    ENat.toENNReal_le.mpr hLim
+  have step2 : ((narrowness km : ℕ∞) : ENNReal) = (narrowness km : ENNReal) := by simp
+  have step3 : (narrowness km : ENNReal) ≤
+      ENNReal.ofReal ((C₀'*C₅ + 1) * m * Real.exp (α*m)) := by
+    rw [← ENNReal.ofReal_natCast]
+    exact ENNReal.ofReal_le_ofReal hfinal_real
+  rw [step2] at step1
+  exact step1.trans step3
 
 /-! ### Unconditional bounds (Theorem main, (i)-(vi)) -/
 
@@ -491,7 +607,7 @@ theorem Hm_asymptotic_unconditional :
     ∃ C : ℝ, 0 < C ∧ ∀ m : ℕ, m ≥ 1 →
       (liminfGap m : ENNReal) ≤ ENNReal.ofReal (C * m * Real.exp ((4 - 28/157) * m)) := by
   obtain ⟨Cdhl, hCdhl_pos, hDHL_asymp⟩ := dhl_asymptotic_unconditional
-  exact hm_asymp_from_dhl_and_narrowness (4 - 28/157) Cdhl hCdhl_pos
+  exact hm_asymp_from_dhl_and_narrowness (4 - 28/157) (by norm_num) Cdhl hCdhl_pos
     hDHL_asymp narrowness_asymptotic_upper
 
 /-! ### Under EH[ϑ] for all $0 < \vartheta < 1$ (Theorem main, (vii)-(xi)) -/
@@ -553,7 +669,7 @@ theorem Hm_asymptotic_under_EH
     ∃ C : ℝ, 0 < C ∧ ∀ m : ℕ, m ≥ 1 →
       (liminfGap m : ENNReal) ≤ ENNReal.ofReal (C * m * Real.exp (2 * m)) := by
   obtain ⟨Cdhl, hCdhl_pos, hDHL_asymp⟩ := dhl_asymptotic_under_EH hEH
-  exact hm_asymp_from_dhl_and_narrowness 2 Cdhl hCdhl_pos
+  exact hm_asymp_from_dhl_and_narrowness 2 (by norm_num) Cdhl hCdhl_pos
     hDHL_asymp narrowness_asymptotic_upper
 
 /-! ### Under GEH[ϑ] for all $0 < \vartheta < 1$ (Theorem main, (xii)-(xiii))
