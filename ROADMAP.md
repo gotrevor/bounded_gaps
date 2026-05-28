@@ -31,7 +31,7 @@ estimate vs actual.
 
 ## Current axiom inventory
 
-**As of 2026-05-27 (post-PR #50)**: **38 axioms, 3 opaques, 17 sorries.**
+**As of 2026-05-28 (post-PR #53)**: **38 axioms, 3 opaques, 16 sorries.**
 **Pre-reclassification snapshot (when this doc was first written 2026-05-26)**:
 45 axioms, 3 opaques, 15 sorries.
 
@@ -235,7 +235,10 @@ Format: `YYYY-MM-DD | tier | what landed | session-equivalents (1.0 = full eveni
 | 2026-05-27 | meta | HANDOFF refresh #48 — session wrap-up. | 0.1 |
 | 2026-05-27 | "top-down flagship" | `maynard_trunc` discharged via new `selberg_sieve_data_truncated_from_F` sister of PR-A5; added 1 new MPZ-flavor (s2) cited axiom + 1 new extraction lemma; 4 truncated-Mk witness axioms updated to expose `0 < 1/4 + ϖ ∧ 0 < δ`. Sorries 19→18, axioms 35→36. (PR #49 / PR-A1b-iii-a) | 0.4 |
 | 2026-05-27 | "top-down flagship" | `epsilon_beyond` discharged via new `selberg_sieve_data_beyond_from_F` sister of PR-A6; added 2 new beyond-flavor (s1, s2) cited axioms under GEH with `HasVanishingMarginal` rider. Sorries 18→17, axioms 36→38. (PR #50 / PR-A1b-iii-b) | 0.4 |
-| 2026-05-27 | meta | This HANDOFF + ROADMAP refresh #51 + scorecard against original predictions; whitespace cleanup of `1/4` → `1 / 4`. | 0.2 |
+| 2026-05-27 | meta | HANDOFF + ROADMAP refresh #51 + scorecard against original predictions; whitespace cleanup of `1/4` → `1 / 4`. | 0.2 |
+| 2026-05-28 | **Tier 1 (first brick)** | Real `lambdaTransform g R n := ∑ d∣n, μ(d)·g(log d/log R)` — the 1D Möbius-divisor operator under the `selberg_nu` nuform. + `lambdaTransform_{zero,one}`. First real piece of §3 sieve-core machinery; `selberg_nu` still opaque (basis-decomposition design choice deferred). (PR #52) | 0.3 |
+| 2026-05-28 | "§1 combinator" | `hm_asymp_from_dhl_and_narrowness` discharged — real Filter/asymptotics proof (k_m = max(⌈Cdhl·exp(αm)⌉, m+1+k₀), IsBigO.bound, ℕ∞→ℝ≥0∞ coercion). Added `0 < α` hyp. Sorries 17→16. (PR #53) | 0.4 |
+| 2026-05-28 | meta | This HANDOFF + ROADMAP refresh #54. | 0.1 |
 
 ### Scorecard at ~10% of one-month horizon (2026-05-27 ~18:00, 20h post-ROADMAP)
 

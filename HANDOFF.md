@@ -1,8 +1,8 @@
 # HANDOFF.md — Bounded Gaps Lean project
 
-Written 2026-05-27 (afternoon), superseding the 2026-05-27 mid-day
-version. Reflects state at `master` commit `eed5ee5` (PR #50 merged),
-**2 PRs after the previous handoff** (#49, #50, plus this refresh #51).
+Written 2026-05-28, superseding the 2026-05-27 afternoon version. Reflects
+state at `master` commit `c6c2a15` (PR #53 merged), **3 PRs after the
+previous handoff** (#51 refresh, #52 lambdaTransform, #53 hm_asymp).
 
 This document is self-contained: a fresh session can read it and start
 working without scrolling history.
@@ -13,8 +13,16 @@ working without scrolling history.
 
 ## TL;DR
 
-- **Sorries: 17.** **Axioms: 38.** **Opaques: 3** (`alphaBound`, `betaBound`,
+- **Sorries: 16.** **Axioms: 38.** **Opaques: 3** (`alphaBound`, `betaBound`,
   `selberg_nu` — all real-but-unencoded defs, by project convention).
+- **Tier 1 has started** (PR #52): `lambdaTransform g R n := ∑ d∣n, μ(d)·g(log d/log R)`
+  is the first real piece of §3 sieve-core machinery — the 1D operator
+  under the `selberg_nu` nuform. `selberg_nu` itself stays opaque; remaining
+  blocker is the basis-decomposition design choice (separable-F + cited
+  approximation axiom vs. carry a basis in the type). Depth-into-sieve
+  metric: still 0/8 *opaques discharged*, but a building block now exists.
+- **`hm_asymp_from_dhl_and_narrowness` is real** (PR #53): the §1 asymptotic
+  combinator. Gained a `0 < α` hypothesis (both call sites satisfy it).
 - **All 4 Polymath8b §5 flagships now have real composition bodies**:
   `maynard_thm`, `maynard_trunc` (PR #49), `epsilon_trick`,
   `epsilon_beyond` (PR #50). The truncated/beyond cases route through new
@@ -69,7 +77,10 @@ working without scrolling history.
 | #48 | HANDOFF refresh after PRs #45-#47 | doc only |
 | #49 | `maynard_trunc` discharge (PR-A1b-iii-a): new `selberg_sieve_data_truncated_from_F` + `exists_F_truncated_of_Mk_truncated_gt` + `s2_holds_from_prime_asym_under_MPZ` axiom; 4 truncated-Mk witness axioms updated to expose `0 < 1/4 + ϖ ∧ 0 < δ` | sorries 19→18, axioms 35→36 |
 | #50 | `epsilon_beyond` discharge (PR-A1b-iii-b): new `selberg_sieve_data_beyond_from_F` + 2 new cited axioms (`s1_beyond_holds_from_nonprime_asym`, `s2_beyond_holds_from_prime_asym_under_GEH`) | sorries 18→17, axioms 36→38 |
-| #51 | This HANDOFF refresh + whitespace cleanup (`1/4` → `1 / 4`) | doc only |
+| #51 | HANDOFF refresh + whitespace cleanup (`1/4` → `1 / 4`) | doc only |
+| #52 | Tier-1 entry: real `lambdaTransform` Möbius-divisor operator + `lambdaTransform_{zero,one}` identities; `selberg_nu` docstring now names the basis-decomposition blocker | sorries/axioms unchanged (additive) |
+| #53 | `hm_asymp_from_dhl_and_narrowness` discharged (real Filter/asymptotics proof); added `0 < α` hyp; 2 call sites updated | sorries 17→16 |
+| #54 | This HANDOFF + ROADMAP refresh | doc only |
 
 ## Operating principles (locked in, keep)
 
@@ -216,27 +227,17 @@ composition bodies (PRs #46, #49, #50). No longer in the sorry list.
 #### **Tier-1 push: encode the three opaques** ⚠️ untouched since ROADMAP
 
 ROADMAP estimated 5-8 sessions for `selberg_nu`, `alphaBound`, `betaBound`
-→ real `noncomputable def`s. **As of 2026-05-27 evening, zero progress.**
-All shipped PRs since ROADMAP have been Tier 2 structural discharges
-(MkSet helpers) and "off-roadmap" top-down work (Maynard k=5 flagship,
-maynard_trunc + epsilon_beyond bodies via cited-axiom sisters). The
-depth-into-sieve metric is still 0/8. **If the 2026-06-26 checkpoint is
-to be meaningful, `selberg_nu` should be next.**
-
-Concrete entry point: Polymath8b §3 eqns (3.6)-(3.7) `nuform`. Needs a
-`Mathlib.NumberTheory.ArithmeticFunction.moebius`-based 1D divisor sum
-`lambdaTransform g R n := ∑ d | n, μ d * g (Real.log d / Real.log R)`,
-then `selberg_nu k F H b W := fun n => (∑_j c_j ∏_i lambdaTransform F_{j,i} R (n + h_i))^2`.
-The basis decomposition `F = ∑_j c_j F_j` with `F_j = ∏_i F_{j,i}` is
-specific to separable F — for general F the paper takes a separable
-approximation. **Design question to settle first**: do we encode the
-separable case only and add a "separable F approximates general F"
-cited axiom, or carry a basis as part of the type?
-
-#### **PR-E: `hm_asymp_from_dhl_and_narrowness`** (~1-2h)
-
-Now achievable since `dhl_implies_liminfGap` is real (PR #30). Substantive
-`IsBigO` + `Real.log` + ceiling arithmetic. Future PR can replace.
+→ real `noncomputable def`s. **As of 2026-05-28, the 1D building block
+`lambdaTransform` is real (PR #52)** but all three opaques are still
+opaque (depth-into-sieve 0/8). The next concrete step is the
+**basis-decomposition design choice** for `selberg_nu`:
+`selberg_nu k F H b W := fun n => (∑_j c_j ∏_i lambdaTransform F_{j,i} R (n + h_i))^2`,
+where `F = ∑_j c_j F_j` with `F_j = ∏_i F_{j,i}` is finite only for
+separable F. **Settle first**: encode the separable case + a "separable
+approximates general" cited axiom, vs. carry a basis as part of the type.
+A clean intermediate win: define `selberg_nu_separable (Fs : Fin k → ℝ → ℝ)`
+= `(∏ i, lambdaTransform (Fs i) R (n + h_i))^2` (fully encodable from
+`lambdaTransform`), then connect to `selberg_nu` via the basis sum.
 
 #### **Structural sorry discharges** (now sorries, not axioms — per PR #41)
 
@@ -341,34 +342,35 @@ Things this session used that future work will likely also use:
 - **`change` not `show`** — Lean 4.29.1's `linter.style.show` warns on `show`
   that changes the goal. Use `change` for goal-rewrites.
 
-## Scorecard against ROADMAP predictions (as of 2026-05-27 ~18:00)
+## Scorecard against ROADMAP predictions (as of 2026-05-28)
 
-ROADMAP was created 2026-05-26 22:34. ~20 hours of wall time, ~2.5
-session-equivalents shipped. Checkpoint date 2026-06-26 still ~30 days
-out.
+ROADMAP was created 2026-05-26 22:34. ~1.5 days wall time, ~3
+session-equivalents shipped (PRs #41-#53). Checkpoint date 2026-06-26
+still ~29 days out.
 
 | Tier | Estimate | Confidence | Status |
 |---|---|---|---|
-| Tier 1 (encode 3 opaques) | 5-8 sessions | 75% | **0/3.** Untouched. Not started. |
-| Tier 2 (structural sorry discharges) | 3-8 sessions | 85% | **3-4 of ~7 done** (#42, #45, #46-adjacent). ~40-50% through. On pace. |
+| Tier 1 (encode 3 opaques) | 5-8 sessions | 75% | **0/3 discharged**, but `lambdaTransform` building block landed (PR #52). Started. |
+| Tier 2 (structural sorry discharges) | 3-8 sessions | 85% | **3-4 of ~7 done** (#42, #45). ~40-50% through. On pace. |
 | Tier 3 (`wtrick_data`) | 5-15 sessions | 50% | 0. Expected (Tier 1 first). |
 | Tier 4 (first s1/s2) | 10-30 sessions | 40% | 0. Expected. |
 | Tier 5 (rest of sieve core) | 20-60 sessions | 30% | 0. Expected. |
 
 **Pace matches the model** (~3-4 PRs / session, ~0.3 sessions per
-non-trivial PR). **Depth-into-sieve metric: 0/8 Bucket-D discharges.**
+non-trivial PR). **Depth-into-sieve metric: 0/8 Bucket-D discharges** (but
+`lambdaTransform` is the first real sieve-core building block).
 
-**Off-roadmap pattern**: actual work has been **top-down** (turn flagship
+**Off-roadmap pattern**: most work has been **top-down** (turn flagship
 bodies real, push sorries down into more-targeted cited axioms) rather
-than the bottom-up plan the ROADMAP sketched (encode opaques first, then
-climb). This raised raw debt slightly (axioms 35 → 38 via 3 new sieve-
-core sister axioms) but yields a real win: **all 4 Polymath8b §5
-flagships now compose through real `selberg_sieve_data_*_from_F` analytic
-cores**.
+than the bottom-up plan the ROADMAP sketched (encode opaques first). The
+top-down work made all 4 Polymath8b §5 flagships compose through real
+analytic cores (#49, #50) and discharged the §1 asymptotic combinator
+(#53). Tier 1 finally got its first brick (#52).
 
 If the 2026-06-26 checkpoint is to validate Tier 1's estimate, **the
-next session should start the `selberg_nu` encoding**. See "Open work"
-above for the entry point.
+next session should push `selberg_nu` further** — settle the basis-
+decomposition design choice and define `selberg_nu_separable` from
+`lambdaTransform`. See "Open work" above.
 
 ## Recommended next-session plan
 
@@ -381,29 +383,28 @@ Suggested order:
 1. **Warm-up** (~10 min): re-derive sorry count + locations; read
    `ROADMAP.md` to align on Bucket A/B/C/D and tier framework; read the
    scorecard above.
-2. **Tier 1 — start `selberg_nu` encoding** (~1-2 sessions per ROADMAP).
-   Design pass on the basis decomposition question (separable-F-only with
-   approximation axiom, vs. carry a basis in the type). Then introduce
-   `lambdaTransform g R n := ∑ d|n, μ d * g (log d / log R)` as a building
-   block. Even partial scaffolding moves the depth-into-sieve metric off 0.
-3. **PR-E: `hm_asymp_from_dhl_and_narrowness`** (~1-2h) — substantive
-   `IsBigO` + `Real.log` + ceiling arithmetic. Achievable since
-   `dhl_implies_liminfGap` is real (PR #30).
-4. **Tier 1 — encode the opaques** (~5-8 sessions total per ROADMAP)
-   `selberg_nu` → `noncomputable def` via Polymath8b §3 `nuform` (3.6)-(3.7);
-   then `alphaBound` and `betaBound` via `Asymptotics.IsLittleO`. Real
-   structural milestone; "depth into sieve" 0/8 → 3/8.
-5. **Small structural discharges** (each ~0.5-1 session):
+2. **Tier 1 — push `selberg_nu` further** (~1-2 sessions per ROADMAP).
+   `lambdaTransform` exists (PR #52). Next: define `selberg_nu_separable
+   (Fs : Fin k → ℝ → ℝ) (H) (R) (n) := (∏ i, lambdaTransform (Fs i) R
+   (n + H.getD i 0))^2` — fully encodable. Then settle the basis-
+   decomposition design choice to connect it to `selberg_nu`. This is the
+   move that takes depth-into-sieve from 0/8 toward 1/8.
+3. **Tier 1 — `alphaBound`/`betaBound`** via `Asymptotics.IsLittleO` once
+   `selberg_nu` is real. "Depth into sieve" 0/8 → 3/8.
+4. **Small structural discharges** (each ~0.5-1 session):
    - `Mk_le_one_of_k_le_one` k=1 case via L²-Cauchy-Schwarz on $[0,1]$
-     (sketch in Sieve.lean docstring).
-   - `MkSet_eps_nonempty` via shared F witness from `MkSet_nonempty`
-     (needs `Continuous.integrable_of_hasCompactSupport` chain, attempted
-     and backed out in PR #42).
+     (~1h, see the Bucket-B effort table above for the probe findings).
+   - `MkSet_nonempty` via ContDiffBump (note the EuclideanSpace ↔ Pi
+     instance juggle — likely the main friction).
    - `MkSet_eps_bddAbove`: separate (1+ε)/(1-ε) factor argument.
-6. **Tier 3 — `wtrick_data` discharge** (~5-15 sessions) — Mertens
+5. **Tier 3 — `wtrick_data` discharge** (~5-15 sessions) — Mertens
    products + CRT density. The first sieve-core axiom discharge would
    be the first "Lean has touched the sieve" milestone — outside
    audiences would care.
+
+**Done this session (2026-05-28)**: PR-A1b-iii-a/b (#49, #50) made all 4
+§5 flagships real; #52 landed `lambdaTransform`; #53 discharged the §1
+asymptotic combinator `hm_asymp_from_dhl_and_narrowness`.
 
 ## Pointers outside the repo
 
