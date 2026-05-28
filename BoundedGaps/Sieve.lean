@@ -756,6 +756,48 @@ theorem selberg_nu_separable_nonneg (k : ℕ) (Fs : Fin k → ℝ → ℝ)
     (H : List ℕ) (R : ℝ) (n : ℕ) : selberg_nu_separable 0 Fs H R n = 1 := by
   simp [selberg_nu_separable]
 
+/-- **General Selberg sieve weight** (the full `nuform`, Polymath8b §3
+\eqref{837} verbatim): a squared finite linear combination of products of
+1D divisor sums,
+$$\nu(n) = \Bigl(\sum_{j=1}^{J} c_j \prod_{i=1}^{k}
+   \lambda_{F_{j,i}}(n + h_i)\Bigr)^2.$$
+
+This is the **fully general** construction — no separability assumption — and
+is **completely encoded** from the real 1D operator `lambdaTransform`: no
+opaque, no axiom, no sorry. The basis is given explicitly as $J$ terms with
+coefficients `c : Fin J → ℝ` and per-term, per-coordinate 1D functions
+`Fs : Fin J → Fin k → ℝ → ℝ`. The separable case `selberg_nu_separable` is
+the single-term ($J = 1$, $c_1 = 1$) collapse — see
+`selberg_nu_basis_single`. Caps the `lambdaTransform → selberg_nu_separable
+→ selberg_nu_basis` real-construction ladder (Tier-1 ROADMAP). -/
+noncomputable def selberg_nu_basis (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (n : ℕ) : ℝ :=
+  (∑ j : Fin J, c j *
+      ∏ i : Fin k, lambdaTransform (Fs j i) R (n + H.getD i.val 0)) ^ 2
+
+/-- The general weight is non-negative (it is a square), matching the
+Polymath8b requirement $\nu : \N \to \R^+$. -/
+theorem selberg_nu_basis_nonneg (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (n : ℕ) :
+    0 ≤ selberg_nu_basis k J c Fs H R n :=
+  sq_nonneg _
+
+/-- An empty basis ($J = 0$) gives the zero weight (empty sum). -/
+@[simp] theorem selberg_nu_basis_empty (k : ℕ) (c : Fin 0 → ℝ)
+    (Fs : Fin 0 → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (n : ℕ) :
+    selberg_nu_basis k 0 c Fs H R n = 0 := by
+  simp [selberg_nu_basis]
+
+/-- **Separable is the single-term basis.** The general nuform with one term
+($J = 1$, coefficient $1$, 1D functions `Gs`) is exactly the separable
+weight `selberg_nu_separable`. This is the bridge collapsing the general
+construction to the encoded separable special case. -/
+theorem selberg_nu_basis_single (k : ℕ) (Gs : Fin k → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (n : ℕ) :
+    selberg_nu_basis k 1 (fun _ => 1) (fun _ => Gs) H R n
+      = selberg_nu_separable k Gs H R n := by
+  simp [selberg_nu_basis, selberg_nu_separable]
+
 /-- **Selberg sieve weight from $F$** (Polymath8b §3, eqn (3.6)–(3.7),
 `nuform`): $\nu(n) = \left(\sum_j c_j \prod_i \lambda_{F_{j,i}}(n + h_i)
 \right)^2$ — a finite linear combination of products of 1D divisor sums
@@ -764,20 +806,23 @@ theorem selberg_nu_separable_nonneg (k : ℕ) (Fs : Fin k → ℝ → ℝ)
 Declared `opaque` (a hidden constant of function type, sister of
 `alphaBound`/`betaBound`) because the nuform IS a real construction; the
 project just hasn't encoded the full multidimensional Selberg machinery
-yet. The 1D building block is real (`lambdaTransform` above) and the
-**separable case is now encoded** as `selberg_nu_separable` (the $J = 1$,
-$c_1 = 1$ collapse, fully real). The remaining gap is the **basis
-decomposition** $F = \sum_j c_j \prod_i F_{j,i}$, which is only finite for
-separable $F$ — general $F$ needs a separable approximation. The design
-decision (still open): connect `selberg_nu` to `selberg_nu_separable` via
-either (A) a cited "separable test functions are asymptotically optimal"
-approximation axiom (Polymath8b asymptotics §, the $M_k$ variational sup is
-approached by separable/polynomial $F$), keeping `selberg_nu` opaque, or
-(B) re-typing `selberg_nu` to carry the basis data
-$(J, (c_j), (F_{j,i}))$ so its body becomes a real squared finite linear
-combination of `selberg_nu_separable`-style products. Project convention:
-`opaque` for leaves with real-but-unencoded definitions, `axiom` for leaves
-citing external truths. -/
+yet. **Both the general nuform and the separable case are now encoded**:
+`selberg_nu_basis` (the full squared finite linear combination over an
+explicit basis $(J, (c_j), (F_{j,i}))$, fully real) and its single-term
+collapse `selberg_nu_separable`. The 1D building block `lambdaTransform` is
+likewise real. So the construction ladder is complete and encodable.
+
+What keeps `selberg_nu` opaque (rather than `= selberg_nu_basis`) is purely
+the **interface gap**: the `s1`/`s2` asymptotic axioms below are *stated
+about* `selberg_nu k F H b W`, i.e. they take the multidimensional test
+function $F$ directly, not a basis. Discharging `selberg_nu` therefore means
+choosing how to relate $F$ to a basis: either (A) carry the basis
+$(J, (c_j), (F_{j,i}))$ through the `s1`/`s2` statements and set `selberg_nu
+:= selberg_nu_basis` (a semantic refactor of those axiom signatures), or
+(B) add a cited "$F = \sum_j c_j \prod_i F_{j,i}$ representation exists for
+the optimal test functions" axiom (Polymath8b asymptotics §). Project
+convention: `opaque` for leaves with real-but-unencoded definitions, `axiom`
+for leaves citing external truths. -/
 opaque selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
     ℕ → ℝ
 
