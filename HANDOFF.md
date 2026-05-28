@@ -1,8 +1,8 @@
 # HANDOFF.md — Bounded Gaps Lean project
 
-Written 2026-05-28, superseding the 2026-05-27 afternoon version. Reflects
-state at `master` commit `c6c2a15` (PR #53 merged), **3 PRs after the
-previous handoff** (#51 refresh, #52 lambdaTransform, #53 hm_asymp).
+Written 2026-05-28, superseding the earlier 2026-05-28 version. Reflects
+state at `master` commit `c8ce72a` (PR #56 merged), **2 PRs after the
+previous handoff** (#55 selberg_nu_separable, #56 selberg_nu_basis).
 
 This document is self-contained: a fresh session can read it and start
 working without scrolling history.
@@ -15,12 +15,22 @@ working without scrolling history.
 
 - **Sorries: 16.** **Axioms: 38.** **Opaques: 3** (`alphaBound`, `betaBound`,
   `selberg_nu` — all real-but-unencoded defs, by project convention).
-- **Tier 1 has started** (PR #52): `lambdaTransform g R n := ∑ d∣n, μ(d)·g(log d/log R)`
-  is the first real piece of §3 sieve-core machinery — the 1D operator
-  under the `selberg_nu` nuform. `selberg_nu` itself stays opaque; remaining
-  blocker is the basis-decomposition design choice (separable-F + cited
-  approximation axiom vs. carry a basis in the type). Depth-into-sieve
-  metric: still 0/8 *opaques discharged*, but a building block now exists.
+- **Tier 1: the nuform construction ladder is now FULLY ENCODED** (PRs #52,
+  #55, #56). The chain `lambdaTransform` (1D Möbius-divisor operator) →
+  `selberg_nu_separable` (separable case, J=1) → `selberg_nu_basis` (the
+  full general nuform, eqn 837, a squared finite linear combination over an
+  explicit basis `(J, c, Fs)`) is all real — zero axioms, zero sorries.
+  `selberg_nu_basis_single` proves the J=1/c=1 collapse equals
+  `selberg_nu_separable`. **What keeps `selberg_nu` opaque is now ONLY the
+  interface gap**: the `s1`/`s2` asymptotic axioms are stated about `F`
+  directly (not a basis). Two documented discharge paths (in the
+  `selberg_nu` docstring): (A) carry basis data through the `s1`/`s2`
+  signatures and set `selberg_nu := selberg_nu_basis`, or (B) a cited
+  "optimal F admits a finite ∑_j c_j ∏_i F_{j,i} representation" axiom.
+  Depth-into-sieve metric: still **0/8** *opaques discharged*, but the
+  underlying construction is no longer missing — only the wiring decision
+  remains. NB: even after discharge, `alphaBound`/`betaBound`/`s1`/`s2`
+  stay axioms (the deep analytic number theory).
 - **`hm_asymp_from_dhl_and_narrowness` is real** (PR #53): the §1 asymptotic
   combinator. Gained a `0 < α` hypothesis (both call sites satisfy it).
 - **All 4 Polymath8b §5 flagships now have real composition bodies**:
@@ -80,7 +90,10 @@ working without scrolling history.
 | #51 | HANDOFF refresh + whitespace cleanup (`1/4` → `1 / 4`) | doc only |
 | #52 | Tier-1 entry: real `lambdaTransform` Möbius-divisor operator + `lambdaTransform_{zero,one}` identities; `selberg_nu` docstring now names the basis-decomposition blocker | sorries/axioms unchanged (additive) |
 | #53 | `hm_asymp_from_dhl_and_narrowness` discharged (real Filter/asymptotics proof); added `0 < α` hyp; 2 call sites updated | sorries 17→16 |
-| #54 | This HANDOFF + ROADMAP refresh | doc only |
+| #54 | HANDOFF + ROADMAP refresh | doc only |
+| #55 | `selberg_nu_separable` (J=1 separable nuform from `lambdaTransform`) + `_nonneg`/`_zero_dim` | additive, real |
+| #56 | `selberg_nu_basis` (full general nuform, eqn 837) + `_nonneg`/`_empty`/`_single` bridge to separable | additive, real |
+| #57 | This HANDOFF refresh | doc only |
 
 ## Operating principles (locked in, keep)
 
@@ -350,7 +363,7 @@ still ~29 days out.
 
 | Tier | Estimate | Confidence | Status |
 |---|---|---|---|
-| Tier 1 (encode 3 opaques) | 5-8 sessions | 75% | **0/3 discharged**, but `lambdaTransform` building block landed (PR #52). Started. |
+| Tier 1 (encode 3 opaques) | 5-8 sessions | 75% | **0/3 discharged**, but the entire `selberg_nu` *construction* is now encoded (`lambdaTransform` #52 + `selberg_nu_separable` #55 + `selberg_nu_basis` #56). Remaining for discharge = `s1`/`s2` interface signature decision, not math. |
 | Tier 2 (structural sorry discharges) | 3-8 sessions | 85% | **3-4 of ~7 done** (#42, #45). ~40-50% through. On pace. |
 | Tier 3 (`wtrick_data`) | 5-15 sessions | 50% | 0. Expected (Tier 1 first). |
 | Tier 4 (first s1/s2) | 10-30 sessions | 40% | 0. Expected. |
