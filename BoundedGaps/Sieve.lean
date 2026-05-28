@@ -729,6 +729,33 @@ and $\log 1 = 0$. -/
     lambdaTransform g R 1 = g 0 := by
   unfold lambdaTransform; rw [Nat.divisors_one]; simp
 
+/-- **Separable Selberg sieve weight** — the $J = 1$, $c_1 = 1$ special case
+of the `nuform` \eqref{837}. For a fully separable test function
+$F(t_1,\dots,t_k) = \prod_i F_i(t_i)$ the squared finite linear combination
+collapses to a single product:
+$$\nu_{\mathrm{sep}}(n) = \Bigl(\prod_{i=1}^{k} \lambda_{F_i}(n + h_i)\Bigr)^2.$$
+
+Unlike the general `selberg_nu` (which needs a basis decomposition $F =
+\sum_j c_j \prod_i F_{j,i}$ that is finite only for separable $F$), this is
+**fully encodable** from the real 1D operator `lambdaTransform`: no opaque,
+no axiom, no sorry. It is the first concrete piece of the multidimensional
+Selberg weight (Tier-1 ROADMAP). The offsets $h_i$ are read from `H` via
+`H.getD i 0`; the sieve level enters through `lambdaTransform`'s $R$. -/
+noncomputable def selberg_nu_separable (k : ℕ) (Fs : Fin k → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (n : ℕ) : ℝ :=
+  (∏ i : Fin k, lambdaTransform (Fs i) R (n + H.getD i.val 0)) ^ 2
+
+/-- The separable weight is non-negative (it is a square), matching the
+Polymath8b requirement $\nu : \N \to \R^+$. -/
+theorem selberg_nu_separable_nonneg (k : ℕ) (Fs : Fin k → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (n : ℕ) : 0 ≤ selberg_nu_separable k Fs H R n :=
+  sq_nonneg _
+
+/-- At $k = 0$ the empty product is $1$, so $\nu_{\mathrm{sep}} = 1$. -/
+@[simp] theorem selberg_nu_separable_zero_dim (Fs : Fin 0 → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (n : ℕ) : selberg_nu_separable 0 Fs H R n = 1 := by
+  simp [selberg_nu_separable]
+
 /-- **Selberg sieve weight from $F$** (Polymath8b §3, eqn (3.6)–(3.7),
 `nuform`): $\nu(n) = \left(\sum_j c_j \prod_i \lambda_{F_{j,i}}(n + h_i)
 \right)^2$ — a finite linear combination of products of 1D divisor sums
@@ -737,14 +764,20 @@ and $\log 1 = 0$. -/
 Declared `opaque` (a hidden constant of function type, sister of
 `alphaBound`/`betaBound`) because the nuform IS a real construction; the
 project just hasn't encoded the full multidimensional Selberg machinery
-yet. The 1D building block is now real (`lambdaTransform` above); the
-remaining gap is the **basis decomposition** $F = \sum_j c_j \prod_i
-F_{j,i}$, which is only finite for separable $F$ — general $F$ needs a
-separable approximation (a design decision deferred to a future PR: encode
-the separable case + a "separable approximates general" cited axiom, vs.
-carry the basis as part of the type). Project convention: `opaque` for
-leaves with real-but-unencoded definitions, `axiom` for leaves citing
-external truths. -/
+yet. The 1D building block is real (`lambdaTransform` above) and the
+**separable case is now encoded** as `selberg_nu_separable` (the $J = 1$,
+$c_1 = 1$ collapse, fully real). The remaining gap is the **basis
+decomposition** $F = \sum_j c_j \prod_i F_{j,i}$, which is only finite for
+separable $F$ — general $F$ needs a separable approximation. The design
+decision (still open): connect `selberg_nu` to `selberg_nu_separable` via
+either (A) a cited "separable test functions are asymptotically optimal"
+approximation axiom (Polymath8b asymptotics §, the $M_k$ variational sup is
+approached by separable/polynomial $F$), keeping `selberg_nu` opaque, or
+(B) re-typing `selberg_nu` to carry the basis data
+$(J, (c_j), (F_{j,i}))$ so its body becomes a real squared finite linear
+combination of `selberg_nu_separable`-style products. Project convention:
+`opaque` for leaves with real-but-unencoded definitions, `axiom` for leaves
+citing external truths. -/
 opaque selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
     ℕ → ℝ
 
