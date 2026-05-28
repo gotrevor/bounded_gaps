@@ -31,7 +31,7 @@ estimate vs actual.
 
 ## Current axiom inventory
 
-**As of 2026-05-28 (post-PR #53)**: **38 axioms, 3 opaques, 16 sorries.**
+**As of 2026-05-28 (post-PR #56)**: **38 axioms, 3 opaques, 16 sorries.**
 **Pre-reclassification snapshot (when this doc was first written 2026-05-26)**:
 45 axioms, 3 opaques, 15 sorries.
 
@@ -44,7 +44,10 @@ Net delta over the 2026-05-26 → 2026-05-27 session (PRs #39-#48):
   discharges (`MkSet_truncated_bddAbove`, `MkSet_eps_nonempty`,
   `H1_le_12_under_EH`, `polynomialMaynardNumerator`,
   `polynomialMaynardDenominator`).
-- Opaques 3 → 3 (unchanged; no Tier 1 work yet).
+- Opaques 3 → 3 (unchanged). NB: Tier-1 *construction* work has since
+  happened (PRs #52/#55/#56 encoded the full nuform ladder
+  `lambdaTransform → selberg_nu_separable → selberg_nu_basis`), but no
+  opaque is *discharged* yet — that awaits the s1/s2 interface decision.
 
 Honest-debt sum (axioms + sorries + opaques): 63 → 57.
 - -3 from documentation-as-axiom removal (PR #43).
@@ -113,7 +116,7 @@ blueprint into a real verification.
 
 | Item | File:line | Polymath8b ref | Cost (confidence) |
 |---|---|---|---|
-| `selberg_nu` (opaque → real def) | Sieve.lean:581 | §3 eqns `nuform` (3.6)-(3.7) | 1-2 sessions (80%) |
+| `selberg_nu` (opaque → real def) | Sieve.lean (`opaque selberg_nu`) | §3 eqns `nuform` (3.6)-(3.7) | construction DONE (#56 `selberg_nu_basis`); discharge = s1/s2 interface decision, ~1 session (80%) |
 | `alphaBound` (opaque → real def) | Sieve.lean:82 | §3 eqn (s1) | 2-3 sessions (70%) |
 | `betaBound` (opaque → real def) | Sieve.lean:88 | §3 eqn (s2) | 2-3 sessions (70%) |
 | `wtrick_data` | Sieve.lean:594 | §3 W-trick lemma | 5-15 sessions (50%) |
@@ -238,13 +241,14 @@ Format: `YYYY-MM-DD | tier | what landed | session-equivalents (1.0 = full eveni
 | 2026-05-27 | meta | HANDOFF + ROADMAP refresh #51 + scorecard against original predictions; whitespace cleanup of `1/4` → `1 / 4`. | 0.2 |
 | 2026-05-28 | **Tier 1 (first brick)** | Real `lambdaTransform g R n := ∑ d∣n, μ(d)·g(log d/log R)` — the 1D Möbius-divisor operator under the `selberg_nu` nuform. + `lambdaTransform_{zero,one}`. First real piece of §3 sieve-core machinery; `selberg_nu` still opaque (basis-decomposition design choice deferred). (PR #52) | 0.3 |
 | 2026-05-28 | "§1 combinator" | `hm_asymp_from_dhl_and_narrowness` discharged — real Filter/asymptotics proof (k_m = max(⌈Cdhl·exp(αm)⌉, m+1+k₀), IsBigO.bound, ℕ∞→ℝ≥0∞ coercion). Added `0 < α` hyp. Sorries 17→16. (PR #53) | 0.4 |
-| 2026-05-28 | meta | This HANDOFF + ROADMAP refresh #54. | 0.1 |
+| 2026-05-28 | meta | HANDOFF + ROADMAP refresh #54. | 0.1 |
+| 2026-05-28 | "Tier-1 construction" | `selberg_nu_separable` (#55, separable J=1 nuform) + `selberg_nu_basis` (#56, full general nuform eqn 837 over explicit basis) — both fully real from `lambdaTransform`, + nonneg/empty/single bridge lemmas. Nuform construction ladder complete; opaque `selberg_nu` not yet discharged (awaits s1/s2 interface decision). HANDOFF/ROADMAP refresh #57/#58. | 0.4 |
 
 ### Scorecard at ~10% of one-month horizon (2026-05-27 ~18:00, 20h post-ROADMAP)
 
 | Tier | Estimate | Done so far | Comment |
 |---|---|---|---|
-| Tier 1 | 5-8 sessions | 0/3 opaques | **Untouched.** Should start next session. |
+| Tier 1 | 5-8 sessions | 0/3 opaques *discharged*; full nuform *construction* encoded (#52/#55/#56) | Construction done; discharge = s1/s2 interface decision next. |
 | Tier 2 | 3-8 sessions | 3-4 of ~7 items | ~40-50% through. On pace. |
 | Tier 3-5 | 5-60 sessions each | 0 | Expected (Tier 1 first). |
 | Off-roadmap | n/a | 4/4 §5 flagships real | All Polymath8b §5 main theorems now compose through real analytic cores. Cost: +3 cited axioms in Bucket D. |

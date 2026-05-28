@@ -49,8 +49,10 @@ working without scrolling history.
     stops lying.
   - **D (8 axioms + 3 opaques)** = the actual sieve core (was 5 axioms;
     PRs #46, #49, #50 added s1/s2 sisters for the k=5, truncated, and
-    beyond variants). **Tier 1 (encode opaques) untouched** —
-    `selberg_nu`/`alphaBound`/`betaBound` are still opaque.
+    beyond variants). **Tier 1 construction done, opaques not yet
+    discharged** — the full nuform is encoded (`selberg_nu_basis` #56) but
+    `selberg_nu`/`alphaBound`/`betaBound` are still opaque pending the
+    s1/s2 interface decision (see Open work).
 - **Mid-session structural wins (PR #42-#47):**
   - `Mk_zero_le_one` extracted as standalone discharged theorem
     ($M_0 \le 1$ via `mkF_numerator | 0, _ => 0`).
@@ -237,20 +239,35 @@ composition bodies (PRs #46, #49, #50). No longer in the sorry list.
 
 ### Open work — recommended next moves
 
-#### **Tier-1 push: encode the three opaques** ⚠️ untouched since ROADMAP
+#### **Tier-1 push: discharge the `selberg_nu` opaque** (construction DONE)
 
 ROADMAP estimated 5-8 sessions for `selberg_nu`, `alphaBound`, `betaBound`
-→ real `noncomputable def`s. **As of 2026-05-28, the 1D building block
-`lambdaTransform` is real (PR #52)** but all three opaques are still
-opaque (depth-into-sieve 0/8). The next concrete step is the
-**basis-decomposition design choice** for `selberg_nu`:
-`selberg_nu k F H b W := fun n => (∑_j c_j ∏_i lambdaTransform F_{j,i} R (n + h_i))^2`,
-where `F = ∑_j c_j F_j` with `F_j = ∏_i F_{j,i}` is finite only for
-separable F. **Settle first**: encode the separable case + a "separable
-approximates general" cited axiom, vs. carry a basis as part of the type.
-A clean intermediate win: define `selberg_nu_separable (Fs : Fin k → ℝ → ℝ)`
-= `(∏ i, lambdaTransform (Fs i) R (n + h_i))^2` (fully encodable from
-`lambdaTransform`), then connect to `selberg_nu` via the basis sum.
+→ real defs. **As of 2026-05-28 the nuform construction is fully encoded**
+(`lambdaTransform` #52, `selberg_nu_separable` #55, `selberg_nu_basis` #56):
+the real general weight `selberg_nu_basis k J c Fs H R n := (∑_j c_j ∏_i
+lambdaTransform (Fs j i) R (n + h_i))^2` exists with no axioms/sorries, and
+`selberg_nu_basis_single` proves the J=1/c=1 collapse = `selberg_nu_separable`.
+
+**The remaining work is the interface decision, not construction.** The
+`s1`/`s2` axioms (`s1_holds_from_nonprime_asym`,
+`s2_holds_from_prime_asym_under_EH`, and the MPZ/beyond/eps sisters) are
+stated as `alphaBound k (selberg_nu k F H b W) ...` / `betaBound k
+(selberg_nu k F H b W) ...` — they take the multidimensional `F`, not a
+basis. To set `selberg_nu := selberg_nu_basis` you must choose:
+- **(A)** Re-type the `s1`/`s2` axioms (and `selberg_sieve_data_*_from_F`
+  call sites, ~6) to carry basis data `(J, c, Fs)` alongside/instead of `F`,
+  then `selberg_nu` becomes a real `noncomputable def := selberg_nu_basis`.
+  Discharges the opaque (0/8 → 1/8). Semantic refactor of the axiom
+  signatures — do it deliberately, verify each call site still composes.
+- **(B)** Keep `selberg_nu` opaque; add a cited axiom that the optimal `F`
+  admits a finite `∑_j c_j ∏_i F_{j,i}` representation (Polymath8b
+  asymptotics §). Smaller, but does NOT move the depth metric.
+
+**NB:** under either path, `alphaBound`/`betaBound`/`s1`/`s2` themselves
+stay axioms (the deep analytic NT). Discharging `selberg_nu` shrinks the
+trust base by one opaque and makes those axioms speak about a *concrete*
+weight — a prerequisite for ever discharging them — so (A) is foundational,
+not cosmetic, but it is a signature refactor.
 
 #### **Structural sorry discharges** (now sorries, not axioms — per PR #41)
 
@@ -378,12 +395,13 @@ bodies real, push sorries down into more-targeted cited axioms) rather
 than the bottom-up plan the ROADMAP sketched (encode opaques first). The
 top-down work made all 4 Polymath8b §5 flagships compose through real
 analytic cores (#49, #50) and discharged the §1 asymptotic combinator
-(#53). Tier 1 finally got its first brick (#52).
+(#53). Tier 1's construction is now fully built out (#52, #55, #56).
 
-If the 2026-06-26 checkpoint is to validate Tier 1's estimate, **the
-next session should push `selberg_nu` further** — settle the basis-
-decomposition design choice and define `selberg_nu_separable` from
-`lambdaTransform`. See "Open work" above.
+If the 2026-06-26 checkpoint is to validate Tier 1's estimate, **the next
+session should discharge the `selberg_nu` opaque** — the construction
+ladder is done, so this is the s1/s2 interface decision (path A re-type vs.
+path B cited axiom), which moves depth-into-sieve 0/8 → 1/8. See "Open
+work" above.
 
 ## Recommended next-session plan
 
@@ -396,12 +414,14 @@ Suggested order:
 1. **Warm-up** (~10 min): re-derive sorry count + locations; read
    `ROADMAP.md` to align on Bucket A/B/C/D and tier framework; read the
    scorecard above.
-2. **Tier 1 — push `selberg_nu` further** (~1-2 sessions per ROADMAP).
-   `lambdaTransform` exists (PR #52). Next: define `selberg_nu_separable
-   (Fs : Fin k → ℝ → ℝ) (H) (R) (n) := (∏ i, lambdaTransform (Fs i) R
-   (n + H.getD i 0))^2` — fully encodable. Then settle the basis-
-   decomposition design choice to connect it to `selberg_nu`. This is the
-   move that takes depth-into-sieve from 0/8 toward 1/8.
+2. **Tier 1 — discharge the `selberg_nu` opaque** (~1-2 sessions). The
+   construction ladder is done: `lambdaTransform` (#52), `selberg_nu_separable`
+   (#55), `selberg_nu_basis` (#56, the full general nuform). Remaining is the
+   **s1/s2 interface decision** (see Open work): (A) re-type the `s1`/`s2`
+   axioms + ~6 `selberg_sieve_data_*_from_F` call sites to carry basis data,
+   then `selberg_nu := selberg_nu_basis` (discharges opaque, 0/8 → 1/8); or
+   (B) a cited F→basis representation axiom (smaller, no metric move). Verify
+   each call site still composes after a path-A refactor.
 3. **Tier 1 — `alphaBound`/`betaBound`** via `Asymptotics.IsLittleO` once
    `selberg_nu` is real. "Depth into sieve" 0/8 → 3/8.
 4. **Small structural discharges** (each ~0.5-1 session):
