@@ -782,15 +782,15 @@ Future PR can replace with a real proof from Polymath8a's smooth-modulus
 prime-asym estimate (Polymath8a Theorem 2.17 plus the divisor-sum
 expansion of Polymath8b §3 eqn (theta-oo)). -/
 axiom s2_holds_from_prime_asym_under_MPZ {k : ℕ} (_hk : k ≥ 2)
-    {ϖ δ : ℝ} (_hϖ : 0 < 1/4 + ϖ) (_hMPZ : Prerequisites.MPZ ϖ δ)
+    {ϖ δ : ℝ} (_hϖ : 0 < 1 / 4 + ϖ) (_hMPZ : Prerequisites.MPZ ϖ δ)
     {F : (Fin k → ℝ) → ℝ}
     (_hF_smooth : ContDiff ℝ ⊤ F)
-    (_hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1/4 + ϖ)))
+    (_hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1 / 4 + ϖ)))
     (_hF_den : mkF_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      betaBound k (selberg_nu k F H b W) H b W i.val x ((1/4 + ϖ) * J_i k F i)
+      betaBound k (selberg_nu k F H b W) H b W i.val x ((1 / 4 + ϖ) * J_i k F i)
 
 /-- **The analytic core of Maynard's theorem** (Polymath8b §3 + §5).
 Given an admissible $F$ on the simplex with $\mathrm{MkF}(k, F) > 2m/\vartheta$
@@ -880,12 +880,12 @@ Mirrors PR-A5 / `selberg_sieve_data_from_F` with the substitution
 $\vartheta/2 \mapsto 1/4 + \varpi$ (effective theta = $1/2 + 2\varpi$
 from the MPZ window). -/
 theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
-    {ϖ δ : ℝ} (hϖ : 0 < 1/4 + ϖ) (hMPZ : Prerequisites.MPZ ϖ δ)
+    {ϖ δ : ℝ} (hϖ : 0 < 1 / 4 + ϖ) (hMPZ : Prerequisites.MPZ ϖ δ)
     {F : (Fin k → ℝ) → ℝ}
     (hF_smooth : ContDiff ℝ ⊤ F)
-    (hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1/4 + ϖ)))
+    (hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1 / 4 + ϖ)))
     (hF_den : mkF_denominator k F > 0)
-    (hF_Mk : MkF k F > m / (1/4 + ϖ))
+    (hF_Mk : MkF k F > m / (1 / 4 + ϖ))
     {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
     ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
       0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
@@ -949,15 +949,15 @@ Polymath8b §5 line 957 has $0 < \varpi < 1/4$, $0 < \delta < 1/4 + \varpi$).
 The 4 truncated-Mk witness axioms in `Polymath8b.lean` were updated to
 expose these positivity components. -/
 theorem maynard_trunc (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϖ δ : ℝ)
-    (hϖ : 0 < 1/4 + ϖ) (hδ : 0 < δ) (hMPZ : Prerequisites.MPZ ϖ δ)
-    (hMk : Mk_truncated k (δ / (1/4 + ϖ)) > m / (1/4 + ϖ)) :
+    (hϖ : 0 < 1 / 4 + ϖ) (hδ : 0 < δ) (hMPZ : Prerequisites.MPZ ϖ δ)
+    (hMk : Mk_truncated k (δ / (1 / 4 + ϖ)) > m / (1 / 4 + ϖ)) :
     DHL k (m + 1) := by
   apply dhl_criterion k m hk hm
   intro H hAdm hLen
-  have hα_pos : 0 < δ / (1/4 + ϖ) := div_pos hδ hϖ
+  have hα_pos : 0 < δ / (1 / 4 + ϖ) := div_pos hδ hϖ
   obtain ⟨F, hSmooth, hSupp, hDen, hMkF⟩ :=
-    exists_F_truncated_of_Mk_truncated_gt k hk (δ / (1/4 + ϖ)) hα_pos
-      (m / (1/4 + ϖ)) hMk
+    exists_F_truncated_of_Mk_truncated_gt k hk (δ / (1 / 4 + ϖ)) hα_pos
+      (m / (1 / 4 + ϖ)) hMk
   exact selberg_sieve_data_truncated_from_F hk hm hϖ hMPZ hSmooth hSupp hDen
     hMkF hAdm hLen
 

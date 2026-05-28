@@ -31,7 +31,7 @@ estimate vs actual.
 
 ## Current axiom inventory
 
-**As of 2026-05-27 (post-PR #47)**: **35 axioms, 3 opaques, 19 sorries.**
+**As of 2026-05-27 (post-PR #50)**: **38 axioms, 3 opaques, 17 sorries.**
 **Pre-reclassification snapshot (when this doc was first written 2026-05-26)**:
 45 axioms, 3 opaques, 15 sorries.
 
@@ -232,7 +232,23 @@ Format: `YYYY-MM-DD | tier | what landed | session-equivalents (1.0 = full eveni
 | 2026-05-27 | 2 | `MkSet_eps_nonempty` discharged via shared F + `setIntegral_mono_set`. Added `simplex_isClosed` / `simplex_isCompact` reusable helpers. Sorries 23→22 (real -1). (PR #45) | 0.3 |
 | 2026-05-27 | "new flagship" | Maynard k=5 chain: `tuple_5` admissibility (real, decide-based), `narrowness_5_le_12` (real, no axiom), `mk_5_witness_under_EH` (Bucket A citation), `dhl_5_2_under_EH` (real), `H1_le_12_under_EH` discharged. Sorries 22→21, axioms 34→35. (PR #46) | 0.4 |
 | 2026-05-27 | "polynomial def bodies" | `polynomialMaynardNumerator` + `polynomialMaynardDenominator` real `noncomputable def`s with closed-form rational formulas; new `dirichletIntegralWithSlack` helper. Sorries 21→19 (real -2). Unblocks `polynomialMkF_eq_MkF` (~30 lines per TRIAGE). (PR #47) | 0.3 |
-| 2026-05-27 | meta | This HANDOFF refresh #48 — session wrap-up. | 0.1 |
+| 2026-05-27 | meta | HANDOFF refresh #48 — session wrap-up. | 0.1 |
+| 2026-05-27 | "top-down flagship" | `maynard_trunc` discharged via new `selberg_sieve_data_truncated_from_F` sister of PR-A5; added 1 new MPZ-flavor (s2) cited axiom + 1 new extraction lemma; 4 truncated-Mk witness axioms updated to expose `0 < 1/4 + ϖ ∧ 0 < δ`. Sorries 19→18, axioms 35→36. (PR #49 / PR-A1b-iii-a) | 0.4 |
+| 2026-05-27 | "top-down flagship" | `epsilon_beyond` discharged via new `selberg_sieve_data_beyond_from_F` sister of PR-A6; added 2 new beyond-flavor (s1, s2) cited axioms under GEH with `HasVanishingMarginal` rider. Sorries 18→17, axioms 36→38. (PR #50 / PR-A1b-iii-b) | 0.4 |
+| 2026-05-27 | meta | This HANDOFF + ROADMAP refresh #51 + scorecard against original predictions; whitespace cleanup of `1/4` → `1 / 4`. | 0.2 |
+
+### Scorecard at ~10% of one-month horizon (2026-05-27 ~18:00, 20h post-ROADMAP)
+
+| Tier | Estimate | Done so far | Comment |
+|---|---|---|---|
+| Tier 1 | 5-8 sessions | 0/3 opaques | **Untouched.** Should start next session. |
+| Tier 2 | 3-8 sessions | 3-4 of ~7 items | ~40-50% through. On pace. |
+| Tier 3-5 | 5-60 sessions each | 0 | Expected (Tier 1 first). |
+| Off-roadmap | n/a | 4/4 §5 flagships real | All Polymath8b §5 main theorems now compose through real analytic cores. Cost: +3 cited axioms in Bucket D. |
+
+Pace matches model. The "off-roadmap" pattern (top-down vs bottom-up
+ROADMAP) is the main delta — worth a tier-ordering reconsideration at
+checkpoint.
 
 (One row per work-unit. Tier 0 = scaffolding, planning, statement fixes
 that don't discharge axioms. Tiers 1-5 = real depth-into-sieve progress.)
