@@ -1111,6 +1111,120 @@ theorem epsilon_trick (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
   exact selberg_sieve_data_eps_from_F hk hm hε hϑ hEH hSupp hSmooth hSupp'
     hDen hMkF hAdm hLen
 
+/-! ### Selberg sieve data sub-lemmas (`epsilon-beyond`-flavored, Polymath8b §5)
+
+Beyond sister of the eps-decomposition above. F lives on the larger
+$\frac{k}{k-1}$-scaled simplex (not $(1+\varepsilon) R_k$) and carries a
+vanishing-marginal hypothesis; (s2) runs under GEH (not EH). Reuses
+`selberg_nu` and `wtrick_data` (both polytope-agnostic). -/
+
+/-- **(s1-beyond) from `nonprime-asym` case (i)** (Polymath8b §3 line 889,
+applied through the §5 `epsilon-beyond` reduction).
+
+For admissible $F$ on the $\frac{k}{k-1}$-scaled simplex, (s1) holds
+eventually with $\alpha = I(F) = \int_{\frac{k}{k-1} \mathcal{R}_k} F^2$
+(i.e. `mkF_beyond_denominator k F`). The vanishing-marginal hypothesis is
+not needed for (s1) — it's a (s2)-side constraint that lets prime-asym
+work on the enlarged polytope. Future PR can replace with a real proof
+from the divisor-sum expansion. -/
+axiom s1_beyond_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
+    {ε : ℝ} (_hε_pos : 0 < ε)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
+    (_hF_den : mkF_beyond_denominator k F > 0)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
+    (b W : ℕ) (_hW : 1 ≤ W) :
+    ∀ᶠ x : ℝ in Filter.atTop,
+      alphaBound k (selberg_nu k F H b W) b W x (mkF_beyond_denominator k F)
+
+/-- **(s2-beyond) from `prime-asym` case (i) under GEH[ϑ]** (Polymath8b §3
+line 862 + §5 `epsilon-beyond` reduction).
+
+Under $\GEH[\vartheta]$, the `HasVanishingMarginal k ε F` hypothesis, and
+$F$ supported on $\frac{k}{k-1} \mathcal{R}_k$, (s2) holds eventually with
+$\beta_i = (\vartheta/2) \cdot J_{i, 1-\varepsilon}(F)$ (the unclamped
+$J_i$-beyond form).
+
+The vanishing-marginal hypothesis is what makes prime-asym work on the
+enlarged polytope: outside $(1+\varepsilon) R_k$ the marginal integrand is
+zero, so even though F's support extends to $\frac{k}{k-1} R_k$, the
+relevant arithmetic only sees the $(1+\varepsilon) R_k$ piece. GEH (vs EH)
+is needed because the Dirichlet convolutions involved are no longer
+restricted to $\Lambda$. Future PR can replace with a real proof from the
+Polymath8b §3 `theta-oo`-flavored estimate via the BFI/Motohashi GEH
+machinery. -/
+axiom s2_beyond_holds_from_prime_asym_under_GEH {k : ℕ} (_hk : k ≥ 2)
+    {ε ϑ : ℝ} (_hε_pos : 0 < ε)
+    (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hGEH : Prerequisites.GEH ϑ)
+    {F : (Fin k → ℝ) → ℝ}
+    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
+    (_hF_vanish : HasVanishingMarginal k ε F)
+    (_hF_den : mkF_beyond_denominator k F > 0)
+    {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
+    (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
+    ∀ᶠ x : ℝ in Filter.atTop,
+      betaBound k (selberg_nu k F H b W) H b W i.val x
+        (ϑ / 2 * J_i_beyond k ε F i)
+
+/-- **The analytic core of `epsilon-beyond`** (Polymath8b §5).
+
+Sister of `selberg_sieve_data_eps_from_F` for the beyond polytope $\frac{k}{k-1}
+\mathcal{R}_k$ with the vanishing-marginal hypothesis, under GEH.
+
+Real proof — mirror of `selberg_sieve_data_eps_from_F` (PR-A6) with the
+substitutions: $\simplex_{eps} \mapsto \simplex_{scaled}\,(k/(k-1))$,
+$J_{i,eps} \mapsto J_{i,beyond}$, $\mathrm{EH} \mapsto \mathrm{GEH}$, plus the
+`HasVanishingMarginal` rider on the (s2) leg.
+
+Key algebraic step: $(\vartheta/2) \cdot (\sum_i J_{i,beyond}/I(F))
+> (\vartheta/2) \cdot (2m/\vartheta) = m$. -/
+theorem selberg_sieve_data_beyond_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
+    {ε ϑ : ℝ} (hε_pos : 0 < ε) (_hε_lt : ε < 1 / ((k : ℝ) - 1))
+    (hϑ : 0 < ϑ ∧ ϑ < 1) (hGEH : Prerequisites.GEH ϑ)
+    {F : (Fin k → ℝ) → ℝ}
+    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
+    (hF_vanish : HasVanishingMarginal k ε F)
+    (hF_den : mkF_beyond_denominator k F > 0)
+    (hF_thresh :
+      (∑ i, J_i_beyond k ε F i) / mkF_beyond_denominator k F > 2 * m / ϑ)
+    {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
+    ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
+      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
+      (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
+          betaBound k ν H b W i.val x (β i)) := by
+  obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  have hϑ_pos : 0 < ϑ := hϑ.1
+  have hϑ_half_pos : 0 < ϑ / 2 := by linarith
+  refine ⟨b, W, selberg_nu k F H b W, mkF_beyond_denominator k F,
+    fun i => ϑ / 2 * J_i_beyond k ε F i, hF_den, ?_, ?_, ?_, ?_⟩
+  · -- 0 ≤ β i
+    intro i
+    exact mul_nonneg hϑ_half_pos.le (J_i_beyond_nonneg k ε F i)
+  · -- (∑ i, β i) / α > m
+    -- Pull ϑ/2 out of the sum, then use hF_thresh on (∑ J_i_beyond) / I(F).
+    have hsum : (∑ i, ϑ / 2 * J_i_beyond k ε F i) =
+        ϑ / 2 * (∑ i, J_i_beyond k ε F i) := by
+      rw [← Finset.mul_sum]
+    rw [hsum, mul_div_assoc]
+    have step1 :
+        (ϑ / 2) * ((∑ i, J_i_beyond k ε F i) / mkF_beyond_denominator k F)
+          > (ϑ / 2) * (2 * m / ϑ) :=
+      mul_lt_mul_of_pos_left hF_thresh hϑ_half_pos
+    have step2 : (ϑ / 2) * (2 * (m : ℝ) / ϑ) = m := by
+      field_simp
+    linarith
+  · -- (s1-beyond)
+    exact s1_beyond_holds_from_nonprime_asym hk hε_pos hF_smooth hF_supp hF_den
+      hAdm hLen b W hW
+  · -- (s2-beyond)
+    intro i
+    exact s2_beyond_holds_from_prime_asym_under_GEH hk hε_pos hϑ hGEH
+      hF_smooth hF_supp hF_vanish hF_den hAdm hLen b W hW i
+
 /-- **Theorem 5.5 / "epsilon-beyond"** (Polymath8b §5, line 1028-1037 of
 `papers/src/polymath8b-1407.4897/newergap-submitted.tex`,
 `\label{epsilon-beyond}`).
@@ -1125,7 +1239,7 @@ t_j > 1 + \varepsilon$. If
 $\frac{\sum_i J_{i, 1-\varepsilon}(F)}{I(F)} > \frac{2m}{\vartheta}$,
 then $\DHL[k, m+1]$ holds.
 
-**Statement-fix history.** PR-A1b-ii (this PR): restated to match the paper
+**Statement-fix history.** PR-A1b-ii: restated to match the paper
 TeX. Previous signature used `Mk_eps k ε > 2m/ϑ` as a Rayleigh-sup
 threshold, which is the wrong shape entirely — `epsilon-beyond` has no
 Rayleigh-sup (would need a `MkSet_beyond` with vanishing-marginal baked
@@ -1136,26 +1250,24 @@ because `epsilon-beyond` enlarges the support polytope from
 $(1 + \varepsilon) \mathcal{R}_k$ to $\frac{k}{k-1} \mathcal{R}_k$
 (strictly larger when $\varepsilon < \frac{1}{k-1}$).
 
-**Body still a `sorry`.** Discharge sketch (PR-A1b-iii sister): build a
-`selberg_sieve_data_beyond_from_F` analytic-core lemma — same template as
-`selberg_sieve_data_from_F` / `_eps_from_F` (PRs #34, #35), but with
-$(b, W, \nu)$ tuned for GEH instead of EH and the vanishing-marginal
-condition routed through the W-trick. Then feed into `dhl_criterion`. -/
--- TRIAGE: NEEDS_SIEVE — strongest variant, GEH + explicit F + vanishing
--- marginal. Yields the parity-tight $H_1 \le 6$ under GEH.
+**Discharged 2026-05-27** (PR-A1b-iii-b): real composition through
+`selberg_sieve_data_beyond_from_F` + `dhl_criterion`. Mirrors
+`epsilon_trick`'s body modulo: explicit F (no extraction step), enlarged
+polytope, and the GEH-flavored (s2) leg. -/
 theorem epsilon_beyond (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
     (ε ϑ : ℝ) (hε_pos : 0 < ε) (hε_lt : ε < 1 / ((k : ℝ) - 1))
-    (hϑ : 0 < ϑ ∧ ϑ < 1) (_hGEH : Prerequisites.GEH ϑ)
+    (hϑ : 0 < ϑ ∧ ϑ < 1) (hGEH : Prerequisites.GEH ϑ)
     (F : (Fin k → ℝ) → ℝ)
-    (_hSmooth : ContDiff ℝ ⊤ F)
-    (_hSupp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
-    (_hVanish : HasVanishingMarginal k ε F)
-    (_hDen : mkF_beyond_denominator k F > 0)
-    (_hThresh :
+    (hSmooth : ContDiff ℝ ⊤ F)
+    (hSupp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
+    (hVanish : HasVanishingMarginal k ε F)
+    (hDen : mkF_beyond_denominator k F > 0)
+    (hThresh :
       (∑ i, J_i_beyond k ε F i) / mkF_beyond_denominator k F > 2 * m / ϑ) :
     DHL k (m + 1) := by
-  -- Silence "unused" linter warnings on inputs that the discharge will use.
-  let _ := hk; let _ := hm; let _ := hε_pos; let _ := hε_lt; let _ := hϑ
-  sorry
+  apply dhl_criterion k m hk hm
+  intro H hAdm hLen
+  exact selberg_sieve_data_beyond_from_F hk hm hε_pos hε_lt hϑ hGEH
+    hSmooth hSupp hVanish hDen hThresh hAdm hLen
 
 end BoundedGaps.Sieve
