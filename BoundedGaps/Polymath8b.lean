@@ -75,28 +75,28 @@ on the truncated simplex). Drives DHL[35410, 3] via `Sieve.maynard_trunc`
 ($m = 2$). Paper Theorem `mlower-var`(ii) at line 973: there exist $\delta,
 \varpi$ with $600\varpi + 180\delta < 7$ and the inequality. -/
 axiom mk_35410_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧
+    ∃ ϖ δ : ℝ, 0 < 1/4 + ϖ ∧ 0 < δ ∧ Prerequisites.MPZ ϖ δ ∧
       Sieve.Mk_truncated 35410 (δ / (1/4 + ϖ)) > 2 / (1/4 + ϖ)
 
 /-- Polymath8b §6: $M_{1649821}^{[\delta/(1/4+\varpi)]} > 3/(1/4+\varpi)$
 at suitable MPZ parameters. Drives DHL[1649821, 4] ($m = 3$). Paper Theorem
 `mlower-var`(iii) at line 974. -/
 axiom mk_1649821_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧
+    ∃ ϖ δ : ℝ, 0 < 1/4 + ϖ ∧ 0 < δ ∧ Prerequisites.MPZ ϖ δ ∧
       Sieve.Mk_truncated 1649821 (δ / (1/4 + ϖ)) > 3 / (1/4 + ϖ)
 
 /-- Polymath8b §6: $M_{75845707}^{[\delta/(1/4+\varpi)]} > 4/(1/4+\varpi)$
 at suitable MPZ parameters. Drives DHL[75845707, 5] ($m = 4$). Paper
 Theorem `mlower-var`(iv) at line 975. -/
 axiom mk_75845707_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧
+    ∃ ϖ δ : ℝ, 0 < 1/4 + ϖ ∧ 0 < δ ∧ Prerequisites.MPZ ϖ δ ∧
       Sieve.Mk_truncated 75845707 (δ / (1/4 + ϖ)) > 4 / (1/4 + ϖ)
 
 /-- Polymath8b §6: $M_{3473955908}^{[\delta/(1/4+\varpi)]} > 5/(1/4+\varpi)$
 at suitable MPZ parameters. Drives DHL[3473955908, 6] ($m = 5$, largest
 tabulated case). Paper Theorem `mlower-var`(v) at line 976. -/
 axiom mk_3473955908_witness :
-    ∃ ϖ δ : ℝ, Prerequisites.MPZ ϖ δ ∧
+    ∃ ϖ δ : ℝ, 0 < 1/4 + ϖ ∧ 0 < δ ∧ Prerequisites.MPZ ϖ δ ∧
       Sieve.Mk_truncated 3473955908 (δ / (1/4 + ϖ)) > 5 / (1/4 + ϖ)
 
 /-- Polymath8b §6: $\vartheta \in (0, 1)$ with $M_{54} > 4/\vartheta$, under
@@ -197,23 +197,23 @@ theorem dhl_50_2 : DHL 50 2 := by
 
 Blueprint: maynard_trunc at $k=35410, m=2$ with MPZ parameters from `mk_35410_witness`. -/
 theorem dhl_35410_3 : DHL 35410 3 := by
-  obtain ⟨ϖ, δ, hMPZ, hMk⟩ := mk_35410_witness
-  exact Sieve.maynard_trunc 35410 2 ϖ δ hMPZ hMk
+  obtain ⟨ϖ, δ, hϖ, hδ, hMPZ, hMk⟩ := mk_35410_witness
+  exact Sieve.maynard_trunc 35410 2 (by norm_num) (by norm_num) ϖ δ hϖ hδ hMPZ hMk
 
 /-- **DHL[1649821, 4]** unconditional. -/
 theorem dhl_1649821_4 : DHL 1649821 4 := by
-  obtain ⟨ϖ, δ, hMPZ, hMk⟩ := mk_1649821_witness
-  exact Sieve.maynard_trunc 1649821 3 ϖ δ hMPZ hMk
+  obtain ⟨ϖ, δ, hϖ, hδ, hMPZ, hMk⟩ := mk_1649821_witness
+  exact Sieve.maynard_trunc 1649821 3 (by norm_num) (by norm_num) ϖ δ hϖ hδ hMPZ hMk
 
 /-- **DHL[75845707, 5]** unconditional. -/
 theorem dhl_75845707_5 : DHL 75845707 5 := by
-  obtain ⟨ϖ, δ, hMPZ, hMk⟩ := mk_75845707_witness
-  exact Sieve.maynard_trunc 75845707 4 ϖ δ hMPZ hMk
+  obtain ⟨ϖ, δ, hϖ, hδ, hMPZ, hMk⟩ := mk_75845707_witness
+  exact Sieve.maynard_trunc 75845707 4 (by norm_num) (by norm_num) ϖ δ hϖ hδ hMPZ hMk
 
 /-- **DHL[3473955908, 6]** unconditional. -/
 theorem dhl_3473955908_6 : DHL 3473955908 6 := by
-  obtain ⟨ϖ, δ, hMPZ, hMk⟩ := mk_3473955908_witness
-  exact Sieve.maynard_trunc 3473955908 5 ϖ δ hMPZ hMk
+  obtain ⟨ϖ, δ, hϖ, hδ, hMPZ, hMk⟩ := mk_3473955908_witness
+  exact Sieve.maynard_trunc 3473955908 5 (by norm_num) (by norm_num) ϖ δ hϖ hδ hMPZ hMk
 
 /-- **DHL[k, m+1]** unconditional asymptotic: holds whenever
 $k \ge C \exp((4 - 28/157) m)$. -/
