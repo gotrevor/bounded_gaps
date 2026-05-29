@@ -31,7 +31,7 @@ estimate vs actual.
 
 ## Current axiom inventory
 
-**As of 2026-05-28 (post-PR #56)**: **38 axioms, 3 opaques, 16 sorries.**
+**As of 2026-05-28 (post-PR #62)**: **37 axioms, 3 opaques, 15 sorries.**
 **Pre-reclassification snapshot (when this doc was first written 2026-05-26)**:
 45 axioms, 3 opaques, 15 sorries.
 
@@ -86,7 +86,7 @@ Discharge proofs are still pending; see Tier 2 below.
 
 | Axiom | File:line | Real cost |
 |---|---|---|
-| `Mk_le_one_of_k_le_one` | Sieve.lean:294 | 1 session. Cauchy-Schwarz on $[0, 1]$. |
+| `Mk_le_one_of_k_le_one` | ✅ Done (PR #62) | k=0 (#42) + k=1 (#62, funUnique CoV + Jensen on $[0,1]$). |
 | `MkSet_nonempty` | Sieve.lean:277 | 1-2 sessions. Smooth-bump witness. |
 | `MkSet_bddAbove` | Sieve.lean:286 | 2-3 sessions. Polymath8b Cor `mk-upper`. |
 | `MkSet_truncated_{nonempty, bddAbove}` | Sieve.lean:327, 333 | sisters of above |
@@ -146,9 +146,10 @@ pace).
 
 ### Tier 2 — Discharge structural-sorries (3-8 sessions, 85% confidence)
 
-- Re-classify 7 mis-typed axioms (Bucket B) as `theorem := sorry`.
-- Discharge `Mk_le_one_of_k_le_one` (smallest, Cauchy-Schwarz).
-- Discharge `MkSet_nonempty` + sisters (smooth-bump witness).
+- ✅ Re-classify 7 mis-typed axioms (Bucket B) as `theorem := sorry` (#41).
+- ✅ Discharge `Mk_le_one_of_k_le_one` (k=0 #42, k=1 #62 via Jensen on [0,1]).
+- ✅ Discharge `MkSet_eps_nonempty` (#45) and `MkSet_truncated_bddAbove` (#42).
+- Discharge `MkSet_nonempty` + remaining sisters (smooth-bump witness).
 - Discharge `MkSet_bddAbove` + sisters (paper Cor `mk-upper`).
 - **Milestone**: trust base shrinks 45 → 38 axioms. No more "axiom-for-
   things-we-could-prove" debt.
@@ -243,13 +244,15 @@ Format: `YYYY-MM-DD | tier | what landed | session-equivalents (1.0 = full eveni
 | 2026-05-28 | "§1 combinator" | `hm_asymp_from_dhl_and_narrowness` discharged — real Filter/asymptotics proof (k_m = max(⌈Cdhl·exp(αm)⌉, m+1+k₀), IsBigO.bound, ℕ∞→ℝ≥0∞ coercion). Added `0 < α` hyp. Sorries 17→16. (PR #53) | 0.4 |
 | 2026-05-28 | meta | HANDOFF + ROADMAP refresh #54. | 0.1 |
 | 2026-05-28 | "Tier-1 construction" | `selberg_nu_separable` (#55, separable J=1 nuform) + `selberg_nu_basis` (#56, full general nuform eqn 837 over explicit basis) — both fully real from `lambdaTransform`, + nonneg/empty/single bridge lemmas. Nuform construction ladder complete; opaque `selberg_nu` not yet discharged (awaits s1/s2 interface decision). HANDOFF/ROADMAP refresh #57/#58. | 0.4 |
+| 2026-05-28 | "lambda-algebra" | 6 real `lambdaTransform_*` lemmas (#59): `_prime` (g(0)−g(log p/log R)), `_prime_of_support` (paper eqn lambdan-prime), `_add`/`_smul`/`_neg`/`_linear`. Toolkit for the s1/s2 divisor-sum expansions. HANDOFF #60. | 0.3 |
+| 2026-05-28 | **"Dig" round (Tier 2 + cleanup)** | Systemic consumption audit → dropped orphan axiom `narrowness_asymptotic_lower` (uses=0, **37 axioms**, #61); discharged `Mk_le_one_of_k_le_one` k=1 via `funUnique` change-of-vars + Jensen on [0,1] (**15 sorries**, #62, load-bearing for `H1_le_of_Mk_witness`). First metric moves since the flagship burst. | 0.5 |
 
 ### Scorecard at ~10% of one-month horizon (2026-05-27 ~18:00, 20h post-ROADMAP)
 
 | Tier | Estimate | Done so far | Comment |
 |---|---|---|---|
 | Tier 1 | 5-8 sessions | 0/3 opaques *discharged*; full nuform *construction* encoded (#52/#55/#56) | Construction done; discharge = s1/s2 interface decision next. |
-| Tier 2 | 3-8 sessions | 3-4 of ~7 items | ~40-50% through. On pace. |
+| Tier 2 | 3-8 sessions | ~5 of ~7 items (#41/#42/#45/#62) | ~70% through. Ahead of pace. Remaining: `MkSet_nonempty`, `MkSet_bddAbove` + sisters. |
 | Tier 3-5 | 5-60 sessions each | 0 | Expected (Tier 1 first). |
 | Off-roadmap | n/a | 4/4 §5 flagships real | All Polymath8b §5 main theorems now compose through real analytic cores. Cost: +3 cited axioms in Bucket D. |
 
