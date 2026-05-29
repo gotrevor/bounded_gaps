@@ -729,6 +729,67 @@ and $\log 1 = 0$. -/
     lambdaTransform g R 1 = g 0 := by
   unfold lambdaTransform; rw [Nat.divisors_one]; simp
 
+/-- **$\lambda$ at a prime** (the general two-term divisor identity): for
+prime $p$ the only divisors are $1$ and $p$, with $\mu(1) = 1$,
+$\mu(p) = -1$, and $\log 1 = 0$, so
+$$\lambda_g(R, p) = g(0) - g\!\left(\tfrac{\log p}{\log R}\right).$$
+This is the unconditional identity *underlying* Polymath8b §3 eqn
+(lambdan-prime); the paper's $\lambda_F(p) = F(0)$ is the corollary
+`lambdaTransform_prime_of_support` below, valid once the second term
+vanishes (F supported on $[0,1]$ and $p \ge x$, so $\log_x p \ge 1$). It is
+the load-bearing fact behind the high $\theta(n+h_i)$–$\lambda_{F_i}(n+h_i)$
+correlation, used in the eventual (s1)/(s2) divisor-sum expansions. -/
+theorem lambdaTransform_prime (g : ℝ → ℝ) (R : ℝ) {p : ℕ} (hp : p.Prime) :
+    lambdaTransform g R p = g 0 - g (Real.log p / Real.log R) := by
+  unfold lambdaTransform
+  rw [hp.divisors, Finset.sum_insert (by simp [(hp.one_lt).ne])]
+  simp [ArithmeticFunction.moebius_apply_prime hp, sub_eq_add_neg]
+
+/-- **Polymath8b §3 eqn (lambdan-prime)** exactly: when the test function
+vanishes at $\log_x p$ (the paper's hypothesis: $F$ supported on $[0,1]$ and
+$p \ge x$, so $\log_x p \ge 1$ lies outside the support), the prime-value
+identity collapses to $\lambda_F(p) = F(0)$. -/
+theorem lambdaTransform_prime_of_support (g : ℝ → ℝ) (R : ℝ) {p : ℕ}
+    (hp : p.Prime) (hvanish : g (Real.log p / Real.log R) = 0) :
+    lambdaTransform g R p = g 0 := by
+  rw [lambdaTransform_prime g R hp, hvanish, sub_zero]
+
+/-- `lambdaTransform` is **additive** in its test function: the operator
+$g \mapsto \lambda_g$ distributes over pointwise addition. -/
+theorem lambdaTransform_add (g₁ g₂ : ℝ → ℝ) (R : ℝ) (n : ℕ) :
+    lambdaTransform (fun x => g₁ x + g₂ x) R n
+      = lambdaTransform g₁ R n + lambdaTransform g₂ R n := by
+  unfold lambdaTransform
+  rw [← Finset.sum_add_distrib]
+  exact Finset.sum_congr rfl fun d _ => by ring
+
+/-- `lambdaTransform` is **homogeneous** in its test function: scaling $g$ by
+$a$ scales $\lambda_g$ by $a$. -/
+theorem lambdaTransform_smul (a : ℝ) (g : ℝ → ℝ) (R : ℝ) (n : ℕ) :
+    lambdaTransform (fun x => a * g x) R n = a * lambdaTransform g R n := by
+  unfold lambdaTransform
+  rw [Finset.mul_sum]
+  exact Finset.sum_congr rfl fun d _ => by ring
+
+/-- `lambdaTransform` distributes over negation of the test function. -/
+theorem lambdaTransform_neg (g : ℝ → ℝ) (R : ℝ) (n : ℕ) :
+    lambdaTransform (fun x => - g x) R n = - lambdaTransform g R n := by
+  unfold lambdaTransform
+  rw [← Finset.sum_neg_distrib]
+  exact Finset.sum_congr rfl fun d _ => by ring
+
+/-- **Linearity** of $g \mapsto \lambda_g$ (the combined form): for scalars
+$a, b$ and test functions $g_1, g_2$,
+$\lambda_{a g_1 + b g_2} = a \lambda_{g_1} + b \lambda_{g_2}$. This is what
+lets the multidimensional nuform be expanded coordinate-by-coordinate over a
+basis decomposition $F = \sum_j c_j \prod_i F_{j,i}$. -/
+theorem lambdaTransform_linear (a b : ℝ) (g₁ g₂ : ℝ → ℝ) (R : ℝ) (n : ℕ) :
+    lambdaTransform (fun x => a * g₁ x + b * g₂ x) R n
+      = a * lambdaTransform g₁ R n + b * lambdaTransform g₂ R n := by
+  unfold lambdaTransform
+  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
+  exact Finset.sum_congr rfl fun d _ => by ring
+
 /-- **Separable Selberg sieve weight** — the $J = 1$, $c_1 = 1$ special case
 of the `nuform` \eqref{837}. For a fully separable test function
 $F(t_1,\dots,t_k) = \prod_i F_i(t_i)$ the squared finite linear combination
