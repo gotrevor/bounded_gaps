@@ -381,19 +381,6 @@ axiom narrowness_asymptotic_upper :
       =O[Filter.atTop]
       (fun k : ℕ => (k : ℝ) * Real.log k)
 
-/-- Asymptotic lower bound: $H(k) \ge (\tfrac12 - \varepsilon) k \log k$
-eventually, for any $\varepsilon > 0$. External: classical Brun-Titchmarsh
-sieve bound on primes in short intervals (see e.g. Halberstam-Richert,
-*Sieve Methods*, 1974, Thm 3.7-3.8; or Iwaniec-Kowalski, *Analytic Number
-Theory*, AMS 2004, §6.4). The bound follows because an admissible $k$-tuple
-of diameter $H(k)$ implies $\ge k$ primes-or-residue-avoiders in
-$[1, H(k)]$, which Brun-Titchmarsh upper-bounds by $\le (2 + o(1))H(k)/\log H(k)$,
-forcing $H(k) \ge (\tfrac12 - o(1)) k \log k$. Cited as a leaf;
-project-internal mechanization would need a Lean Brun-Titchmarsh
-(not in current Mathlib). -/
-axiom narrowness_asymptotic_lower :
-    ∀ ε > (0 : ℝ), ∀ᶠ k : ℕ in Filter.atTop,
-      (narrowness k : ℝ) ≥ (1/2 - ε) * k * Real.log k
 
 /-! ## §1 — Main Theorem (Theorem 1.3 in the paper, labeled `main`)
 
