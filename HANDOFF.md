@@ -1,8 +1,9 @@
 # HANDOFF.md — Bounded Gaps Lean project
 
 Written 2026-05-28, superseding the earlier 2026-05-28 version. Reflects
-state at `master` commit `c8ce72a` (PR #56 merged), **2 PRs after the
-previous handoff** (#55 selberg_nu_separable, #56 selberg_nu_basis).
+state at `master` commit `6b2af87` (PR #59 merged), **3 PRs after the
+previous handoff** (#55 selberg_nu_separable, #56 selberg_nu_basis, #59
+lambdaTransform algebra).
 
 This document is self-contained: a fresh session can read it and start
 working without scrolling history.
@@ -15,22 +16,33 @@ working without scrolling history.
 
 - **Sorries: 16.** **Axioms: 38.** **Opaques: 3** (`alphaBound`, `betaBound`,
   `selberg_nu` — all real-but-unencoded defs, by project convention).
-- **Tier 1: the nuform construction ladder is now FULLY ENCODED** (PRs #52,
-  #55, #56). The chain `lambdaTransform` (1D Möbius-divisor operator) →
-  `selberg_nu_separable` (separable case, J=1) → `selberg_nu_basis` (the
-  full general nuform, eqn 837, a squared finite linear combination over an
-  explicit basis `(J, c, Fs)`) is all real — zero axioms, zero sorries.
-  `selberg_nu_basis_single` proves the J=1/c=1 collapse equals
-  `selberg_nu_separable`. **What keeps `selberg_nu` opaque is now ONLY the
-  interface gap**: the `s1`/`s2` asymptotic axioms are stated about `F`
-  directly (not a basis). Two documented discharge paths (in the
-  `selberg_nu` docstring): (A) carry basis data through the `s1`/`s2`
-  signatures and set `selberg_nu := selberg_nu_basis`, or (B) a cited
-  "optimal F admits a finite ∑_j c_j ∏_i F_{j,i} representation" axiom.
-  Depth-into-sieve metric: still **0/8** *opaques discharged*, but the
-  underlying construction is no longer missing — only the wiring decision
-  remains. NB: even after discharge, `alphaBound`/`betaBound`/`s1`/`s2`
-  stay axioms (the deep analytic number theory).
+- **Tier 1: the nuform construction ladder + lambda-algebra are now FULLY
+  ENCODED** (PRs #52, #55, #56, #59). The chain `lambdaTransform` (1D
+  Möbius-divisor operator) → `selberg_nu_separable` (separable case, J=1) →
+  `selberg_nu_basis` (the full general nuform, eqn 837, a squared finite
+  linear combination over an explicit basis `(J, c, Fs)`) is all real —
+  zero axioms, zero sorries. `selberg_nu_basis_single` proves the J=1/c=1
+  collapse equals `selberg_nu_separable`. PR #59 adds the algebraic toolkit:
+  `lambdaTransform_prime` (λ_g(R,p) = g(0) − g(log p/log R), the
+  unconditional identity underlying eqn (lambdan-prime)),
+  `lambdaTransform_prime_of_support` (the paper's exact λ_F(p)=F(0)), and
+  `_add`/`_smul`/`_neg`/`_linear` (g ↦ λ_g is linear). These are what the
+  eventual s1/s2 divisor-sum expansions consume.
+- **⚠️ The `selberg_nu` discharge is NOT a one-line `:=`** (key finding,
+  2026-05-28). `selberg_nu` takes an arbitrary `F : (Fin k → ℝ) → ℝ`, but a
+  *finite* separable decomposition `F = ∑_j c_j ∏_i F_{j,i}` does NOT exist
+  for general `F`. So `selberg_nu := selberg_nu_basis` is impossible without
+  basis data in scope, and forcing a concrete body (e.g. a rank-1 marginal)
+  would make the s1/s2 axioms assert asymptotics about *that* weight —
+  possibly **FALSE**, strictly worse than an honest opaque. Two documented
+  paths (in the `selberg_nu` docstring + Open-work below): **(A)** a
+  deliberate s1/s2 *signature* refactor — carry basis data `(J, c, Fs)`
+  through the axiom statements so they only ever speak about
+  `selberg_nu_basis`-built weights, then `selberg_nu` becomes real; **(B)**
+  a cited "optimal F admits a finite ∑_j c_j ∏_i F_{j,i} representation"
+  axiom (opaque stays, no metric move, lower risk). Depth-into-sieve metric:
+  still **0/8** *opaques discharged*. NB: under either path,
+  `alphaBound`/`betaBound`/`s1`/`s2` stay axioms (the deep analytic NT).
 - **`hm_asymp_from_dhl_and_narrowness` is real** (PR #53): the §1 asymptotic
   combinator. Gained a `0 < α` hypothesis (both call sites satisfy it).
 - **All 4 Polymath8b §5 flagships now have real composition bodies**:
@@ -95,7 +107,10 @@ working without scrolling history.
 | #54 | HANDOFF + ROADMAP refresh | doc only |
 | #55 | `selberg_nu_separable` (J=1 separable nuform from `lambdaTransform`) + `_nonneg`/`_zero_dim` | additive, real |
 | #56 | `selberg_nu_basis` (full general nuform, eqn 837) + `_nonneg`/`_empty`/`_single` bridge to separable | additive, real |
-| #57 | This HANDOFF refresh | doc only |
+| #57 | HANDOFF refresh after #55/#56 | doc only |
+| #58 | HANDOFF + ROADMAP: finish the #55/#56 refresh (stale-string cleanup) | doc only |
+| #59 | lambda-algebra: `lambdaTransform_prime`/`_prime_of_support`/`_add`/`_smul`/`_neg`/`_linear` (6 real lemmas) | additive, real |
+| #60 | This HANDOFF refresh | doc only |
 
 ## Operating principles (locked in, keep)
 
@@ -242,11 +257,14 @@ composition bodies (PRs #46, #49, #50). No longer in the sorry list.
 #### **Tier-1 push: discharge the `selberg_nu` opaque** (construction DONE)
 
 ROADMAP estimated 5-8 sessions for `selberg_nu`, `alphaBound`, `betaBound`
-→ real defs. **As of 2026-05-28 the nuform construction is fully encoded**
-(`lambdaTransform` #52, `selberg_nu_separable` #55, `selberg_nu_basis` #56):
-the real general weight `selberg_nu_basis k J c Fs H R n := (∑_j c_j ∏_i
-lambdaTransform (Fs j i) R (n + h_i))^2` exists with no axioms/sorries, and
-`selberg_nu_basis_single` proves the J=1/c=1 collapse = `selberg_nu_separable`.
+→ real defs. **As of 2026-05-28 the nuform construction + lambda-algebra are
+fully encoded** (`lambdaTransform` #52, `selberg_nu_separable` #55,
+`selberg_nu_basis` #56, `lambdaTransform_*` algebra #59): the real general
+weight `selberg_nu_basis k J c Fs H R n := (∑_j c_j ∏_i lambdaTransform
+(Fs j i) R (n + h_i))^2` exists with no axioms/sorries,
+`selberg_nu_basis_single` proves the J=1/c=1 collapse = `selberg_nu_separable`,
+and the prime-value + linearity lemmas (#59) give the algebraic toolkit for
+the s1/s2 expansions.
 
 **The remaining work is the interface decision, not construction.** The
 `s1`/`s2` axioms (`s1_holds_from_nonprime_asym`,
@@ -259,6 +277,13 @@ basis. To set `selberg_nu := selberg_nu_basis` you must choose:
   then `selberg_nu` becomes a real `noncomputable def := selberg_nu_basis`.
   Discharges the opaque (0/8 → 1/8). Semantic refactor of the axiom
   signatures — do it deliberately, verify each call site still composes.
+  **⚠️ Do NOT shortcut this** by giving `selberg_nu` a concrete body at its
+  *current* `(F) → (ℕ → ℝ)` type: a finite separable decomposition does not
+  exist for general `F`, so any forced body (e.g. a rank-1 marginal) would
+  make the s1/s2 axioms assert asymptotics about a weight they may not hold
+  for — a **false axiom**, strictly worse than the honest opaque. The whole
+  point of carrying basis data is that the axioms then only ever speak about
+  genuinely-`selberg_nu_basis`-built weights.
 - **(B)** Keep `selberg_nu` opaque; add a cited axiom that the optimal `F`
   admits a finite `∑_j c_j ∏_i F_{j,i}` representation (Polymath8b
   asymptotics §). Smaller, but does NOT move the depth metric.
