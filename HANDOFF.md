@@ -1,9 +1,9 @@
 # HANDOFF.md — Bounded Gaps Lean project
 
 Written 2026-05-28, superseding the earlier 2026-05-28 version. Reflects
-state at `master` commit `6b2af87` (PR #59 merged), **3 PRs after the
+state at `master` commit `0946c81` (PR #62 merged), **5 PRs after the
 previous handoff** (#55 selberg_nu_separable, #56 selberg_nu_basis, #59
-lambdaTransform algebra).
+lambdaTransform algebra, #61 orphan-axiom drop, #62 Mk≤1 k=1 discharge).
 
 This document is self-contained: a fresh session can read it and start
 working without scrolling history.
@@ -14,8 +14,20 @@ working without scrolling history.
 
 ## TL;DR
 
-- **Sorries: 16.** **Axioms: 38.** **Opaques: 3** (`alphaBound`, `betaBound`,
+- **Sorries: 15.** **Axioms: 37.** **Opaques: 3** (`alphaBound`, `betaBound`,
   `selberg_nu` — all real-but-unencoded defs, by project convention).
+- **"Dig" round (PRs #61, #62)**: a systemic sweep produced the first two
+  metric moves in a while. **#61**: a consumption audit (uses = grep count −
+  decl) found `narrowness_asymptotic_lower` at **uses=0** — declared, never
+  consumed — and dropped it (38 → 37 axioms, same class as `parity_barrier`
+  in #43). **#62**: discharged the `Mk_le_one_of_k_le_one` **k=1** case
+  (16 → 15 sorries) — `M_1(F)` collapses to a 1D Rayleigh ratio via the
+  volume-preserving `MeasurableEquiv.funUnique (Fin 1) ℝ` change of
+  variables, then Jensen for x↦x² on the probability space `[0,1]`. The
+  lemma is consumed by `Targets.H1_le_of_Mk_witness` (load-bearing).
+  Audit note: `geh_implies_eh`/`eh_implies_mpz` are *unconsumed sorries*
+  but kept — honest visible debt, not orphans (a sorry shows debt; an
+  orphan axiom hides risk).
 - **Tier 1: the nuform construction ladder + lambda-algebra are now FULLY
   ENCODED** (PRs #52, #55, #56, #59). The chain `lambdaTransform` (1D
   Möbius-divisor operator) → `selberg_nu_separable` (separable case, J=1) →
@@ -110,7 +122,10 @@ working without scrolling history.
 | #57 | HANDOFF refresh after #55/#56 | doc only |
 | #58 | HANDOFF + ROADMAP: finish the #55/#56 refresh (stale-string cleanup) | doc only |
 | #59 | lambda-algebra: `lambdaTransform_prime`/`_prime_of_support`/`_add`/`_smul`/`_neg`/`_linear` (6 real lemmas) | additive, real |
-| #60 | This HANDOFF refresh | doc only |
+| #60 | HANDOFF refresh after #59 + false-axiom finding | doc only |
+| #61 | Drop orphan axiom `narrowness_asymptotic_lower` (uses=0) | axioms 38→37 |
+| #62 | Discharge `Mk_le_one_of_k_le_one` k=1 via funUnique CoV + Jensen on [0,1] | sorries 16→15 |
+| #63 | This HANDOFF + ROADMAP refresh | doc only |
 
 ## Operating principles (locked in, keep)
 
@@ -302,7 +317,7 @@ All of these were `axiom` until PR #41 reclassified them as
 | Theorem | Status | Effort |
 |---|---|---|
 | `Mk_le_one_of_k_le_one` (k = 0 case) | ✅ Done (PR #42 via `Mk_zero_le_one`) | trivial — `mkF_numerator 0 = 0` |
-| `Mk_le_one_of_k_le_one` (k = 1 case) | sorry | **bigger than "smallish"** — needs simplex 1 ↔ Set.Icc 0 1 measure-iso + mkF_numerator 1 unfold through Fin 0 → ℝ space + integral CS. Probed in 2026-05-27 evening session; mathlib's `integral_mul_le_Lp_mul_Lq_of_nonneg` requires nonneg F so signed-F path goes through `(∫(g - c)^2 ≥ 0` expansion. ~1 hour real engineering. |
+| `Mk_le_one_of_k_le_one` (k = 1 case) | ✅ Done (PR #62) | `MeasurableEquiv.funUnique (Fin 1) ℝ` gives the `simplex 1 ↔ Icc 0 1` measure-iso (via `setIntegral_preimage_emb`); the C-S step is `ConvexOn.map_integral_le` (Jensen for x↦x²) on the probability measure `volume.restrict (Icc 0 1)` — cleaner than the signed-F `Lp_mul_Lq` path. ~1h as estimated. |
 | `MkSet_truncated_bddAbove` | ✅ Done (PR #42 via subset) | routes through `MkSet_bddAbove` |
 | `MkSet_nonempty` | sorry | medium — smooth-bump construction. Future PR. |
 | `MkSet_bddAbove` | sorry | medium — Polymath8b Cor `mk-upper`. Future PR. |
