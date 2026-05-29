@@ -307,25 +307,109 @@ theorem Mk_zero_le_one : Mk 0 ≤ 1 := by
   · exact csSup_le hne hbd
   · rw [Set.not_nonempty_iff_eq_empty.mp hne, Real.sSup_empty]; norm_num
 
+/-! #### `k = 1` reduction to a 1D Rayleigh ratio
+
+For `k = 1` the Maynard quantity collapses to a one-dimensional ratio in
+`g t := F (fun _ => t)` over `[0,1]`. The change of variables is the
+`MeasurableEquiv.funUnique (Fin 1) ℝ` (a volume-preserving identification of
+`Fin 1 → ℝ` with `ℝ`), whose `.symm` sends `t ↦ (fun _ => t)` and pulls back
+`simplex 1` to `Set.Icc 0 1`. -/
+
+/-- The preimage of `simplex 1` under the `funUnique` identification
+`ℝ ≃ᵐ (Fin 1 → ℝ)` is `[0,1]`. -/
+private theorem funUnique_preimage_simplex_one :
+    (MeasurableEquiv.funUnique (Fin 1) ℝ).symm ⁻¹' (simplex 1) = Set.Icc (0:ℝ) 1 := by
+  ext t
+  simp only [Set.mem_preimage, MeasurableEquiv.funUnique, simplex, Set.mem_setOf_eq, Set.mem_Icc]
+  constructor
+  · rintro ⟨h0, hsum⟩; exact ⟨h0 0, by simpa [Fin.sum_univ_one] using hsum⟩
+  · rintro ⟨h0, h1⟩
+    exact ⟨fun i => by fin_cases i; simpa using h0, by simpa [Fin.sum_univ_one] using h1⟩
+
+/-- Change of variables collapsing a `simplex 1` integral of `φ ∘ F` to a 1D
+`[0,1]` integral of `φ (F (fun _ => ·))`. -/
+private theorem integral_simplex_one_eq (φ : ℝ → ℝ) (F : (Fin 1 → ℝ) → ℝ) :
+    (∫ t in simplex 1, φ (F t)) = ∫ ti in Set.Icc (0:ℝ) 1, φ (F (fun _ => ti)) := by
+  have hmp := (MeasureTheory.volume_preserving_funUnique (Fin 1) ℝ).symm
+  have hemb := (MeasurableEquiv.funUnique (Fin 1) ℝ).symm.measurableEmbedding
+  have key := hmp.setIntegral_preimage_emb hemb (fun y => φ (F y)) (simplex 1)
+  rw [funUnique_preimage_simplex_one] at key
+  exact key.symm
+
+/-- The Maynard numerator at `k = 1` is `(∫_{[0,1]} g)²`. -/
+private theorem mkF_numerator_one (F : (Fin 1 → ℝ) → ℝ) :
+    mkF_numerator 1 F = (∫ ti in Set.Icc (0:ℝ) 1, F (fun _ => ti)) ^ 2 := by
+  show (∑ i : Fin 1, ∫ s in simplex 0,
+      (∫ ti in Set.Icc (0:ℝ) (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2) = _
+  rw [Fin.sum_univ_one,
+      show simplex 0 = (Set.univ : Set (Fin 0 → ℝ)) from by unfold simplex; ext s; simp]
+  have hpt : ∀ (s : Fin 0 → ℝ) (ti : ℝ), (0 : Fin 1).insertNth ti s = (fun _ => ti) := by
+    intro s ti; funext j; fin_cases j; simp
+  simp only [Fin.sum_univ_zero, sub_zero, hpt]
+  rw [MeasureTheory.setIntegral_const, MeasureTheory.measureReal_def,
+      show (MeasureTheory.volume (Set.univ : Set (Fin 0 → ℝ))) = 1 from by
+        rw [show (Set.univ : Set (Fin 0 → ℝ)) = Set.pi Set.univ (fun _ => Set.univ) from by simp,
+            MeasureTheory.volume_pi_pi]; simp]
+  simp
+
+/-- The Maynard denominator at `k = 1` is `∫_{[0,1]} g²`. -/
+private theorem mkF_denominator_one (F : (Fin 1 → ℝ) → ℝ) :
+    mkF_denominator 1 F = ∫ ti in Set.Icc (0:ℝ) 1, F (fun _ => ti) ^ 2 := by
+  unfold mkF_denominator
+  exact integral_simplex_one_eq (fun y => y ^ 2) F
+
+/-- **Cauchy-Schwarz / Jensen on `[0,1]`**: for `g` continuous on `[0,1]`,
+`(∫_{[0,1]} g)² ≤ ∫_{[0,1]} g²`. Proved via Jensen's inequality for the
+convex map `x ↦ x²` against the probability measure `volume.restrict [0,1]`. -/
+private theorem sq_setIntegral_Icc_le (g : ℝ → ℝ) (hg : ContinuousOn g (Set.Icc 0 1)) :
+    (∫ x in Set.Icc (0:ℝ) 1, g x) ^ 2 ≤ ∫ x in Set.Icc (0:ℝ) 1, g x ^ 2 := by
+  haveI : MeasureTheory.IsProbabilityMeasure
+      (MeasureTheory.volume.restrict (Set.Icc (0:ℝ) 1)) := by constructor; simp
+  have hconv : ConvexOn ℝ (Set.univ : Set ℝ) (fun x : ℝ => x ^ 2) :=
+    Even.convexOn_pow (by decide)
+  have hint : MeasureTheory.Integrable g
+      (MeasureTheory.volume.restrict (Set.Icc (0:ℝ) 1)) :=
+    hg.integrableOn_compact isCompact_Icc
+  have hint2 : MeasureTheory.Integrable (fun x => g x ^ 2)
+      (MeasureTheory.volume.restrict (Set.Icc (0:ℝ) 1)) :=
+    (hg.pow 2).integrableOn_compact isCompact_Icc
+  have key := hconv.map_integral_le (g := fun x : ℝ => x ^ 2) (f := g)
+    (by fun_prop) isClosed_univ (by filter_upwards with a using Set.mem_univ _) hint hint2
+  simpa using key
+
+/-- For admissible `F` at `k = 1`, the Rayleigh ratio `MkF 1 F ≤ 1`. -/
+private theorem mkF_one_le (F : (Fin 1 → ℝ) → ℝ) (hF : ContDiff ℝ ⊤ F)
+    (hden : mkF_denominator 1 F > 0) : MkF 1 F ≤ 1 := by
+  unfold MkF
+  rw [mkF_numerator_one, mkF_denominator_one]
+  rw [mkF_denominator_one] at hden
+  have hg : ContinuousOn (fun t : ℝ => F (fun _ => t)) (Set.Icc 0 1) :=
+    (hF.continuous.comp (by fun_prop)).continuousOn
+  rw [div_le_one hden]
+  exact sq_setIntegral_Icc_le _ hg
+
 /-- $M_k \le 1$ for $k \le 1$. Standard variational bound: for $k = 0$,
 $M_0 = 0$ by definition (the numerator `mkF_numerator 0` is identically 0);
 for $k = 1$, the Maynard ratio is $(\int F)^2 / \int F^2 \le 1$ by
 Cauchy-Schwarz on $[0, 1]$.
 
-**Discharge status (2026-05-26, ROADMAP Tier 2)**:
-- $k = 0$ case: **real** via `Mk_zero_le_one` above (`MkF 0 _ = 0/_ = 0`).
-- $k = 1$ case: still `sorry`. The Cauchy-Schwarz step is genuine
-  measure-theoretic content. Sketch: for $g(t) := F(\text{fun}\_ => t)$
-  supported on $[0,1]$,
-  $(\int_0^1 g)^2 \le (\int_0^1 1^2)(\int_0^1 g^2) = \int_0^1 g^2$
-  by `MeasureTheory.inner_mul_le_norm_mul_norm` (L²-Cauchy-Schwarz)
-  specialised to the indicator of $[0,1]$ against $g$, then unfolding
-  the `Fin 0`-volume = 1 simplification on `mkF_numerator 1`. Future PR. -/
+**Both cases real (2026-05-28)**:
+- $k = 0$: via `Mk_zero_le_one` (`MkF 0 _ = 0/_ = 0`).
+- $k = 1$: via `mkF_one_le` — change of variables
+  `MeasurableEquiv.funUnique (Fin 1) ℝ` collapses the `simplex 1` integrals
+  to 1D `[0,1]` integrals (`mkF_numerator_one`, `mkF_denominator_one`), then
+  Jensen for `x ↦ x²` on the probability space `[0,1]`
+  (`sq_setIntegral_Icc_le`) gives `(∫g)² ≤ ∫g²`, i.e. `MkF 1 F ≤ 1`. -/
 theorem Mk_le_one_of_k_le_one (k : ℕ) (hk : k ≤ 1) : Mk k ≤ 1 := by
   interval_cases k
   · exact Mk_zero_le_one
-  · -- k = 1: Cauchy-Schwarz on [0,1]. Future PR; see docstring.
-    sorry
+  · -- k = 1: Cauchy-Schwarz on [0,1].
+    change sSup (MkSet 1) ≤ 1
+    by_cases hne : (MkSet 1).Nonempty
+    · apply csSup_le hne
+      rintro v ⟨F, hsmooth, _, hden, rfl⟩
+      exact mkF_one_le F hsmooth hden
+    · rw [Set.not_nonempty_iff_eq_empty.mp hne, Real.sSup_empty]; norm_num
 
 /-! ### The truncated variant (Polymath8b §5, `maynard-trunc`)
 
