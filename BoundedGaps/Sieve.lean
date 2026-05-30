@@ -426,14 +426,47 @@ theorem MkSet_nonempty (k : ℕ) (hk : 2 ≤ k) : (MkSet k).Nonempty := by
     exact hopen.measure_pos (μ := MeasureTheory.volume) hne
   exact ⟨MkF k F, F, hF_smooth, hF_supp, hF_den, rfl⟩
 
+open MeasureTheory in
+/-- **Fibration / change-of-variables for integrals over `Fin (n+1) → ℝ`.**
+For integrable $G$,
+$$\int_{\mathbb{R}^{n+1}} G = \int_{\mathbb{R}^n}\!\int_{\mathbb{R}}
+   G(\mathrm{insertNth}\, i\, t_i\, s)\, dt_i\, ds,$$
+via the measure-preserving `MeasurableEquiv.piFinSuccAbove i`
+($\mathbb{R}^{n+1} \simeq \mathbb{R} \times \mathbb{R}^n$, whose inverse is
+`insertNth`) and `integral_prod_symm`. The keystone for `MkSet_bddAbove`: it
+relates the full-space `∫ F²` to the `insertNth`-iterated form in which the
+Maynard marginals $J_i$ and the Rayleigh denominator are written. -/
+theorem integral_insertNth_eq {n : ℕ} (i : Fin (n + 1)) (G : (Fin (n + 1) → ℝ) → ℝ)
+    (hG : Integrable G) :
+    (∫ t, G t) = ∫ s : Fin n → ℝ, ∫ ti : ℝ, G (i.insertNth ti s) := by
+  have mp := volume_preserving_piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+  have hint : Integrable
+      (fun p : ℝ × (Fin n → ℝ) =>
+        G ((MeasurableEquiv.piFinSuccAbove (fun _ => ℝ) i).symm p))
+      (volume.prod volume) := by
+    rw [← Measure.volume_eq_prod ℝ (Fin n → ℝ)]
+    exact mp.symm.integrable_comp_of_integrable hG
+  rw [← mp.symm.integral_comp' G, Measure.volume_eq_prod ℝ (Fin n → ℝ),
+      integral_prod_symm _ hint]
+  simp only [MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv, Equiv.coe_fn_mk]
+
 /-- The admissible-F set for $M_k$ is bounded above.
 
 Polymath8b Corollary `mk-upper` (the converse direction to `mlower`):
-$M_k \le \frac{k}{k-1} \log k$ for all $k \ge 2$. This implies any
-realized value is bounded by $\frac{k}{k-1} \log k$, so the set is
-`BddAbove`. cf. Polymath8b §5 + Hensley-Richards 1973 (asymptotic).
+$M_k \le \frac{k}{k-1} \log k$ for all $k \ge 2$. The crude bound $M_k \le k$
+already gives `BddAbove`, via Cauchy-Schwarz on each Maynard marginal:
+$J_i(F) \le I(F)$ (so $\sum_i J_i \le k\,I$). cf. Polymath8b §5 +
+Hensley-Richards 1973 (asymptotic).
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+**Status (ROADMAP Tier 2): partially built.** The keystone fibration lemma
+`integral_insertNth_eq` is proved (sorry-free). Remaining for the `M_k ≤ k`
+route (each step using `support F ⊆ simplex` to pass between simplex and
+full-space integrals):
+  1. an integral Cauchy-Schwarz `(∫_{Icc 0 L} g)² ≤ L · ∫_{Icc 0 L} g²`
+     (not in mathlib as a single lemma — prove via L² Hölder / `inner_mul_le`);
+  2. `I(F) = ∫_{ℝ^{n+1}} F²` and `J_i(F) ≤ ∫_{ℝ^n} ∫_ℝ F(insertNth)²` via
+     `integral_insertNth_eq` + `setIntegral` support/monotonicity lemmas;
+  3. combine: `J_i ≤ I`, sum over `i`, divide. -/
 theorem MkSet_bddAbove (k : ℕ) : BddAbove (MkSet k) := by
   let _ := k; sorry
 
