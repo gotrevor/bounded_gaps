@@ -149,6 +149,224 @@ def betaBound (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ) (_x : �
     (fun y : ℝ => max (β * betaMainTerm k W y - sieveThetaSum ν H i b W y) 0)
     (betaMainTerm k W)
 
+/-- Fin-card ↔ List.countP: counting indices `i : Fin k` whose `H.getD i 0`
+satisfies `p` equals `H.countP p`, when `H.length = k`. -/
+theorem card_fin_filter_eq_countP {k : ℕ} (H : List ℕ) (hLen : H.length = k)
+    (p : ℕ → Bool) :
+    (Finset.univ.filter (fun i : Fin k => p (H.getD i.val 0))).card = H.countP p := by
+  subst hLen
+  have hcount : ∀ L : List ℕ,
+      L.countP p = (L.map (fun a => if p a then (1:ℕ) else 0)).sum := by
+    intro L; induction L with
+    | nil => simp
+    | cons a t ih =>
+        rw [List.countP_cons, List.map_cons, List.sum_cons, ih]
+        by_cases h : p a <;> simp [h] <;> ring
+  rw [Finset.card_filter, hcount H]
+  have hof : (List.ofFn (fun i : Fin H.length => if p (H.getD i.val 0) then (1:ℕ) else 0))
+           = H.map (fun a => if p a then (1:ℕ) else 0) := by
+    rw [show (fun i : Fin H.length => if p (H.getD i.val 0) then (1:ℕ) else 0)
+          = (fun i : Fin H.length => (fun a => if p a then (1:ℕ) else 0) H[i.val]) from by
+          funext i; rw [List.getD_eq_getElem]]
+    exact List.ofFn_getElem_eq_map H (fun a => if p a then (1:ℕ) else 0)
+  rw [← List.sum_ofFn, hof]
+
+/-- Pigeonhole bridge: if the bracket `∑ᵢ θ(n+hᵢ) − m·log(3x)` is positive and
+each `n+hᵢ ≤ 3x`, then at least `m+1` of the `n+hᵢ` are prime. -/
+theorem pigeonhole_bridge {k : ℕ} (H : List ℕ) (hLen : H.length = k) (m n : ℕ) (x : ℝ)
+    (hx : 1 < 3 * x)
+    (hbound : ∀ i : Fin k, (↑(n + H.getD i.val 0) : ℝ) ≤ 3 * x)
+    (hbracket : (m : ℝ) * Real.log (3 * x)
+        < ∑ i : Fin k, primeTheta (n + H.getD i.val 0)) :
+    H.countP (fun h => (n + h).Prime) ≥ m + 1 := by
+  set B := Real.log (3 * x) with hB
+  have hBpos : 0 < B := Real.log_pos hx
+  set P : Fin k → Prop := fun i => (n + H.getD i.val 0).Prime with hP
+  classical
+  have hterm : ∀ i : Fin k,
+      primeTheta (n + H.getD i.val 0) ≤ (if P i then B else 0) := by
+    intro i
+    simp only [primeTheta, hP]
+    split_ifs with hp
+    · exact Real.log_le_log (by exact_mod_cast hp.pos) (hbound i)
+    · exact le_refl 0
+  have hsum_le : ∑ i : Fin k, primeTheta (n + H.getD i.val 0)
+      ≤ ((Finset.univ.filter P).card : ℝ) * B := by
+    calc ∑ i, primeTheta (n + H.getD i.val 0)
+        ≤ ∑ i, (if P i then B else 0) := Finset.sum_le_sum (fun i _ => hterm i)
+      _ = ∑ i, (if P i then (1:ℝ) else 0) * B := by
+            refine Finset.sum_congr rfl (fun i _ => ?_); split <;> simp
+      _ = (∑ i, (if P i then (1:ℝ) else 0)) * B := by rw [Finset.sum_mul]
+      _ = ((Finset.univ.filter P).card : ℝ) * B := by rw [Finset.sum_boole]
+  have hm_lt : (m : ℝ) < ((Finset.univ.filter P).card : ℝ) :=
+    lt_of_mul_lt_mul_right (hbracket.trans_le hsum_le) hBpos.le
+  have hm_lt_nat : m < (Finset.univ.filter P).card := by exact_mod_cast hm_lt
+  have hcard : (Finset.univ.filter P).card
+      = H.countP (fun h => (n + h).Prime) := by
+    rw [← card_fin_filter_eq_countP H hLen (fun h => decide ((n + h).Prime))]
+    congr 1
+    apply Finset.filter_congr
+    intro i _; simp [hP]
+  omega
+
+/-- Main-term ratio identity: `betaMainTerm = alphaMainTerm · log x`
+(both built from `sieveB = φ(W)/W · log x`). Holds whenever `log x ≠ 0`. -/
+theorem betaMainTerm_eq_alphaMainTerm_mul_log (k W : ℕ) (hW : 1 ≤ W) (x : ℝ)
+    (hlog : Real.log x ≠ 0) :
+    betaMainTerm k W x = alphaMainTerm k W x * Real.log x := by
+  have hWpos : (0:ℝ) < W := by exact_mod_cast hW
+  have hφpos : (0:ℝ) < W.totient := by
+    have := Nat.totient_pos.mpr (by omega : 0 < W); exact_mod_cast this
+  have hB : sieveB W x ≠ 0 := by
+    simp only [sieveB]
+    apply mul_ne_zero (div_ne_zero (by positivity) (by positivity)) hlog
+  simp only [betaMainTerm, alphaMainTerm]
+  rw [show (1:ℤ) - (k:ℤ) = 1 + (-(k:ℤ)) from by ring, zpow_add₀ hB, zpow_one]
+  simp only [sieveB]
+  field_simp
+
+open Filter Asymptotics in
+/-- `alphaMainTerm =o betaMainTerm`: since `M₂ = M₁ · log x` and `log x → ∞`. -/
+theorem alphaMainTerm_isLittleO_betaMainTerm (k W : ℕ) (hW : 1 ≤ W) :
+    alphaMainTerm k W =o[atTop] betaMainTerm k W := by
+  have hWpos : (0:ℝ) < W := by exact_mod_cast hW
+  have hφpos : (0:ℝ) < W.totient := by
+    have := Nat.totient_pos.mpr (by omega : 0 < W); exact_mod_cast this
+  have hM1pos : ∀ᶠ x : ℝ in atTop, 0 < alphaMainTerm k W x := by
+    filter_upwards [eventually_gt_atTop (1:ℝ)] with x hx
+    have hlogpos : 0 < Real.log x := Real.log_pos hx
+    have hBpos : 0 < sieveB W x := by
+      simp only [sieveB]; positivity
+    simp only [alphaMainTerm]
+    have : 0 < sieveB W x ^ (-(k:ℤ)) := zpow_pos hBpos _
+    have hx0 : 0 < x := by linarith
+    positivity
+  rw [isLittleO_iff]
+  intro c hc
+  filter_upwards [hM1pos, Real.tendsto_log_atTop.eventually_ge_atTop (1/c),
+    eventually_gt_atTop (1:ℝ)]
+    with x hM1 hlog hx1
+  have heq : betaMainTerm k W x = alphaMainTerm k W x * Real.log x :=
+    betaMainTerm_eq_alphaMainTerm_mul_log k W hW x (Real.log_pos hx1).ne'
+  have hlogpos : 0 < Real.log x := Real.log_pos hx1
+  rw [heq, Real.norm_of_nonneg hM1.le, Real.norm_of_nonneg (by positivity)]
+  have : 1 ≤ c * Real.log x := by
+    rw [div_le_iff₀ hc] at hlog; linarith
+  nlinarith [hM1, this]
+
+open Filter Asymptotics in
+/-- helper: `log(3x)·M₁ =O M₂` (ratio `log3x/logx → 1`, bounded by 2). -/
+theorem log3x_mul_alphaMainTerm_isBigO (k W : ℕ) (hW : 1 ≤ W) :
+    (fun x : ℝ => Real.log (3 * x) * alphaMainTerm k W x) =O[atTop] (betaMainTerm k W) := by
+  have hWpos : (0:ℝ) < W := by exact_mod_cast hW
+  have hφpos : (0:ℝ) < W.totient := by
+    have := Nat.totient_pos.mpr (by omega : 0 < W); exact_mod_cast this
+  rw [isBigO_iff]
+  refine ⟨2, ?_⟩
+  filter_upwards [eventually_ge_atTop (3:ℝ)] with x hx3
+  have hx1 : (1:ℝ) < x := by linarith
+  have hxpos : (0:ℝ) < x := by linarith
+  have hlogpos : 0 < Real.log x := Real.log_pos hx1
+  have hlog3x_pos : 0 < Real.log (3 * x) := Real.log_pos (by linarith)
+  have hM1pos : 0 < alphaMainTerm k W x := by
+    have hBpos : 0 < sieveB W x := by simp only [sieveB]; positivity
+    simp only [alphaMainTerm]
+    have : 0 < sieveB W x ^ (-(k:ℤ)) := zpow_pos hBpos _
+    positivity
+  have heq : betaMainTerm k W x = alphaMainTerm k W x * Real.log x :=
+    betaMainTerm_eq_alphaMainTerm_mul_log k W hW x hlogpos.ne'
+  have hlogmul : Real.log (3 * x) = Real.log 3 + Real.log x :=
+    Real.log_mul (by norm_num) hxpos.ne'
+  have hlog3_le : Real.log 3 ≤ Real.log x := Real.log_le_log (by norm_num) hx3
+  rw [Real.norm_of_nonneg (by positivity), heq, Real.norm_of_nonneg (by positivity)]
+  nlinarith [hM1pos, hlogpos, hlog3_le, hlogmul]
+
+open Filter Asymptotics in
+/-- helper: `m·log(3x)·err1 =o M₂` when `err1 =o M₁`. -/
+theorem m_log3x_err1_isLittleO {k W : ℕ} (hW : 1 ≤ W) (m : ℕ) (err1 : ℝ → ℝ)
+    (h1 : err1 =o[atTop] (alphaMainTerm k W)) :
+    (fun x : ℝ => (m:ℝ) * Real.log (3 * x) * err1 x) =o[atTop] (betaMainTerm k W) := by
+  have hstep : (fun x : ℝ => Real.log (3 * x) * err1 x) =o[atTop] (betaMainTerm k W) := by
+    have h2 : (fun x : ℝ => Real.log (3 * x) * err1 x)
+        =o[atTop] (fun x => Real.log (3 * x) * alphaMainTerm k W x) :=
+      (isBigO_refl (fun x : ℝ => Real.log (3 * x)) atTop).mul_isLittleO h1
+    exact h2.trans_isBigO (log3x_mul_alphaMainTerm_isBigO k W hW)
+  have := hstep.const_mul_left (m : ℝ)
+  simpa [mul_assoc] using this
+
+open Filter Asymptotics in
+/-- Claim 2: the combined sieve sum `∑ᵢ STSᵢ − m·log(3x)·sieveSum` is
+eventually positive. -/
+theorem core_positive {k : ℕ} (H : List ℕ) {m : ℕ} {b W : ℕ} {ν : ℕ → ℝ} {α : ℝ}
+    {β : Fin k → ℝ} (hW : 1 ≤ W) (hα : 0 < α)
+    (hKey : (↑m : ℝ) < (∑ i, β i) / α)
+    (hS1 : (fun y => max (sieveSum ν b W y - α * alphaMainTerm k W y) 0)
+        =o[atTop] (alphaMainTerm k W))
+    (hS2 : ∀ i, (fun y => max (β i * betaMainTerm k W y - sieveThetaSum ν H i.val b W y) 0)
+        =o[atTop] (betaMainTerm k W)) :
+    ∀ᶠ x : ℝ in atTop, 0 < (∑ i : Fin k, sieveThetaSum ν H i.val b W x)
+        - (↑m) * Real.log (3 * x) * sieveSum ν b W x := by
+  have hWpos : (0:ℝ) < W := by exact_mod_cast hW
+  have hδ : 0 < (∑ i, β i) - m * α := by
+    rw [lt_div_iff₀ hα] at hKey; linarith
+  set δ := (∑ i, β i) - m * α with hδdef
+  have hRo : (fun x => (↑m * α * Real.log 3) * alphaMainTerm k W x
+      + (∑ i, max (β i * betaMainTerm k W x - sieveThetaSum ν H i.val b W x) 0)
+      + ↑m * Real.log (3 * x) * (max (sieveSum ν b W x - α * alphaMainTerm k W x) 0))
+      =o[atTop] (betaMainTerm k W) := by
+    refine ((?_ : _ =o[atTop] _).add (?_ : _ =o[atTop] _)).add (?_ : _ =o[atTop] _)
+    · exact (alphaMainTerm_isLittleO_betaMainTerm k W hW).const_mul_left _
+    · exact IsLittleO.sum (fun i _ => hS2 i)
+    · exact m_log3x_err1_isLittleO hW m _ hS1
+  filter_upwards [hRo.def (half_pos hδ), eventually_gt_atTop (1:ℝ),
+    (alphaMainTerm_isLittleO_betaMainTerm k W hW).def (c := 1) one_pos]
+    with x hRbound hx1 _
+  have hlogpos : 0 < Real.log x := Real.log_pos hx1
+  have hlog3x : 0 ≤ Real.log (3 * x) := (Real.log_pos (by linarith)).le
+  have hM1pos : 0 < alphaMainTerm k W x := by
+    have hBpos : 0 < sieveB W x := by simp only [sieveB]; positivity
+    simp only [alphaMainTerm]
+    have : 0 < sieveB W x ^ (-(k:ℤ)) := zpow_pos hBpos _
+    have hx0 : 0 < x := by linarith
+    positivity
+  have hM2eq : betaMainTerm k W x = alphaMainTerm k W x * Real.log x :=
+    betaMainTerm_eq_alphaMainTerm_mul_log k W hW x hlogpos.ne'
+  have hM2pos : 0 < betaMainTerm k W x := by rw [hM2eq]; positivity
+  have hlog3eq : Real.log (3 * x) = Real.log 3 + Real.log x :=
+    Real.log_mul (by norm_num) (by linarith)
+  set M₁ := alphaMainTerm k W x
+  set M₂ := betaMainTerm k W x
+  set SS := sieveSum ν b W x
+  set err1 := max (SS - α * M₁) 0 with herr1
+  set STS := fun i : Fin k => sieveThetaSum ν H i.val b W x with hSTS
+  set err2 := fun i : Fin k => max (β i * M₂ - STS i) 0 with herr2
+  have hSS_le : SS ≤ α * M₁ + err1 := by
+    have := le_max_left (SS - α * M₁) 0; rw [herr1]; linarith [le_max_left (SS - α * M₁) (0:ℝ)]
+  have hSTS_ge : ∀ i, β i * M₂ - err2 i ≤ STS i := by
+    intro i; have := le_max_left (β i * M₂ - STS i) (0:ℝ); rw [herr2]; simp; linarith
+  have hsumSTS : (∑ i, β i) * M₂ - (∑ i, err2 i) ≤ ∑ i, STS i := by
+    have : ∑ i, (β i * M₂ - err2 i) ≤ ∑ i, STS i := Finset.sum_le_sum (fun i _ => hSTS_ge i)
+    rw [Finset.sum_sub_distrib, ← Finset.sum_mul] at this; linarith
+  have hmulSS : (↑m) * Real.log (3 * x) * SS
+      ≤ (↑m) * Real.log (3 * x) * (α * M₁) + (↑m) * Real.log (3 * x) * err1 := by
+    have hnn : 0 ≤ (↑m : ℝ) * Real.log (3 * x) := by positivity
+    nlinarith [mul_le_mul_of_nonneg_left hSS_le hnn]
+  have hbig : (↑m) * Real.log (3 * x) * (α * M₁) = m * α * M₂ + m * α * Real.log 3 * M₁ := by
+    rw [hlog3eq, hM2eq]; ring
+  have hRnn_bound : (↑m * α * Real.log 3) * M₁
+      + (∑ i, err2 i) + ↑m * Real.log (3 * x) * err1
+      ≤ (δ / 2) * M₂ := by
+    have : ‖(↑m * α * Real.log 3) * M₁ + (∑ i, err2 i) + ↑m * Real.log (3 * x) * err1‖
+        ≤ (δ / 2) * ‖M₂‖ := hRbound
+    rwa [Real.norm_of_nonneg hM2pos.le,
+      Real.norm_of_nonneg (by positivity)] at this
+  have hLB : (δ / 2) * M₂
+      ≤ (∑ i, STS i) - ↑m * Real.log (3 * x) * SS := by
+    rw [hδdef]; nlinarith [hsumSTS, hmulSS, hbig, hRnn_bound]
+  have : 0 < (δ / 2) * M₂ := by positivity
+  linarith [hLB]
+
+open Filter Asymptotics in
 /-- **Step 1 of Lemma crit (Polymath8b §3, analytic core)**: from the sieve
 bounds (s1) and (s2), and the key ratio $(\beta_1 + \cdots + \beta_k)/\alpha > m$,
 one deduces that for arbitrarily large $N$ there exists $n \in [N, 2N]$ with
@@ -167,15 +385,65 @@ Paper proof structure (Polymath8b §3, proof of Lemma crit, paragraphs 1-3):
 -- pigeonhole step also needs a small `(p.Prime → log p ≤ θ p)` type bridge.
 -- Polymath8b §3 Lemma crit, paragraphs 1-3.
 theorem witness_eventually_from_sieve_data
-    {k : ℕ} (H : List ℕ) (_hAdm : Admissible H) (_hLen : H.length = k)
+    {k : ℕ} (H : List ℕ) (_hAdm : Admissible H) (hLen : H.length = k)
     {m : ℕ} {b W : ℕ} {ν : ℕ → ℝ} {α : ℝ} {β : Fin k → ℝ}
-    (_hα : 0 < α) (_hβ : ∀ i, 0 ≤ β i)
-    (_hKey : (∑ i, β i) / α > m)
-    (_hS1 : ∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α)
-    (_hS2 : ∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
+    (hW : 1 ≤ W) (hν : ∀ n, 0 ≤ ν n)
+    (hα : 0 < α) (_hβ : ∀ i, 0 ≤ β i)
+    (hKey : (∑ i, β i) / α > m)
+    (hS1 : ∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α)
+    (hS2 : ∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
               betaBound k ν H b W i.val x (β i)) :
     ∀ᶠ N : ℕ in Filter.atTop, ∃ n : ℕ, N ≤ n ∧ n ≤ 2 * N ∧
-      H.countP (fun h => (n + h).Prime) ≥ m + 1 := sorry
+      H.countP (fun h => (n + h).Prime) ≥ m + 1 := by
+  simp only [alphaBound] at hS1
+  rw [Filter.eventually_const] at hS1
+  have hS2' : ∀ i, (fun y => max (β i * betaMainTerm k W y
+      - sieveThetaSum ν H i.val b W y) 0) =o[atTop] (betaMainTerm k W) := by
+    intro i; have h := hS2 i; simp only [betaBound] at h; rwa [Filter.eventually_const] at h
+  set Mx := Finset.univ.sup (fun i : Fin k => H.getD i.val 0) with hMx
+  have hreal : ∀ᶠ x : ℝ in atTop, ∃ n : ℕ, ⌈x⌉₊ ≤ n ∧ n ≤ ⌊2 * x⌋₊ ∧
+      H.countP (fun h => (n + h).Prime) ≥ m + 1 := by
+    filter_upwards [core_positive H hW hα hKey hS1 hS2',
+      eventually_ge_atTop ((Mx : ℝ) + 1), eventually_gt_atTop (1:ℝ)]
+      with x hpos hMxbound hx1
+    have heq : (∑ i : Fin k, sieveThetaSum ν H i.val b W x)
+          - ↑m * Real.log (3 * x) * sieveSum ν b W x
+        = ∑ n ∈ (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W),
+            ν n * ((∑ i : Fin k, primeTheta (n + H.getD i.val 0))
+                    - ↑m * Real.log (3 * x)) := by
+      simp only [sieveThetaSum, sieveSum]
+      rw [Finset.mul_sum, Finset.sum_comm, ← Finset.sum_sub_distrib]
+      refine Finset.sum_congr rfl (fun n _ => ?_)
+      rw [mul_sub, Finset.mul_sum]; ring
+    rw [heq] at hpos
+    have hsum0 : (∑ n ∈ (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W), (0:ℝ))
+        < ∑ n ∈ (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W),
+            ν n * ((∑ i : Fin k, primeTheta (n + H.getD i.val 0)) - ↑m * Real.log (3 * x)) := by
+      rw [Finset.sum_const_zero]; exact hpos
+    obtain ⟨n, hn_mem, hn_pos⟩ := Finset.exists_lt_of_sum_lt hsum0
+    have hbracket_pos : 0 < (∑ i : Fin k, primeTheta (n + H.getD i.val 0))
+        - ↑m * Real.log (3 * x) := by
+      by_contra h; rw [not_lt] at h
+      nlinarith [hν n, hn_pos]
+    have hn_Icc : n ∈ Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊ := Finset.mem_of_mem_filter n hn_mem
+    rw [Finset.mem_Icc] at hn_Icc
+    have hbnd : ∀ i : Fin k, (↑(n + H.getD i.val 0) : ℝ) ≤ 3 * x := by
+      intro i
+      have hn2x : (n : ℝ) ≤ 2 * x := by
+        have h1 : (n : ℝ) ≤ (⌊2 * x⌋₊ : ℝ) := by exact_mod_cast hn_Icc.2
+        exact h1.trans (Nat.floor_le (by positivity))
+      have hhi : (↑(H.getD i.val 0) : ℝ) ≤ (Mx : ℝ) := by
+        exact_mod_cast Finset.le_sup (f := fun i : Fin k => H.getD i.val 0) (Finset.mem_univ i)
+      push_cast; linarith [hMxbound]
+    exact ⟨n, hn_Icc.1, hn_Icc.2,
+      pigeonhole_bridge H hLen m n x (by linarith) hbnd (by linarith [hbracket_pos])⟩
+  have htrans := (tendsto_natCast_atTop_atTop (R := ℝ)).eventually hreal
+  filter_upwards [htrans] with N hN
+  obtain ⟨n, h1, h2, h3⟩ := hN
+  refine ⟨n, ?_, ?_, h3⟩
+  · rwa [Nat.ceil_natCast] at h1
+  · rw [show (2:ℝ) * (N : ℝ) = ((2 * N : ℕ) : ℝ) by push_cast; ring, Nat.floor_natCast] at h2
+    exact h2
 
 /-- **Step 2 of Lemma crit (topological wrap-up)**: per-$N$ witnesses in
 $[N, 2N]$ give an infinite set of witnesses. Polymath8b §3 final paragraph
@@ -216,15 +484,15 @@ Proof: 3-line composition of `witness_eventually_from_sieve_data` and
 theorem dhl_criterion (k m : ℕ) (_hk : k ≥ 2) (_hm : m ≥ 1)
     (hSieve : ∀ H : List ℕ, Admissible H → H.length = k →
       ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
-        0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+        1 ≤ W ∧ (∀ n, 0 ≤ ν n) ∧ 0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
         (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
         (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
             betaBound k ν H b W i.val x (β i))) :
     DHL k (m + 1) := by
   intro H hAdm hLen
-  obtain ⟨b, W, ν, α, β, hα, hβ, hKey, hS1, hS2⟩ := hSieve H hAdm hLen
+  obtain ⟨b, W, ν, α, β, hW, hν, hα, hβ, hKey, hS1, hS2⟩ := hSieve H hAdm hLen
   exact infinite_witnesses_of_eventual_witness
-    (witness_eventually_from_sieve_data H hAdm hLen hα hβ hKey hS1 hS2)
+    (witness_eventually_from_sieve_data H hAdm hLen hW hν hα hβ hKey hS1 hS2)
 
 /-! ### The variational problem (Polymath8b §5-§6) -/
 
@@ -1717,7 +1985,7 @@ theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     (hF_Mk : MkF k F > 2 * m / ϑ)
     {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
     ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
-      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      1 ≤ W ∧ (∀ n, 0 ≤ ν n) ∧ 0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
       (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
@@ -1726,7 +1994,7 @@ theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
   have hϑ_pos : 0 < ϑ := hϑ.1
   have hϑ_half_pos : 0 < ϑ / 2 := by linarith
   refine ⟨b, W, selberg_nu k J c Fs H R, mkF_denominator k F,
-    fun i => ϑ / 2 * J_i k F i, hF_den, ?_, ?_, ?_, ?_⟩
+    fun i => ϑ / 2 * J_i k F i, hW, (fun n => selberg_nu_basis_nonneg k J c Fs H R n), hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
     exact mul_nonneg hϑ_half_pos.le (J_i_nonneg k F i)
@@ -1796,7 +2064,7 @@ theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m 
     (hF_Mk : MkF k F > m / (1 / 4 + ϖ))
     {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
     ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
-      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      1 ≤ W ∧ (∀ n, 0 ≤ ν n) ∧ 0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
       (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
@@ -1809,7 +2077,7 @@ theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m 
     obtain ⟨h_nonneg, _h_lealpha, h_sumle⟩ := hF_supp ht
     exact ⟨h_nonneg, h_sumle⟩
   refine ⟨b, W, selberg_nu k J c Fs H R, mkF_denominator k F,
-    fun i => (1/4 + ϖ) * J_i k F i, hF_den, ?_, ?_, ?_, ?_⟩
+    fun i => (1/4 + ϖ) * J_i k F i, hW, (fun n => selberg_nu_basis_nonneg k J c Fs H R n), hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
     exact mul_nonneg hϖ.le (J_i_nonneg k F i)
@@ -1976,7 +2244,7 @@ theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     (hF_Mk : MkF_eps k ε F > 2 * m / ϑ)
     {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
     ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
-      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      1 ≤ W ∧ (∀ n, 0 ≤ ν n) ∧ 0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
       (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
@@ -1985,7 +2253,7 @@ theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
   have hϑ_pos : 0 < ϑ := hϑ.1
   have hϑ_half_pos : 0 < ϑ / 2 := by linarith
   refine ⟨b, W, selberg_nu k J c Fs H R, mkF_eps_denominator k ε F,
-    fun i => ϑ / 2 * J_i_eps k ε F i, hF_den, ?_, ?_, ?_, ?_⟩
+    fun i => ϑ / 2 * J_i_eps k ε F i, hW, (fun n => selberg_nu_basis_nonneg k J c Fs H R n), hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
     exact mul_nonneg hϑ_half_pos.le (J_i_eps_nonneg k ε F i)
@@ -2121,7 +2389,7 @@ theorem selberg_sieve_data_beyond_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥
       (∑ i, J_i_beyond k ε F i) / mkF_beyond_denominator k F > 2 * m / ϑ)
     {H : List ℕ} (hAdm : Admissible H) (hLen : H.length = k) :
     ∃ (b W : ℕ) (ν : ℕ → ℝ) (α : ℝ) (β : Fin k → ℝ),
-      0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
+      1 ≤ W ∧ (∀ n, 0 ≤ ν n) ∧ 0 < α ∧ (∀ i, 0 ≤ β i) ∧ (∑ i, β i) / α > m ∧
       (∀ᶠ x : ℝ in Filter.atTop, alphaBound k ν b W x α) ∧
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
@@ -2130,7 +2398,7 @@ theorem selberg_sieve_data_beyond_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥
   have hϑ_pos : 0 < ϑ := hϑ.1
   have hϑ_half_pos : 0 < ϑ / 2 := by linarith
   refine ⟨b, W, selberg_nu k J c Fs H R, mkF_beyond_denominator k F,
-    fun i => ϑ / 2 * J_i_beyond k ε F i, hF_den, ?_, ?_, ?_, ?_⟩
+    fun i => ϑ / 2 * J_i_beyond k ε F i, hW, (fun n => selberg_nu_basis_nonneg k J c Fs H R n), hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
     exact mul_nonneg hϑ_half_pos.le (J_i_beyond_nonneg k ε F i)
