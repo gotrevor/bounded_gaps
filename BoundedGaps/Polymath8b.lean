@@ -35,6 +35,7 @@ import BoundedGaps.Engelsma
 namespace BoundedGaps.Polymath8b
 
 open BoundedGaps
+open scoped ContDiff
 
 /-! ## §3 — The DHL reformulation (Theorem main-dhl)
 
@@ -147,7 +148,7 @@ axiom mk_eps_3_witness_under_GEH :
       0 < ε ∧ ε < 1 / ((3 : ℝ) - 1) ∧
       (0 < ϑ ∧ ϑ < 1) ∧
       Sieve.IsFiniteSeparable F ∧
-      ContDiff ℝ ⊤ F ∧
+      ContDiff ℝ ∞ F ∧
       Function.support F ⊆ Sieve.simplex_scaled 3 ((3 : ℝ) / ((3 : ℝ) - 1)) ∧
       Sieve.HasVanishingMarginal 3 ε F ∧
       Sieve.mkF_beyond_denominator 3 F > 0 ∧
@@ -170,7 +171,7 @@ axiom mk_eps_51_witness_under_GEH :
       0 < ε ∧ ε < 1 / ((51 : ℝ) - 1) ∧
       (0 < ϑ ∧ ϑ < 1) ∧
       Sieve.IsFiniteSeparable F ∧
-      ContDiff ℝ ⊤ F ∧
+      ContDiff ℝ ∞ F ∧
       Function.support F ⊆ Sieve.simplex_scaled 51 ((51 : ℝ) / ((51 : ℝ) - 1)) ∧
       Sieve.HasVanishingMarginal 51 ε F ∧
       Sieve.mkF_beyond_denominator 51 F > 0 ∧

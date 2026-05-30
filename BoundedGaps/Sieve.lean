@@ -23,6 +23,7 @@ import BoundedGaps.Prerequisites
 namespace BoundedGaps.Sieve
 
 open BoundedGaps
+open scoped ContDiff
 
 /-! ### Selberg sieve weight (Polymath8b §3, eqns (3.6)-(3.7))
 
@@ -313,7 +314,7 @@ the simplex with nonzero Rayleigh denominator. Factored out of `Mk` so
 the `sSup` extraction lemma can name it. -/
 def MkSet (k : ℕ) : Set ℝ :=
   { v | ∃ F : (Fin k → ℝ) → ℝ,
-          ContDiff ℝ ⊤ F ∧
+          ContDiff ℝ ∞ F ∧
           Function.support F ⊆ simplex k ∧
           mkF_denominator k F > 0 ∧
           v = MkF k F }
@@ -326,18 +327,104 @@ relevant Polymath8b regime ($k \ge 2$) the set is non-empty and bounded —
 see axioms `MkSet_nonempty` and `MkSet_bddAbove`. -/
 noncomputable def Mk (k : ℕ) : ℝ := sSup (MkSet k)
 
+/-- The $k$-simplex is compact: it is closed (a finite intersection of closed
+half-spaces) and bounded (`‖t‖ ≤ 1` in the sup norm), hence compact in the
+finite-dimensional `Fin k → ℝ` by Heine-Borel. Reusable: feeds both the
+integrability of continuous test functions over the simplex and the
+upper-bound (`MkSet_bddAbove`) argument. -/
+theorem isCompact_simplex (k : ℕ) : IsCompact (simplex k) := by
+  apply Metric.isCompact_of_isClosed_isBounded
+  · -- closed: ⋂ᵢ {0 ≤ tᵢ} ∩ {∑ tᵢ ≤ 1}
+    have heq : simplex k =
+        (⋂ i : Fin k, {t : Fin k → ℝ | 0 ≤ t i}) ∩ {t | ∑ i, t i ≤ 1} := by
+      ext t; simp only [simplex, Set.mem_setOf_eq, Set.mem_inter_iff, Set.mem_iInter]
+    rw [heq]
+    refine IsClosed.inter (isClosed_iInter fun i => ?_) ?_
+    · exact isClosed_le continuous_const (continuous_apply i)
+    · exact isClosed_le (continuous_finset_sum _ fun i _ => continuous_apply i) continuous_const
+  · -- bounded: simplex ⊆ closedBall 0 1
+    apply (Metric.isBounded_closedBall (x := (0 : Fin k → ℝ)) (r := 1)).subset
+    intro t ht
+    simp only [simplex, Set.mem_setOf_eq] at ht
+    rw [Metric.mem_closedBall, dist_eq_norm, sub_zero,
+        pi_norm_le_iff_of_nonneg (by norm_num : (0:ℝ) ≤ 1)]
+    intro i
+    rw [Real.norm_eq_abs, abs_of_nonneg (ht.1 i)]
+    exact le_trans (Finset.single_le_sum (fun j _ => ht.1 j) (Finset.mem_univ i)) ht.2
+
 /-- For $k \ge 2$, the admissible-F set for $M_k$ is non-empty.
 
 Polymath8b §5 implicitly assumes this: any smooth bump supported on the
 interior of the simplex with nonzero $\int F^2$ realizes some
-$\mathrm{MkF}(k, F) > 0$. Formally proving nonemptiness requires
-constructing such an $F$ (smooth-bump construction, several mathlib
-imports).
+$\mathrm{MkF}(k, F)$.
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2): a
-small-proof-we-haven't-gotten-to is `sorry`'s job. Future PR discharges. -/
+**Discharged (ROADMAP Tier 2).** Witness: a product of one-dimensional
+`ContDiffBump`s, $F(t) = \prod_i b(t_i)$, with $b$ centered at $K/2$
+($K := 1/k$) and radii $K/8 < K/4$, so $\operatorname{supp} b \subseteq
+(K/4, 3K/4) \subseteq (0, 1/k)$. Then each coordinate of any point in
+$\operatorname{supp} F$ lies in $(K/4, 3K/4)$, giving $t_i \ge 0$ and
+$\sum_i t_i < k \cdot 3K/4 = 3/4 \le 1$, so $\operatorname{supp} F \subseteq
+\operatorname{simplex}$. Smoothness is `contDiffAt_prod` over the smooth
+factors $t \mapsto b(t_i)$; the denominator $\int_{\text{simplex}} F^2 > 0$
+because $\operatorname{supp} F$ is a nonempty open set (so positive volume)
+contained in the simplex (`setIntegral_pos_iff_support_of_nonneg_ae`). -/
 theorem MkSet_nonempty (k : ℕ) (hk : 2 ≤ k) : (MkSet k).Nonempty := by
-  let _ := hk; sorry
+  haveI : Nonempty (Fin k) := ⟨⟨0, by omega⟩⟩
+  have hkpos : (0:ℝ) < k := by exact_mod_cast (by omega : 0 < k)
+  set K : ℝ := (k:ℝ)⁻¹ with hKdef
+  have hKpos : 0 < K := by rw [hKdef]; positivity
+  have hkK : (k:ℝ) * K = 1 := by rw [hKdef]; field_simp
+  -- 1D smooth bump supported in (K/4, 3K/4) ⊆ (0, 1/k): center K/2, radii K/8 < K/4
+  set b : ContDiffBump (K/2 : ℝ) := ⟨K/8, K/4, by linarith, by linarith⟩ with hbdef
+  have hrOut : b.rOut = K/4 := by rw [hbdef]
+  -- the test function F t = ∏ i, b (t i)
+  set F : (Fin k → ℝ) → ℝ := fun t => ∏ i : Fin k, b (t i) with hFdef
+  -- smoothness: a finite product of the smooth factors t ↦ b (t i)
+  have hfac : ∀ i : Fin k, ContDiff ℝ ∞ (⇑b ∘ fun t : (Fin k → ℝ) => t i) :=
+    fun i => b.contDiff.comp (contDiff_apply ℝ ℝ i)
+  have hF_smooth : ContDiff ℝ ∞ F := by
+    rw [contDiff_iff_contDiffAt]; intro x
+    exact contDiffAt_prod (fun i _ => (hfac i).contDiffAt)
+  -- support ⊆ simplex
+  have hF_supp : Function.support F ⊆ simplex k := by
+    intro t ht
+    simp only [Function.mem_support, hFdef] at ht
+    have hall : ∀ i, b (t i) ≠ 0 := fun i hi => ht (Finset.prod_eq_zero (Finset.mem_univ i) hi)
+    have hbounds : ∀ i, K/4 < t i ∧ t i < 3*K/4 := by
+      intro i
+      have hb : t i ∈ Function.support (b : ℝ → ℝ) := Function.mem_support.mpr (hall i)
+      rw [b.support_eq, Metric.mem_ball, Real.dist_eq, hrOut, abs_lt] at hb
+      exact ⟨by linarith [hb.1], by linarith [hb.2]⟩
+    have hsum : ∑ i, t i < 1 := by
+      calc ∑ i, t i < ∑ _i : Fin k, 3*K/4 :=
+            Finset.sum_lt_sum_of_nonempty Finset.univ_nonempty (fun i _ => (hbounds i).2)
+        _ = (k:ℝ) * (3*K/4) := by
+            rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+        _ = 3/4 := by rw [show (k:ℝ)*(3*K/4) = 3/4 * ((k:ℝ)*K) from by ring, hkK]; norm_num
+        _ < 1 := by norm_num
+    exact ⟨fun i => le_of_lt (lt_trans (by linarith [hKpos] : (0:ℝ) < K/4) (hbounds i).1), hsum.le⟩
+  -- positive Rayleigh denominator
+  have hcont : Continuous F := hF_smooth.continuous
+  have hsupp_sq : Function.support (fun t : (Fin k → ℝ) => F t ^ 2) = Function.support F := by
+    ext t; simp only [Function.mem_support, ne_eq, pow_eq_zero_iff (by norm_num : (2:ℕ) ≠ 0)]
+  have hopen : IsOpen (Function.support F) := by
+    have hpre : Function.support F = F ⁻¹' {0}ᶜ := by
+      ext t; simp [Function.mem_support, Set.mem_preimage]
+    rw [hpre]; exact isOpen_compl_singleton.preimage hcont
+  have hne : (Function.support F).Nonempty := by
+    refine ⟨fun _ => K/2, ?_⟩
+    have hbc : (0:ℝ) < b (K/2) := b.pos_of_mem_ball (Metric.mem_ball_self b.rOut_pos)
+    have hval : F (fun _ => K/2) = (b (K/2)) ^ k := by simp [hFdef, Finset.prod_const]
+    rw [Function.mem_support, hval]; exact pow_ne_zero _ hbc.ne'
+  have hinteg : MeasureTheory.IntegrableOn (fun t => F t ^ 2) (simplex k) :=
+    (hcont.pow 2).locallyIntegrable.integrableOn_isCompact (isCompact_simplex k)
+  have hF_den : (0:ℝ) < mkF_denominator k F := by
+    have hrw : mkF_denominator k F = ∫ t in simplex k, F t ^ 2 := rfl
+    rw [hrw, MeasureTheory.setIntegral_pos_iff_support_of_nonneg_ae
+          (Filter.Eventually.of_forall fun t => sq_nonneg (F t)) hinteg,
+        hsupp_sq, Set.inter_eq_left.mpr hF_supp]
+    exact hopen.measure_pos (μ := MeasureTheory.volume) hne
+  exact ⟨MkF k F, F, hF_smooth, hF_supp, hF_den, rfl⟩
 
 /-- The admissible-F set for $M_k$ is bounded above.
 
@@ -438,7 +525,7 @@ private theorem sq_setIntegral_Icc_le (g : ℝ → ℝ) (hg : ContinuousOn g (Se
   simpa using key
 
 /-- For admissible `F` at `k = 1`, the Rayleigh ratio `MkF 1 F ≤ 1`. -/
-private theorem mkF_one_le (F : (Fin 1 → ℝ) → ℝ) (hF : ContDiff ℝ ⊤ F)
+private theorem mkF_one_le (F : (Fin 1 → ℝ) → ℝ) (hF : ContDiff ℝ ∞ F)
     (hden : mkF_denominator 1 F > 0) : MkF 1 F ≤ 1 := by
   unfold MkF
   rw [mkF_numerator_one, mkF_denominator_one]
@@ -489,7 +576,7 @@ noncomputable def simplex_truncated (k : ℕ) (α : ℝ) : Set (Fin k → ℝ) :
 support polytope. -/
 def MkSet_truncated (k : ℕ) (α : ℝ) : Set ℝ :=
   { v | ∃ F : (Fin k → ℝ) → ℝ,
-          ContDiff ℝ ⊤ F ∧
+          ContDiff ℝ ∞ F ∧
           Function.support F ⊆ simplex_truncated k α ∧
           mkF_denominator k F > 0 ∧
           v = MkF k F }
@@ -609,7 +696,7 @@ supported on $(1+\varepsilon)\mathcal{R}_k$ with nonzero
 $\mathrm{mkF\_eps\_denominator}$. Sister of `MkSet`. -/
 def MkSet_eps (k : ℕ) (ε : ℝ) : Set ℝ :=
   { v | ∃ F : (Fin k → ℝ) → ℝ,
-          ContDiff ℝ ⊤ F ∧
+          ContDiff ℝ ∞ F ∧
           Function.support F ⊆ simplex_eps k ε ∧
           mkF_eps_denominator k ε F > 0 ∧
           v = MkF_eps k ε F }
@@ -815,7 +902,7 @@ Real proof via mathlib's `lt_csSup_iff`, consuming the cited axioms
 `MkSet_nonempty` (for $k \ge 2$) and `MkSet_bddAbove` as leaves. -/
 theorem exists_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
     ∃ F : (Fin k → ℝ) → ℝ,
-      ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex k ∧
+      ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex k ∧
       mkF_denominator k F > 0 ∧ c < MkF k F := by
   have hLt : c < sSup (MkSet k) := hc
   obtain ⟨v, hvMem, hcv⟩ :=
@@ -838,7 +925,7 @@ the §6 polynomial-optimisation construction (the provable special case is
 `SievePolynomial.polynomialSieveWeight_isSeparable`). -/
 axiom exists_separable_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
     ∃ F : (Fin k → ℝ) → ℝ,
-      IsFiniteSeparable F ∧ ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex k ∧
+      IsFiniteSeparable F ∧ ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex k ∧
       mkF_denominator k F > 0 ∧ c < MkF k F
 
 /-- **sSup extraction for $M_k^{[\alpha]}$** (truncated variant): if
@@ -852,7 +939,7 @@ Sister of `exists_F_of_Mk_gt`, same `lt_csSup_iff` discharge consuming
 theorem exists_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
     (α : ℝ) (hα : 0 < α) (c : ℝ) (hc : c < Mk_truncated k α) :
     ∃ F : (Fin k → ℝ) → ℝ,
-      ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_truncated k α ∧
+      ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex_truncated k α ∧
       mkF_denominator k F > 0 ∧ c < MkF k F := by
   have hLt : c < sSup (MkSet_truncated k α) := hc
   obtain ⟨v, hvMem, hcv⟩ :=
@@ -868,7 +955,7 @@ justification. -/
 axiom exists_separable_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
     (α : ℝ) (hα : 0 < α) (c : ℝ) (hc : c < Mk_truncated k α) :
     ∃ F : (Fin k → ℝ) → ℝ,
-      IsFiniteSeparable F ∧ ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_truncated k α ∧
+      IsFiniteSeparable F ∧ ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex_truncated k α ∧
       mkF_denominator k F > 0 ∧ c < MkF k F
 
 /-! ### Selberg sieve data sub-lemmas (Polymath8b §3, decomposed)
@@ -1092,7 +1179,7 @@ axiom s1_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
     {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {F : (Fin k → ℝ) → ℝ}
     (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
-    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_smooth : ContDiff ℝ ∞ F)
     (_hF_supp : Function.support F ⊆ simplex k)
     (_hF_den : mkF_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
@@ -1114,7 +1201,7 @@ axiom s2_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
     {ϑ : ℝ} (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hEH : Prerequisites.EH ϑ)
     {F : (Fin k → ℝ) → ℝ}
     (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
-    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_smooth : ContDiff ℝ ∞ F)
     (_hF_supp : Function.support F ⊆ simplex k)
     (_hF_den : mkF_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
@@ -1141,7 +1228,7 @@ axiom s2_holds_from_prime_asym_under_MPZ {k : ℕ} (_hk : k ≥ 2)
     {ϖ δ : ℝ} (_hϖ : 0 < 1 / 4 + ϖ) (_hMPZ : Prerequisites.MPZ ϖ δ)
     {F : (Fin k → ℝ) → ℝ}
     (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
-    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_smooth : ContDiff ℝ ∞ F)
     (_hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1 / 4 + ϖ)))
     (_hF_den : mkF_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
@@ -1163,7 +1250,7 @@ theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     {ϑ : ℝ} (hϑ : 0 < ϑ ∧ ϑ < 1) (hEH : Prerequisites.EH ϑ)
     {F : (Fin k → ℝ) → ℝ}
     (hF_sep : IsFiniteSeparable F)
-    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_smooth : ContDiff ℝ ∞ F)
     (hF_supp : Function.support F ⊆ simplex k)
     (hF_den : mkF_denominator k F > 0)
     (hF_Mk : MkF k F > 2 * m / ϑ)
@@ -1242,7 +1329,7 @@ theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m 
     {ϖ δ : ℝ} (hϖ : 0 < 1 / 4 + ϖ) (hMPZ : Prerequisites.MPZ ϖ δ)
     {F : (Fin k → ℝ) → ℝ}
     (hF_sep : IsFiniteSeparable F)
-    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_smooth : ContDiff ℝ ∞ F)
     (hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1 / 4 + ϖ)))
     (hF_den : mkF_denominator k F > 0)
     (hF_Mk : MkF k F > m / (1 / 4 + ϖ))
@@ -1331,7 +1418,7 @@ Sister of `exists_F_of_Mk_gt`. Same `lt_csSup_iff` discharge, consuming
 theorem exists_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
     (ε : ℝ) (hε : 0 < ε) (c : ℝ) (hc : c < Mk_eps k ε) :
     ∃ F : (Fin k → ℝ) → ℝ,
-      ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_eps k ε ∧
+      ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex_eps k ε ∧
       mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F := by
   have hLt : c < sSup (MkSet_eps k ε) := hc
   obtain ⟨v, hvMem, hcv⟩ :=
@@ -1345,7 +1432,7 @@ $(1+\varepsilon)$-enlarged simplex; same §6 polynomial-basis justification. -/
 axiom exists_separable_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
     (ε : ℝ) (hε : 0 < ε) (c : ℝ) (hc : c < Mk_eps k ε) :
     ∃ F : (Fin k → ℝ) → ℝ,
-      IsFiniteSeparable F ∧ ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_eps k ε ∧
+      IsFiniteSeparable F ∧ ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex_eps k ε ∧
       mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F
 
 /-! ### Selberg sieve data sub-lemmas (ε-flavored, Polymath8b §5 `epsilon-trick`)
@@ -1369,7 +1456,7 @@ axiom s1_eps_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
     {ε : ℝ} (_hε : 0 < ε)
     {F : (Fin k → ℝ) → ℝ}
     (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
-    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_smooth : ContDiff ℝ ∞ F)
     (_hF_supp : Function.support F ⊆ simplex_eps k ε)
     (_hF_den : mkF_eps_denominator k ε F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
@@ -1392,7 +1479,7 @@ axiom s2_eps_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
     (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
     {F : (Fin k → ℝ) → ℝ}
     (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
-    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_smooth : ContDiff ℝ ∞ F)
     (_hF_supp : Function.support F ⊆ simplex_eps k ε)
     (_hF_den : mkF_eps_denominator k ε F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
@@ -1422,7 +1509,7 @@ theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     (hEH : Prerequisites.EH ϑ) (hSupp : 1 + ε < 1 / ϑ)
     {F : (Fin k → ℝ) → ℝ}
     (hF_sep : IsFiniteSeparable F)
-    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_smooth : ContDiff ℝ ∞ F)
     (hF_supp : Function.support F ⊆ simplex_eps k ε)
     (hF_den : mkF_eps_denominator k ε F > 0)
     (hF_Mk : MkF_eps k ε F > 2 * m / ϑ)
@@ -1508,7 +1595,7 @@ axiom s1_beyond_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
     {ε : ℝ} (_hε_pos : 0 < ε)
     {F : (Fin k → ℝ) → ℝ}
     (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
-    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_smooth : ContDiff ℝ ∞ F)
     (_hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (_hF_den : mkF_beyond_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
@@ -1538,7 +1625,7 @@ axiom s2_beyond_holds_from_prime_asym_under_GEH {k : ℕ} (_hk : k ≥ 2)
     (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hGEH : Prerequisites.GEH ϑ)
     {F : (Fin k → ℝ) → ℝ}
     (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
-    (_hF_smooth : ContDiff ℝ ⊤ F)
+    (_hF_smooth : ContDiff ℝ ∞ F)
     (_hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (_hF_vanish : HasVanishingMarginal k ε F)
     (_hF_den : mkF_beyond_denominator k F > 0)
@@ -1565,7 +1652,7 @@ theorem selberg_sieve_data_beyond_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥
     (hϑ : 0 < ϑ ∧ ϑ < 1) (hGEH : Prerequisites.GEH ϑ)
     {F : (Fin k → ℝ) → ℝ}
     (hF_sep : IsFiniteSeparable F)
-    (hF_smooth : ContDiff ℝ ⊤ F)
+    (hF_smooth : ContDiff ℝ ∞ F)
     (hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (hF_vanish : HasVanishingMarginal k ε F)
     (hF_den : mkF_beyond_denominator k F > 0)
@@ -1641,7 +1728,7 @@ theorem epsilon_beyond (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
     (hϑ : 0 < ϑ ∧ ϑ < 1) (hGEH : Prerequisites.GEH ϑ)
     (F : (Fin k → ℝ) → ℝ)
     (hSep : IsFiniteSeparable F)
-    (hSmooth : ContDiff ℝ ⊤ F)
+    (hSmooth : ContDiff ℝ ∞ F)
     (hSupp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (hVanish : HasVanishingMarginal k ε F)
     (hDen : mkF_beyond_denominator k F > 0)
