@@ -181,4 +181,27 @@ theorem Mk_gt_four_of_polynomial_witness {k : ℕ}
   rw [polynomialMkF_eq_MkF] at h1
   linarith
 
+/-! ## Polynomial weights are separable (the provable coupling)
+
+A `PolynomialSieveWeight` evaluates to a finite sum of monomials
+$\sum_p c_p \prod_i t_i^{p_i}$, and each monomial $\prod_i t_i^{p_i}$ is a
+product of 1D functions $\mathrm{Fs}_{p,i}(x) = x^{p_i}$. So `P.toFun` is
+*literally* of the `Sieve.IsFiniteSeparable` shape — no separation-rank obstruction,
+because we built it from a finite basis. This is the honest, **provable**
+content backing the cited `Sieve.exists_separable_F_*` axioms: the §6
+polynomial optimum lands inside the separable class. -/
+theorem polynomialSieveWeight_isSeparable {k : ℕ} (P : PolynomialSieveWeight k) :
+    Sieve.IsFiniteSeparable P.toFun := by
+  classical
+  refine ⟨P.terms.card,
+    fun j => ((P.terms.equivFin.symm j).1.2 : ℝ),
+    fun j i x => x ^ ((P.terms.equivFin.symm j).1.1 i),
+    0, ?_⟩
+  intro t
+  simp only [PolynomialSieveWeight.toFun]
+  rw [← Finset.sum_coe_sort P.terms
+        (fun p => (p.2 : ℝ) * ∏ i, (t i) ^ (p.1 i))]
+  rw [← Equiv.sum_comp P.terms.equivFin.symm
+        (fun x : P.terms => ((x.1.2 : ℝ) * ∏ i, (t i) ^ (x.1.1 i)))]
+
 end BoundedGaps.SievePolynomial

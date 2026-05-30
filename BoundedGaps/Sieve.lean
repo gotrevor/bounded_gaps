@@ -725,6 +725,29 @@ noncomputable def mkF_beyond_denominator (k : ℕ) (F : (Fin k → ℝ) → ℝ)
 (Polymath8b §5: Theorems "maynard-thm", "maynard-trunc", "epsilon-trick",
 "epsilon-beyond") -/
 
+/-- **Finite separability of a test function** (the path-A coupling).
+
+`IsFiniteSeparable F` says the multidimensional test function $F$ admits a
+*finite* basis decomposition $F(t) = \sum_{j<J} c_j \prod_i
+\mathrm{Fs}_{j,i}(t_i)$ — a finite sum of products of 1D functions, together
+with a sieve level $R$. This is exactly the data the real weight
+`selberg_nu_basis` consumes, so a separable $F$ gives a *concrete*
+`selberg_nu` weight (no opaque).
+
+**Not every smooth $F$ is separable** (e.g. $\exp(t_0 t_1)$ has infinite
+separation rank), so this is a genuine restriction — it is NOT derivable
+from smoothness. It is supplied at the source instead: the variational
+optimum $M_k$ is realised by polynomial test functions (Polymath8b §6), and a
+polynomial's monomial expansion *is* a finite basis decomposition
+($\mathrm{Fs}_{j,i}(x) = x^{e_{j,i}}$) — see
+`SievePolynomial.polynomialSieveWeight_isSeparable` for the provable witness.
+The cited `exists_separable_F_*` axioms below carry separability out of the
+$M_k$-extraction so the deep s1/s2 axioms only ever speak about
+genuinely-`selberg_nu_basis`-built weights. -/
+def IsFiniteSeparable {k : ℕ} (F : (Fin k → ℝ) → ℝ) : Prop :=
+  ∃ (J : ℕ) (c : Fin J → ℝ) (Fs : Fin J → Fin k → ℝ → ℝ) (R : ℝ),
+    ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i)
+
 /-- **sSup extraction**: if $c < M_k$ then there is a specific admissible
 $F$ on the simplex realizing $\mathrm{MkF}(k, F) > c$.
 
@@ -739,6 +762,24 @@ theorem exists_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
     (lt_csSup_iff (MkSet_bddAbove k) (MkSet_nonempty k hk)).mp hLt
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
+
+/-- **Separable realisation of $M_k$** (cited, Polymath8b §6): if $c < M_k$
+then a witness $F$ realising $\mathrm{MkF}(k, F) > c$ may be taken to be a
+*finite-separable* test function (`IsFiniteSeparable F`).
+
+Strengthens `exists_F_of_Mk_gt` with the `IsFiniteSeparable` conjunct. This is the
+honest source of separability for the sieve: Polymath8b §6 optimises $M_k$
+over a polynomial (symmetric-polynomial) basis, and a polynomial's monomial
+expansion is exactly a finite sum of products of 1D powers — i.e. separable.
+Finite sums of products of 1D bump functions are dense among smooth test
+functions on the simplex and $\mathrm{MkF}$ is continuous in $F$, so the sup
+over separable $F$ equals $M_k$. Cited because it rests on that density +
+the §6 polynomial-optimisation construction (the provable special case is
+`SievePolynomial.polynomialSieveWeight_isSeparable`). -/
+axiom exists_separable_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
+    ∃ F : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable F ∧ ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex k ∧
+      mkF_denominator k F > 0 ∧ c < MkF k F
 
 /-- **sSup extraction for $M_k^{[\alpha]}$** (truncated variant): if
 $c < M_k^{[\alpha]}$ then there is a specific admissible $F$ supported on
@@ -759,6 +800,16 @@ theorem exists_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
       (MkSet_truncated_nonempty k hk α hα)).mp hLt
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
+
+/-- **Separable realisation of $M_k^{[\alpha]}$** (cited, Polymath8b §6,
+truncated variant). Sister of `exists_separable_F_of_Mk_gt` for the truncated
+simplex $\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$; same §6 polynomial-basis
+justification. -/
+axiom exists_separable_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
+    (α : ℝ) (hα : 0 < α) (c : ℝ) (hc : c < Mk_truncated k α) :
+    ∃ F : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable F ∧ ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_truncated k α ∧
+      mkF_denominator k F > 0 ∧ c < MkF k F
 
 /-! ### Selberg sieve data sub-lemmas (Polymath8b §3, decomposed)
 
@@ -943,33 +994,17 @@ theorem selberg_nu_basis_single (k : ℕ) (Gs : Fin k → ℝ → ℝ)
       = selberg_nu_separable k Gs H R n := by
   simp [selberg_nu_basis, selberg_nu_separable]
 
-/-- **Selberg sieve weight from $F$** (Polymath8b §3, eqn (3.6)–(3.7),
-`nuform`): $\nu(n) = \left(\sum_j c_j \prod_i \lambda_{F_{j,i}}(n + h_i)
-\right)^2$ — a finite linear combination of products of 1D divisor sums
-(`lambdaTransform`) against marginals of $F$.
-
-Declared `opaque` (a hidden constant of function type, sister of
-`alphaBound`/`betaBound`) because the nuform IS a real construction; the
-project just hasn't encoded the full multidimensional Selberg machinery
-yet. **Both the general nuform and the separable case are now encoded**:
-`selberg_nu_basis` (the full squared finite linear combination over an
-explicit basis $(J, (c_j), (F_{j,i}))$, fully real) and its single-term
-collapse `selberg_nu_separable`. The 1D building block `lambdaTransform` is
-likewise real. So the construction ladder is complete and encodable.
-
-What keeps `selberg_nu` opaque (rather than `= selberg_nu_basis`) is purely
-the **interface gap**: the `s1`/`s2` asymptotic axioms below are *stated
-about* `selberg_nu k F H b W`, i.e. they take the multidimensional test
-function $F$ directly, not a basis. Discharging `selberg_nu` therefore means
-choosing how to relate $F$ to a basis: either (A) carry the basis
-$(J, (c_j), (F_{j,i}))$ through the `s1`/`s2` statements and set `selberg_nu
-:= selberg_nu_basis` (a semantic refactor of those axiom signatures), or
-(B) add a cited "$F = \sum_j c_j \prod_i F_{j,i}$ representation exists for
-the optimal test functions" axiom (Polymath8b asymptotics §). Project
-convention: `opaque` for leaves with real-but-unencoded definitions, `axiom`
-for leaves citing external truths. -/
-opaque selberg_nu (k : ℕ) (F : (Fin k → ℝ) → ℝ) (H : List ℕ) (b W : ℕ) :
-    ℕ → ℝ
+/-- **Selberg sieve weight** (Polymath8b §3, eqn (3.6)–(3.7), `nuform`):
+$\nu(n) = \left(\sum_j c_j \prod_i \lambda_{F_{j,i}}(n + h_i)\right)^2$ —
+a finite linear combination of products of 1D divisor sums, now a real
+`noncomputable def` aliasing `selberg_nu_basis`. The basis data
+$(J, (c_j), (F_{j,i}))$ and sieve level $R$ are carried explicitly;
+the interface is discharged (path A, PR #64): s1/s2 axioms now speak about
+`selberg_nu_basis` directly, coupling via the `IsFiniteSeparable` predicate
+on the test function $F$. -/
+noncomputable def selberg_nu (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) : ℕ → ℝ :=
+  selberg_nu_basis k J c Fs H R
 
 /-- **W-trick** (Polymath8b §3): for any admissible $k$-tuple $\mathcal{H}$
 of length $k \ge 1$, there exists a modulus $W \ge 1$ and a residue class
@@ -994,14 +1029,16 @@ the (s1) asymptotic holds eventually with $\alpha = I(F) =
 Future PR can replace with a real proof from the divisor-sum expansion
 (Polymath8b §3 eqns (sfg-1), (lflg)). -/
 axiom s1_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
+    {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {F : (Fin k → ℝ) → ℝ}
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
     (_hF_smooth : ContDiff ℝ ⊤ F)
     (_hF_supp : Function.support F ⊆ simplex k)
     (_hF_den : mkF_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      alphaBound k (selberg_nu k F H b W) b W x (mkF_denominator k F)
+      alphaBound k (selberg_nu k J c Fs H R) b W x (mkF_denominator k F)
 
 /-- **(s2) from `prime-asym` case (i)** (Polymath8b §3 line 862, EH version).
 Under $\EH[\vartheta]$ with $0 < \vartheta < 1$, and admissible $F$ on the
@@ -1013,15 +1050,17 @@ $B^{-k}\,x/W$ vs $B^{1-k}\,x/\phi(W)$ from `nonprime-asym` vs `prime-asym`,
 together with the $\vartheta$ from the EH window. Future PR can replace with
 a real proof from the divisor-sum expansion (Polymath8b §3 eqn (theta-oo)). -/
 axiom s2_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
+    {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ϑ : ℝ} (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hEH : Prerequisites.EH ϑ)
     {F : (Fin k → ℝ) → ℝ}
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
     (_hF_smooth : ContDiff ℝ ⊤ F)
     (_hF_supp : Function.support F ⊆ simplex k)
     (_hF_den : mkF_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      betaBound k (selberg_nu k F H b W) H b W i.val x (ϑ / 2 * J_i k F i)
+      betaBound k (selberg_nu k J c Fs H R) H b W i.val x (ϑ / 2 * J_i k F i)
 
 /-- **(s2) from `prime-asym` case (ii)** (Polymath8b §3, MPZ smooth-moduli
 window). Under $\MPZ[\varpi, \delta]$ with $0 < 1/4 + \varpi$, and $F$
@@ -1038,15 +1077,17 @@ Future PR can replace with a real proof from Polymath8a's smooth-modulus
 prime-asym estimate (Polymath8a Theorem 2.17 plus the divisor-sum
 expansion of Polymath8b §3 eqn (theta-oo)). -/
 axiom s2_holds_from_prime_asym_under_MPZ {k : ℕ} (_hk : k ≥ 2)
+    {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ϖ δ : ℝ} (_hϖ : 0 < 1 / 4 + ϖ) (_hMPZ : Prerequisites.MPZ ϖ δ)
     {F : (Fin k → ℝ) → ℝ}
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
     (_hF_smooth : ContDiff ℝ ⊤ F)
     (_hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1 / 4 + ϖ)))
     (_hF_den : mkF_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      betaBound k (selberg_nu k F H b W) H b W i.val x ((1 / 4 + ϖ) * J_i k F i)
+      betaBound k (selberg_nu k J c Fs H R) H b W i.val x ((1 / 4 + ϖ) * J_i k F i)
 
 /-- **The analytic core of Maynard's theorem** (Polymath8b §3 + §5).
 Given an admissible $F$ on the simplex with $\mathrm{MkF}(k, F) > 2m/\vartheta$
@@ -1061,6 +1102,7 @@ $(\vartheta/2) \cdot M_k(F) > (\vartheta/2) \cdot (2m/\vartheta) = m$. -/
 theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     {ϑ : ℝ} (hϑ : 0 < ϑ ∧ ϑ < 1) (hEH : Prerequisites.EH ϑ)
     {F : (Fin k → ℝ) → ℝ}
+    (hF_sep : IsFiniteSeparable F)
     (hF_smooth : ContDiff ℝ ⊤ F)
     (hF_supp : Function.support F ⊆ simplex k)
     (hF_den : mkF_denominator k F > 0)
@@ -1072,9 +1114,10 @@ theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
   obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  obtain ⟨J, c, Fs, R, hFdecomp⟩ := hF_sep
   have hϑ_pos : 0 < ϑ := hϑ.1
   have hϑ_half_pos : 0 < ϑ / 2 := by linarith
-  refine ⟨b, W, selberg_nu k F H b W, mkF_denominator k F,
+  refine ⟨b, W, selberg_nu k J c Fs H R, mkF_denominator k F,
     fun i => ϑ / 2 * J_i k F i, hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
@@ -1092,10 +1135,10 @@ theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
       field_simp
     linarith
   · -- (s1)
-    exact s1_holds_from_nonprime_asym hk hF_smooth hF_supp hF_den hAdm hLen b W hW
+    exact s1_holds_from_nonprime_asym hk hFdecomp hF_smooth hF_supp hF_den hAdm hLen b W hW
   · -- (s2)
     intro i
-    exact s2_holds_from_prime_asym_under_EH hk hϑ hEH hF_smooth hF_supp hF_den
+    exact s2_holds_from_prime_asym_under_EH hk hϑ hEH hFdecomp hF_smooth hF_supp hF_den
       hAdm hLen b W hW i
 
 /-- **Theorem 5.2 / "maynard-thm"** (under EH): if $M_k > 2m/\vartheta$ for
@@ -1112,9 +1155,9 @@ theorem maynard_thm (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϑ : ℝ)
     (hMk : Mk k > 2 * m / ϑ) : DHL k (m + 1) := by
   apply dhl_criterion k m hk hm
   intro H hAdm hLen
-  obtain ⟨F, hSmooth, hSupp, hDen, hMkF⟩ :=
-    exists_F_of_Mk_gt k hk (2 * m / ϑ) hMk
-  exact selberg_sieve_data_from_F hk hm hϑ hEH hSmooth hSupp hDen hMkF hAdm hLen
+  obtain ⟨F, hSep, hSmooth, hSupp, hDen, hMkF⟩ :=
+    exists_separable_F_of_Mk_gt k hk (2 * m / ϑ) hMk
+  exact selberg_sieve_data_from_F hk hm hϑ hEH hSep hSmooth hSupp hDen hMkF hAdm hLen
 
 /-- **Analytic core of Maynard's truncated theorem** (Polymath8b §3 + §5,
 MPZ flavor). Sister of `selberg_sieve_data_from_F`.
@@ -1138,6 +1181,7 @@ from the MPZ window). -/
 theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     {ϖ δ : ℝ} (hϖ : 0 < 1 / 4 + ϖ) (hMPZ : Prerequisites.MPZ ϖ δ)
     {F : (Fin k → ℝ) → ℝ}
+    (hF_sep : IsFiniteSeparable F)
     (hF_smooth : ContDiff ℝ ⊤ F)
     (hF_supp : Function.support F ⊆ simplex_truncated k (δ / (1 / 4 + ϖ)))
     (hF_den : mkF_denominator k F > 0)
@@ -1149,13 +1193,14 @@ theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m 
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
   obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  obtain ⟨J, c, Fs, R, hFdecomp⟩ := hF_sep
   -- Coerce F's support from truncated simplex into the full simplex; the
   -- per-coordinate constraint t_i ≤ α is stricter than the open simplex.
   have hF_supp_simplex : Function.support F ⊆ simplex k := by
     intro t ht
     obtain ⟨h_nonneg, _h_lealpha, h_sumle⟩ := hF_supp ht
     exact ⟨h_nonneg, h_sumle⟩
-  refine ⟨b, W, selberg_nu k F H b W, mkF_denominator k F,
+  refine ⟨b, W, selberg_nu k J c Fs H R, mkF_denominator k F,
     fun i => (1/4 + ϖ) * J_i k F i, hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
@@ -1175,10 +1220,10 @@ theorem selberg_sieve_data_truncated_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m 
     linarith
   · -- (s1): reuse the non-truncated axiom; truncated F's support sits inside
     -- the full simplex by the coercion above.
-    exact s1_holds_from_nonprime_asym hk hF_smooth hF_supp_simplex hF_den hAdm hLen b W hW
+    exact s1_holds_from_nonprime_asym hk hFdecomp hF_smooth hF_supp_simplex hF_den hAdm hLen b W hW
   · -- (s2) MPZ version
     intro i
-    exact s2_holds_from_prime_asym_under_MPZ hk hϖ hMPZ hF_smooth hF_supp hF_den
+    exact s2_holds_from_prime_asym_under_MPZ hk hϖ hMPZ hFdecomp hF_smooth hF_supp hF_den
       hAdm hLen b W hW i
 
 /-- **Theorem 5.3 / "maynard-trunc"** (under MPZ): truncated variant suitable
@@ -1211,10 +1256,10 @@ theorem maynard_trunc (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1) (ϖ δ : ℝ)
   apply dhl_criterion k m hk hm
   intro H hAdm hLen
   have hα_pos : 0 < δ / (1 / 4 + ϖ) := div_pos hδ hϖ
-  obtain ⟨F, hSmooth, hSupp, hDen, hMkF⟩ :=
-    exists_F_truncated_of_Mk_truncated_gt k hk (δ / (1 / 4 + ϖ)) hα_pos
+  obtain ⟨F, hSep, hSmooth, hSupp, hDen, hMkF⟩ :=
+    exists_separable_F_truncated_of_Mk_truncated_gt k hk (δ / (1 / 4 + ϖ)) hα_pos
       (m / (1 / 4 + ϖ)) hMk
-  exact selberg_sieve_data_truncated_from_F hk hm hϖ hMPZ hSmooth hSupp hDen
+  exact selberg_sieve_data_truncated_from_F hk hm hϖ hMPZ hSep hSmooth hSupp hDen
     hMkF hAdm hLen
 
 /-- **sSup extraction for $M_{k,\varepsilon}$**: if $c < M_{k,\varepsilon}$
@@ -1234,6 +1279,15 @@ theorem exists_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
+/-- **Separable realisation of $M_{k,\varepsilon}$** (cited, Polymath8b §6,
+ε variant). Sister of `exists_separable_F_of_Mk_gt` for the
+$(1+\varepsilon)$-enlarged simplex; same §6 polynomial-basis justification. -/
+axiom exists_separable_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
+    (ε : ℝ) (hε : 0 < ε) (c : ℝ) (hc : c < Mk_eps k ε) :
+    ∃ F : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable F ∧ ContDiff ℝ ⊤ F ∧ Function.support F ⊆ simplex_eps k ε ∧
+      mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F
+
 /-! ### Selberg sieve data sub-lemmas (ε-flavored, Polymath8b §5 `epsilon-trick`)
 
 ε sister of the non-ε decomposition above. Reuses `selberg_nu` and
@@ -1251,15 +1305,17 @@ The constraint $1 + \varepsilon < 1/\vartheta$ does NOT enter here — it is
 needed only for (s2) via the prime-asym window. Future PR can replace with
 a real proof from the divisor-sum expansion. -/
 axiom s1_eps_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
+    {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ε : ℝ} (_hε : 0 < ε)
     {F : (Fin k → ℝ) → ℝ}
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
     (_hF_smooth : ContDiff ℝ ⊤ F)
     (_hF_supp : Function.support F ⊆ simplex_eps k ε)
     (_hF_den : mkF_eps_denominator k ε F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      alphaBound k (selberg_nu k F H b W) b W x (mkF_eps_denominator k ε F)
+      alphaBound k (selberg_nu k J c Fs H R) b W x (mkF_eps_denominator k ε F)
 
 /-- **(s2ε) from `prime-asym` case (i) under EH[ϑ]** (Polymath8b §3 line 862
 + §5 `epsilon-trick` reduction).
@@ -1271,16 +1327,18 @@ the numerator is what lets prime-asym case (i)'s support bound be satisfied
 even with the $(1+\varepsilon)$-enlarged $F$. Future PR can replace with a
 real proof. -/
 axiom s2_eps_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
+    {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ε ϑ : ℝ} (_hε : 0 < ε) (_hϑ : 0 < ϑ ∧ ϑ < 1)
     (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
     {F : (Fin k → ℝ) → ℝ}
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
     (_hF_smooth : ContDiff ℝ ⊤ F)
     (_hF_supp : Function.support F ⊆ simplex_eps k ε)
     (_hF_den : mkF_eps_denominator k ε F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      betaBound k (selberg_nu k F H b W) H b W i.val x
+      betaBound k (selberg_nu k J c Fs H R) H b W i.val x
         (ϑ / 2 * J_i_eps k ε F i)
 
 /-- **The analytic core of the ε-trick** (Polymath8b §5).
@@ -1303,6 +1361,7 @@ theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     {ε ϑ : ℝ} (hε : 0 < ε) (hϑ : 0 < ϑ ∧ ϑ < 1)
     (hEH : Prerequisites.EH ϑ) (hSupp : 1 + ε < 1 / ϑ)
     {F : (Fin k → ℝ) → ℝ}
+    (hF_sep : IsFiniteSeparable F)
     (hF_smooth : ContDiff ℝ ⊤ F)
     (hF_supp : Function.support F ⊆ simplex_eps k ε)
     (hF_den : mkF_eps_denominator k ε F > 0)
@@ -1314,9 +1373,10 @@ theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
   obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  obtain ⟨J, c, Fs, R, hFdecomp⟩ := hF_sep
   have hϑ_pos : 0 < ϑ := hϑ.1
   have hϑ_half_pos : 0 < ϑ / 2 := by linarith
-  refine ⟨b, W, selberg_nu k F H b W, mkF_eps_denominator k ε F,
+  refine ⟨b, W, selberg_nu k J c Fs H R, mkF_eps_denominator k ε F,
     fun i => ϑ / 2 * J_i_eps k ε F i, hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
@@ -1336,11 +1396,11 @@ theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
       field_simp
     linarith
   · -- (s1ε)
-    exact s1_eps_holds_from_nonprime_asym hk hε hF_smooth hF_supp hF_den
+    exact s1_eps_holds_from_nonprime_asym hk hε hFdecomp hF_smooth hF_supp hF_den
       hAdm hLen b W hW
   · -- (s2ε)
     intro i
-    exact s2_eps_holds_from_prime_asym_under_EH hk hε hϑ hEH hSupp
+    exact s2_eps_holds_from_prime_asym_under_EH hk hε hϑ hEH hSupp hFdecomp
       hF_smooth hF_supp hF_den hAdm hLen b W hW i
 
 /-- **Theorem 5.4 / "epsilon-trick"** (Polymath8b §5 line 997,
@@ -1362,9 +1422,9 @@ theorem epsilon_trick (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
     (hMk : Mk_eps k ε > 2 * m / ϑ) : DHL k (m + 1) := by
   apply dhl_criterion k m hk hm
   intro H hAdm hLen
-  obtain ⟨F, hSmooth, hSupp', hDen, hMkF⟩ :=
-    exists_F_eps_of_Mk_eps_gt k hk ε hε (2 * m / ϑ) hMk
-  exact selberg_sieve_data_eps_from_F hk hm hε hϑ hEH hSupp hSmooth hSupp'
+  obtain ⟨F, hSep, hSmooth, hSupp', hDen, hMkF⟩ :=
+    exists_separable_F_eps_of_Mk_eps_gt k hk ε hε (2 * m / ϑ) hMk
+  exact selberg_sieve_data_eps_from_F hk hm hε hϑ hEH hSupp hSep hSmooth hSupp'
     hDen hMkF hAdm hLen
 
 /-! ### Selberg sieve data sub-lemmas (`epsilon-beyond`-flavored, Polymath8b §5)
@@ -1384,15 +1444,17 @@ not needed for (s1) — it's a (s2)-side constraint that lets prime-asym
 work on the enlarged polytope. Future PR can replace with a real proof
 from the divisor-sum expansion. -/
 axiom s1_beyond_holds_from_nonprime_asym {k : ℕ} (_hk : k ≥ 2)
+    {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ε : ℝ} (_hε_pos : 0 < ε)
     {F : (Fin k → ℝ) → ℝ}
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
     (_hF_smooth : ContDiff ℝ ⊤ F)
     (_hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (_hF_den : mkF_beyond_denominator k F > 0)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      alphaBound k (selberg_nu k F H b W) b W x (mkF_beyond_denominator k F)
+      alphaBound k (selberg_nu k J c Fs H R) b W x (mkF_beyond_denominator k F)
 
 /-- **(s2-beyond) from `prime-asym` case (i) under GEH[ϑ]** (Polymath8b §3
 line 862 + §5 `epsilon-beyond` reduction).
@@ -1411,9 +1473,11 @@ restricted to $\Lambda$. Future PR can replace with a real proof from the
 Polymath8b §3 `theta-oo`-flavored estimate via the BFI/Motohashi GEH
 machinery. -/
 axiom s2_beyond_holds_from_prime_asym_under_GEH {k : ℕ} (_hk : k ≥ 2)
+    {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ε ϑ : ℝ} (_hε_pos : 0 < ε)
     (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hGEH : Prerequisites.GEH ϑ)
     {F : (Fin k → ℝ) → ℝ}
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
     (_hF_smooth : ContDiff ℝ ⊤ F)
     (_hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (_hF_vanish : HasVanishingMarginal k ε F)
@@ -1421,7 +1485,7 @@ axiom s2_beyond_holds_from_prime_asym_under_GEH {k : ℕ} (_hk : k ≥ 2)
     {H : List ℕ} (_hAdm : Admissible H) (_hLen : H.length = k)
     (b W : ℕ) (_hW : 1 ≤ W) (i : Fin k) :
     ∀ᶠ x : ℝ in Filter.atTop,
-      betaBound k (selberg_nu k F H b W) H b W i.val x
+      betaBound k (selberg_nu k J c Fs H R) H b W i.val x
         (ϑ / 2 * J_i_beyond k ε F i)
 
 /-- **The analytic core of `epsilon-beyond`** (Polymath8b §5).
@@ -1440,6 +1504,7 @@ theorem selberg_sieve_data_beyond_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥
     {ε ϑ : ℝ} (hε_pos : 0 < ε) (_hε_lt : ε < 1 / ((k : ℝ) - 1))
     (hϑ : 0 < ϑ ∧ ϑ < 1) (hGEH : Prerequisites.GEH ϑ)
     {F : (Fin k → ℝ) → ℝ}
+    (hF_sep : IsFiniteSeparable F)
     (hF_smooth : ContDiff ℝ ⊤ F)
     (hF_supp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (hF_vanish : HasVanishingMarginal k ε F)
@@ -1453,9 +1518,10 @@ theorem selberg_sieve_data_beyond_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥
       (∀ i : Fin k, ∀ᶠ x : ℝ in Filter.atTop,
           betaBound k ν H b W i.val x (β i)) := by
   obtain ⟨b, W, hW, _hbW⟩ := wtrick_data (by omega : k ≥ 1) hAdm hLen
+  obtain ⟨J, c, Fs, R, hFdecomp⟩ := hF_sep
   have hϑ_pos : 0 < ϑ := hϑ.1
   have hϑ_half_pos : 0 < ϑ / 2 := by linarith
-  refine ⟨b, W, selberg_nu k F H b W, mkF_beyond_denominator k F,
+  refine ⟨b, W, selberg_nu k J c Fs H R, mkF_beyond_denominator k F,
     fun i => ϑ / 2 * J_i_beyond k ε F i, hF_den, ?_, ?_, ?_, ?_⟩
   · -- 0 ≤ β i
     intro i
@@ -1474,11 +1540,11 @@ theorem selberg_sieve_data_beyond_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥
       field_simp
     linarith
   · -- (s1-beyond)
-    exact s1_beyond_holds_from_nonprime_asym hk hε_pos hF_smooth hF_supp hF_den
+    exact s1_beyond_holds_from_nonprime_asym hk hε_pos hFdecomp hF_smooth hF_supp hF_den
       hAdm hLen b W hW
   · -- (s2-beyond)
     intro i
-    exact s2_beyond_holds_from_prime_asym_under_GEH hk hε_pos hϑ hGEH
+    exact s2_beyond_holds_from_prime_asym_under_GEH hk hε_pos hϑ hGEH hFdecomp
       hF_smooth hF_supp hF_vanish hF_den hAdm hLen b W hW i
 
 /-- **Theorem 5.5 / "epsilon-beyond"** (Polymath8b §5, line 1028-1037 of
@@ -1514,6 +1580,7 @@ theorem epsilon_beyond (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
     (ε ϑ : ℝ) (hε_pos : 0 < ε) (hε_lt : ε < 1 / ((k : ℝ) - 1))
     (hϑ : 0 < ϑ ∧ ϑ < 1) (hGEH : Prerequisites.GEH ϑ)
     (F : (Fin k → ℝ) → ℝ)
+    (hSep : IsFiniteSeparable F)
     (hSmooth : ContDiff ℝ ⊤ F)
     (hSupp : Function.support F ⊆ simplex_scaled k ((k : ℝ) / ((k : ℝ) - 1)))
     (hVanish : HasVanishingMarginal k ε F)
@@ -1524,6 +1591,6 @@ theorem epsilon_beyond (k m : ℕ) (hk : k ≥ 2) (hm : m ≥ 1)
   apply dhl_criterion k m hk hm
   intro H hAdm hLen
   exact selberg_sieve_data_beyond_from_F hk hm hε_pos hε_lt hϑ hGEH
-    hSmooth hSupp hVanish hDen hThresh hAdm hLen
+    hSep hSmooth hSupp hVanish hDen hThresh hAdm hLen
 
 end BoundedGaps.Sieve

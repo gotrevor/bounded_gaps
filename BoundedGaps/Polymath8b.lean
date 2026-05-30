@@ -146,6 +146,7 @@ axiom mk_eps_3_witness_under_GEH :
     ∃ (ε ϑ : ℝ) (F : (Fin 3 → ℝ) → ℝ),
       0 < ε ∧ ε < 1 / ((3 : ℝ) - 1) ∧
       (0 < ϑ ∧ ϑ < 1) ∧
+      Sieve.IsFiniteSeparable F ∧
       ContDiff ℝ ⊤ F ∧
       Function.support F ⊆ Sieve.simplex_scaled 3 ((3 : ℝ) / ((3 : ℝ) - 1)) ∧
       Sieve.HasVanishingMarginal 3 ε F ∧
@@ -168,6 +169,7 @@ axiom mk_eps_51_witness_under_GEH :
     ∃ (ε ϑ : ℝ) (F : (Fin 51 → ℝ) → ℝ),
       0 < ε ∧ ε < 1 / ((51 : ℝ) - 1) ∧
       (0 < ϑ ∧ ϑ < 1) ∧
+      Sieve.IsFiniteSeparable F ∧
       ContDiff ℝ ⊤ F ∧
       Function.support F ⊆ Sieve.simplex_scaled 51 ((51 : ℝ) / ((51 : ℝ) - 1)) ∧
       Sieve.HasVanishingMarginal 51 ε F ∧
@@ -264,18 +266,18 @@ Blueprint: epsilon_beyond at $k=3, m=1$ with `mk_eps_3_witness_under_GEH` and
 GEH at the chosen $\vartheta$. -/
 theorem dhl_3_2_under_GEH (hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     DHL 3 2 := by
-  obtain ⟨ε, ϑ, F, hε_pos, hε_lt, hϑ, hSmooth, hSupp, hVanish, hDen, hThresh⟩ :=
+  obtain ⟨ε, ϑ, F, hε_pos, hε_lt, hϑ, hSep, hSmooth, hSupp, hVanish, hDen, hThresh⟩ :=
     mk_eps_3_witness_under_GEH
   exact Sieve.epsilon_beyond 3 1 (by norm_num) (by norm_num) ε ϑ hε_pos hε_lt
-    hϑ (hGEH ϑ hϑ) F hSmooth hSupp hVanish hDen (by exact_mod_cast hThresh)
+    hϑ (hGEH ϑ hϑ) F hSep hSmooth hSupp hVanish hDen (by exact_mod_cast hThresh)
 
 /-- Under GEH: **DHL[51, 3]**. -/
 theorem dhl_51_3_under_GEH (hGEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.GEH ϑ) :
     DHL 51 3 := by
-  obtain ⟨ε, ϑ, F, hε_pos, hε_lt, hϑ, hSmooth, hSupp, hVanish, hDen, hThresh⟩ :=
+  obtain ⟨ε, ϑ, F, hε_pos, hε_lt, hϑ, hSep, hSmooth, hSupp, hVanish, hDen, hThresh⟩ :=
     mk_eps_51_witness_under_GEH
   exact Sieve.epsilon_beyond 51 2 (by norm_num) (by norm_num) ε ϑ hε_pos hε_lt
-    hϑ (hGEH ϑ hϑ) F hSmooth hSupp hVanish hDen (by exact_mod_cast hThresh)
+    hϑ (hGEH ϑ hϑ) F hSep hSmooth hSupp hVanish hDen (by exact_mod_cast hThresh)
 
 /-! ## §3 — Narrowness bounds (Theorem hk-bound) -/
 
@@ -748,3 +750,4 @@ theorem twin_primes_or_near_miss_Goldbach
     TwinPrimesConjecture ∨ NearMissGoldbach := sorry
 
 end BoundedGaps.Polymath8b
+
