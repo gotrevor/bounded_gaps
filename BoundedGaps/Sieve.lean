@@ -1611,13 +1611,22 @@ $b \pmod{W}$ with $b + h_i$ coprime to $W$ for each $i$ (the standard
 construction takes $W := \prod_{p \le D} p$ for an appropriate threshold $D$
 and uses CRT + admissibility to pick $b$).
 
-The conclusion exposes only $W \ge 1$; the coprimality conditions on $(b, W)$
-are absorbed into the `selberg_nu` / `alphaBound` / `betaBound`
-predicates. Future PR can replace with a real proof using Mertens products
-and CRT. -/
-axiom wtrick_data {k : ℕ} (_hk : k ≥ 1) {H : List ℕ}
+The conclusion exposes only $W \ge 1$ and $b < W$; the coprimality conditions
+on $(b, W)$ are absorbed into the `selberg_nu` / `alphaBound` / `betaBound`
+predicates. Because the exposed conclusion no longer mentions coprimality (it
+was refactored into those predicates), the bare existential is **trivially
+true** ($W = 1$, $b = 0$) and needs no Mertens/CRT machinery — so this is a
+real `theorem`, not an axiom. The genuine analytic W-trick content lives in
+the (still-cited) `s1_*`/`s2_*` axioms, where the coprime residue class is a
+hypothesis on the asymptotic.
+
+**Discharged 2026-05-30** (`axiom → theorem`): the stated conclusion is
+trivial, removing `wtrick_data` from the flagships' `#print axioms` without
+hiding anything — the deep content remains cited via s1/s2. -/
+theorem wtrick_data {k : ℕ} (_hk : k ≥ 1) {H : List ℕ}
     (_hAdm : Admissible H) (_hLen : H.length = k) :
-    ∃ b W : ℕ, 1 ≤ W ∧ b < W
+    ∃ b W : ℕ, 1 ≤ W ∧ b < W :=
+  ⟨0, 1, le_refl 1, Nat.zero_lt_one⟩
 
 /-- **(s1) from `nonprime-asym` case (i)** (Polymath8b §3 line 889, "Trivial").
 For admissible $F$ on the simplex (so $\sum_i S(F_i) + S(G_i) < 1$ is implied
