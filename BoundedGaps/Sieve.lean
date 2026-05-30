@@ -773,14 +773,98 @@ simplex. Polymath8b §5 `maynard-trunc` (line 959). Concrete `sSup` over
 `MkSet_truncated k α`; sister of `Mk`. -/
 noncomputable def Mk_truncated (k : ℕ) (α : ℝ) : ℝ := sSup (MkSet_truncated k α)
 
+open MeasureTheory Set in
 /-- For $k \ge 2$ and $\alpha > 0$, the admissible-F set for $M_k^{[\alpha]}$
 is non-empty. Sister of `MkSet_nonempty`; smooth-bump construction inside
 the (sufficiently small) truncated simplex provides a witness.
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+**Discharged 2026-05-30** (ROADMAP Tier 2): real local proof mirroring
+`MkSet_nonempty`, with the bump radius scaled to `K = min(1/k, α)` so every
+coordinate of a point in `supp F` lies in `(K/4, 3K/4)`, giving `t i ≤ α`
+(via `K ≤ α`) in addition to `t i ≥ 0` and `∑ t i < 3/4 ≤ 1` (via `k·K ≤ 1`),
+i.e. `supp F ⊆ simplex_truncated k α`. -/
 theorem MkSet_truncated_nonempty (k : ℕ) (hk : 2 ≤ k) (α : ℝ) (hα : 0 < α) :
     (MkSet_truncated k α).Nonempty := by
-  let _ := hk; let _ := hα; sorry
+  haveI : Nonempty (Fin k) := ⟨⟨0, by omega⟩⟩
+  have hkpos : (0:ℝ) < k := by exact_mod_cast (by omega : 0 < k)
+  set K : ℝ := min ((k:ℝ)⁻¹) α with hKdef
+  have hKpos : 0 < K := lt_min (by positivity) hα
+  have hKle_inv : K ≤ (k:ℝ)⁻¹ := min_le_left _ _
+  have hKle_α : K ≤ α := min_le_right _ _
+  have hkK : (k:ℝ) * K ≤ 1 := by
+    calc (k:ℝ) * K ≤ (k:ℝ) * (k:ℝ)⁻¹ := mul_le_mul_of_nonneg_left hKle_inv (le_of_lt hkpos)
+      _ = 1 := by field_simp
+  set b : ContDiffBump (K/2 : ℝ) := ⟨K/8, K/4, by linarith, by linarith⟩ with hbdef
+  have hrOut : b.rOut = K/4 := by rw [hbdef]
+  set F : (Fin k → ℝ) → ℝ := fun t => ∏ i : Fin k, b (t i) with hFdef
+  have hfac : ∀ i : Fin k, ContDiff ℝ ∞ (⇑b ∘ fun t : (Fin k → ℝ) => t i) :=
+    fun i => b.contDiff.comp (contDiff_apply ℝ ℝ i)
+  have hF_smooth : ContDiff ℝ ∞ F := by
+    rw [contDiff_iff_contDiffAt]; intro x
+    exact contDiffAt_prod (fun i _ => (hfac i).contDiffAt)
+  -- support ⊆ simplex_truncated
+  have hF_supp : Function.support F ⊆ simplex_truncated k α := by
+    intro t ht
+    simp only [Function.mem_support, hFdef] at ht
+    have hall : ∀ i, b (t i) ≠ 0 := fun i hi => ht (Finset.prod_eq_zero (Finset.mem_univ i) hi)
+    have hbounds : ∀ i, K/4 < t i ∧ t i < 3*K/4 := by
+      intro i
+      have hb : t i ∈ Function.support (b : ℝ → ℝ) := Function.mem_support.mpr (hall i)
+      rw [b.support_eq, Metric.mem_ball, Real.dist_eq, hrOut, abs_lt] at hb
+      exact ⟨by linarith [hb.1], by linarith [hb.2]⟩
+    refine ⟨?_, ?_, ?_⟩
+    · intro i
+      exact le_of_lt (lt_trans (by linarith [hKpos] : (0:ℝ) < K/4) (hbounds i).1)
+    · intro i
+      linarith [hKle_α, hKpos, (hbounds i).2]
+    · have hsum : ∑ i, t i < 1 := by
+        calc ∑ i, t i < ∑ _i : Fin k, 3*K/4 :=
+              Finset.sum_lt_sum_of_nonempty Finset.univ_nonempty (fun i _ => (hbounds i).2)
+          _ = (k:ℝ) * (3*K/4) := by
+              rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+          _ = 3/4 * ((k:ℝ)*K) := by ring
+          _ ≤ 3/4 * 1 := by apply mul_le_mul_of_nonneg_left hkK; norm_num
+          _ < 1 := by norm_num
+      exact hsum.le
+  -- positive Rayleigh denominator
+  have hcont : Continuous F := hF_smooth.continuous
+  have hsubsimp : simplex_truncated k α ⊆ simplex k := fun t ⟨h0, _, hs⟩ => ⟨h0, hs⟩
+  have hsupp_sq : Function.support (fun t : (Fin k → ℝ) => F t ^ 2) = Function.support F := by
+    ext t; simp only [Function.mem_support, ne_eq, pow_eq_zero_iff (by norm_num : (2:ℕ) ≠ 0)]
+  have hopen : IsOpen (Function.support F) := by
+    have hpre : Function.support F = F ⁻¹' {0}ᶜ := by
+      ext t; simp [Function.mem_support, Set.mem_preimage]
+    rw [hpre]; exact isOpen_compl_singleton.preimage hcont
+  have hne : (Function.support F).Nonempty := by
+    refine ⟨fun _ => K/2, ?_⟩
+    have hbc : (0:ℝ) < b (K/2) := b.pos_of_mem_ball (Metric.mem_ball_self b.rOut_pos)
+    have hval : F (fun _ => K/2) = (b (K/2)) ^ k := by simp [hFdef, Finset.prod_const]
+    rw [Function.mem_support, hval]; exact pow_ne_zero _ hbc.ne'
+  have hsupp_compact : HasCompactSupport F :=
+    HasCompactSupport.of_support_subset_isCompact (isCompact_simplex k) (hF_supp.trans hsubsimp)
+  have hsupp2_compact : HasCompactSupport (fun t => F t ^ 2) :=
+    hsupp_compact.comp_left (g := fun x : ℝ => x ^ 2) (by simp)
+  have hinteg : MeasureTheory.IntegrableOn (fun t => F t ^ 2) (simplex_truncated k α) :=
+    ((hcont.pow 2).integrable_of_hasCompactSupport hsupp2_compact).integrableOn
+  have hF_den : (0:ℝ) < mkF_denominator k F := by
+    have hrw : mkF_denominator k F = ∫ t in simplex_truncated k α, F t ^ 2 := by
+      change (∫ t in simplex k, F t ^ 2) = ∫ t in simplex_truncated k α, F t ^ 2
+      symm
+      refine (setIntegral_eq_integral_of_forall_compl_eq_zero (s := simplex_truncated k α) ?_).trans ?_
+      · intro t ht
+        have hF0 : F t = 0 := by
+          by_contra hh; exact ht (hF_supp (Function.mem_support.mpr hh))
+        rw [hF0]; ring
+      · refine (setIntegral_eq_integral_of_forall_compl_eq_zero (s := simplex k) ?_).symm
+        intro t ht
+        have hF0 : F t = 0 := by
+          by_contra hh; exact ht (hsubsimp (hF_supp (Function.mem_support.mpr hh)))
+        rw [hF0]; ring
+    rw [hrw, MeasureTheory.setIntegral_pos_iff_support_of_nonneg_ae
+          (Filter.Eventually.of_forall fun t => sq_nonneg (F t)) hinteg,
+        hsupp_sq, Set.inter_eq_left.mpr hF_supp]
+    exact hopen.measure_pos (μ := MeasureTheory.volume) hne
+  exact ⟨MkF k F, F, hF_smooth, hF_supp, hF_den, rfl⟩
 
 /-- The admissible-F set for $M_k^{[\alpha]}$ is bounded above. Sister of
 `MkSet_bddAbove`; since `simplex_truncated k α ⊆ simplex k`, every witness
@@ -960,14 +1044,196 @@ theorem MkSet_eps_nonempty (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε) :
         (Filter.Eventually.of_forall hSubset)
     linarith
 
+/-- The enlarged simplex `simplex_eps k ε` is compact (closed + bounded by
+`max (1+ε) 0` in the sup norm). Feeds the compact-support / integrability
+arguments for `J_i_eps_le_denom`. -/
+theorem isCompact_simplex_eps (k : ℕ) (ε : ℝ) : IsCompact (simplex_eps k ε) := by
+  apply Metric.isCompact_of_isClosed_isBounded
+  · have heq : simplex_eps k ε =
+        (⋂ i : Fin k, {t : Fin k → ℝ | 0 ≤ t i}) ∩ {t | ∑ i, t i ≤ 1 + ε} := by
+      ext t; simp only [simplex_eps, Set.mem_setOf_eq, Set.mem_inter_iff, Set.mem_iInter]
+    rw [heq]
+    refine IsClosed.inter (isClosed_iInter fun i => ?_) ?_
+    · exact isClosed_le continuous_const (continuous_apply i)
+    · exact isClosed_le (continuous_finset_sum _ fun i _ => continuous_apply i) continuous_const
+  · apply (Metric.isBounded_closedBall (x := (0 : Fin k → ℝ)) (r := max (1 + ε) 0)).subset
+    intro t ht
+    simp only [simplex_eps, Set.mem_setOf_eq] at ht
+    rw [Metric.mem_closedBall, dist_eq_norm, sub_zero,
+        pi_norm_le_iff_of_nonneg (le_max_right _ _)]
+    intro i
+    rw [Real.norm_eq_abs, abs_of_nonneg (ht.1 i)]
+    calc t i ≤ ∑ j, t j := Finset.single_le_sum (fun j _ => ht.1 j) (Finset.mem_univ i)
+      _ ≤ 1 + ε := ht.2
+      _ ≤ max (1 + ε) 0 := le_max_left _ _
+
+/-- The shrunken simplex `simplex_shrunk k ε` is closed (hence measurable):
+the outer integration domain of the ε-flavored numerator. -/
+theorem isClosed_simplex_shrunk (k : ℕ) (ε : ℝ) : IsClosed (simplex_shrunk k ε) := by
+  have heq : simplex_shrunk k ε =
+      (⋂ i : Fin k, {t : Fin k → ℝ | 0 ≤ t i}) ∩ {t | ∑ i, t i ≤ 1 - ε} := by
+    ext t; simp only [simplex_shrunk, Set.mem_setOf_eq, Set.mem_inter_iff, Set.mem_iInter]
+  rw [heq]
+  refine IsClosed.inter (isClosed_iInter fun i => ?_) ?_
+  · exact isClosed_le continuous_const (continuous_apply i)
+  · exact isClosed_le (continuous_finset_sum _ fun i _ => continuous_apply i) continuous_const
+
+open MeasureTheory Set in
+/-- **Each ε-flavored Maynard marginal is bounded: `J_{i,1-ε}(F) ≤ max(1+ε,0)·I_ε(F)`.**
+Sister of `J_i_le_denom`. Cauchy-Schwarz (`cs_Icc`) on the inner `[0, 1+ε-∑s]` integral,
+whose moving boundary is tamed by `support F ⊆ simplex_eps`: for any `s`,
+`F(insertNth i · s)` vanishes outside `[0, 1+ε-∑s]` (the inserted point leaves
+`simplex_eps`), so the clamped inner integral equals the full-line marginal
+`m s = ∫ F(insertNth i · s)`. The slice bound `m s² ≤ max(1+ε,0)·Φ s` (with
+`Φ s = ∫ F(insertNth i · s)²`) handles `L := 1+ε-∑s ≥ 0` via `cs_Icc` (and `L ≤ 1+ε`)
+and `L < 0` via the empty inner interval forcing `m s = 0`. Summing `Φ` back up via
+`integral_insertNth_eq` recovers `∫_{ℝ^{n+1}} F² = I_ε(F)` (support `⊆ simplex_eps`). -/
+theorem J_i_eps_le_denom (n : ℕ) (ε : ℝ) (F : (Fin (n + 1) → ℝ) → ℝ)
+    (hcont : Continuous F) (hFsupp : Function.support F ⊆ simplex_eps (n + 1) ε)
+    (i : Fin (n + 1)) :
+    J_i_eps (n + 1) ε F i ≤ max (1 + ε) 0 * mkF_eps_denominator (n + 1) ε F := by
+  classical
+  set C₀ := max (1 + ε) 0 with hC₀
+  have hC₀nn : 0 ≤ C₀ := le_max_right _ _
+  have hC₀ge : 1 + ε ≤ C₀ := le_max_left _ _
+  have hsimpEpsCompact : IsCompact (simplex_eps (n + 1) ε) := isCompact_simplex_eps (n + 1) ε
+  have hsimpEpsClosed : IsClosed (simplex_eps (n + 1) ε) := hsimpEpsCompact.isClosed
+  have hcs : HasCompactSupport F :=
+    IsCompact.of_isClosed_subset hsimpEpsCompact isClosed_closure
+      (closure_minimal hFsupp hsimpEpsClosed)
+  have hF2cont : Continuous (fun t => F t ^ 2) := hcont.pow 2
+  have hcs2 : HasCompactSupport (fun t => F t ^ 2) := by
+    apply hcs.comp_left (g := fun x : ℝ => x ^ 2); simp
+  have hFi : Integrable F := hcont.integrable_of_hasCompactSupport hcs
+  have hF2i : Integrable (fun t => F t ^ 2) := hF2cont.integrable_of_hasCompactSupport hcs2
+  set e := MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i with he
+  have mp := volume_preserving_piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+  set m : (Fin n → ℝ) → ℝ := fun s => ∫ ti : ℝ, F (i.insertNth ti s) with hm
+  set Φ : (Fin n → ℝ) → ℝ := fun s => ∫ ti : ℝ, F (i.insertNth ti s) ^ 2 with hΦ
+  have hprodF2 : Integrable (fun p : ℝ × (Fin n → ℝ) => F (e.symm p) ^ 2) (volume.prod volume) := by
+    rw [← Measure.volume_eq_prod ℝ (Fin n → ℝ)]
+    exact mp.symm.integrable_comp_of_integrable hF2i
+  have hΦi : Integrable Φ := by
+    have h := hprodF2.integral_prod_right
+    simp only [he, MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv,
+      Equiv.coe_fn_mk] at h
+    exact h
+  have hprodF : Integrable (fun p : ℝ × (Fin n → ℝ) => F (e.symm p)) (volume.prod volume) := by
+    rw [← Measure.volume_eq_prod ℝ (Fin n → ℝ)]
+    exact mp.symm.integrable_comp_of_integrable hFi
+  have hmi : Integrable m := by
+    have h := hprodF.integral_prod_right
+    simp only [he, MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv,
+      Equiv.coe_fn_mk] at h
+    exact h
+  have hΦnn : ∀ s, 0 ≤ Φ s := fun s => integral_nonneg fun ti => sq_nonneg _
+  have hmeasS : MeasurableSet (simplex_shrunk n ε) := (isClosed_simplex_shrunk n ε).measurableSet
+  have key : ∀ s ∈ simplex_shrunk n ε,
+      (∫ ti in Icc 0 (1 + ε - ∑ j, s j), F (i.insertNth ti s)) = m s ∧ m s ^ 2 ≤ C₀ * Φ s := by
+    intro s hs
+    obtain ⟨hs_nn, hs_sum⟩ := hs
+    set L := 1 + ε - ∑ j, s j with hL
+    have hsum_nn : 0 ≤ ∑ j, s j := Finset.sum_nonneg fun j _ => hs_nn j
+    have hLle : L ≤ 1 + ε := by rw [hL]; linarith
+    have hzero : ∀ ti, ti ∉ Icc (0 : ℝ) L → F (i.insertNth ti s) = 0 := by
+      intro ti hti
+      by_contra hne
+      have hmem : i.insertNth ti s ∈ simplex_eps (n + 1) ε :=
+        hFsupp (Function.mem_support.mpr hne)
+      obtain ⟨hmem_nn, hmem_sum⟩ := hmem
+      apply hti
+      refine ⟨?_, ?_⟩
+      · have := hmem_nn i; rwa [Fin.insertNth_apply_same] at this
+      · rw [hL, le_sub_iff_add_le]
+        have hsum_eq : ∑ j, (i.insertNth ti s) j = ti + ∑ j, s j := by
+          rw [Fin.sum_univ_succAbove _ i, Fin.insertNth_apply_same]
+          congr 1
+          exact Finset.sum_congr rfl fun j _ => by rw [Fin.insertNth_apply_succAbove]
+        rw [hsum_eq] at hmem_sum; linarith
+    have hcont_h : Continuous (fun ti => F (i.insertNth ti s)) :=
+      hcont.comp (Continuous.finInsertNth (A := fun _ : Fin (n + 1) => ℝ) i
+        continuous_id continuous_const)
+    have eqfull : (∫ ti in Icc 0 L, F (i.insertNth ti s)) = m s :=
+      setIntegral_eq_integral_of_forall_compl_eq_zero hzero
+    refine ⟨eqfull, ?_⟩
+    by_cases hLnn : 0 ≤ L
+    · have hint_h : IntegrableOn (fun ti => F (i.insertNth ti s)) (Icc 0 L) :=
+        hcont_h.integrableOn_Icc
+      have hint_h2 : IntegrableOn (fun ti => F (i.insertNth ti s) ^ 2) (Icc 0 L) :=
+        (hcont_h.pow 2).integrableOn_Icc
+      have eqfull2 : (∫ ti in Icc 0 L, F (i.insertNth ti s) ^ 2) = Φ s := by
+        refine setIntegral_eq_integral_of_forall_compl_eq_zero ?_
+        intro ti hti; rw [hzero ti hti]; ring
+      have hcsq := cs_Icc L hLnn (fun ti => F (i.insertNth ti s)) hint_h hint_h2
+      rw [eqfull] at hcsq
+      have hΦnn_s : 0 ≤ Φ s := hΦnn s
+      calc m s ^ 2 ≤ L * ∫ ti in Icc 0 L, F (i.insertNth ti s) ^ 2 := hcsq
+        _ = L * Φ s := by rw [eqfull2]
+        _ ≤ C₀ * Φ s := mul_le_mul_of_nonneg_right (le_trans hLle hC₀ge) hΦnn_s
+    · have hIcc_empty : Icc (0 : ℝ) L = ∅ := Icc_eq_empty hLnn
+      have hms0 : m s = 0 := by rw [← eqfull, hIcc_empty]; simp
+      rw [hms0, show (0 : ℝ) ^ 2 = 0 from by ring]
+      exact mul_nonneg hC₀nn (hΦnn s)
+  change (∫ s in simplex_shrunk n ε,
+      (∫ ti in Icc 0 (1 + ε - ∑ j, s j), F (i.insertNth ti s)) ^ 2)
+      ≤ C₀ * mkF_eps_denominator (n + 1) ε F
+  have hcongr : (∫ s in simplex_shrunk n ε,
+        (∫ ti in Icc 0 (1 + ε - ∑ j, s j), F (i.insertNth ti s)) ^ 2)
+      = ∫ s in simplex_shrunk n ε, m s ^ 2 := by
+    refine setIntegral_congr_fun hmeasS ?_
+    intro s hs; dsimp only; rw [(key s hs).1]
+  rw [hcongr]
+  have hm2_aesm : AEStronglyMeasurable (fun s => m s ^ 2) (volume.restrict (simplex_shrunk n ε)) :=
+    (hmi.aestronglyMeasurable.pow 2).restrict
+  have hm2_int : IntegrableOn (fun s => m s ^ 2) (simplex_shrunk n ε) := by
+    refine Integrable.mono' (g := fun s => C₀ * Φ s) (hΦi.const_mul C₀).integrableOn hm2_aesm ?_
+    refine (ae_restrict_iff' hmeasS).mpr (Filter.Eventually.of_forall fun s hs => ?_)
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+    exact (key s hs).2
+  calc (∫ s in simplex_shrunk n ε, m s ^ 2)
+      ≤ ∫ s in simplex_shrunk n ε, C₀ * Φ s := by
+        refine setIntegral_mono_on hm2_int ((hΦi.const_mul C₀).integrableOn) hmeasS ?_
+        intro s hs; exact (key s hs).2
+    _ = C₀ * ∫ s in simplex_shrunk n ε, Φ s := by rw [integral_const_mul]
+    _ ≤ C₀ * ∫ s, Φ s := by
+        apply mul_le_mul_of_nonneg_left _ hC₀nn
+        exact setIntegral_le_integral hΦi (Filter.Eventually.of_forall hΦnn)
+    _ = C₀ * mkF_eps_denominator (n + 1) ε F := by
+        have hkey := integral_insertNth_eq i (fun t => F t ^ 2) hF2i
+        have hden : mkF_eps_denominator (n + 1) ε F = ∫ t, F t ^ 2 := by
+          change (∫ t in simplex_eps (n + 1) ε, F t ^ 2) = ∫ t, F t ^ 2
+          refine setIntegral_eq_integral_of_forall_compl_eq_zero ?_
+          intro t ht
+          have hF0 : F t = 0 := by
+            by_contra hh; exact ht (hFsupp (Function.mem_support.mpr hh))
+          rw [hF0]; ring
+        rw [hden, hkey]
+
 /-- The admissible-F set for $M_{k,\varepsilon}$ is bounded above.
 Sister of `MkSet_bddAbove`. Polymath8b §5: $M_{k,\varepsilon}$ admits
 the same asymptotic upper bound as $M_k$ up to a factor of
 $(1+\varepsilon)/(1-\varepsilon)$.
 
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2). -/
+**Discharged 2026-05-30** (ROADMAP Tier 2): real local proof. The `k = n+1`
+case bounds `M_{k,ε}(F) = (∑_i J_{i,1-ε})/I_ε(F) ≤ (n+1)·max(1+ε,0)` via the
+per-marginal crude bound `J_{i,1-ε}(F) ≤ max(1+ε,0)·I_ε(F)` (`J_i_eps_le_denom`,
+the substantive lemma, mirroring `J_i_le_denom`). The `k = 0` case is
+`M_{0,ε}(F) = 0/I ≤ 0`. The bound `(k:ℝ)·max(1+ε,0)` witnesses `BddAbove`. -/
 theorem MkSet_eps_bddAbove (k : ℕ) (ε : ℝ) : BddAbove (MkSet_eps k ε) := by
-  let _ := k; let _ := ε; sorry
+  refine ⟨(k : ℝ) * max (1 + ε) 0, ?_⟩
+  rintro v ⟨F, hFsmooth, hFsupp, hFden, rfl⟩
+  cases k with
+  | zero =>
+    show MkF_eps 0 ε F ≤ ((0 : ℕ) : ℝ) * max (1 + ε) 0
+    simp [MkF_eps, mkF_eps_numerator]
+  | succ n =>
+    show MkF_eps (n + 1) ε F ≤ (((n + 1 : ℕ)) : ℝ) * max (1 + ε) 0
+    rw [MkF_eps, mkF_eps_numerator_eq_sum_J_i_eps, div_le_iff₀ hFden]
+    calc ∑ i, J_i_eps (n + 1) ε F i
+        ≤ ∑ _i : Fin (n + 1), max (1 + ε) 0 * mkF_eps_denominator (n + 1) ε F :=
+          Finset.sum_le_sum fun i _ => J_i_eps_le_denom n ε F hFsmooth.continuous hFsupp i
+      _ = (((n + 1 : ℕ)) : ℝ) * max (1 + ε) 0 * mkF_eps_denominator (n + 1) ε F := by
+          rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]; ring
 
 /-! ### The epsilon-beyond enlargement (Polymath8b §5, Theorem `epsilon-beyond`)
 
