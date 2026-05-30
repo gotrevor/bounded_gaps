@@ -450,6 +450,151 @@ theorem integral_insertNth_eq {n : ℕ} (i : Fin (n + 1)) (G : (Fin (n + 1) → 
       integral_prod_symm _ hint]
   simp only [MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv, Equiv.coe_fn_mk]
 
+open MeasureTheory Set in
+/-- **Integral Cauchy-Schwarz on `Icc 0 L`** via Jensen (`x ↦ x²` convex on a finite
+measure): `(∫_{[0,L]} h)² ≤ L · ∫_{[0,L]} h²`. The `L` factor is the measure of the
+interval; for `L ≤ 1` it can be dropped, which is how the crude `M_k ≤ k` bound arises. -/
+theorem cs_Icc (L : ℝ) (hL : 0 ≤ L) (h : ℝ → ℝ)
+    (hint : IntegrableOn h (Icc 0 L)) (hint2 : IntegrableOn (fun x => h x ^ 2) (Icc 0 L)) :
+    (∫ x in Icc 0 L, h x) ^ 2 ≤ L * ∫ x in Icc 0 L, h x ^ 2 := by
+  rcases eq_or_lt_of_le hL with hL0 | hLpos
+  · subst hL0
+    simp
+  · have hLne : L ≠ 0 := ne_of_gt hLpos
+    have hmeas : volume (Icc (0:ℝ) L) ≠ 0 := by
+      rw [Real.volume_Icc, sub_zero]; simp [ENNReal.ofReal_eq_zero]; linarith
+    have htop : volume (Icc (0:ℝ) L) ≠ ⊤ := by
+      rw [Real.volume_Icc]; exact ENNReal.ofReal_ne_top
+    have hMr : volume.real (Icc (0:ℝ) L) = L := by
+      rw [measureReal_def, Real.volume_Icc, sub_zero, ENNReal.toReal_ofReal hL]
+    have hconv : ConvexOn ℝ univ (fun x : ℝ => x ^ 2) := Even.convexOn_pow (by decide)
+    have jensen := hconv.map_set_average_le (continuous_pow 2).continuousOn isClosed_univ
+      hmeas htop (Filter.Eventually.of_forall fun _ => mem_univ _) hint hint2
+    rw [setAverage_eq, setAverage_eq, smul_eq_mul, smul_eq_mul] at jensen
+    simp only [hMr] at jensen
+    have hL2 : (0:ℝ) ≤ L ^ 2 := sq_nonneg L
+    calc (∫ x in Icc 0 L, h x) ^ 2
+        = L ^ 2 * (L⁻¹ * (∫ x in Icc 0 L, h x)) ^ 2 := by field_simp
+      _ ≤ L ^ 2 * (L⁻¹ * ∫ x in Icc 0 L, h x ^ 2) := mul_le_mul_of_nonneg_left jensen hL2
+      _ = L * ∫ x in Icc 0 L, h x ^ 2 := by field_simp
+
+/-- The `k`-simplex is closed (it is compact). -/
+theorem isClosed_simplex (k : ℕ) : IsClosed (simplex k) := (isCompact_simplex k).isClosed
+
+open MeasureTheory Set in
+/-- **Each Maynard marginal is bounded by the Rayleigh denominator: `J_i(F) ≤ I(F)`.**
+Cauchy-Schwarz (`cs_Icc`) on the inner `[0, 1-∑s]` integral. The moving boundary is tamed by
+the support hypothesis: for `s ∈ simplex n`, `F(insertNth i · s)` vanishes outside `[0, 1-∑s]`
+(the inserted point leaves the simplex), so the clamped inner integral equals the full-line
+marginal `m s = ∫ F(insertNth i · s)`, whose square is `≤ Φ s = ∫ F(insertNth i · s)²`. Summing
+`Φ` back up via the `integral_insertNth_eq` fibration recovers `∫_{ℝ^{n+1}} F² = I(F)`. -/
+theorem J_i_le_denom (n : ℕ) (F : (Fin (n + 1) → ℝ) → ℝ)
+    (hcont : Continuous F) (hFsupp : Function.support F ⊆ simplex (n + 1)) (i : Fin (n + 1)) :
+    J_i (n + 1) F i ≤ mkF_denominator (n + 1) F := by
+  classical
+  have hsimpClosed : IsClosed (simplex (n + 1)) := isClosed_simplex (n + 1)
+  have hcs : HasCompactSupport F :=
+    IsCompact.of_isClosed_subset (isCompact_simplex (n + 1)) isClosed_closure
+      (closure_minimal hFsupp hsimpClosed)
+  have hF2cont : Continuous (fun t => F t ^ 2) := hcont.pow 2
+  have hcs2 : HasCompactSupport (fun t => F t ^ 2) := by
+    apply hcs.comp_left (g := fun x : ℝ => x ^ 2); simp
+  have hFi : Integrable F := hcont.integrable_of_hasCompactSupport hcs
+  have hF2i : Integrable (fun t => F t ^ 2) := hF2cont.integrable_of_hasCompactSupport hcs2
+  set e := MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i with he
+  have mp := volume_preserving_piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+  set m : (Fin n → ℝ) → ℝ := fun s => ∫ ti : ℝ, F (i.insertNth ti s) with hm
+  set Φ : (Fin n → ℝ) → ℝ := fun s => ∫ ti : ℝ, F (i.insertNth ti s) ^ 2 with hΦ
+  have hprodF2 : Integrable (fun p : ℝ × (Fin n → ℝ) => F (e.symm p) ^ 2) (volume.prod volume) := by
+    rw [← Measure.volume_eq_prod ℝ (Fin n → ℝ)]
+    exact mp.symm.integrable_comp_of_integrable hF2i
+  have hΦi : Integrable Φ := by
+    have h := hprodF2.integral_prod_right
+    simp only [he, MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv,
+      Equiv.coe_fn_mk] at h
+    exact h
+  have hprodF : Integrable (fun p : ℝ × (Fin n → ℝ) => F (e.symm p)) (volume.prod volume) := by
+    rw [← Measure.volume_eq_prod ℝ (Fin n → ℝ)]
+    exact mp.symm.integrable_comp_of_integrable hFi
+  have hmi : Integrable m := by
+    have h := hprodF.integral_prod_right
+    simp only [he, MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv,
+      Equiv.coe_fn_mk] at h
+    exact h
+  have hΦnn : ∀ s, 0 ≤ Φ s := fun s => integral_nonneg fun ti => sq_nonneg _
+  have key : ∀ s ∈ simplex n,
+      (∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) = m s ∧ m s ^ 2 ≤ Φ s := by
+    intro s hs
+    obtain ⟨hs_nn, hs_sum⟩ := hs
+    have hsum_nn : 0 ≤ ∑ j, s j := Finset.sum_nonneg fun j _ => hs_nn j
+    set L := 1 - ∑ j, s j with hL
+    have hLnn : 0 ≤ L := by rw [hL]; linarith
+    have hL1 : L ≤ 1 := by rw [hL]; linarith
+    have hzero : ∀ ti, ti ∉ Icc (0 : ℝ) L → F (i.insertNth ti s) = 0 := by
+      intro ti hti
+      by_contra hne
+      have hmem : i.insertNth ti s ∈ simplex (n + 1) := hFsupp (Function.mem_support.mpr hne)
+      obtain ⟨hmem_nn, hmem_sum⟩ := hmem
+      apply hti
+      refine ⟨?_, ?_⟩
+      · have := hmem_nn i; rwa [Fin.insertNth_apply_same] at this
+      · rw [hL, le_sub_iff_add_le]
+        have hsum_eq : ∑ j, (i.insertNth ti s) j = ti + ∑ j, s j := by
+          rw [Fin.sum_univ_succAbove _ i, Fin.insertNth_apply_same]
+          congr 1
+          exact Finset.sum_congr rfl fun j _ => by rw [Fin.insertNth_apply_succAbove]
+        rw [hsum_eq] at hmem_sum; linarith
+    have hcont_h : Continuous (fun ti => F (i.insertNth ti s)) :=
+      hcont.comp (Continuous.finInsertNth (A := fun _ : Fin (n + 1) => ℝ) i
+        continuous_id continuous_const)
+    have hint_h : IntegrableOn (fun ti => F (i.insertNth ti s)) (Icc 0 L) :=
+      hcont_h.integrableOn_Icc
+    have hint_h2 : IntegrableOn (fun ti => F (i.insertNth ti s) ^ 2) (Icc 0 L) :=
+      (hcont_h.pow 2).integrableOn_Icc
+    have eqfull : (∫ ti in Icc 0 L, F (i.insertNth ti s)) = m s :=
+      setIntegral_eq_integral_of_forall_compl_eq_zero hzero
+    have eqfull2 : (∫ ti in Icc 0 L, F (i.insertNth ti s) ^ 2) = Φ s := by
+      refine setIntegral_eq_integral_of_forall_compl_eq_zero ?_
+      intro ti hti; rw [hzero ti hti]; ring
+    refine ⟨eqfull, ?_⟩
+    have hcsq := cs_Icc L hLnn (fun ti => F (i.insertNth ti s)) hint_h hint_h2
+    rw [eqfull] at hcsq
+    have hnn2 : 0 ≤ ∫ ti in Icc 0 L, F (i.insertNth ti s) ^ 2 :=
+      integral_nonneg fun ti => sq_nonneg _
+    calc m s ^ 2 ≤ L * ∫ ti in Icc 0 L, F (i.insertNth ti s) ^ 2 := hcsq
+      _ ≤ 1 * ∫ ti in Icc 0 L, F (i.insertNth ti s) ^ 2 := mul_le_mul_of_nonneg_right hL1 hnn2
+      _ = Φ s := by rw [one_mul, eqfull2]
+  have hmeasS : MeasurableSet (simplex n) := (isClosed_simplex n).measurableSet
+  change (∫ s in simplex n, (∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2)
+      ≤ mkF_denominator (n + 1) F
+  have hcongr : (∫ s in simplex n, (∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2)
+              = ∫ s in simplex n, m s ^ 2 := by
+    refine setIntegral_congr_fun hmeasS ?_
+    intro s hs; dsimp only; rw [(key s hs).1]
+  rw [hcongr]
+  have hm2_aesm : AEStronglyMeasurable (fun s => m s ^ 2) (volume.restrict (simplex n)) :=
+    (hmi.aestronglyMeasurable.pow 2).restrict
+  have hm2_int : IntegrableOn (fun s => m s ^ 2) (simplex n) := by
+    refine Integrable.mono' hΦi.integrableOn hm2_aesm ?_
+    refine (ae_restrict_iff' hmeasS).mpr (Filter.Eventually.of_forall fun s hs => ?_)
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+    exact (key s hs).2
+  calc (∫ s in simplex n, m s ^ 2)
+      ≤ ∫ s in simplex n, Φ s := by
+        refine setIntegral_mono_on hm2_int hΦi.integrableOn hmeasS ?_
+        intro s hs; exact (key s hs).2
+    _ ≤ ∫ s, Φ s := setIntegral_le_integral hΦi (Filter.Eventually.of_forall hΦnn)
+    _ = mkF_denominator (n + 1) F := by
+        have hkey := integral_insertNth_eq i (fun t => F t ^ 2) hF2i
+        have hden : mkF_denominator (n + 1) F = ∫ t, F t ^ 2 := by
+          change (∫ t in simplex (n + 1), F t ^ 2) = ∫ t, F t ^ 2
+          refine setIntegral_eq_integral_of_forall_compl_eq_zero ?_
+          intro t ht
+          have hF0 : F t = 0 := by
+            by_contra hh; exact ht (hFsupp (Function.mem_support.mpr hh))
+          rw [hF0]; ring
+        rw [hden, hkey]
+
 /-- The admissible-F set for $M_k$ is bounded above.
 
 Polymath8b Corollary `mk-upper` (the converse direction to `mlower`):
@@ -458,17 +603,26 @@ already gives `BddAbove`, via Cauchy-Schwarz on each Maynard marginal:
 $J_i(F) \le I(F)$ (so $\sum_i J_i \le k\,I$). cf. Polymath8b §5 +
 Hensley-Richards 1973 (asymptotic).
 
-**Status (ROADMAP Tier 2): partially built.** The keystone fibration lemma
-`integral_insertNth_eq` is proved (sorry-free). Remaining for the `M_k ≤ k`
-route (each step using `support F ⊆ simplex` to pass between simplex and
-full-space integrals):
-  1. an integral Cauchy-Schwarz `(∫_{Icc 0 L} g)² ≤ L · ∫_{Icc 0 L} g²`
-     (not in mathlib as a single lemma — prove via L² Hölder / `inner_mul_le`);
-  2. `I(F) = ∫_{ℝ^{n+1}} F²` and `J_i(F) ≤ ∫_{ℝ^n} ∫_ℝ F(insertNth)²` via
-     `integral_insertNth_eq` + `setIntegral` support/monotonicity lemmas;
-  3. combine: `J_i ≤ I`, sum over `i`, divide. -/
+**Discharged (ROADMAP Tier 2).** The `k ≥ 1` case bounds `M_k(F) = (∑_i J_i)/I(F) ≤ k`
+by showing each Maynard marginal `J_i(F) ≤ I(F)` (`J_i_le_denom`, the substantive lemma:
+integral Cauchy-Schwarz `cs_Icc` on each inner `[0,1-∑s]` slice, with the moving boundary
+handled via the support hypothesis and the `integral_insertNth_eq` fibration). The `k = 0`
+case is `M_0(F) = 0 / I ≤ 0`. The bound `(k : ℝ)` witnesses `BddAbove`. -/
 theorem MkSet_bddAbove (k : ℕ) : BddAbove (MkSet k) := by
-  let _ := k; sorry
+  refine ⟨(k : ℝ), ?_⟩
+  rintro v ⟨F, hFsmooth, hFsupp, hFden, rfl⟩
+  cases k with
+  | zero =>
+    show MkF 0 F ≤ ((0 : ℕ) : ℝ)
+    unfold MkF mkF_numerator; simp
+  | succ n =>
+    show MkF (n + 1) F ≤ (((n + 1 : ℕ)) : ℝ)
+    rw [MkF, mkF_numerator_eq_sum_J_i, div_le_iff₀ hFden]
+    calc ∑ i, J_i (n + 1) F i
+        ≤ ∑ _i : Fin (n + 1), mkF_denominator (n + 1) F :=
+          Finset.sum_le_sum fun i _ => J_i_le_denom n F hFsmooth.continuous hFsupp i
+      _ = ((n + 1 : ℕ) : ℝ) * mkF_denominator (n + 1) F := by
+          rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
 
 /-- $M_0 = 0$: when $k = 0$, the numerator `mkF_numerator 0 _ = 0` by
 pattern-match, so `MkF 0 F = 0 / _ = 0` for every $F$, hence
@@ -634,9 +788,8 @@ $F$ for `MkSet_truncated k α` is also a witness for `MkSet k` with the
 same value, so `MkSet_truncated k α ⊆ MkSet k` and the bound is inherited.
 
 **Discharged 2026-05-26** (ROADMAP Tier 2): real local proof routing
-through `MkSet_bddAbove` (which is still a sorry — the substantive
-Polymath8b Cor `mk-upper` bound — but transitive sorries don't count
-against this theorem's body). -/
+through `MkSet_bddAbove` (itself now sorry-free as of 2026-05-30 via the
+crude `M_k ≤ k` Cauchy-Schwarz bound `J_i_le_denom`). -/
 theorem MkSet_truncated_bddAbove (k : ℕ) (α : ℝ) : BddAbove (MkSet_truncated k α) := by
   refine (MkSet_bddAbove k).mono ?_
   rintro v ⟨F, hSmooth, hSupp, hDen, rfl⟩
