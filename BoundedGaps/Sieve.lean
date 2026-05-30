@@ -73,20 +73,80 @@ admissible $\mathcal{H}$.
 Sources: Polymath8b §3 (Lemma `crit`); the original pigeonhole step appears
 in Maynard 2015 ("Small gaps between primes") §4. -/
 
+/-! #### Real definitions of the (s1)/(s2) bounds (Tier 1, PR #65)
+
+`alphaBound`/`betaBound` were `opaque` placeholders. Tier 1 of `ROADMAP.md`
+asks for honest `noncomputable def`s in the `Asymptotics.IsLittleO` shape,
+so the project's structural skeleton stops being self-citing. The supporting
+primitives below — the sieve sum over $[x, 2x]$ in a residue class, the
+Chebyshev $\theta$-summand, and the main term $B = \phi(W)/W \cdot \log x$ —
+make the (s1)/(s2) statements reference genuine number-theoretic objects.
+
+The `o(1)` in the paper is captured **one-sided** via the positive part of
+the violation being little-o of the main term: this is the faithful reading
+of "$\le (\alpha + o(1)) M$" (resp. "$\ge (\beta - o(1)) M$") and, crucially,
+keeps the `s1_holds_from_*` / `s2_holds_from_*` axioms honestly *true* (a
+bare `\le \alpha M` would risk a false load-bearing leaf). -/
+
+/-- The Selberg sieve sum $\sum_{\substack{x \le n \le 2x \\ n \equiv b\ (W)}}
+\nu(n)$, over the dyadic block $[\lceil x \rceil, \lfloor 2x \rfloor]$
+restricted to the residue class $b \pmod W$. -/
+noncomputable def sieveSum (ν : ℕ → ℝ) (b W : ℕ) (x : ℝ) : ℝ :=
+  ∑ n ∈ (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W), ν n
+
+/-- Project-level Chebyshev $\theta$-summand: $\log p$ when $p$ is prime,
+else $0$. The prime-counting weight appearing in (s2). -/
+noncomputable def primeTheta (n : ℕ) : ℝ := if n.Prime then Real.log n else 0
+
+/-- The prime-weighted Selberg sieve sum
+$\sum_{\substack{x \le n \le 2x \\ n \equiv b\ (W)}} \nu(n)\, \theta(n + h_i)$
+appearing on the left of (s2). Here $h_i$ is `H.getD i 0`. -/
+noncomputable def sieveThetaSum (ν : ℕ → ℝ) (H : List ℕ) (i b W : ℕ) (x : ℝ) : ℝ :=
+  ∑ n ∈ (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W),
+    ν n * primeTheta (n + H.getD i 0)
+
+/-- The sieve scale $B := \phi(W)/W \cdot \log x$ (Polymath8b §3). -/
+noncomputable def sieveB (W : ℕ) (x : ℝ) : ℝ := (W.totient : ℝ) / W * Real.log x
+
+/-- The (s1) main term $B^{-k}\, x/W$. -/
+noncomputable def alphaMainTerm (k W : ℕ) (x : ℝ) : ℝ :=
+  sieveB W x ^ (-(k : ℤ)) * (x / W)
+
+/-- The (s2) main term $B^{1-k}\, x/\phi(W)$. -/
+noncomputable def betaMainTerm (k W : ℕ) (x : ℝ) : ℝ :=
+  sieveB W x ^ ((1 : ℤ) - (k : ℤ)) * (x / W.totient)
+
 /-- The asymptotic upper bound (Polymath8b §3 eqn (s1)):
 $$\sum_{\substack{x \le n \le 2x \\ n \equiv b\ (W)}} \nu(n)
    \le (\alpha + o(1)) B^{-k} \frac{x}{W}$$
-as $x \to \infty$, where $B := \phi(W)/W \cdot \log x$. Currently declared
-`opaque` — a real def needs `Asymptotics.IsLittleO` plus the Mertens
-product $W$ as a sieve parameter; out of current scope. -/
-opaque alphaBound (k : ℕ) (ν : ℕ → ℝ) (b W : ℕ) (x : ℝ) (α : ℝ) : Prop
+as $x \to \infty$, where $B := \phi(W)/W \cdot \log x$.
+
+Real def (Tier 1): the positive part of the excess
+$\big(\mathtt{sieveSum} - \alpha \cdot \mathtt{alphaMainTerm}\big)^+$ is
+little-o of the main term — the faithful one-sided reading of the paper's
+"$\le (\alpha + o(1)) M$". The asymptotic is $x$-independent (it ranges over
+the whole `atTop` filter), so the surrounding `∀ᶠ x` wrapper at the call
+sites is equivalent to the asymptotic itself; the `x` parameter is retained
+only to preserve the opaque-era call-site shape. -/
+def alphaBound (k : ℕ) (ν : ℕ → ℝ) (b W : ℕ) (_x : ℝ) (α : ℝ) : Prop :=
+  Asymptotics.IsLittleO Filter.atTop
+    (fun y : ℝ => max (sieveSum ν b W y - α * alphaMainTerm k W y) 0)
+    (alphaMainTerm k W)
 
 /-- The asymptotic lower bound (Polymath8b §3 eqn (s2)):
 $$\sum_{\substack{x \le n \le 2x \\ n \equiv b\ (W)}} \nu(n)\, \theta(n + h_i)
    \ge (\beta_i - o(1)) B^{1-k} \frac{x}{\phi(W)}$$
-as $x \to \infty$, for $i = 1, \ldots, k$. Sister of `alphaBound`. -/
-opaque betaBound (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ) (x : ℝ)
-    (β : ℝ) : Prop
+as $x \to \infty$, for $i = 1, \ldots, k$. Sister of `alphaBound`.
+
+Real def (Tier 1): the positive part of the shortfall
+$\big(\beta \cdot \mathtt{betaMainTerm} - \mathtt{sieveThetaSum}\big)^+$ is
+little-o of the main term — the faithful one-sided reading of "$\ge
+(\beta - o(1)) M$". The `x` parameter is vestigial as in `alphaBound`. -/
+def betaBound (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ) (_x : ℝ)
+    (β : ℝ) : Prop :=
+  Asymptotics.IsLittleO Filter.atTop
+    (fun y : ℝ => max (β * betaMainTerm k W y - sieveThetaSum ν H i b W y) 0)
+    (betaMainTerm k W)
 
 /-- **Step 1 of Lemma crit (Polymath8b §3, analytic core)**: from the sieve
 bounds (s1) and (s2), and the key ratio $(\beta_1 + \cdots + \beta_k)/\alpha > m$,
@@ -1013,7 +1073,7 @@ construction takes $W := \prod_{p \le D} p$ for an appropriate threshold $D$
 and uses CRT + admissibility to pick $b$).
 
 The conclusion exposes only $W \ge 1$; the coprimality conditions on $(b, W)$
-are absorbed into the opaque `selberg_nu` / `alphaBound` / `betaBound`
+are absorbed into the `selberg_nu` / `alphaBound` / `betaBound`
 predicates. Future PR can replace with a real proof using Mertens products
 and CRT. -/
 axiom wtrick_data {k : ℕ} (_hk : k ≥ 1) {H : List ℕ}
