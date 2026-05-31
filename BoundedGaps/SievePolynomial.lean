@@ -139,20 +139,15 @@ noncomputable def polynomialMaynardDenominator {k : ℕ}
 noncomputable def polynomialMkF {k : ℕ} (P : PolynomialSieveWeight k) : ℚ :=
   polynomialMaynardNumerator P / polynomialMaynardDenominator P
 
-/-! ## The bridge from polynomial ratio to abstract $M_k$ -/
+/-! ## The bridge from polynomial ratio to abstract $M_k$
 
-/-- Bridge: the polynomial-evaluated ratio equals the abstract $M_k(F)$ value.
-
-Cast from `ℚ` to `ℝ` is implicit. Currently `sorry`; the proof requires
-showing that `PolynomialSieveWeight.toFun` is a valid smooth function on the
-simplex (it is, as a polynomial) and that the closed-form integrals match
-the abstract `Sieve.MkF` definition. -/
--- TRIAGE: NEEDS_SIEVE — depends on Sieve.MkF having a real body. Once both
--- numerator/denominator above are defined AND Sieve.MkF is defined, this is
--- ~30 lines (the closed-form integral matches the abstract integral
--- termwise, monomial-by-monomial).
-theorem polynomialMkF_eq_MkF {k : ℕ} (P : PolynomialSieveWeight k) :
-    Sieve.MkF k P.toFun = (polynomialMkF P : ℝ) := sorry
+The bridge `polynomialMkF_eq_MkF` (`Sieve.MkF k P.toFun = polynomialMkF P`) is
+proven below in the `## Dirichlet integral bridge` section — it needs the
+`insertNth` simplex helpers (defined later in this file), so it is placed just
+before its sole user `Mk_gt_four_of_polynomial_witness`. The core is the
+$k$-dimensional Dirichlet integral $\int_{\Delta_k} \prod t_i^{\alpha_i}
+(1-\sum t)^\beta = \frac{\prod \alpha_i!\,\beta!}{(k+|\alpha|+\beta)!}$, which
+`Mathlib` lacks; we build it from the 1-D Beta integral + a simplex Fubini step. -/
 
 /-! ## Discharge of `Mk_ge_polynomialMkF` via the smooth simplex cutoff
 
@@ -519,6 +514,338 @@ theorem Mk_ge_polynomialMkF {k : ℕ} (P : PolynomialSieveWeight k) :
     filter_upwards [hden_ev] with n hn
     exact le_csSup (MkSet_bddAbove k) (Fapprox_mem_MkSet P n hn)
 
+
+section DirichletBridge
+open intervalIntegral
+
+/-- The 1D Dirichlet/Beta keystone. -/
+theorem dirichlet_1d (a b : ℕ) (c : ℝ) :
+    ∫ t in (0:ℝ)..c, t ^ a * (c - t) ^ b
+      = c ^ (a + b + 1) * ((a.factorial * b.factorial : ℝ) / (a + b + 1).factorial) := by
+  induction b generalizing a with
+  | zero =>
+    simp only [pow_zero, mul_one, Nat.add_zero, Nat.factorial_zero, Nat.cast_one, mul_one]
+    rw [integral_pow, zero_pow (Nat.add_one_ne_zero a), sub_zero, Nat.factorial_succ]
+    have hfa : (a.factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero a)
+    push_cast
+    field_simp
+  | succ b ih =>
+    have key :
+        ∫ t in (0:ℝ)..c, t ^ a * (c - t) ^ (b + 1)
+          = ((b : ℝ) + 1) / ((a : ℝ) + 1) *
+              ∫ t in (0:ℝ)..c, t ^ (a + 1) * (c - t) ^ b := by
+      have hu : ∀ x ∈ Set.uIcc (0:ℝ) c,
+          HasDerivAt (fun x => (c - x) ^ (b + 1)) (-((b:ℝ) + 1) * (c - x) ^ b) x := by
+        intro x _
+        have h1 : HasDerivAt (fun x : ℝ => c - x) (-1) x := (hasDerivAt_id x).const_sub c
+        have := h1.pow (b + 1)
+        convert this using 1
+        simp only [Nat.add_sub_cancel]; push_cast; ring
+      have hv : ∀ x ∈ Set.uIcc (0:ℝ) c,
+          HasDerivAt (fun x => x ^ (a + 1) / ((a:ℝ) + 1)) (x ^ a) x := by
+        intro x _
+        have := (hasDerivAt_pow (a + 1) x).div_const ((a:ℝ) + 1)
+        convert this using 1
+        have hne : ((a:ℝ) + 1) ≠ 0 := by positivity
+        simp only [Nat.add_sub_cancel]; push_cast; field_simp
+      have hu' : IntervalIntegrable (fun x => -((b:ℝ) + 1) * (c - x) ^ b) volume 0 c :=
+        (Continuous.intervalIntegrable (by continuity) 0 c)
+      have hv' : IntervalIntegrable (fun x => x ^ a) volume 0 c :=
+        (continuous_pow a).intervalIntegrable 0 c
+      have ibp := integral_mul_deriv_eq_deriv_mul hu hv hu' hv'
+      have comm : (∫ t in (0:ℝ)..c, t ^ a * (c - t) ^ (b + 1))
+          = ∫ t in (0:ℝ)..c, (c - t) ^ (b + 1) * t ^ a := by
+        apply intervalIntegral.integral_congr; intro x _; dsimp; ring
+      have hconst :
+          (∫ x in (0:ℝ)..c, -((b:ℝ) + 1) * (c - x) ^ b * (x ^ (a + 1) / ((a:ℝ) + 1)))
+            = -(((b:ℝ) + 1) / ((a:ℝ) + 1)) *
+                ∫ t in (0:ℝ)..c, t ^ (a + 1) * (c - t) ^ b := by
+        rw [← intervalIntegral.integral_const_mul]
+        apply intervalIntegral.integral_congr; intro x _; dsimp
+        have hne : ((a:ℝ) + 1) ≠ 0 := by positivity
+        field_simp
+      rw [comm, ibp, hconst]
+      simp only [sub_self, sub_zero, zero_pow (Nat.add_one_ne_zero b),
+        zero_pow (Nat.add_one_ne_zero a), zero_mul, mul_zero, zero_div]
+      ring
+    rw [key, ih (a + 1)]
+    have hne : ((a:ℝ) + 1) ≠ 0 := by positivity
+    have e1 : a + 1 + b + 1 = a + (b + 1) + 1 := by ring
+    rw [e1, Nat.factorial_succ a, Nat.factorial_succ b]
+    have hfa : (a.factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero a)
+    have hfb : (b.factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero b)
+    have hfd : ((a + (b + 1) + 1).factorial : ℝ) ≠ 0 :=
+      Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero _)
+    push_cast
+    field_simp
+
+/-- Forward extraction from simplex membership of an `insertNth`. -/
+lemma insertNth_mem_simplex_forward {n : ℕ} (i : Fin (n + 1)) {ti : ℝ} {s : Fin n → ℝ}
+    (h : i.insertNth ti s ∈ simplex (n + 1)) :
+    0 ≤ ti ∧ s ∈ simplex n ∧ ti ≤ 1 - ∑ j, s j := by
+  obtain ⟨hnn, hsum⟩ := h
+  have hti : 0 ≤ ti := by have := hnn i; rwa [Fin.insertNth_apply_same] at this
+  have hsj : ∀ j, 0 ≤ s j := by
+    intro j; have := hnn (i.succAbove j); rwa [Fin.insertNth_apply_succAbove] at this
+  rw [insertNth_sum] at hsum
+  exact ⟨hti, ⟨hsj, by linarith⟩, by linarith⟩
+
+/-- **Simplex Fubini**: peel one coordinate of a simplex integral. -/
+theorem simplex_fubini {n : ℕ} (i : Fin (n + 1)) (G : (Fin (n + 1) → ℝ) → ℝ)
+    (hG : Continuous G) :
+    (∫ t in simplex (n + 1), G t)
+      = ∫ s in simplex n, ∫ ti in Set.Icc (0:ℝ) (1 - ∑ j, s j), G (i.insertNth ti s) := by
+  classical
+  have hSmeas : MeasurableSet (simplex (n + 1)) := (isClosed_simplex (n + 1)).measurableSet
+  have hSnmeas : MeasurableSet (simplex n) := (isClosed_simplex n).measurableSet
+  have hIntOn : IntegrableOn G (simplex (n + 1)) :=
+    (hG.continuousOn).integrableOn_compact (isCompact_simplex (n + 1))
+  have hint : Integrable ((simplex (n + 1)).indicator G) :=
+    hIntOn.integrable_indicator hSmeas
+  rw [← MeasureTheory.integral_indicator hSmeas, integral_insertNth_eq i _ hint,
+      ← MeasureTheory.integral_indicator hSnmeas]
+  apply MeasureTheory.integral_congr_ae
+  refine Filter.Eventually.of_forall (fun s => ?_)
+  by_cases hs : s ∈ simplex n
+  · rw [Set.indicator_of_mem hs]
+    have hiff : ∀ ti, (i.insertNth ti s ∈ simplex (n + 1))
+        ↔ ti ∈ Set.Icc (0:ℝ) (1 - ∑ j, s j) := by
+      intro ti
+      constructor
+      · intro hm
+        obtain ⟨h0, _, hle⟩ := insertNth_mem_simplex_forward i hm
+        exact ⟨h0, hle⟩
+      · intro hti; exact insertNth_mem_simplex i hs hti
+    have hfun : (fun ti => (simplex (n + 1)).indicator G (i.insertNth ti s))
+        = (Set.Icc (0:ℝ) (1 - ∑ j, s j)).indicator (fun ti => G (i.insertNth ti s)) := by
+      funext ti
+      rw [Set.indicator_apply, Set.indicator_apply]
+      by_cases hti : ti ∈ Set.Icc (0:ℝ) (1 - ∑ j, s j)
+      · rw [if_pos ((hiff ti).mpr hti), if_pos hti]
+      · rw [if_neg (fun hm => hti ((hiff ti).mp hm)), if_neg hti]
+    dsimp only
+    rw [hfun, MeasureTheory.integral_indicator measurableSet_Icc]
+  · rw [Set.indicator_of_notMem hs]
+    have hzero : ∀ ti, (simplex (n + 1)).indicator G (i.insertNth ti s) = 0 := by
+      intro ti
+      rw [Set.indicator_apply, if_neg]
+      intro hm
+      exact hs (insertNth_mem_simplex_forward i hm).2.1
+    simp only [hzero, integral_zero]
+
+/-- Continuity of the slack-monomial integrand. -/
+lemma slackMonomial_continuous {k : ℕ} (α : Fin k → ℕ) (β : ℕ) :
+    Continuous (fun t : Fin k → ℝ => (∏ i, t i ^ α i) * (1 - ∑ i, t i) ^ β) := by
+  apply Continuous.mul
+  · exact continuous_finset_prod _ (fun i _ => (continuous_apply i).pow _)
+  · exact ((continuous_const.sub (continuous_finset_sum _
+      (fun i _ => continuous_apply i))).pow _)
+
+/-- **Master lemma**: the k-dim Dirichlet integral with slack. -/
+theorem dirichlet_slack {k : ℕ} (α : Fin k → ℕ) (β : ℕ) :
+    (∫ t in simplex k, (∏ i, t i ^ α i) * (1 - ∑ i, t i) ^ β)
+      = (∏ i, ((α i).factorial : ℝ)) * (β.factorial : ℝ)
+          / ((k + (∑ i, α i) + β).factorial : ℝ) := by
+  induction k generalizing β with
+  | zero =>
+    have hsimp0 : simplex 0 = (Set.univ : Set (Fin 0 → ℝ)) := by
+      ext t; simp [simplex]
+    rw [hsimp0, Measure.restrict_univ, MeasureTheory.integral_unique]
+    have hvol : (volume : Measure (Fin 0 → ℝ)).real Set.univ = 1 := by
+      simp [measureReal_def, MeasureTheory.volume_pi]
+    have hfb : (β.factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero β)
+    simp only [Finset.univ_eq_empty, Finset.prod_empty, Finset.sum_empty, sub_zero, one_pow,
+      mul_one, Nat.zero_add, smul_eq_mul, hvol, one_mul]
+    field_simp
+  | succ n ih =>
+    set i : Fin (n + 1) := 0 with hi
+    set α' : Fin n → ℕ := fun j => α (i.succAbove j) with hα'
+    rw [simplex_fubini i _ (slackMonomial_continuous α β)]
+    have hstep : Set.EqOn
+        (fun s => ∫ ti in Set.Icc (0:ℝ) (1 - ∑ j, s j),
+            (∏ a, (i.insertNth ti s) a ^ α a) * (1 - ∑ a, (i.insertNth ti s) a) ^ β)
+        (fun s => ((α i).factorial * β.factorial / (α i + β + 1).factorial : ℝ)
+            * ((∏ j, s j ^ α' j) * (1 - ∑ j, s j) ^ (α i + β + 1)))
+        (simplex n) := by
+      intro s hs
+      simp only
+      have hT : (0:ℝ) ≤ 1 - ∑ j, s j := by obtain ⟨_, h2⟩ := hs; linarith
+      have hpt : Set.EqOn
+          (fun ti => (∏ a, (i.insertNth ti s) a ^ α a) * (1 - ∑ a, (i.insertNth ti s) a) ^ β)
+          (fun ti => (∏ j, s j ^ α' j) * (ti ^ α i * (1 - ∑ j, s j - ti) ^ β))
+          (Set.Icc (0:ℝ) (1 - ∑ j, s j)) := by
+        intro ti _
+        simp only
+        rw [Fin.prod_univ_succAbove _ i, insertNth_sum]
+        simp only [Fin.insertNth_apply_same, Fin.insertNth_apply_succAbove]
+        ring
+      rw [MeasureTheory.setIntegral_congr_fun measurableSet_Icc hpt,
+          MeasureTheory.integral_const_mul]
+      rw [show (∫ ti in Set.Icc (0:ℝ) (1 - ∑ j, s j), ti ^ α i * (1 - ∑ j, s j - ti) ^ β)
+            = ∫ ti in (0:ℝ)..(1 - ∑ j, s j), ti ^ α i * (1 - ∑ j, s j - ti) ^ β from by
+        rw [intervalIntegral.integral_of_le hT, MeasureTheory.integral_Icc_eq_integral_Ioc],
+        dirichlet_1d (α i) β (1 - ∑ j, s j)]
+      ring
+    rw [MeasureTheory.setIntegral_congr_fun (isClosed_simplex n).measurableSet hstep,
+        MeasureTheory.integral_const_mul, ih α' (α i + β + 1)]
+    -- algebra
+    have hsum : (∑ a, α a) = α i + ∑ j, α' j := Fin.sum_univ_succAbove α i
+    have hprod : (∏ a, ((α a).factorial : ℝ))
+        = (α i).factorial * ∏ j, ((α' j).factorial : ℝ) :=
+      Fin.prod_univ_succAbove (fun a => ((α a).factorial : ℝ)) i
+    have eidx : n + (∑ j, α' j) + (α i + β + 1) = (n + 1) + (∑ a, α a) + β := by
+      rw [hsum]; ring
+    rw [eidx, hprod]
+    have h1 : ((α i + β + 1).factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero _)
+    have h2 : (((n + 1) + (∑ a, α a) + β).factorial : ℝ) ≠ 0 :=
+      Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero _)
+    field_simp
+
+/-- The monomial integral closed form (β = 0 case), real-valued. -/
+lemma monomialIntegral_eq {k : ℕ} (α : Fin k → ℕ) :
+    (∫ t in simplex k, ∏ i, t i ^ α i) = (monomialIntegral α : ℝ) := by
+  have h := dirichlet_slack α 0
+  simp only [pow_zero, mul_one, Nat.add_zero, Nat.factorial_zero, Nat.cast_one] at h
+  rw [monomialIntegral, MultiIndex.degree]
+  push_cast
+  rw [h]
+
+/-- Each monomial term is integrable on the (compact) simplex. -/
+lemma monomial_integrableOn {k : ℕ} (α : Fin k → ℕ) (c : ℝ) :
+    Integrable (fun t : Fin k → ℝ => c * ∏ i, t i ^ α i) (volume.restrict (simplex k)) :=
+  (Continuous.continuousOn (by fun_prop)).integrableOn_compact (isCompact_simplex k)
+
+/-- **Denominator bridge.** -/
+lemma denom_bridge {k : ℕ} (P : PolynomialSieveWeight k) :
+    mkF_denominator k P.toFun = (polynomialMaynardDenominator P : ℝ) := by
+  rw [mkF_denominator]
+  have hsq : ∀ t : Fin k → ℝ, P.toFun t ^ 2
+      = ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+          ((p.2 : ℝ) * (q.2 : ℝ)) * ∏ i, t i ^ ((p.1 + q.1) i) := by
+    intro t
+    rw [sq, PolynomialSieveWeight.toFun, Finset.sum_mul_sum]
+    refine Finset.sum_congr rfl (fun p _ => Finset.sum_congr rfl (fun q _ => ?_))
+    rw [show (∏ i, t i ^ ((p.1 + q.1) i)) = (∏ i, t i ^ p.1 i) * ∏ i, t i ^ q.1 i from by
+      rw [← Finset.prod_mul_distrib]
+      exact Finset.prod_congr rfl (fun i _ => by rw [Pi.add_apply, pow_add])]
+    ring
+  simp_rw [hsq]
+  rw [MeasureTheory.integral_finset_sum _ (fun p _ =>
+    MeasureTheory.integrable_finset_sum _ (fun q _ =>
+      monomial_integrableOn (p.1 + q.1) ((p.2 : ℝ) * (q.2 : ℝ))))]
+  rw [polynomialMaynardDenominator]
+  push_cast
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [MeasureTheory.integral_finset_sum _ (fun q _ =>
+    monomial_integrableOn (p.1 + q.1) ((p.2 : ℝ) * (q.2 : ℝ)))]
+  refine Finset.sum_congr rfl (fun q _ => ?_)
+  rw [MeasureTheory.integral_const_mul, monomialIntegral_eq]
+
+/-- `∫_{[0,T]} ti^m = T^{m+1}/(m+1)` for `T ≥ 0`. -/
+lemma int_pow_Icc (m : ℕ) (T : ℝ) (hT : 0 ≤ T) :
+    (∫ ti in Set.Icc (0:ℝ) T, ti ^ m) = T ^ (m + 1) / (m + 1) := by
+  rw [MeasureTheory.integral_Icc_eq_integral_Ioc, ← intervalIntegral.integral_of_le hT,
+      integral_pow]
+  simp
+
+/-- The slack-Dirichlet integral closed form, real-valued. -/
+lemma dirichletSlack_eq {n : ℕ} (α : Fin n → ℕ) (β : ℕ) :
+    (∫ t in simplex n, (∏ i, t i ^ α i) * (1 - ∑ i, t i) ^ β)
+      = (dirichletIntegralWithSlack α β : ℝ) := by
+  rw [dirichlet_slack α β, dirichletIntegralWithSlack]
+  push_cast
+  ring
+
+/-- The inner `ti`-integral of `P.toFun ∘ insertNth i`, factored. -/
+lemma inner_eq {n : ℕ} (P : PolynomialSieveWeight (n + 1)) (i : Fin (n + 1))
+    {s : Fin n → ℝ} (hs : s ∈ simplex n) :
+    (∫ ti in Set.Icc (0:ℝ) (1 - ∑ j, s j), P.toFun (i.insertNth ti s))
+      = ∑ p ∈ P.terms, (p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))
+          * ((1 - ∑ j, s j) ^ (p.1 i + 1) / (p.1 i + 1)) := by
+  have hT : (0:ℝ) ≤ 1 - ∑ j, s j := by obtain ⟨_, h2⟩ := hs; linarith
+  have hpt : Set.EqOn (fun ti => P.toFun (i.insertNth ti s))
+      (fun ti => ∑ p ∈ P.terms,
+        ((p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))) * ti ^ p.1 i)
+      (Set.Icc (0:ℝ) (1 - ∑ j, s j)) := by
+    intro ti _
+    simp only [PolynomialSieveWeight.toFun]
+    refine Finset.sum_congr rfl (fun p _ => ?_)
+    rw [Fin.prod_univ_succAbove _ i]
+    simp only [Fin.insertNth_apply_same, Fin.insertNth_apply_succAbove]
+    ring
+  rw [MeasureTheory.setIntegral_congr_fun measurableSet_Icc hpt,
+      MeasureTheory.integral_finset_sum _ (fun p _ =>
+        ((Continuous.continuousOn (by fun_prop)).integrableOn_compact isCompact_Icc))]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [MeasureTheory.integral_const_mul, int_pow_Icc (p.1 i) _ hT]
+
+/-- Continuous functions are integrable on the (compact) simplex. -/
+lemma simplexIntegrable {n : ℕ} {f : (Fin n → ℝ) → ℝ} (hf : Continuous f) :
+    Integrable f (volume.restrict (simplex n)) :=
+  (hf.continuousOn).integrableOn_compact (isCompact_simplex n)
+
+/-- **Single Maynard marginal bridge** `J_i`. -/
+lemma Ji_bridge {n : ℕ} (P : PolynomialSieveWeight (n + 1)) (i : Fin (n + 1)) :
+    (∫ s in simplex n,
+        (∫ ti in Set.Icc (0:ℝ) (1 - ∑ j, s j), P.toFun (i.insertNth ti s)) ^ 2)
+      = ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+          ((p.2 * q.2 : ℚ) / ((p.1 i + 1) * (q.1 i + 1))
+            * dirichletIntegralWithSlack (Fin.removeNth i (p.1 + q.1))
+                (p.1 i + q.1 i + 2) : ℝ) := by
+  have hsq_eq : Set.EqOn
+      (fun s => (∫ ti in Set.Icc (0:ℝ) (1 - ∑ j, s j), P.toFun (i.insertNth ti s)) ^ 2)
+      (fun s => (∑ p ∈ P.terms, (p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))
+          * ((1 - ∑ j, s j) ^ (p.1 i + 1) / (p.1 i + 1))) ^ 2)
+      (simplex n) := fun s hs => by dsimp only; rw [inner_eq P i hs]
+  rw [MeasureTheory.setIntegral_congr_fun (isClosed_simplex n).measurableSet hsq_eq]
+  simp_rw [sq, Finset.sum_mul_sum]
+  rw [MeasureTheory.integral_finset_sum _ (fun p _ =>
+    MeasureTheory.integrable_finset_sum _ (fun q _ => simplexIntegrable (by fun_prop)))]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [MeasureTheory.integral_finset_sum _ (fun q _ => simplexIntegrable (by fun_prop))]
+  refine Finset.sum_congr rfl (fun q _ => ?_)
+  have hp1 : ((p.1 i : ℝ) + 1) ≠ 0 := by positivity
+  have hq1 : ((q.1 i : ℝ) + 1) ≠ 0 := by positivity
+  have hBB : (fun s : Fin n → ℝ =>
+        ((p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))
+            * ((1 - ∑ j, s j) ^ (p.1 i + 1) / (p.1 i + 1)))
+        * ((q.2 : ℝ) * (∏ j, s j ^ q.1 (i.succAbove j))
+            * ((1 - ∑ j, s j) ^ (q.1 i + 1) / (q.1 i + 1))))
+      = (fun s => ((p.2 : ℝ) * (q.2 : ℝ) / ((p.1 i + 1) * (q.1 i + 1)))
+          * ((∏ j, s j ^ (Fin.removeNth i (p.1 + q.1)) j)
+              * (1 - ∑ j, s j) ^ (p.1 i + q.1 i + 2))) := by
+    funext s
+    rw [show (∏ j, s j ^ (Fin.removeNth i (p.1 + q.1)) j)
+          = (∏ j, s j ^ p.1 (i.succAbove j)) * ∏ j, s j ^ q.1 (i.succAbove j) from by
+        rw [← Finset.prod_mul_distrib]
+        exact Finset.prod_congr rfl (fun j _ => by
+          simp only [Fin.removeNth, Pi.add_apply]; rw [pow_add])]
+    rw [show (1 - ∑ j, s j) ^ (p.1 i + q.1 i + 2)
+          = (1 - ∑ j, s j) ^ (p.1 i + 1) * (1 - ∑ j, s j) ^ (q.1 i + 1) from by
+        rw [← pow_add]; congr 1; omega]
+    field_simp
+  rw [hBB, MeasureTheory.integral_const_mul, dirichletSlack_eq]
+  simp only [Rat.cast_mul]
+
+/-- **Numerator bridge.** -/
+lemma numer_bridge {k : ℕ} (P : PolynomialSieveWeight k) :
+    mkF_numerator k P.toFun = (polynomialMaynardNumerator P : ℝ) := by
+  cases k with
+  | zero => simp [mkF_numerator, polynomialMaynardNumerator]
+  | succ n =>
+    rw [mkF_numerator, polynomialMaynardNumerator]
+    push_cast
+    refine Finset.sum_congr rfl (fun i _ => ?_)
+    rw [Ji_bridge P i]
+    refine Finset.sum_congr rfl (fun p _ =>
+      Finset.sum_congr rfl (fun q _ => by push_cast; ring))
+
+/-- **The bridge** (was the `sorry` at `SievePolynomial:155`). -/
+theorem polynomialMkF_eq_MkF {k : ℕ} (P : PolynomialSieveWeight k) :
+    Sieve.MkF k P.toFun = (polynomialMkF P : ℝ) := by
+  rw [Sieve.MkF, numer_bridge, denom_bridge, polynomialMkF, Rat.cast_div]
+
+end DirichletBridge
 
 /-- **The discharge lemma**: a single polynomial witness with verified
 rational ratio $> 4$ proves $\Sieve.Mk k > 4$.
