@@ -81,4 +81,51 @@ theorem monomialIntegral_eps (k : ℕ) {ε : ℝ} (hε : 0 ≤ ε) (α : Fin k �
   rw [simplex_eps_eq_smul k hε, key, pow_add]
   ring
 
+/-! ## The `Mk_eps` denominator closed form
+
+The denominator of `Mk_eps` is `∫_{(1+ε)R_k} F²` — a *pure dilation* of the plain
+denominator, so `monomialIntegral_eps` collapses it termwise exactly as `denom_bridge` does for
+the plain case. (The `Mk_eps` *numerator* is genuinely different — outer integration over the
+*shrunken* `simplex_shrunk` with inner bound `1+ε-∑s` — and needs a separate generalized
+incomplete-Dirichlet keystone over that mixed `(1-ε)/(1+ε)` geometry; not here.)
+
+Note the closed form is real-valued: `(1+ε)` is real, so for an irrational ε it is not
+rational. The eventual `native_decide` step picks a *rational* ε, at which point every factor
+is rational again. -/
+
+/-- Each monomial term is integrable on the (compact) enlarged simplex. -/
+lemma monomial_integrableOn_eps {k : ℕ} (ε : ℝ) (α : Fin k → ℕ) (c : ℝ) :
+    Integrable (fun t : Fin k → ℝ => c * ∏ i, t i ^ α i) (volume.restrict (simplex_eps k ε)) :=
+  (Continuous.continuousOn (by fun_prop)).integrableOn_compact (isCompact_simplex_eps k ε)
+
+/-- **Denominator bridge for `Mk_eps`.** For a polynomial sieve weight `P` and `ε ≥ 0`, the
+`Mk_eps` denominator `∫_{(1+ε)R_k} P²` has the closed form `Σ_{p,q} c_p c_q ·
+(1+ε)^{k+|p+q|} · monomialIntegral(p+q)` — the plain `denom_bridge` with each
+`monomialIntegral` dilated by its `monomialIntegral_eps` factor. -/
+theorem mkF_eps_denominator_poly {k : ℕ} {ε : ℝ} (hε : 0 ≤ ε) (P : PolynomialSieveWeight k) :
+    mkF_eps_denominator k ε P.toFun
+      = ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+          (p.2 : ℝ) * (q.2 : ℝ)
+            * ((1 + ε) ^ (k + ∑ i, (p.1 + q.1) i) * (monomialIntegral (p.1 + q.1) : ℝ)) := by
+  rw [mkF_eps_denominator]
+  have hsq : ∀ t : Fin k → ℝ, P.toFun t ^ 2
+      = ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+          ((p.2 : ℝ) * (q.2 : ℝ)) * ∏ i, t i ^ ((p.1 + q.1) i) := by
+    intro t
+    rw [sq, PolynomialSieveWeight.toFun, Finset.sum_mul_sum]
+    refine Finset.sum_congr rfl (fun p _ => Finset.sum_congr rfl (fun q _ => ?_))
+    rw [show (∏ i, t i ^ ((p.1 + q.1) i)) = (∏ i, t i ^ p.1 i) * ∏ i, t i ^ q.1 i from by
+      rw [← Finset.prod_mul_distrib]
+      exact Finset.prod_congr rfl (fun i _ => by rw [Pi.add_apply, pow_add])]
+    ring
+  simp_rw [hsq]
+  rw [MeasureTheory.integral_finset_sum _ (fun p _ =>
+    MeasureTheory.integrable_finset_sum _ (fun q _ =>
+      monomial_integrableOn_eps ε (p.1 + q.1) ((p.2 : ℝ) * (q.2 : ℝ))))]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [MeasureTheory.integral_finset_sum _ (fun q _ =>
+    monomial_integrableOn_eps ε (p.1 + q.1) ((p.2 : ℝ) * (q.2 : ℝ)))]
+  refine Finset.sum_congr rfl (fun q _ => ?_)
+  rw [MeasureTheory.integral_const_mul, monomialIntegral_eps k hε (p.1 + q.1)]
+
 end BoundedGaps.EpsScaling
