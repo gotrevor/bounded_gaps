@@ -151,4 +151,22 @@ theorem polynomialMkF_permWeight {k : ℕ} (σ : Equiv.Perm (Fin k))
   unfold polynomialMkF
   rw [polynomialMaynardNumerator_permWeight, polynomialMaynardDenominator_permWeight]
 
+/-! ## Toward the matching closed form (the orbit-sum kernel)
+
+The next layer (the genuine multi-session kernel; see `tools/mk/SYMMETRIC_REDUCTION.md`)
+collapses an orbit-pair sum to `(1/aut) · Σ_M ff(k,T)·W(M) / (k+|λ|+|μ|)!`, where `ff(k,T)`
+is the number of ways to drop `T` labelled tokens into distinct slots of `Fin k`. The single
+arithmetic fact underpinning that "parametric in `k`" structure — the placement count is the
+falling factorial `k(k-1)⋯(k-T+1) = Nat.descFactorial k T`, a polynomial in `k` — is the
+piece below. Everything else in the kernel (the overlap-pattern bijection, the weight `W(M)`)
+is layered on top of it. -/
+
+/-- **Placement count = falling factorial.** The number of ways to place `T` distinguishable
+tokens into distinct slots of `Fin k` (i.e. injections `Fin T ↪ Fin k`) is the falling
+factorial `ff(k,T) = k(k-1)⋯(k-T+1) = Nat.descFactorial k T`. This is the `ff(k,T)` factor in
+the matching closed form, and the source of its polynomial-in-`k` character. -/
+lemma placement_count (k T : ℕ) :
+    Fintype.card (Fin T ↪ Fin k) = k.descFactorial T := by
+  simp [Fintype.card_embedding_eq]
+
 end BoundedGaps.SymmetricReduction
