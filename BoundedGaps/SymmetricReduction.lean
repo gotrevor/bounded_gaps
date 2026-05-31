@@ -60,4 +60,95 @@ theorem polynomialMaynardDenominator_permWeight {k : ℕ} (σ : Equiv.Perm (Fin 
   rw [show (fun i => p.1 (σ i) + q.1 (σ i)) = (fun i => (p.1 + q.1) (σ i)) from rfl,
       monomialIntegral_comp_perm σ (p.1 + q.1)]
 
+/-! ## Numerator permutation-invariance
+
+The numerator of the Maynard ratio (`polynomialMaynardNumerator`) is a sum over a
+coordinate `i` of squared "drop-`i`" marginals, each a `dirichletIntegralWithSlack` of the
+removed-`i` exponent vector. Permuting the coordinates by `σ` permutes the *values* of that
+removed vector without changing the multiset, so each marginal is unchanged up to a
+reindexing of the outer `i`-sum.
+
+The key arithmetic fact: `Fin.removeNth i (w ∘ σ)` and `Fin.removeNth (σ i) w` delete the
+*same value* `w (σ i)` from `w`, so they share both `∑` and `∏ (·)!`. We never build the
+induced permutation on `Fin n`; we cancel `w (σ i)` directly. -/
+
+/-- Deleting position `i` from `w ∘ σ` and deleting position `σ i` from `w` leave the same
+coordinate sum (both drop the value `w (σ i)`). -/
+lemma removeNth_sum_comp_perm {n : ℕ} (σ : Equiv.Perm (Fin (n + 1)))
+    (w : Fin (n + 1) → ℕ) (i : Fin (n + 1)) :
+    (∑ j, (Fin.removeNth i (fun m => w (σ m))) j) = ∑ j, (Fin.removeNth (σ i) w) j := by
+  simp only [Fin.removeNth]
+  have h1 : ∑ m, w (σ m) = w (σ i) + ∑ j : Fin n, w (σ (i.succAbove j)) :=
+    Fin.sum_univ_succAbove (fun m => w (σ m)) i
+  have h2 : ∑ m, w m = w (σ i) + ∑ j : Fin n, w ((σ i).succAbove j) :=
+    Fin.sum_univ_succAbove w (σ i)
+  have h3 : ∑ m, w (σ m) = ∑ m, w m := Equiv.sum_comp σ w
+  omega
+
+/-- The product-of-factorials version of `removeNth_sum_comp_perm`. -/
+lemma removeNth_prodFactorial_comp_perm {n : ℕ} (σ : Equiv.Perm (Fin (n + 1)))
+    (w : Fin (n + 1) → ℕ) (i : Fin (n + 1)) :
+    (∏ j, ((Fin.removeNth i (fun m => w (σ m))) j).factorial)
+      = ∏ j, ((Fin.removeNth (σ i) w) j).factorial := by
+  simp only [Fin.removeNth]
+  have h1 : ∏ m, (w (σ m)).factorial
+      = (w (σ i)).factorial * ∏ j : Fin n, (w (σ (i.succAbove j))).factorial :=
+    Fin.prod_univ_succAbove (fun m => (w (σ m)).factorial) i
+  have h2 : ∏ m, (w m).factorial
+      = (w (σ i)).factorial * ∏ j : Fin n, (w ((σ i).succAbove j)).factorial :=
+    Fin.prod_univ_succAbove (fun m => (w m).factorial) (σ i)
+  have h3 : ∏ m, (w (σ m)).factorial = ∏ m, (w m).factorial :=
+    Equiv.prod_comp σ (fun m => (w m).factorial)
+  have key : (w (σ i)).factorial * ∏ j, (w (σ (i.succAbove j))).factorial
+      = (w (σ i)).factorial * ∏ j, (w ((σ i).succAbove j)).factorial := by
+    rw [← h1, h3, h2]
+  exact Nat.eq_of_mul_eq_mul_left (Nat.factorial_pos _) key
+
+/-- `dirichletIntegralWithSlack` depends only on `∑ α` and `∏ (α ·)!`, so it is invariant
+under the value-preserving reindexing of `removeNth` from `removeNth_*_comp_perm`. -/
+lemma dirichletIntegralWithSlack_removeNth_comp_perm {n : ℕ} (σ : Equiv.Perm (Fin (n + 1)))
+    (w : Fin (n + 1) → ℕ) (i : Fin (n + 1)) (β : ℕ) :
+    dirichletIntegralWithSlack (Fin.removeNth i (fun m => w (σ m))) β
+      = dirichletIntegralWithSlack (Fin.removeNth (σ i) w) β := by
+  unfold dirichletIntegralWithSlack
+  rw [removeNth_sum_comp_perm σ w i,
+      show (∏ j, (((Fin.removeNth i (fun m => w (σ m))) j).factorial : ℚ))
+          = ∏ j, (((Fin.removeNth (σ i) w) j).factorial : ℚ) from by
+        rw [← Nat.cast_prod, ← Nat.cast_prod, removeNth_prodFactorial_comp_perm σ w i]]
+
+/-- The shape in which the invariance appears inside the numerator: the removed exponent
+vector is `(p.1 ∘ σ) + (q.1 ∘ σ)` (a `Pi.add` of two precomposed functions). -/
+lemma dirichletIntegralWithSlack_removeNth_perm_add {n : ℕ} (σ : Equiv.Perm (Fin (n + 1)))
+    (a b : Fin (n + 1) → ℕ) (i : Fin (n + 1)) (β : ℕ) :
+    dirichletIntegralWithSlack
+        (Fin.removeNth i ((fun m => a (σ m)) + (fun m => b (σ m)))) β
+      = dirichletIntegralWithSlack (Fin.removeNth (σ i) (a + b)) β :=
+  dirichletIntegralWithSlack_removeNth_comp_perm σ (a + b) i β
+
+/-- **Numerator permutation-invariance.** Permuting the `k` coordinates leaves the numerator
+of the Maynard ratio unchanged. -/
+theorem polynomialMaynardNumerator_permWeight {k : ℕ} (σ : Equiv.Perm (Fin k))
+    (P : PolynomialSieveWeight k) :
+    polynomialMaynardNumerator (permWeight σ P) = polynomialMaynardNumerator P := by
+  cases k with
+  | zero => rfl
+  | succ n =>
+    simp only [polynomialMaynardNumerator, permWeight]
+    refine Fintype.sum_equiv σ _ _ (fun i => ?_)
+    rw [Finset.sum_image (fun x _ y _ h => permTerm_injective σ h)]
+    refine Finset.sum_congr rfl (fun p _ => ?_)
+    rw [Finset.sum_image (fun x _ y _ h => permTerm_injective σ h)]
+    refine Finset.sum_congr rfl (fun q _ => ?_)
+    dsimp only
+    rw [dirichletIntegralWithSlack_removeNth_perm_add σ p.1 q.1 i]
+
+/-- **Full Rayleigh-ratio permutation-invariance.** Both numerator and denominator are
+invariant, so the polynomial Maynard ratio is invariant under coordinate permutations —
+the bedrock fact that makes restricting to *symmetric* test functions WLOG. -/
+theorem polynomialMkF_permWeight {k : ℕ} (σ : Equiv.Perm (Fin k))
+    (P : PolynomialSieveWeight k) :
+    polynomialMkF (permWeight σ P) = polynomialMkF P := by
+  unfold polynomialMkF
+  rw [polynomialMaynardNumerator_permWeight, polynomialMaynardDenominator_permWeight]
+
 end BoundedGaps.SymmetricReduction
