@@ -127,11 +127,17 @@ If built, the leverage play is: prove the parametric identity ONCE, then every r
 - ✅ **`placement_count`** (`9a74394`): `Fintype.card (Fin T ↪ Fin k) = k.descFactorial T` — the
   `ff(k,T)` factor of the matching closed form (bijective core; source of polynomial-in-`k`).
 
-`BoundedGaps/EpsScaling.lean` (new, axiom-clean, green, `9a74394`) — foundation for the
-**`Mk_eps` polynomial bridge** (the only path to the unconditional flagship H₁≤246):
-- ✅ `simplex_eps_eq_smul` : `simplex_eps k ε = (1+ε) • simplex k`.
-- ✅ `monomialIntegral_eps` : `∫_{simplex_eps} ∏ tᵢ^αᵢ = (1+ε)^(k+|α|) · monomialIntegral α` —
-  the homothety scaling law, the one genuinely *new* ingredient (rest mirrors `SievePolynomial`).
+`BoundedGaps/EpsScaling.lean` (new, axiom-clean, green) — the **`Mk_eps` polynomial bridge** (the
+only path to the unconditional flagship H₁≤246). **Both Rayleigh sides now reduced to closed form:**
+- ✅ `simplex_eps_eq_smul` / `monomialIntegral_eps` : `∫_{simplex_eps} ∏ tᵢ^αᵢ = (1+ε)^(k+|α|) ·
+  monomialIntegral α` — the homothety scaling law (the denominator is a pure dilation).
+- ✅ `mkF_eps_denominator_poly` : `∫_{(1+ε)R_k} P² = Σ_{p,q} c_p c_q (1+ε)^{k+|p+q|} monomialIntegral(p+q)`.
+- ✅ **`dirichlet_affine_slack`** (the ε-numerator KEYSTONE): `∫_{(1-ε)R_n} ∏sⱼ^aⱼ (1+ε-∑s)^β =
+  (1-ε)^{n+|a|} Σ_m C(β,m)(2ε)^m(1-ε)^{β-m} dirichletIntegralWithSlack(a,β-m)`. The slack base 1+ε
+  ≠ domain bound 1-ε, so not a single standard Dirichlet integral; rescale `s=(1-ε)σ`, then
+  `1+ε-(1-ε)∑σ = 2ε+(1-ε)(1-∑σ)` and `add_pow` expands into standard slack-Dirichlet integrals.
+- ✅ `inner_eq_eps` / `Ji_bridge_eps` / `mkF_eps_numerator_poly` : the `Mk_eps` numerator for a
+  polynomial weight = triple sum of those affine-slack integrals (ε-analogs of `inner_eq`/`Ji_bridge`).
 
 Remaining Lean steps (genuinely multi-session each; host-better — box builds OOM-retry):
 1. **The matching closed-form identity** (the real combinatorial kernel): prove
@@ -139,10 +145,12 @@ Remaining Lean steps (genuinely multi-session each; host-better — box builds O
    numerator analog) for an orbit-symmetric weight, with `S_*` the matching/overlap sums in
    `mk_sym.py`. Needs: an orbit→labelled-placement bijection counted by `placement_count`, the
    weight `W(M)`, and `monomialIntegral`'s dependence only on the overlap type. Mathlib-grade.
-2. **The rest of the `Mk_eps` bridge**: the slack-Dirichlet analog over `simplex_shrunk`, the
-   two-layer numerator/denominator bridges, and the cutoff/DCT `Mk_eps_ge_polynomialMkF_eps` —
-   i.e. the `SievePolynomial` development re-run over the ε-enlarged simplex, with
-   `monomialIntegral_eps` (and its slack analog) supplying the closed forms.
+2. **Finish the `Mk_eps` bridge** — the closed forms above are in; what remains is the *assembly*:
+   define a rational `polynomialMkF_eps` (for rational ε), prove `polynomialMkF_eps_eq_MkF_eps`
+   (the numerator+denominator bridges feed straight in), and the cutoff/DCT
+   `Mk_eps_ge_polynomialMkF_eps` — a mirror of `SievePolynomial`'s DCT development
+   (`denom_tendsto`/`J_i_tendsto`/`numer_tendsto`/`Mk_ge_polynomialMkF`) over the ε geometry, then
+   `Mk_eps_gt_of_polynomial_witness`. This unlocks discharging `mk_eps_50_witness` → H₁≤246.
 
 ## Files
 - `mk_sym.py` — closed-form reduction (scales to any k); `validate` subcommand.
