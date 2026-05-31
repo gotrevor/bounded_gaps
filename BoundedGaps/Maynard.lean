@@ -15,6 +15,7 @@ import BoundedGaps.Basic
 import BoundedGaps.Prerequisites
 import BoundedGaps.Sieve
 import BoundedGaps.Polymath8b
+import BoundedGaps.Mk5Witness
 
 namespace BoundedGaps.Maynard
 
@@ -102,15 +103,15 @@ classical observation cited in Maynard 2015 §1 — not needed for
 theorem narrowness_5_le_12 : narrowness 5 ≤ 12 :=
   narrowness_le_of_admissible_tuple tuple_5_admissible tuple_5_length tuple_5_diameter
 
-/-- **$M_5 > 2/\vartheta$ under EH** (Maynard 2015 Theorem 1.1 + §1
-discussion). The $5$-dimensional Selberg-sieve variational problem on
-$[0,1]^5 \cap \{\sum t_i \le 1\}$ attains a sup $M_5 > 2$ at a
-piecewise polynomial witness $F$, hence for any
-$\vartheta \in (2/M_5, 1) \subset (0, 1)$ the threshold inequality
-$M_5 > 2/\vartheta$ holds. Cited as a paper-§ numerical witness
-(Bucket A — citation-permanent). -/
-axiom mk_5_witness_under_EH :
-    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 5 > 2 * 1 / ϑ
+/-- **$M_5 > 2/\vartheta$ under EH** (Maynard 2015 Theorem 1.1 + §1 discussion).
+
+**Discharged 2026-05-31** (was `axiom`): `mk_5_witness_under_EH` is now a real
+theorem proved in `BoundedGaps.Mk5Witness` (same namespace) via an explicit
+degree-3 polynomial witness `P5` with `polynomialMkF P5 = 12048682945/6016885374
+> 2`, chained through `Mk_ge_polynomialMkF`. Re-exported here for its consumers
+below. -/
+example : ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 5 > 2 * 1 / ϑ :=
+  mk_5_witness_under_EH
 
 /-- Under EH: **$\DHL[5, 2]$**. Blueprint: `Sieve.maynard_thm` at
 $k = 5, m = 1$ with the Maynard $M_5 > 2/\vartheta$ witness. Parallel
