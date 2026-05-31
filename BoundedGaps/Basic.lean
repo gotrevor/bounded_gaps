@@ -749,29 +749,120 @@ private lemma liminfGap_le_iff_freqGap (m H : ℕ) :
         ≤ (H : ℕ∞) := by exact_mod_cast hGap
       _ < y := hyH
 
+/-- **Count-gap bridge**: a sorted (hence nodup) list `L` whose shifts `n + h`
+all land in `[A, B]` contributes at least `L.countP (·prime)` distinct primes to
+the interval, so the prime-count gap `count (B+1) - count A` dominates that
+`countP`. Phrased additively to dodge truncated subtraction. The distinct
+witnesses `{n + h}` inject (via `n + ·`) into the primes of `[A, B]`, which sit
+inside `count (B+1) - count A` by `Nat.count_eq_card_filter_range`. -/
+theorem countP_add_count_le {L : List ℕ} (hL : L.Pairwise (· < ·)) {n A B : ℕ}
+    (hAB : A ≤ B) (hbounds : ∀ h ∈ L, A ≤ n + h ∧ n + h ≤ B) :
+    L.countP (fun h => decide (n + h).Prime) + Nat.count Nat.Prime A
+      ≤ Nat.count Nat.Prime (B + 1) := by
+  classical
+  set f : ℕ ↪ ℕ := ⟨(n + ·), add_right_injective n⟩ with hf
+  set SA : Finset ℕ := {x ∈ Finset.range A | x.Prime} with hSA_def
+  set SB : Finset ℕ := {x ∈ Finset.range (B + 1) | x.Prime} with hSB_def
+  set Pw : Finset ℕ :=
+    (L.filter (fun h => decide (n + h).Prime)).toFinset.map f with hPw
+  -- nodup → card Pw = countP
+  have hnodupL : L.Nodup := hL.imp fun h => ne_of_lt h
+  have hnodupF : (L.filter (fun h => decide (n + h).Prime)).Nodup := hnodupL.filter _
+  have hcard : Pw.card = L.countP (fun h => decide (n + h).Prime) := by
+    rw [hPw, Finset.card_map, List.toFinset_card_of_nodup hnodupF,
+        List.countP_eq_length_filter]
+  -- membership facts for Pw
+  have hPw_mem : ∀ x ∈ Pw, x.Prime ∧ A ≤ x ∧ x ≤ B := by
+    intro x hx
+    rw [hPw, Finset.mem_map] at hx
+    obtain ⟨h, hh, rfl⟩ := hx
+    rw [List.mem_toFinset, List.mem_filter] at hh
+    obtain ⟨hhL, hprime⟩ := hh
+    exact ⟨of_decide_eq_true hprime, (hbounds h hhL).1, (hbounds h hhL).2⟩
+  -- Pw ⊆ SB, SA ⊆ SB, disjoint Pw SA
+  have hPwSB : Pw ⊆ SB := by
+    intro x hx
+    obtain ⟨hp, _, hxB⟩ := hPw_mem x hx
+    rw [hSB_def, Finset.mem_filter, Finset.mem_range]
+    exact ⟨by omega, hp⟩
+  have hSASB : SA ⊆ SB := by
+    intro x hx
+    rw [hSA_def, Finset.mem_filter, Finset.mem_range] at hx
+    rw [hSB_def, Finset.mem_filter, Finset.mem_range]
+    exact ⟨by omega, hx.2⟩
+  have hdisj : Disjoint Pw SA := by
+    rw [Finset.disjoint_left]
+    intro x hxPw hxSA
+    obtain ⟨_, hA, _⟩ := hPw_mem x hxPw
+    rw [hSA_def, Finset.mem_filter, Finset.mem_range] at hxSA
+    omega
+  -- card arithmetic: |Pw| + count A = |Pw ∪ SA| ≤ |SB| = count (B+1)
+  have hcardUnion : (Pw ∪ SA).card = Pw.card + SA.card :=
+    Finset.card_union_of_disjoint hdisj
+  have hle : (Pw ∪ SA).card ≤ SB.card :=
+    Finset.card_le_card (Finset.union_subset hPwSB hSASB)
+  have hSAcard : SA.card = Nat.count Nat.Prime A :=
+    (Nat.count_eq_card_filter_range Nat.Prime A).symm
+  have hSBcard : SB.card = Nat.count Nat.Prime (B + 1) :=
+    (Nat.count_eq_card_filter_range Nat.Prime (B + 1)).symm
+  rw [hcard, hSAcard] at hcardUnion
+  omega
+
 /-- **Cited bookkeeping**: from $\DHL[k, m+1]$ applied to an admissible
 $k$-tuple of diameter $D$, the prime-counting inequality
 $\mathrm{count}(p_{\max}+1) - \mathrm{count}(p_{\min}) \ge m + 1$ propagates
 to: for arbitrarily large $N$, there is a $j \ge N$ with
 $p_{j+m} - p_j \le D$.
 
-Unraveling: distinct prime witnesses among $\{n + h : h \in H_0\}$ embed
-into the prime sequence between $\min$ and $\max$, giving the count
-inequality; applying `primeAt_add_m_le_of_count` produces the indexed bound;
-infinitely many $n$ give infinitely many distinct $j(n)$.
+Unraveling: `narrowness_realized` supplies the minimizing admissible tuple
+$H_0$; `DHL` makes the shift-prime count $\ge m+1$ infinitely often;
+`countP_add_count_le` turns that into a prime-count gap; `Nat.le_nth_count`
+(lower) and `primeAt_add_m_le_of_count` (upper) pin $p_j \ge n + \min$ and
+$p_{j+m} \le n + \max$, so $p_{j+m} - p_j \le \max - \min = H(k)$; and
+$n \to \infty$ pushes $j = \mathrm{count}(n+\min)+1 \to \infty$.
 
-The structural argument is ~200 lines of Lean (Finset min/max +
-List.countP-to-count translation + injection of $n \mapsto j(n)$), and
-the *substance* is just prime-counting bookkeeping already standard in
-the literature.
-
-**Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2):
-in-project bookkeeping is `sorry`'s job. A future PR replaces with a real
-proof using `Nat.count`, `Finset.min'`, and `Finset.max'`. -/
-theorem DHL_gives_freq_primeAt_gap (k m : ℕ) (hk : 1 ≤ k) (hm : 1 ≤ m)
+**Discharged 2026-05-31** (ROADMAP Tier 2): the count bookkeeping is the
+`countP_add_count_le` bridge above; no `Finset.min'`/`max'` needed (the
+project's `foldr` min/max + `Nat.count`/`Nat.nth` duality suffice). -/
+theorem DHL_gives_freq_primeAt_gap (k m : ℕ) (hk : 1 ≤ k) (_hm : 1 ≤ m)
     (hDHL : DHL k (m + 1)) :
     ∃ᶠ j : ℕ in atTop, primeAt (j + m) - primeAt j ≤ narrowness k := by
-  let _ := hk; let _ := hm; let _ := hDHL; sorry
+  obtain ⟨H₀, hAdm, hLen, hDiam⟩ := narrowness_realized k hk
+  have hInf := hDHL H₀ hAdm hLen
+  have hne : H₀ ≠ [] := List.ne_nil_of_length_pos (by rw [hLen]; omega)
+  obtain ⟨h₀, hh₀⟩ := List.exists_mem_of_ne_nil H₀ hne
+  -- package the min/max offsets as opaque nats with the facts we need
+  obtain ⟨lo, hi, hlohi, hbnd, hdiam_eq⟩ :
+      ∃ lo hi, lo ≤ hi ∧ (∀ h ∈ H₀, lo ≤ h ∧ h ≤ hi) ∧ hi - lo = narrowness k := by
+    refine ⟨H₀.foldr min (H₀.foldr max 0), H₀.foldr max 0, ?_, ?_, ?_⟩
+    · exact le_trans (foldr_min_le h₀ H₀ _ hh₀) (le_foldr_max h₀ H₀ hh₀)
+    · intro h hh; exact ⟨foldr_min_le h H₀ _ hh, le_foldr_max h H₀ hh⟩
+    · rw [← hDiam]; rfl
+  rw [Filter.frequently_atTop]
+  intro N
+  -- pick n in the DHL-infinite set, beyond the N-th prime
+  obtain ⟨n, hnS, hngt⟩ := hInf.exists_gt (Nat.nth Nat.Prime N)
+  have hcountP : m + 1 ≤ H₀.countP (fun h => decide (n + h).Prime) := hnS
+  have hbounds : ∀ h ∈ H₀, n + lo ≤ n + h ∧ n + h ≤ n + hi := by
+    intro h hh
+    exact ⟨Nat.add_le_add_left (hbnd h hh).1 n, Nat.add_le_add_left (hbnd h hh).2 n⟩
+  have hgap := countP_add_count_le hAdm.1 (A := n + lo) (B := n + hi)
+    (by omega) hbounds
+  set j := Nat.count Nat.Prime (n + lo) + 1 with hj_def
+  have hj1 : 1 ≤ j := by omega
+  have hjm : j + m ≤ Nat.count Nat.Prime (n + hi + 1) := by omega
+  have hUpper : primeAt (j + m) ≤ n + hi := primeAt_add_m_le_of_count hj1 hjm
+  have hLower : n + lo ≤ primeAt j := by
+    have heq : primeAt j = Nat.nth Nat.Prime (Nat.count Nat.Prime (n + lo)) := by
+      unfold primeAt; rw [hj_def, Nat.add_sub_cancel]
+    rw [heq]
+    exact Nat.le_nth_count Nat.infinite_setOf_prime (n + lo)
+  have hjN : N ≤ j := by
+    have hAge : Nat.nth Nat.Prime N ≤ n + lo := by omega
+    have hmono := Nat.count_monotone (p := Nat.Prime) hAge
+    rw [Nat.count_nth_of_infinite Nat.infinite_setOf_prime N] at hmono
+    omega
+  exact ⟨j, hjN, by omega⟩
 
 /-- **General form: $\DHL[k, m+1] \Rightarrow H_m \le H(k)$** (Polymath8b §3
 bridge).
