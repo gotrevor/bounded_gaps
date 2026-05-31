@@ -218,14 +218,38 @@ theorem dhl_3473955908_6 : DHL 3473955908 6 := by
   obtain ⟨ϖ, δ, hϖ, hδ, hMPZ, hMk⟩ := mk_3473955908_witness
   exact Sieve.maynard_trunc 3473955908 5 (by norm_num) (by norm_num) ϖ δ hϖ hδ hMPZ hMk
 
+/-- **Asymptotic MPZ/Mk witness** (unconditional): the uniform-in-$(k,m)$
+family of the concrete `mk_*_witness` axioms. For $k$ exponentially large in
+$m$ there is an MPZ pair $(\varpi, \delta)$ whose truncated sieve quantity
+clears the Maynard threshold $m/(1/4+\varpi)$. Cited Polymath8b §6 / Theorem
+`mlower-var` (the asymptotic form of the concrete numerical witnesses); the
+deep analytic content is the $M_k \gtrsim \log k$ sieve lower bound. -/
+axiom mk_witness_asymptotic :
+    ∃ C : ℝ, 0 < C ∧ ∀ k m : ℕ, 2 ≤ k → 1 ≤ m →
+      (k : ℝ) ≥ C * Real.exp ((4 - 28/157) * m) →
+      ∃ ϖ δ : ℝ, 0 < 1/4 + ϖ ∧ 0 < δ ∧ Prerequisites.MPZ ϖ δ ∧
+        Sieve.Mk_truncated k (δ / (1/4 + ϖ)) > (m : ℝ) / (1/4 + ϖ)
+
 /-- **DHL[k, m+1]** unconditional asymptotic: holds whenever
-$k \ge C \exp((4 - 28/157) m)$. -/
--- TRIAGE: NEEDS_SIEVE — asymptotic Mk lower bound + maynard_trunc applied
--- uniformly in m. Requires asymptotic admissibility (k-tuple construction
--- at scale). Not yet blueprint-split — single leaf.
+$k \ge C \exp((4 - 28/157) m)$. Proved (not axiomatized) from the cited
+`mk_witness_asymptotic` by threading through the verified `Sieve.maynard_trunc`,
+exactly as the concrete cases (`dhl_1649821_4`, …) do; the only new trusted
+input is the asymptotic witness family. $k \ge 2$ is automatic from the
+exponential lower bound (the exponent is positive, so $\exp \ge 1$). -/
 theorem dhl_asymptotic_unconditional :
     ∃ C : ℝ, 0 < C ∧ ∀ k m : ℕ, m ≥ 1 →
-      (k : ℝ) ≥ C * Real.exp ((4 - 28/157) * m) → DHL k (m + 1) := sorry
+      (k : ℝ) ≥ C * Real.exp ((4 - 28/157) * m) → DHL k (m + 1) := by
+  obtain ⟨C, hCpos, hwit⟩ := mk_witness_asymptotic
+  refine ⟨max C 2, lt_of_lt_of_le (by norm_num) (le_max_right C 2), fun k m hm hk => ?_⟩
+  have hexp1 : (1 : ℝ) ≤ Real.exp ((4 - 28/157) * m) := by
+    rw [Real.one_le_exp_iff]; positivity
+  have hexp0 : 0 < Real.exp ((4 - 28/157) * m) := Real.exp_pos _
+  have hkC : (k : ℝ) ≥ C * Real.exp ((4 - 28/157) * m) :=
+    le_trans (by nlinarith [le_max_left C 2, hexp0]) hk
+  have hk2R : (2 : ℝ) ≤ (k : ℝ) := by nlinarith [le_max_right C 2, hexp1]
+  have hk2 : 2 ≤ k := by exact_mod_cast hk2R
+  obtain ⟨ϖ, δ, hϖ, hδ, hMPZ, hMk⟩ := hwit k m hk2 hm hkC
+  exact Sieve.maynard_trunc k m hk2 hm ϖ δ hϖ hδ hMPZ hMk
 
 /-- Under EH: **DHL[54, 3]**.
 
@@ -254,12 +278,33 @@ theorem dhl_309661_6_under_EH (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequ
   obtain ⟨ϑ, hϑ, hMk⟩ := mk_309661_witness_under_EH
   exact Sieve.maynard_thm 309661 5 (by norm_num) (by norm_num) ϑ hϑ (hEH ϑ hϑ) hMk
 
-/-- Under EH, asymptotic DHL: exponent $2m$ instead of $(4 - 28/157)m$. -/
--- TRIAGE: NEEDS_SIEVE — asymptotic version of maynard_thm under EH. Single leaf.
+/-- **Asymptotic Mk witness under EH**: the uniform-in-$(k,m)$ family of the
+`mk_*_witness_under_EH` axioms. Cited Polymath8b §6 (EH flavor); the sharper
+$2m$ exponent reflects the EH level of distribution. -/
+axiom mk_witness_asymptotic_under_EH :
+    ∃ C : ℝ, 0 < C ∧ ∀ k m : ℕ, 2 ≤ k → 1 ≤ m →
+      (k : ℝ) ≥ C * Real.exp (2 * m) →
+      ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk k > 2 * (m : ℝ) / ϑ
+
+/-- Under EH, asymptotic DHL: exponent $2m$ instead of $(4 - 28/157)m$. Proved
+from the cited `mk_witness_asymptotic_under_EH` via the verified
+`Sieve.maynard_thm`, supplying EH from the hypothesis — parallel to the concrete
+EH cases (`dhl_5511_4_under_EH`, …). -/
 theorem dhl_asymptotic_under_EH
-    (_hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
+    (hEH : ∀ ϑ : ℝ, 0 < ϑ ∧ ϑ < 1 → Prerequisites.EH ϑ) :
     ∃ C : ℝ, 0 < C ∧ ∀ k m : ℕ, m ≥ 1 →
-      (k : ℝ) ≥ C * Real.exp (2 * m) → DHL k (m + 1) := sorry
+      (k : ℝ) ≥ C * Real.exp (2 * m) → DHL k (m + 1) := by
+  obtain ⟨C, hCpos, hwit⟩ := mk_witness_asymptotic_under_EH
+  refine ⟨max C 2, lt_of_lt_of_le (by norm_num) (le_max_right C 2), fun k m hm hk => ?_⟩
+  have hexp1 : (1 : ℝ) ≤ Real.exp (2 * m) := by
+    rw [Real.one_le_exp_iff]; positivity
+  have hexp0 : 0 < Real.exp (2 * m) := Real.exp_pos _
+  have hkC : (k : ℝ) ≥ C * Real.exp (2 * m) :=
+    le_trans (by nlinarith [le_max_left C 2, hexp0]) hk
+  have hk2R : (2 : ℝ) ≤ (k : ℝ) := by nlinarith [le_max_right C 2, hexp1]
+  have hk2 : 2 ≤ k := by exact_mod_cast hk2R
+  obtain ⟨ϑ, hϑ, hMk⟩ := hwit k m hk2 hm hkC
+  exact Sieve.maynard_thm k m hk2 hm ϑ hϑ (hEH ϑ hϑ) hMk
 
 /-- Under GEH: **DHL[3, 2]**. The flagship parity-tight result.
 
