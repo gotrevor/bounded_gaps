@@ -222,4 +222,103 @@ theorem dirichlet_affine_slack {n : ℕ} (a : Fin n → ℕ) (β : ℕ) {ε : �
   rw [simplex_shrunk_eq_smul n hε1, key, pow_add]
   ring
 
+/-- The inner `ti`-integral of `P.toFun ∘ insertNth i` over `[0, 1+ε-∑s]`, factored (the ε-analog
+of `SievePolynomial.inner_eq`). Feeds the `J_i_eps` numerator bridge: squaring this produces the
+`(1+ε-∑s)^{pᵢ+qᵢ+2}` slack that `dirichlet_affine_slack` evaluates. -/
+lemma inner_eq_eps {n : ℕ} {ε : ℝ} (hε0 : 0 ≤ ε) (P : PolynomialSieveWeight (n + 1))
+    (i : Fin (n + 1)) {s : Fin n → ℝ} (hs : s ∈ simplex_shrunk n ε) :
+    (∫ ti in Set.Icc (0:ℝ) (1 + ε - ∑ j, s j), P.toFun (i.insertNth ti s))
+      = ∑ p ∈ P.terms, (p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))
+          * ((1 + ε - ∑ j, s j) ^ (p.1 i + 1) / (p.1 i + 1)) := by
+  have hT : (0:ℝ) ≤ 1 + ε - ∑ j, s j := by obtain ⟨_, h2⟩ := hs; linarith
+  have hpt : Set.EqOn (fun ti => P.toFun (i.insertNth ti s))
+      (fun ti => ∑ p ∈ P.terms,
+        ((p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))) * ti ^ p.1 i)
+      (Set.Icc (0:ℝ) (1 + ε - ∑ j, s j)) := by
+    intro ti _
+    simp only [PolynomialSieveWeight.toFun]
+    refine Finset.sum_congr rfl (fun p _ => ?_)
+    rw [Fin.prod_univ_succAbove _ i]
+    simp only [Fin.insertNth_apply_same, Fin.insertNth_apply_succAbove]
+    ring
+  rw [MeasureTheory.setIntegral_congr_fun measurableSet_Icc hpt,
+      MeasureTheory.integral_finset_sum _ (fun p _ =>
+        ((Continuous.continuousOn (by fun_prop)).integrableOn_compact isCompact_Icc))]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [MeasureTheory.integral_const_mul, int_pow_Icc (p.1 i) _ hT]
+
+/-- For `ε ≥ 0` the shrunken simplex is a closed subset of the compact standard simplex,
+hence compact. -/
+lemma isCompact_simplex_shrunk {n : ℕ} {ε : ℝ} (hε0 : 0 ≤ ε) :
+    IsCompact (simplex_shrunk n ε) := by
+  apply IsCompact.of_isClosed_subset (isCompact_simplex n) (isClosed_simplex_shrunk n ε)
+  rintro t ⟨hnn, hsum⟩
+  exact ⟨hnn, by linarith⟩
+
+/-- Continuous functions are integrable on the (compact, for `ε ≥ 0`) shrunken simplex. -/
+lemma simplexShrunkIntegrable {n : ℕ} {ε : ℝ} (hε0 : 0 ≤ ε) {f : (Fin n → ℝ) → ℝ}
+    (hf : Continuous f) : Integrable f (volume.restrict (simplex_shrunk n ε)) :=
+  (hf.continuousOn).integrableOn_compact (isCompact_simplex_shrunk hε0)
+
+/-- **`Mk_eps` numerator marginal bridge** `J_{i,1-ε}`. The ε-analog of `SievePolynomial.Ji_bridge`:
+reduces the marginal to a double sum of affine-slack integrals over the shrunken simplex (each then
+in closed form via `dirichlet_affine_slack`). -/
+lemma Ji_bridge_eps {n : ℕ} {ε : ℝ} (hε0 : 0 ≤ ε) (P : PolynomialSieveWeight (n + 1))
+    (i : Fin (n + 1)) :
+    J_i_eps (n + 1) ε P.toFun i
+      = ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+          ((p.2 : ℝ) * (q.2 : ℝ) / ((p.1 i + 1) * (q.1 i + 1)))
+            * (∫ s in simplex_shrunk n ε,
+                (∏ j, s j ^ (Fin.removeNth i (p.1 + q.1)) j)
+                  * (1 + ε - ∑ j, s j) ^ (p.1 i + q.1 i + 2)) := by
+  show (∫ s in simplex_shrunk n ε,
+      (∫ ti in Set.Icc (0:ℝ) (1 + ε - ∑ j, s j), P.toFun (i.insertNth ti s)) ^ 2) = _
+  have hsq_eq : Set.EqOn
+      (fun s => (∫ ti in Set.Icc (0:ℝ) (1 + ε - ∑ j, s j), P.toFun (i.insertNth ti s)) ^ 2)
+      (fun s => (∑ p ∈ P.terms, (p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))
+          * ((1 + ε - ∑ j, s j) ^ (p.1 i + 1) / (p.1 i + 1))) ^ 2)
+      (simplex_shrunk n ε) := fun s hs => by dsimp only; rw [inner_eq_eps hε0 P i hs]
+  rw [MeasureTheory.setIntegral_congr_fun (isClosed_simplex_shrunk n ε).measurableSet hsq_eq]
+  simp_rw [sq, Finset.sum_mul_sum]
+  rw [MeasureTheory.integral_finset_sum _ (fun p _ =>
+    MeasureTheory.integrable_finset_sum _ (fun q _ => simplexShrunkIntegrable hε0 (by fun_prop)))]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [MeasureTheory.integral_finset_sum _ (fun q _ => simplexShrunkIntegrable hε0 (by fun_prop))]
+  refine Finset.sum_congr rfl (fun q _ => ?_)
+  have hp1 : ((p.1 i : ℝ) + 1) ≠ 0 := by positivity
+  have hq1 : ((q.1 i : ℝ) + 1) ≠ 0 := by positivity
+  have hBB : (fun s : Fin n → ℝ =>
+        ((p.2 : ℝ) * (∏ j, s j ^ p.1 (i.succAbove j))
+            * ((1 + ε - ∑ j, s j) ^ (p.1 i + 1) / (p.1 i + 1)))
+        * ((q.2 : ℝ) * (∏ j, s j ^ q.1 (i.succAbove j))
+            * ((1 + ε - ∑ j, s j) ^ (q.1 i + 1) / (q.1 i + 1))))
+      = (fun s => ((p.2 : ℝ) * (q.2 : ℝ) / ((p.1 i + 1) * (q.1 i + 1)))
+          * ((∏ j, s j ^ (Fin.removeNth i (p.1 + q.1)) j)
+              * (1 + ε - ∑ j, s j) ^ (p.1 i + q.1 i + 2))) := by
+    funext s
+    rw [show (∏ j, s j ^ (Fin.removeNth i (p.1 + q.1)) j)
+          = (∏ j, s j ^ p.1 (i.succAbove j)) * ∏ j, s j ^ q.1 (i.succAbove j) from by
+        rw [← Finset.prod_mul_distrib]
+        exact Finset.prod_congr rfl (fun j _ => by
+          simp only [Fin.removeNth, Pi.add_apply]; rw [pow_add])]
+    rw [show (1 + ε - ∑ j, s j) ^ (p.1 i + q.1 i + 2)
+          = (1 + ε - ∑ j, s j) ^ (p.1 i + 1) * (1 + ε - ∑ j, s j) ^ (q.1 i + 1) from by
+        rw [← pow_add]; congr 1; omega]
+    field_simp
+  rw [hBB, MeasureTheory.integral_const_mul]
+
+/-- **`Mk_eps` numerator bridge.** Summing `Ji_bridge_eps` over the coordinate `i`: the full
+`Mk_eps` numerator for a polynomial sieve weight is a triple sum of affine-slack integrals over
+the shrunken simplex (each in closed form via `dirichlet_affine_slack`). The numerator analog of
+`mkF_eps_denominator_poly`. -/
+theorem mkF_eps_numerator_poly {n : ℕ} {ε : ℝ} (hε0 : 0 ≤ ε) (P : PolynomialSieveWeight (n + 1)) :
+    mkF_eps_numerator (n + 1) ε P.toFun
+      = ∑ i : Fin (n + 1), ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+          ((p.2 : ℝ) * (q.2 : ℝ) / ((p.1 i + 1) * (q.1 i + 1)))
+            * (∫ s in simplex_shrunk n ε,
+                (∏ j, s j ^ (Fin.removeNth i (p.1 + q.1)) j)
+                  * (1 + ε - ∑ j, s j) ^ (p.1 i + q.1 i + 2)) := by
+  rw [mkF_eps_numerator_eq_sum_J_i_eps]
+  exact Finset.sum_congr rfl (fun i _ => Ji_bridge_eps hε0 P i)
+
 end BoundedGaps.EpsScaling
