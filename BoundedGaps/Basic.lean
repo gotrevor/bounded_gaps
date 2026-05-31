@@ -153,6 +153,36 @@ theorem admissibleTuple_admissible : ∀ k : ℕ, Admissible (admissibleTuple k)
       simp at hple
       omega
 
+/-- An admissible $k$-tuple exists for **every** $k$: the factorial-spaced
+tuple $(0, k!, 2 \cdot k!, \ldots, (k-1) \cdot k!)$. For a prime $p \le k$ we
+have $p \mid k!$, so every offset is $\equiv 0 \pmod p$ and class 1 is missed;
+for $p > k$ pigeonhole closes it (only $k$ offsets, $\ge p$ classes). This is
+the cheap existence fact (cf. Hensley-Richards for *optimal* tuples), enough to
+make the narrowness infimum nonempty. -/
+theorem exists_admissible_of_length (k : ℕ) :
+    ∃ H : List ℕ, Admissible H ∧ H.length = k := by
+  refine ⟨(List.range k).map (· * k.factorial), ?_, ?_⟩
+  · apply admissible_of_check_small_primes
+    · -- strictly increasing: a strictly-monotone map of `range k`
+      rw [List.pairwise_map]
+      exact List.pairwise_lt_range.imp
+        (fun h => mul_lt_mul_of_pos_right h k.factorial_pos)
+    · -- small primes $p \le k$: every offset is $\equiv 0$, so class 1 is missed
+      intro p hp hple
+      rw [List.length_map, List.length_range] at hple
+      haveI : Fact p.Prime := ⟨hp⟩
+      refine ⟨1, ?_⟩
+      intro h hmem
+      rw [List.mem_map] at hmem
+      obtain ⟨i, _, rfl⟩ := hmem
+      have hdvd : p ∣ k.factorial := Nat.dvd_factorial hp.pos hple
+      have hzero : (k.factorial : ZMod p) = 0 :=
+        (ZMod.natCast_eq_zero_iff _ _).mpr hdvd
+      push_cast
+      rw [hzero, mul_zero]
+      exact zero_ne_one
+  · rw [List.length_map, List.length_range]
+
 /-- $H(3) \le 6$: the tuple $(0, 2, 6)$ is admissible (by
 `admissibleTuple_3_admissible`), has length 3, and diameter 6, so the
 infimum is $\le 6$. The matching lower bound $H(3) \ge 6$ requires ruling out
@@ -672,10 +702,19 @@ and not currently mechanized.
 
 **Reclassified `axiom → theorem := sorry` 2026-05-26** (ROADMAP Tier 2):
 this is an in-project proof we owe, not a citation we can `import`.
-Hensley-Richards is a *method*, not an external library. -/
-theorem narrowness_realized (k : ℕ) (hk : 1 ≤ k) :
+Hensley-Richards is a *method*, not an external library.
+
+**Discharged 2026-05-31**: realization needs only *nonemptiness* of the
+diameter-set, not an *optimal* tuple. `exists_admissible_of_length` (the
+factorial-spaced tuple) supplies a witness for every `k`, then `Nat.sInf_mem`
+hands back the minimizer. The Hensley-Richards optimal construction is a
+red herring for this statement. -/
+theorem narrowness_realized (k : ℕ) (_hk : 1 ≤ k) :
     ∃ H : List ℕ, Admissible H ∧ H.length = k ∧ diameter H = narrowness k := by
-  let _ := hk; sorry
+  have hne : { d | ∃ H : List ℕ, Admissible H ∧ H.length = k ∧ diameter H = d }.Nonempty := by
+    obtain ⟨H, hAdm, hLen⟩ := exists_admissible_of_length k
+    exact ⟨diameter H, H, hAdm, hLen, rfl⟩
+  exact Nat.sInf_mem hne
 
 /-- **Prime-count → primeAt translation**: if there are at least $j + m$
 primes in $[0, q]$ (i.e. `Nat.count Nat.Prime (q + 1) ≥ j + m`), then the
