@@ -156,9 +156,20 @@ The key target. Given a polynomial $P$ with `polynomialMkF P > 4` as a
 **rational** inequality (decidable, exact), conclude `Sieve.Mk k > 4`. -/
 
 /-- $\sup_F M_k(F) \ge$ any specific $M_k(F)$. -/
--- TRIAGE: NEEDS_SIEVE — `le_iSup`-style, ~5 lines, but needs Sieve.Mk to be
--- defined as `iSup` over admissible F (currently sorry def body). Trivial
--- once Mk has a real body.
+-- TRIAGE: ⚠️ NOT the easy `le_csSup` the old triage claimed. `Sieve.Mk k =
+-- sSup (MkSet k)` ranges over **smooth functions with `support ⊆ simplex k`**,
+-- but `P.toFun` (a polynomial) has FULL support, so `MkF P.toFun ∉ MkSet k`.
+-- The honest proof is a cutoff/approximation argument: multiply `P` by the
+-- smooth simplex cutoff `Sieve.chi k n` (see `BoundedGaps/SimplexCutoff.lean`,
+-- which is built and axiom-clean), giving `F_n := chi k n · P.toFun` with
+-- `F_n ∈ MkSet k` (smooth via `chi_smooth`·`P` smooth, support via
+-- `chi_support_subset`); then `MkF F_n → MkF P.toFun` by dominated convergence
+-- (`tendsto_integral_of_dominated_convergence` on `mkF_numerator` two-layer +
+-- `mkF_denominator`, a.e. convergence from `chi_eventually_eq_one` + interior
+-- conull via `Convex.μ_frontier = 0`), so `sSup (MkSet k) ≥ MkF P.toFun`.
+-- All required mathlib lemmas confirmed present (v4.29.1); ~2-3 sessions.
+-- Case `mkF_denominator k P.toFun = 0`: `MkF P.toFun = _/0 = 0 ≤ Mk` (Mk ≥ 0
+-- since MkSet ⊆ [0,∞) and nonempty).
 theorem Mk_ge_polynomialMkF {k : ℕ} (P : PolynomialSieveWeight k) :
     Sieve.Mk k ≥ Sieve.MkF k P.toFun := sorry
 

@@ -19,3 +19,4 @@ import BoundedGaps.TwinPrimes
 import BoundedGaps.Engelsma
 import BoundedGaps.Targets
 import BoundedGaps.SievePolynomial
+import BoundedGaps.SimplexCutoff
