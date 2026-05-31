@@ -113,6 +113,24 @@ EH-conditional ladder is specifically wanted:
 If built, the leverage play is: prove the parametric identity ONCE, then every rung
 (54, 5511, 41588, 309661) is an `native_decide` away — but each at its own (growing) degree.
 
+## Lean foundation status (2026-05-31)
+
+`BoundedGaps/SymmetricReduction.lean` (committed `a54d04e`, axiom-clean, green):
+- `permWeight σ P` — the coordinate-permutation action on a polynomial sieve weight.
+- `polynomialMaynardDenominator_permWeight` — **denominator** permutation-invariance, the
+  bedrock that makes "restrict to symmetric F" WLOG. PROVEN.
+
+Next Lean steps (both genuinely multi-session, best done on the host — box builds OOM-retry):
+1. **Numerator** permutation-invariance (`polynomialMaynardNumerator_permWeight`) → full
+   `polynomialMkF` invariance. Crux: `dirichletIntegralWithSlack` depends only on the
+   value-multiset of its argument, and `removeNth j (v∘σ)` has the same multiset as
+   `removeNth (σj) v` (ℕ-cancellation via `Fin.prod_univ_succAbove`+`Equiv.prod_comp`, plus
+   `Fin.sum_univ_succAbove`), then reindex the i-sum by σ. ~60-100 lines, fiddly.
+2. **The matching closed-form identity** — the real combinatorial kernel: prove
+   `polynomialMaynardDenominator P_sym = Σ_{λ,μ} c_λ c_μ · S_den(λ,μ,k)/(k+|λ|+|μ|)!` (and
+   the numerator analog) for a symmetric weight, with `S_*` the matching/overlap sums
+   validated by `mk_sym.py`. This is the multi-session mathlib-grade piece.
+
 ## Files
 - `mk_sym.py` — closed-form reduction (scales to any k); `validate` subcommand.
 - `_exact.py`, `_ldl.py` — exact LDL-inertia sup / threshold tests (the trustworthy path).
