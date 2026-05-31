@@ -676,30 +676,60 @@ theorem tuple_54_admissible : Admissible tuple_54 := by
       | (exfalso; revert hp; decide)
       | native_decide
 
-/-- Admissibility of the MIT primegaps 5511-tuple of diameter 52116.
-Source: `http://math.mit.edu/~primegaps/tuples/admissible_5511_52116.txt`.
-The admissibility check was performed by the construction algorithm itself
-(greedy / simulated-annealing search over residue classes). Lean cannot
-mechanize the verification at $k = 5511$ via the `interval_cases p <;>
-native_decide` template that works through $k = 54$: confirmed empirically
-2026-05-25 that even with `maxRecDepth = 12000` and `maxHeartbeats = 0`,
-elaborating the 5510 case branches OOMs the Lean process stack after
-~12 min. The bottleneck is meta — the case-split term itself, not the
-per-case `native_decide` check.
+/-- Bool-level admissibility checker: `true` iff some residue `r ∈ {0,…,p-1}`
+is missed by every element of `H` mod `p`. -/
+private def checkAdm (H : List ℕ) (p : ℕ) : Bool :=
+  (List.range p).any fun r => H.all fun h => !(h % p == r)
 
-A future Lean lift (~2-3h) could replace the case-split with a single
-bundled `native_decide` on a Bool-level admissibility check:
-```
-def checkAdm (H : List ℕ) (p : ℕ) : Bool :=
-  (List.range p).any fun r => H.all fun h => h % p ≠ r
-theorem all_primes_check :
-    (Finset.range 5512).filter Nat.Prime |>.toList.all
+/-- Every prime `≤ 5511` passes the admissibility check, by one bundled
+`native_decide`. This is the single compiled-Bool computation that replaces
+the `interval_cases p <;> native_decide` case-split which OOMed the elaborator
+at k=5511 (the bottleneck was meta — the 5510-branch term, not the per-case
+check). -/
+private lemma admCheck_true :
+    ((List.range 5512).filter Nat.Prime).all
       (fun p => checkAdm tuple_5511 p) = true := by native_decide
-```
-then bridge `checkAdm` ↔ the `∃ r : ZMod p, ...` form via Nat/ZMod cast
-lemmas. Until that lands, the MIT-primegaps construction is cited as a
-leaf. -/
-axiom tuple_5511_admissible : Admissible tuple_5511
+
+/-- Bridge: extract a concrete Nat-level missed residue `r < p` from the Bool
+check passing at `p`. -/
+private lemma admCheck_implies (p : ℕ) (hp : p.Prime) (hle : p ≤ 5511) :
+    ∃ r : ℕ, r < p ∧ ∀ h ∈ tuple_5511, h % p ≠ r := by
+  have hmem : p ∈ (List.range 5512).filter Nat.Prime := by
+    rw [List.mem_filter]; exact ⟨List.mem_range.mpr (by omega), by simp [hp]⟩
+  have hpass := List.all_eq_true.mp admCheck_true p hmem
+  obtain ⟨r, hr_mem, hr_all⟩ := List.any_eq_true.mp hpass
+  refine ⟨r, List.mem_range.mp hr_mem, fun h hh habs => ?_⟩
+  have := List.all_eq_true.mp hr_all h hh
+  simp [beq_eq_false_iff_ne] at this
+  exact this habs
+
+/-- The finite-prime admissibility check for the 5511-tuple, in `ZMod p` form —
+the obligation `admissible_of_check_small_primes` consumes. -/
+theorem tuple_5511_check :
+    ∀ p : ℕ, p.Prime → p ≤ 5511 →
+      ∃ r : ZMod p, ∀ h ∈ tuple_5511, (h : ZMod p) ≠ r := by
+  intro p hp hle
+  obtain ⟨r, hr_lt, hr_mod⟩ := admCheck_implies p hp hle
+  refine ⟨(r : ZMod p), fun h hh habs => ?_⟩
+  have hne := hr_mod h hh
+  rw [ZMod.natCast_eq_natCast_iff'] at habs
+  rw [Nat.mod_eq_of_lt hr_lt] at habs
+  exact hne habs
+
+/-- Admissibility of the MIT primegaps 5511-tuple of diameter 52116
+(`http://math.mit.edu/~primegaps/tuples/admissible_5511_52116.txt`).
+
+Formerly an `axiom`: the `interval_cases p <;> native_decide` template that
+works through $k = 54$ OOMed the elaborator at $k = 5511$ (confirmed
+2026-05-25 — the 5510-branch case-split term, not the per-case check). Now a
+theorem via a single bundled `native_decide` on a `Bool` check
+(`admCheck_true`), bridged to the `∃ r : ZMod p` form. Proof drafted by
+Harmonic's Aristotle (run f99e1d3a, Lean v4.28.0), ported + reverified under
+v4.29.1. Trust base: standard axioms + `Lean.ofReduceBool` / `Lean.trustCompiler`
+from `native_decide`. -/
+theorem tuple_5511_admissible : Admissible tuple_5511 :=
+  admissible_of_check_small_primes tuple_5511_sorted
+    (fun p hp hple => tuple_5511_check p hp (tuple_5511_length ▸ hple))
 
 /-! ## Narrowness upper bounds
 
