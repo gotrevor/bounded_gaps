@@ -42,8 +42,8 @@ evaluators `numC`/`denC` mirroring the `noncomputable` Finset `polynomialMaynard
 (3) bridge `∑ x ∈ l.toFinset = (l.map ·).sum` via `List.sum_toFinset` + `Nodup` (the `dsum` helper),
 with `monomialIntegral`/`dirichletIntegralWithSlack` defeq to the computable mirrors; (4) exact value
 by `native_decide`; (5) chain `Mk_ge_polynomialMkF` + `polynomialMkF_eq_MkF`. Axiom-clean modulo
-`native_decide`. Larger `mk_*` (k=50, 35410, …) reuse this verbatim once the witness search
-(`tools/mk/`) is rerun per k — only the `native_decide` weight grows.
+`native_decide`. (Does NOT extend mechanically to larger k — see "Larger M_k" below: the monomial
+count explodes and the unconditional chain uses a different functional.)
 
 <details><summary>Original derivation notes</summary>
 Computed exactly (`tools/mk/mk5_sym.py`, stdlib rationals, mirrors the Lean `polynomialMkF` formula):
@@ -57,11 +57,26 @@ Computed exactly (`tools/mk/mk5_sym.py`, stdlib rationals, mirrors the Lean `pol
   norm_num on the finite sum), chain `Mk_ge_polynomialMkF` → `Mk 5 > 2`, pick ϑ→1 with `2/ϑ < ratio`.
 </details>
 
-### Larger M_k (`mk_50`, `mk_35410`, …) — same shape, harder
-Same reduction; the §6 "Maple computation" IS this Rayleigh optimization at larger basis/dimension.
-Tractability drops with k and required degree. The witness search is mechanical (extend `mk5_sym.py`);
-the Lean `polynomialMkF = rational` proof gets heavier (bigger `native_decide`). Candidate batch once
-M_5 validates the path. Fire-ready only after we run the witness search per k.
+### Larger M_k (`mk_50`, `mk_54`, …) — ⛔ NOT a mechanical reuse (corrected 2026-05-31)
+**M_5 was the only `mk_*` witness the explicit-monomial method can reach.** Investigated M_50 ("the
+246 chain"); two independent walls:
+1. **Functional.** The *unconditional* `H1_le_246` (`dhl_50_2`) routes through **`Sieve.Mk_eps 50 ε`**
+   (the ε-trick / enlarged-simplex functional), and **there is NO polynomial bridge for `Mk_eps`
+   /`Mk_truncated`** — `Mk_ge_polynomialMkF` is plain-`Mk` only. (`Targets.H1_le_246` takes a plain
+   `Mk 50 > 4` *hypothesis*, a separate conditional statement.)
+2. **Scale.** Even plain `Mk 50 > 4` needs a *multivariate* symmetric witness: the sub-family
+   `F = g(Σtᵢ)` plateaus at **≈3.23 < 4** for ALL degrees (`tools/mk/mk50_p1.py`, exact rationals) —
+   you must use `Σtᵢ²` etc. At k=50 such a witness expands to ~C(53,3)≈23k monomials (even degree-2 is
+   1326), so `polynomialMkF`'s Finset double-sum is 10⁶–10⁸ terms → `native_decide` infeasible. All
+   other plain-`Mk` targets are k≥54 → same wall. (`mk5_sym.py`'s monomial enumeration also doesn't
+   scale past k≈10.)
+
+**The real enabling machinery (next target if we want the family):** a **symmetric-function reduction
+for `polynomialMkF`** — express the Rayleigh ratio of a symmetric polynomial via its *orbit/power-sum*
+coefficients with closed forms in `k`, so degree-d symmetric polys compute in O(#orbits) (≈7 for deg 3)
+not O(#monomials). That collapses the k=50 computation to the same size as k=5 and unlocks `Mk 50/54/…`
+in one stroke. Substantial (multi-session, research-grade). Plus, for the *unconditional* 246, a
+separate `Mk_eps`-polynomial bridge. Neither is Aristotle-shaped (both are theory-builds).
 
 ## NOT fireable (don't waste runs)
 - `geh_implies_eh` — Vaughan's identity port; open theory-build, mathlib lacks it. **Integrity flag**
