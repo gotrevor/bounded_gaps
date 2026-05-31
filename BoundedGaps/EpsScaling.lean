@@ -128,4 +128,98 @@ theorem mkF_eps_denominator_poly {k : ℕ} {ε : ℝ} (hε : 0 ≤ ε) (P : Poly
   refine Finset.sum_congr rfl (fun q _ => ?_)
   rw [MeasureTheory.integral_const_mul, monomialIntegral_eps k hε (p.1 + q.1)]
 
+/-! ## The `Mk_eps` numerator keystone: an affine-slack Dirichlet integral
+
+The `Mk_eps` numerator's marginal `J_{i,1-ε}` integrates the squared inner antiderivative over
+the **shrunken** simplex `simplex_shrunk n ε = (1-ε)R_n`, with the inner `ti`-integral running to
+`1+ε-∑s`. Squaring the antiderivative produces a power of `(1+ε-∑s)`, so the marginal reduces to
+the **affine-slack** integral
+
+  ∫_{(1-ε)R_n} (∏ⱼ sⱼ^{aⱼ}) · (1+ε - ∑ⱼ sⱼ)^β  ds.
+
+Unlike the plain slack `(1-∑s)^β`, the slack base `1+ε` and the domain bound `1-ε` differ, so this
+is *not* a single standard Dirichlet integral. The trick: rescale `s = (1-ε)σ` to the standard
+simplex, then `1+ε-(1-ε)∑σ = 2ε + (1-ε)(1-∑σ)`, and `add_pow` expands the `β`-th power into a
+binomial sum of **standard** slack-Dirichlet integrals `dirichletIntegralWithSlack a (β-m)` — each
+already in closed form. This is the genuine ε-numerator kernel (the analog of `dirichlet_slack`). -/
+
+/-- The standard-simplex affine-slack integral, binomially expanded into standard slack-Dirichlet
+integrals via `1+ε-(1-ε)∑σ = 2ε + (1-ε)(1-∑σ)` and `add_pow`. -/
+theorem dirichlet_affine_slack_std {n : ℕ} (a : Fin n → ℕ) (β : ℕ) (ε : ℝ) :
+    (∫ σ in simplex n, (∏ j, σ j ^ a j) * (1 + ε - (1 - ε) * ∑ j, σ j) ^ β)
+      = ∑ m ∈ Finset.range (β + 1),
+          (2 * ε) ^ m * (1 - ε) ^ (β - m) * (β.choose m : ℝ)
+            * (dirichletIntegralWithSlack a (β - m) : ℝ) := by
+  have hexp : Set.EqOn
+      (fun σ : Fin n → ℝ => (∏ j, σ j ^ a j) * (1 + ε - (1 - ε) * ∑ j, σ j) ^ β)
+      (fun σ => ∑ m ∈ Finset.range (β + 1),
+          ((2 * ε) ^ m * (1 - ε) ^ (β - m) * (β.choose m : ℝ))
+            * ((∏ j, σ j ^ a j) * (1 - ∑ j, σ j) ^ (β - m)))
+      (simplex n) := by
+    intro σ _
+    dsimp only
+    rw [show (1 + ε - (1 - ε) * ∑ j, σ j) = 2 * ε + (1 - ε) * (1 - ∑ j, σ j) from by ring,
+        add_pow, Finset.mul_sum]
+    refine Finset.sum_congr rfl (fun m _ => ?_)
+    simp only [mul_pow]; ring
+  rw [MeasureTheory.setIntegral_congr_fun (isClosed_simplex n).measurableSet hexp,
+      MeasureTheory.integral_finset_sum _ (fun m _ => simplexIntegrable (by fun_prop))]
+  refine Finset.sum_congr rfl (fun m _ => ?_)
+  rw [MeasureTheory.integral_const_mul, dirichletSlack_eq a (β - m)]
+
+/-- The (1-ε)-shrunken simplex is the dilation of the standard simplex by `(1-ε)`
+(for `0 ≤ ε < 1`, so `1-ε > 0` is invertible). -/
+theorem simplex_shrunk_eq_smul (n : ℕ) {ε : ℝ} (hε1 : ε < 1) :
+    simplex_shrunk n ε = (1 - ε) • simplex n := by
+  have hR : (0:ℝ) < 1 - ε := by linarith
+  ext t
+  simp only [simplex_shrunk, simplex, Set.mem_setOf_eq, Set.mem_smul_set]
+  constructor
+  · rintro ⟨hnn, hsum⟩
+    refine ⟨(1 - ε)⁻¹ • t, ⟨fun i => ?_, ?_⟩, ?_⟩
+    · simp only [Pi.smul_apply, smul_eq_mul]; exact mul_nonneg (by positivity) (hnn i)
+    · simp only [Pi.smul_apply, smul_eq_mul, ← Finset.mul_sum]
+      rw [inv_mul_eq_div, div_le_one hR]; exact hsum
+    · simp only [smul_smul, mul_inv_cancel₀ hR.ne', one_smul]
+  · rintro ⟨s, ⟨hnn, hsum⟩, rfl⟩
+    refine ⟨fun i => ?_, ?_⟩
+    · simp only [Pi.smul_apply, smul_eq_mul]; exact mul_nonneg hR.le (hnn i)
+    · simp only [Pi.smul_apply, smul_eq_mul, ← Finset.mul_sum]
+      calc (1 - ε) * ∑ i, s i ≤ (1 - ε) * 1 := by gcongr
+        _ = 1 - ε := mul_one _
+
+/-- **The `Mk_eps` numerator keystone.** The affine-slack Dirichlet integral over the shrunken
+simplex has the closed form `(1-ε)^{n+|a|} · Σ_m C(β,m) (2ε)^m (1-ε)^{β-m} ·
+monomialIntegralWithSlack(a, β-m)` — the dilation Jacobian `(1-ε)^{n+|a|}` times the binomial
+sum from `dirichlet_affine_slack_std`. This is the closed form the polynomial `Mk_eps` numerator
+bridge needs. -/
+theorem dirichlet_affine_slack {n : ℕ} (a : Fin n → ℕ) (β : ℕ) {ε : ℝ} (hε1 : ε < 1) :
+    (∫ s in simplex_shrunk n ε, (∏ j, s j ^ a j) * (1 + ε - ∑ j, s j) ^ β)
+      = (1 - ε) ^ (n + ∑ j, a j)
+          * ∑ m ∈ Finset.range (β + 1),
+              (2 * ε) ^ m * (1 - ε) ^ (β - m) * (β.choose m : ℝ)
+                * (dirichletIntegralWithSlack a (β - m) : ℝ) := by
+  have hR : (0:ℝ) < 1 - ε := by linarith
+  have hfr : Module.finrank ℝ (Fin n → ℝ) = n := by rw [Module.finrank_pi, Fintype.card_fin]
+  have key := Measure.setIntegral_comp_smul_of_pos (volume : Measure (Fin n → ℝ))
+      (fun s => (∏ j, s j ^ a j) * (1 + ε - ∑ j, s j) ^ β) (simplex n) hR
+  rw [hfr] at key
+  simp only [smul_eq_mul] at key
+  have hcomp : (∫ σ in simplex n,
+        (∏ j, ((1 - ε) • σ) j ^ a j) * (1 + ε - ∑ j, ((1 - ε) • σ) j) ^ β)
+      = (1 - ε) ^ (∑ j, a j) * ∑ m ∈ Finset.range (β + 1),
+          (2 * ε) ^ m * (1 - ε) ^ (β - m) * (β.choose m : ℝ)
+            * (dirichletIntegralWithSlack a (β - m) : ℝ) := by
+    rw [← dirichlet_affine_slack_std a β ε, ← MeasureTheory.integral_const_mul]
+    refine MeasureTheory.setIntegral_congr_fun (isClosed_simplex n).measurableSet (fun σ _ => ?_)
+    simp only [Pi.smul_apply, smul_eq_mul]
+    rw [show (∑ j, (1 - ε) * σ j) = (1 - ε) * ∑ j, σ j from by rw [← Finset.mul_sum],
+        show (∏ j, ((1 - ε) * σ j) ^ a j) = (1 - ε) ^ (∑ j, a j) * ∏ j, σ j ^ a j from by
+          simp only [mul_pow]; rw [Finset.prod_mul_distrib, Finset.prod_pow_eq_pow_sum]]
+    ring
+  rw [hcomp] at key
+  rw [eq_comm, inv_mul_eq_iff_eq_mul₀ (pow_ne_zero n hR.ne')] at key
+  rw [simplex_shrunk_eq_smul n hε1, key, pow_add]
+  ring
+
 end BoundedGaps.EpsScaling
