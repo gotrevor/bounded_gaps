@@ -138,11 +138,20 @@ axiom MPZ_polymath8a {ϖ δ : ℝ} (h : 0 ≤ ϖ ∧ 0 ≤ δ ∧ 600 * ϖ + 180
     MPZ ϖ δ
 
 /-- **GEH implies EH** (Polymath8b Proposition 2.7).
-Proof sketch uses Vaughan's identity to decompose $\Lambda$. -/
--- TRIAGE: PROVABLE (~tens of lines, but only once EH and GEH have real bodies
--- rather than `axiom _ : Prop`). Currently EH/GEH are opaque Props so this
--- implication is unprovable as stated. Defer until the discrepancy-bound
--- machinery is in mathlib or we model EH/GEH concretely.
+Proof uses Vaughan's identity to decompose $\Lambda$. -/
+-- TRIAGE (updated 2026-05-31, after `EH` got a real body): the wall is now sharp.
+-- Unlike `eh_implies_mpz` (proven — a pure sub-sum, same `Λ`, fewer moduli), this
+-- needs two genuinely hard pieces:
+--   (1) a faithful `GEH` body: discrepancy over Dirichlet convolutions `α ⋆ β`
+--       with a Siegel-Walfisz hypothesis on `β` (Polymath8b §2 Claim 2.6). `GEH`
+--       is still an opaque `axiom _ : Prop`, so even *stating* this as a real
+--       implication needs that definitional chunk first.
+--   (2) the content: **Vaughan's identity**, decomposing `Λ` into Type I/II
+--       convolution pieces landing in GEH's class. mathlib has `Λ = μ ⋆ log`
+--       (`sum_moebius_mul_log_eq`) but NOT Vaughan — the bare `log` factor is too
+--       large; splitting it IS Vaughan. A real multi-session port.
+-- The `eh_implies_mpz` trick does not transfer: there `Λ` is untouched; here it
+-- must be rebuilt from convolutions. Deferred until a Vaughan identity exists.
 theorem geh_implies_eh (ϑ : ℝ) (_hGEH : GEH ϑ) : EH ϑ := sorry
 
 /-- **EH[1/2 + 2ϖ] implies MPZ[ϖ, δ]** (trivial direction, Polymath8b §2).
