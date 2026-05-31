@@ -13,10 +13,13 @@ of the coefficients**. So $M_k(F) > 4$ becomes a polynomial inequality that
 can in principle be verified exactly — no floating-point — by interval
 arithmetic or rational normalization.
 
-This file lays the type-level groundwork. Bodies are mostly `sorry`; the
-purpose is to make the `Sieve.Mk k > 4` hypothesis in `Targets.lean`
-*structurally* dischargeable by future numerical work, without changing the
-bridge.
+This file is now **sorry-free** (51 defs/lemmas): the polynomial Rayleigh
+machinery (`polynomialMkF`, the Dirichlet/Beta keystone, `denom_bridge`,
+`Mk_ge_polynomialMkF`, `polynomialMkF_eq_MkF`) is fully proven. It makes the
+`Sieve.Mk k > 4` hypothesis in `Targets.lean` dischargeable by exhibiting an
+explicit polynomial witness with rational Rayleigh ratio > threshold (done for
+`M₅ > 2` in `Mk5Witness.lean`; the larger `k` need a symmetric-orbit reduction —
+see `tools/mk/SYMMETRIC_REDUCTION.md`).
 
 Polymath8b §7 ("Additional remarks", item 2) explicitly identifies a richer
 basis — piecewise polynomials with carefully placed polytope supports — as

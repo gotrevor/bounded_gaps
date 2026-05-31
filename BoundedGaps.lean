@@ -20,3 +20,4 @@ import BoundedGaps.Engelsma
 import BoundedGaps.Targets
 import BoundedGaps.SievePolynomial
 import BoundedGaps.SimplexCutoff
+import BoundedGaps.SymmetricReduction

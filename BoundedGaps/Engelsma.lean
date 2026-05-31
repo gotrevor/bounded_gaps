@@ -760,8 +760,9 @@ theorem narrowness_54_le_270 : narrowness 54 ≤ 270 :=
 
 /-- $H(5511) \le 52116$: the MIT primegaps 5511-tuple of diameter 52116 is admissible.
 
-Structurally chains through `tuple_5511_admissible` (currently sorry — see the
-SCALING_FAILURE TRIAGE comment above), `tuple_5511_length`, `tuple_5511_diameter`. -/
+Structurally chains through `tuple_5511_admissible` (now a theorem — bundled
+`native_decide` `Bool` check, Aristotle-assisted, 2026-05-31), `tuple_5511_length`,
+`tuple_5511_diameter`. -/
 theorem narrowness_5511_le_52116 : narrowness 5511 ≤ 52116 :=
   narrowness_le_of_admissible_tuple tuple_5511_admissible tuple_5511_length tuple_5511_diameter
 

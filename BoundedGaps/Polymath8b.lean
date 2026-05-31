@@ -385,8 +385,9 @@ theorem narrowness_54 : narrowness 54 = 270 :=
 -- (e.g. greedy/Erdős-style), not direct enumeration.
 
 /-- $H(5511) \le 52116$. Chains through the MIT primegaps tuple harvested
-into `Engelsma.tuple_5511`; admissibility itself is a SCALING_FAILURE sorry
-(`interval_cases` over 5510 primes overflows Lean's elaborator). -/
+into `Engelsma.tuple_5511`; admissibility is now a theorem — the
+`interval_cases`-over-5510-primes overflow was sidestepped by a single bundled
+`native_decide` `Bool` check (`admCheck_true`), Aristotle-assisted (2026-05-31). -/
 theorem narrowness_5511_le : narrowness 5511 ≤ 52116 :=
   Engelsma.narrowness_5511_le_52116
 

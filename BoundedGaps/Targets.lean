@@ -97,7 +97,7 @@ theorem H1_le_of_Mk_witness (k : ℕ) (H : List ℕ)
 /-- The current published bound, instantiated through the bridge.
 
 Discharging this requires both:
-- `Engelsma.tuple_50_admissible` (currently 1 sorry on the all-primes check)
+- `Engelsma.tuple_50_admissible` (a theorem, via `admissible_of_check_small_primes`)
 - `Sieve.Mk 50 > 4` (the headline computation of Polymath8b §6 — extensive
   numerical work with polynomial sieve weights, Maple-computed). -/
 theorem H1_le_246 (hMk : Sieve.Mk 50 > 4) :
