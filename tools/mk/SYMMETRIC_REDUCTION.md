@@ -113,23 +113,36 @@ EH-conditional ladder is specifically wanted:
 If built, the leverage play is: prove the parametric identity ONCE, then every rung
 (54, 5511, 41588, 309661) is an `native_decide` away — but each at its own (growing) degree.
 
-## Lean foundation status (2026-05-31)
+## Lean foundation status (2026-05-31, updated session 2)
 
-`BoundedGaps/SymmetricReduction.lean` (committed `a54d04e`, axiom-clean, green):
+`BoundedGaps/SymmetricReduction.lean` (axiom-clean, green):
 - `permWeight σ P` — the coordinate-permutation action on a polynomial sieve weight.
-- `polynomialMaynardDenominator_permWeight` — **denominator** permutation-invariance, the
-  bedrock that makes "restrict to symmetric F" WLOG. PROVEN.
+- `polynomialMaynardDenominator_permWeight` — **denominator** permutation-invariance (`a54d04e`).
+- ✅ **`polynomialMaynardNumerator_permWeight`** + **`polynomialMkF_permWeight`** — DONE (`aa92ad5`).
+  Full Rayleigh-ratio invariance. The "restrict to symmetric F is WLOG" bedrock is now COMPLETE.
+  Done via `removeNth_sum_comp_perm`/`removeNth_prodFactorial_comp_perm` (deleting position `i`
+  from `w∘σ` vs position `σi` from `w` drop the same value `w(σi)`, so share `∑` and `∏(·)!`;
+  cancel `w(σi)` directly — no induced perm on `Fin n`) → `dirichletIntegralWithSlack` invariance
+  → reindex outer `i`-sum by σ (`Fintype.sum_equiv`).
+- ✅ **`placement_count`** (`9a74394`): `Fintype.card (Fin T ↪ Fin k) = k.descFactorial T` — the
+  `ff(k,T)` factor of the matching closed form (bijective core; source of polynomial-in-`k`).
 
-Next Lean steps (both genuinely multi-session, best done on the host — box builds OOM-retry):
-1. **Numerator** permutation-invariance (`polynomialMaynardNumerator_permWeight`) → full
-   `polynomialMkF` invariance. Crux: `dirichletIntegralWithSlack` depends only on the
-   value-multiset of its argument, and `removeNth j (v∘σ)` has the same multiset as
-   `removeNth (σj) v` (ℕ-cancellation via `Fin.prod_univ_succAbove`+`Equiv.prod_comp`, plus
-   `Fin.sum_univ_succAbove`), then reindex the i-sum by σ. ~60-100 lines, fiddly.
-2. **The matching closed-form identity** — the real combinatorial kernel: prove
-   `polynomialMaynardDenominator P_sym = Σ_{λ,μ} c_λ c_μ · S_den(λ,μ,k)/(k+|λ|+|μ|)!` (and
-   the numerator analog) for a symmetric weight, with `S_*` the matching/overlap sums
-   validated by `mk_sym.py`. This is the multi-session mathlib-grade piece.
+`BoundedGaps/EpsScaling.lean` (new, axiom-clean, green, `9a74394`) — foundation for the
+**`Mk_eps` polynomial bridge** (the only path to the unconditional flagship H₁≤246):
+- ✅ `simplex_eps_eq_smul` : `simplex_eps k ε = (1+ε) • simplex k`.
+- ✅ `monomialIntegral_eps` : `∫_{simplex_eps} ∏ tᵢ^αᵢ = (1+ε)^(k+|α|) · monomialIntegral α` —
+  the homothety scaling law, the one genuinely *new* ingredient (rest mirrors `SievePolynomial`).
+
+Remaining Lean steps (genuinely multi-session each; host-better — box builds OOM-retry):
+1. **The matching closed-form identity** (the real combinatorial kernel): prove
+   `polynomialMaynardDenominator P_sym = Σ_{λ,μ} c_λ c_μ · S_den(λ,μ,k)/(k+|λ|+|μ|)!` (and the
+   numerator analog) for an orbit-symmetric weight, with `S_*` the matching/overlap sums in
+   `mk_sym.py`. Needs: an orbit→labelled-placement bijection counted by `placement_count`, the
+   weight `W(M)`, and `monomialIntegral`'s dependence only on the overlap type. Mathlib-grade.
+2. **The rest of the `Mk_eps` bridge**: the slack-Dirichlet analog over `simplex_shrunk`, the
+   two-layer numerator/denominator bridges, and the cutoff/DCT `Mk_eps_ge_polynomialMkF_eps` —
+   i.e. the `SievePolynomial` development re-run over the ε-enlarged simplex, with
+   `monomialIntegral_eps` (and its slack analog) supplying the closed forms.
 
 ## Files
 - `mk_sym.py` — closed-form reduction (scales to any k); `validate` subcommand.
