@@ -152,7 +152,24 @@ finite rational, so `native_decide`-able directly — no need to factor out `ff(
 2. *Fiber count* — `#{p ∈ orbit α : joint-type(p,β) = X} = ∏_t multinomial(n_t; x_{·,t})` for a table
    `X` with the right margins (else 0). ← the remaining combinatorial heart; a product-of-multinomials
    count (mathlib has `Nat.multinomial`). Then `Finset.sum_fiberwise` over the joint-type map assembles
-   `S(α,β) = ∑_X (fiber count)·(weight)`.
+   `S(α,β) = ∑_X (fiber count)·(weight)`. **Decomposes into three sub-pieces:**
+   - (a) **orbit↔fiber-sizes bridge** — ✅ **DONE** `mem_monoOrbit_iff` (`SymmetricReduction.lean`,
+     axiom-clean): `p ∈ monoOrbit α ↔ ∀ v, #{i:pᵢ=v} = #{i:αᵢ=v}`. Forward `Equiv.sum_comp`; reverse
+     glues per-value fiber equivs (`Fintype.equivOfCardEq`) via `Equiv.ofFiberEquiv`. This converts the
+     `monoOrbit` membership into the function-counting world.
+   - (b) **margin lemma** — ✅ **DONE** `card_filter_eq_sum_joint`: `#{i:pᵢ=c} = ∑_b #{i:pᵢ=c ∧ βᵢ=b}`.
+     With (a) this pins `X`'s row margins to α's fiber sizes (fiber empty otherwise); column margins are
+     β's fiber sizes by symmetry.
+   - (c) **keystone counting lemma** — *atomic combinatorial fact, OFFLOADED to Aristotle*
+     (project `15ba0cd4-4b7d-445c-a105-169793b91368`, "keystone", submitted 2026-06-01): for finite
+     types `ι, β`, `#{f : ι → β | ∀ b, #{i:f i=b} = h b} = Nat.multinomial univ h` when `∑ h = |ι|`.
+     Validated numerically (2000 cases, `/tmp` brute check). Statement in `/tmp/keystone/Keystone.lean`.
+   - (d) **β-group product** — ⏳ **REMAINING** (the next focused session): the fiber count factorizes
+     over β-groups, `#{p | J_β(p)=X} = ∏_{b∈image β} #{q:{i//βi=b}→ℕ | fibers(q)=X(·,b)}`, then (c) on
+     each group. Via the fiber-decomposition equiv `(Fin k→ℕ) ≃ Π b:image β, ({i//βi=b}→ℕ)` +
+     `Fintype.card_pi`. ⚠️ Integration wrinkle: the keystone (c) has a **Fintype codomain**; the
+     per-group count has codomain ℕ — bridge by restricting to the finite value-support
+     (`Fintype.ofFinset`/subtype) before applying (c).
 
 ## Lean foundation status (2026-05-31, updated session 2)
 
