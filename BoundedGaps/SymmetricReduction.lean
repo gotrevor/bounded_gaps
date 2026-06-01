@@ -536,6 +536,21 @@ lemma mem_monoOrbit_iff {k : ℕ} (α p : MultiIndex k) :
     funext i
     exact Equiv.ofFiberEquiv_map e i
 
+/-- **Row margin of the joint histogram.** Summing the joint pair-count `#{i : pᵢ = c ∧ βᵢ = b}`
+over the `β`-values `b` recovers `p`'s fiber size at `c`. Combined with `mem_monoOrbit_iff` (which
+fixes `#{i : pᵢ = c} = #{i : αᵢ = c}`), this pins the *row margins* of the contingency table `X` to
+`α`'s fiber sizes — so the fiber `{p ∈ monoOrbit α : joint-type = X}` is empty unless `X` has those
+margins. (The column margins are `β`'s fiber sizes, always, by the symmetric statement.) -/
+lemma card_filter_eq_sum_joint {k : ℕ} (p β : Fin k → ℕ) (c : ℕ) :
+    (Finset.univ.filter (fun i => p i = c)).card
+      = ∑ b ∈ Finset.univ.image β,
+          (Finset.univ.filter (fun i => p i = c ∧ β i = b)).card := by
+  rw [Finset.card_eq_sum_card_fiberwise
+        (f := β) (t := Finset.univ.image β)
+        (fun i _ => Finset.mem_image_of_mem β (Finset.mem_univ i))]
+  refine Finset.sum_congr rfl (fun b _ => ?_)
+  rw [Finset.filter_filter]
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
