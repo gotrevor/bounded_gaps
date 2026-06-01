@@ -169,4 +169,39 @@ lemma placement_count (k T : ℕ) :
     Fintype.card (Fin T ↪ Fin k) = k.descFactorial T := by
   simp [Fintype.card_embedding_eq]
 
+/-! ## Orbit-symmetric weights (foundation for the matching closed form)
+
+A symmetric test function is a `ℚ`-combination of *orbit sums*: for a multi-index `α`, its
+orbit sum collects every coordinate-permutation `α ∘ σ` of the exponent vector, each with
+coefficient `1`. The matching closed form (the kernel) computes the Rayleigh ratio of such a
+combination from its few orbit coefficients. The foundational fact below is that an orbit sum
+is genuinely symmetric — fixed by the coordinate action `permWeight` — so it is a legitimate
+symmetric test weight, and `polynomialMkF (∑ cᵢ • orbitSum αᵢ)` is what the kernel reduces. -/
+
+/-- The `Perm (Fin k)`-orbit of a monomial `α` as a symmetric polynomial sieve weight: every
+coordinate-permutation `α ∘ σ` of the exponent vector, each with coefficient `1`. -/
+noncomputable def orbitSum {k : ℕ} (α : MultiIndex k) : PolynomialSieveWeight k :=
+  ⟨Finset.univ.image
+    (fun σ : Equiv.Perm (Fin k) => ((fun i => α (σ i) : MultiIndex k), (1 : ℚ)))⟩
+
+/-- An orbit sum lands in the symmetric subspace: it is fixed by every coordinate
+permutation `τ`. (As `σ` ranges over all permutations, so does `σ * τ`.) -/
+lemma permWeight_orbitSum {k : ℕ} (τ : Equiv.Perm (Fin k)) (α : MultiIndex k) :
+    permWeight τ (orbitSum α) = orbitSum α := by
+  unfold permWeight orbitSum
+  congr 1
+  rw [Finset.image_image]
+  apply Finset.ext
+  intro pc
+  simp only [Finset.mem_image, Finset.mem_univ, true_and, Function.comp_apply]
+  constructor
+  · rintro ⟨σ, rfl⟩
+    refine ⟨σ * τ, ?_⟩
+    rfl
+  · rintro ⟨ρ, rfl⟩
+    refine ⟨ρ * τ⁻¹, ?_⟩
+    simp only [Prod.mk.injEq, and_true]
+    funext i
+    simp [Equiv.Perm.mul_apply]
+
 end BoundedGaps.SymmetricReduction
