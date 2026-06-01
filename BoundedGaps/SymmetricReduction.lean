@@ -405,6 +405,44 @@ lemma orbitPair_denominator_eq {k : ℕ} (α β : MultiIndex k) :
   rw [hdeg, ← add_assoc]
   simp only [Pi.add_apply]
 
+/-- **Cross-orbit core constancy.** For a fixed `α`, the sum `∑_{p∈orbit α} ∏ᵢ (pᵢ + qᵢ)!` is the
+SAME for every representative `q = β ∘ τ` of `orbit β` as at `β`. Proof: reindex the `p`-sum by the
+orbit bijection `p ↦ p ∘ τ` (`monoOrbit_image_comp`), turning `∏ᵢ (p(τ i) + β(τ i))!` into
+`∏ᵢ ((p+β)(τ i))!`, then reindex the *product* over `i` by `τ` (`Equiv.prod_comp`). -/
+lemma orbitCore_const {k : ℕ} (α β : MultiIndex k) (τ : Equiv.Perm (Fin k)) :
+    ∑ p ∈ monoOrbit α, (∏ i, ((p i + (fun j => β (τ j)) i).factorial : ℚ))
+      = ∑ p ∈ monoOrbit α, (∏ i, ((p i + β i).factorial : ℚ)) := by
+  have hinj : ∀ x ∈ monoOrbit α, ∀ y ∈ monoOrbit α,
+      (fun i => x (τ i) : MultiIndex k) = (fun i => y (τ i)) → x = y := by
+    intro x _ y _ h
+    funext i
+    have := congrFun h (τ.symm i)
+    simpa using this
+  conv_lhs => rw [← monoOrbit_image_comp α τ]
+  rw [Finset.sum_image hinj]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  exact Equiv.prod_comp τ (fun j => ((p j + β j).factorial : ℚ))
+
+/-- **Cross-orbit core: double sum collapses to a single orbit sum.** The off-diagonal
+combinatorial core isolated by `orbitPair_denominator_eq` reduces to `|orbit β|` copies of the
+single-orbit sum `∑_{p∈orbit α} ∏ᵢ (pᵢ + βᵢ)!` against the fixed representative `β` (the inner
+`p`-sum is constant over `q ∈ orbit β` by `orbitCore_const`). What remains for the matching closed
+form is then to evaluate this one structured sum (a permanent over a matrix with few distinct
+rows/columns) as `∑_M (k.descFactorial T)·W(M)`. -/
+lemma orbitPair_core_const {k : ℕ} (α β : MultiIndex k) :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, (∏ i, ((p i + q i).factorial : ℚ))
+      = (monoOrbit β).card • ∑ p ∈ monoOrbit α, (∏ i, ((p i + β i).factorial : ℚ)) := by
+  rw [Finset.sum_comm]
+  have hconst : ∀ q ∈ monoOrbit β,
+      ∑ p ∈ monoOrbit α, (∏ i, ((p i + q i).factorial : ℚ))
+        = ∑ p ∈ monoOrbit α, (∏ i, ((p i + β i).factorial : ℚ)) := by
+    intro q hq
+    simp only [monoOrbit, Finset.mem_image, Finset.mem_univ, true_and] at hq
+    obtain ⟨τ, hτ⟩ := hq
+    rw [← hτ]
+    exact orbitCore_const α β τ
+  rw [Finset.sum_congr rfl hconst, Finset.sum_const]
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
