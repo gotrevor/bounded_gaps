@@ -551,6 +551,63 @@ lemma card_filter_eq_sum_joint {k : ℕ} (p β : Fin k → ℕ) (c : ℕ) :
   refine Finset.sum_congr rfl (fun b _ => ?_)
   rw [Finset.filter_filter]
 
+section FiberProduct
+open Finset Equiv
+
+variable {ι V B : Type*} [Fintype ι] [DecidableEq ι] [Fintype V] [DecidableEq V]
+  [Fintype B] [DecidableEq B]
+
+/-- Restrict a function `ι → V` to its `g`-fibers: the equivalence
+`(ι → V) ≃ ∀ b, ({i // g i = b} → V)`. Built from `Equiv.sigmaFiberEquiv` + `Equiv.piCurry`. -/
+noncomputable def fiberRestrictEquiv (g : ι → B) : (ι → V) ≃ ∀ b : B, ({i // g i = b} → V) :=
+  (Equiv.arrowCongr (Equiv.sigmaFiberEquiv g).symm (Equiv.refl V)).trans
+    (Equiv.piCurry (fun _ _ => V))
+
+/-- **β-group product (the fiber count's structural core).** Counting functions `f : ι → V` whose
+joint histogram against a fixed companion `g : ι → B` equals a target table `X` factorizes as a
+product over the `g`-fibers: on each fiber `{i // g i = b}` the restriction must realize the column
+`X(·, b)`, and the fibers are independent. Composed with the per-fiber count
+(`card_fiberwise_eq_multinomial`, the keystone) this yields `∏_b multinomial(n_b; X(·,b))`. Proof:
+the `fiberRestrictEquiv` carries the joint-histogram constraint to the per-fiber constraints
+(`Fintype.card_pi` + `Equiv.subtypePiEquivPi`); the per-coordinate fiber identity
+`#{i : f i = v ∧ g i = b} = #{j : {i//g i=b} : f j = v}` is a subtype-card congruence. -/
+theorem card_jointType_eq_prod (g : ι → B) (X : V → B → ℕ) :
+    (univ.filter (fun f : ι → V =>
+        ∀ v b, (univ.filter (fun i => f i = v ∧ g i = b)).card = X v b)).card
+      = ∏ b : B, (univ.filter (fun q : ({i // g i = b} → V) =>
+          ∀ v, (univ.filter (fun j => q j = v)).card = X v b)).card := by
+  set P : (ι → V) → Prop := fun f => ∀ v b,
+    (univ.filter (fun i => f i = v ∧ g i = b)).card = X v b with hP
+  set Q : ∀ b : B, ({i // g i = b} → V) → Prop := fun b q =>
+    ∀ v, (univ.filter (fun j => q j = v)).card = X v b with hQ
+  have hfib : ∀ (f : ι → V) (v : V) (b : B),
+      (univ.filter (fun i => f i = v ∧ g i = b)).card
+        = (univ.filter (fun j : {i // g i = b} => f j.val = v)).card := by
+    intro f v b
+    rw [← Fintype.card_subtype, ← Fintype.card_subtype]
+    apply Fintype.card_congr
+    refine (Equiv.subtypeEquivRight (fun i => ?_)).trans
+      (Equiv.subtypeSubtypeEquivSubtypeInter (fun i => g i = b) (fun i => f i = v)).symm
+    tauto
+  have hbase : ∀ (f : ι → V) (b : B) (j : {i // g i = b}),
+      fiberRestrictEquiv g f b j = f j.val := by
+    intro f b j
+    simp [fiberRestrictEquiv, Equiv.piCurry, Equiv.arrowCongr, Equiv.sigmaFiberEquiv]; rfl
+  rw [(Fintype.card_subtype P).symm,
+      Finset.prod_congr rfl (fun b _ => (Fintype.card_subtype (Q b)).symm),
+      ← Fintype.card_pi]
+  apply Fintype.card_congr
+  refine (Equiv.subtypeEquiv (fiberRestrictEquiv g) ?_).trans Equiv.subtypePiEquivPi
+  intro f
+  have key : ∀ v b, (univ.filter (fun i => f i = v ∧ g i = b)).card
+      = (univ.filter (fun j : {i // g i = b} => fiberRestrictEquiv g f b j = v)).card := by
+    intro v b; rw [hfib f v b]; simp_rw [hbase]
+  constructor
+  · intro hpf b v; rw [← key v b]; exact hpf v b
+  · intro hqf v b; rw [key v b]; exact hqf b v
+
+end FiberProduct
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
