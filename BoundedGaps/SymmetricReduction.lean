@@ -264,20 +264,24 @@ lemma monomialIntegral_orbitSum_const {k : ℕ} (α : MultiIndex k) (σ : Equiv.
             = (fun i => (α + q) (σ i)) := rfl
         rw [h, monomialIntegral_comp_perm σ (α + q)]
 
-/-! ## Next: assemble the denominator reduction (host-preferred — the remaining Finset
-plumbing wants fast interactive feedback, not the box's slow build loop)
+/-! ## Status + next obligations toward the matching closed form
 
-With the foundations above (`orbitSum`, `permWeight_orbitSum`, `monomialIntegral_add_comp_perm`)
-the matching closed form proceeds via these concrete obligations:
+DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
+`permWeight_orbitSum`, `monomialIntegral_add_comp_perm`) and the conceptual core — the
+**orbit-sum constancy reduction** (`monomialIntegral_orbitSum_const`, via `monoOrbit_image_comp`).
 
-1. `orbitSum_denom_const` — the inner sum `∑ q ∈ orbit(α), monomialIntegral (p + q)` is the SAME
-   for every `p ∈ orbit(α)`. Proof: `monomialIntegral ((α∘σ) + q) = monomialIntegral (α + q∘σ⁻¹)`
-   — apply `monomialIntegral_comp_perm` with `σ⁻¹`, so the `α∘σ` cancels to `α` while `q` picks up
-   `∘σ⁻¹` — then reindex the `q`-sum by the orbit bijection `q ↦ q∘σ⁻¹` (`Finset.sum_bij'` with
-   inverse `q ↦ q∘σ`; the orbit is closed since `(α∘ρ)∘σ⁻¹ = α∘(ρ*σ⁻¹)`).
-2. ⟹ `polynomialMaynardDenominator (orbitSum α) = (orbit.card) • (inner sum at a fixed rep)`, and
-   the analogous numerator reduction via `dirichletIntegralWithSlack_removeNth_comp_perm`.
-3. The cross-orbit overlap count (the genuine combinatorial kernel): collapse
+Remaining (host-preferred — mechanical Finset plumbing that wants fast interactive feedback):
+
+1. **Denominator assembly** `polynomialMaynardDenominator (orbitSum α) = (monoOrbit α).card •
+   ∑ q ∈ monoOrbit α, monomialIntegral (α + q)`. Recipe, now that constancy is proved:
+   (a) `(orbitSum α).terms = (monoOrbit α).image (·, (1:ℚ))` (from `Finset.image_image`, defeq);
+   (b) push both double-sums to `monoOrbit` via `Finset.sum_image` (the `(·,1)` map is injective),
+   collapsing the `p.2*q.2` coefficients to `1`; (c) for each `p ∈ monoOrbit α`, obtain `σ` with
+   `p = α∘σ` from membership and rewrite the inner sum to the `α` representative via
+   `monomialIntegral_orbitSum_const`; (d) `Finset.sum_const` + `nsmul_eq_mul`.
+2. **Numerator analog** — same shape, with `dirichletIntegralWithSlack_removeNth_comp_perm` in
+   place of `monomialIntegral_comp_perm`.
+3. **Cross-orbit overlap count** (the genuine combinatorial kernel): collapse
    `∑ over orbit(λ) × orbit(μ)` to `(1/aut)·∑_M ff(k,T)·W(M)` grouped by overlap pattern `M`
    (a partial matching of `λ`-parts to `μ`-parts sharing a slot), with `ff(k,T) = k.descFactorial T`
    (`placement_count`). Validated Python prototype: `tools/mk/mk_sym.py`; full plan + the exact
