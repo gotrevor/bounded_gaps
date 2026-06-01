@@ -503,16 +503,47 @@ theorem polynomialMkF_eps_eq_MkF_eps {k : ℕ} (P : PolynomialSieveWeight k) {ε
     MkF_eps k (ε : ℝ) P.toFun = (polynomialMkF_eps P ε : ℝ) := by
   rw [MkF_eps, numerEps_bridge P hε0 hε1, denomEps_bridge P hε0, polynomialMkF_eps, Rat.cast_div]
 
-/-- **The ε-discharge lemma.** A polynomial witness with verified rational
-`polynomialMkF_eps P ε > 4` proves `Mk_eps k ε > 4` (for rational `0 ≤ ε < 1`),
-the ε-analog of `Mk_gt_four_of_polynomial_witness`. The flagship `H₁ ≤ 246`
-routes through this. -/
+/-- The polynomial Rayleigh ratio is a lower bound for `Mk_eps` (rational
+`0 ≤ ε < 1`): `(polynomialMkF_eps P ε : ℝ) ≤ Mk_eps k ε`. The ε-analog of
+`Mk_ge_polynomialMkF`. -/
+theorem Mk_eps_ge_polynomialMkF_eps {k : ℕ} (P : PolynomialSieveWeight k) {ε : ℚ}
+    (hε0 : 0 ≤ (ε : ℝ)) (hε1 : (ε : ℝ) < 1) :
+    (polynomialMkF_eps P ε : ℝ) ≤ Mk_eps k (ε : ℝ) := by
+  have h1 := Mk_eps_ge_MkF_eps hε0 hε1 P
+  rwa [polynomialMkF_eps_eq_MkF_eps P hε0 hε1] at h1
+
+/-- **The ε-discharge lemma (general threshold).** A polynomial witness with a
+verified rational `polynomialMkF_eps P ε > c` proves `Mk_eps k ε > c` (rational
+`0 ≤ ε < 1`), the ε-analog of `Mk_gt_four_of_polynomial_witness`. The flagship
+`H₁ ≤ 246` routes through this with `c = 2/ϑ` (ϑ in the Bombieri-Vinogradov
+range). -/
+theorem Mk_eps_gt_of_polynomial_witness {k : ℕ} (P : PolynomialSieveWeight k) {ε : ℚ} {c : ℝ}
+    (hε0 : 0 ≤ (ε : ℝ)) (hε1 : (ε : ℝ) < 1)
+    (hP : (polynomialMkF_eps P ε : ℝ) > c) :
+    Mk_eps k (ε : ℝ) > c :=
+  lt_of_lt_of_le hP (Mk_eps_ge_polynomialMkF_eps P hε0 hε1)
+
+/-- The `> 4` special case. -/
 theorem Mk_eps_gt_four_of_polynomial_witness {k : ℕ} (P : PolynomialSieveWeight k) {ε : ℚ}
     (hε0 : 0 ≤ (ε : ℝ)) (hε1 : (ε : ℝ) < 1)
     (hP : (polynomialMkF_eps P ε : ℝ) > 4) :
-    Mk_eps k (ε : ℝ) > 4 := by
-  have h1 := Mk_eps_ge_MkF_eps hε0 hε1 P
-  rw [polynomialMkF_eps_eq_MkF_eps P hε0 hε1] at h1
-  linarith
+    Mk_eps k (ε : ℝ) > 4 :=
+  Mk_eps_gt_of_polynomial_witness P hε0 hε1 hP
+
+/-- **Wiring to `Polymath8b.mk_eps_50_witness`.** Given a concrete degree-50
+polynomial sieve weight and rational `(ε, ϑ)` meeting the witness side
+conditions plus the rational Rayleigh bound `polynomialMkF_eps P ε > 2/ϑ`, the
+`mk_eps_50_witness` existential holds **as a theorem**. This reduces that axiom
+to a single `native_decide`-able rational inequality (the remaining degree-50
+ε-witness). The statement is verbatim the body of `Polymath8b.mk_eps_50_witness`. -/
+theorem mk_eps_50_witness_of_poly (P : PolynomialSieveWeight 50) {ε ϑ : ℚ}
+    (hε0 : 0 < (ε : ℝ)) (hε1 : (ε : ℝ) < 1)
+    (hϑ0 : 0 < (ϑ : ℝ)) (hϑ2 : (ϑ : ℝ) < 1 / 2)
+    (hcoup : 1 + (ε : ℝ) < 1 / (ϑ : ℝ))
+    (hwit : (polynomialMkF_eps P ε : ℝ) > 2 / (ϑ : ℝ)) :
+    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1 / 2) ∧
+      1 + ε < 1 / ϑ ∧ Sieve.Mk_eps 50 ε > 2 / ϑ :=
+  ⟨(ε : ℝ), (ϑ : ℝ), hε0, ⟨hϑ0, hϑ2⟩, hcoup,
+    Mk_eps_gt_of_polynomial_witness P (le_of_lt hε0) hε1 hwit⟩
 
 end BoundedGaps.EpsBridge
