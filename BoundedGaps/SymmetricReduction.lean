@@ -488,6 +488,27 @@ lemma group_sum_eq_stab_smul_orbitSum {k : ℕ} (α : MultiIndex k) (f : MultiIn
       rw [congrFun hτs (ρ i), congrFun hρ i]
     · group
 
+/-- **Weight depends only on the joint type (product regrouping).** A product `∏ᵢ G (pᵢ) (βᵢ)`
+over the coordinates collapses to a product over the distinct *value pairs* `(pᵢ, βᵢ)`, each raised
+to the number of coordinates achieving it. This is step 1 of the contingency-table closed form for
+the cross-orbit core `∑_{p∈orbit α} ∏ᵢ (pᵢ+βᵢ)!` (validated numerically in
+`tools/mk/validate_contingency.py`): with `G a b = (a+b)!` it shows `∏ᵢ (pᵢ+βᵢ)!` depends on `p`
+only through the joint histogram `vt ↦ #{i : (pᵢ,βᵢ)=vt}` — the contingency table. The remaining
+step is to count the orbit elements with a given table (a product of multinomials). -/
+lemma prod_eq_prod_pow_joint {k : ℕ} {M : Type*} [CommMonoid M]
+    (p β : Fin k → ℕ) (G : ℕ → ℕ → M) :
+    ∏ i, G (p i) (β i)
+      = ∏ vt ∈ (Finset.univ.image (fun i => (p i, β i))),
+          G vt.1 vt.2 ^ (Finset.univ.filter (fun i => (p i, β i) = vt)).card := by
+  rw [← Finset.prod_fiberwise_of_maps_to
+        (g := fun i => (p i, β i))
+        (fun i _ => Finset.mem_image_of_mem _ (Finset.mem_univ i))
+        (fun i => G (p i) (β i))]
+  refine Finset.prod_congr rfl (fun vt _ => ?_)
+  have hconst : ∀ i ∈ Finset.univ.filter (fun i => (p i, β i) = vt),
+      G (p i) (β i) = G vt.1 vt.2 := fun i hi => by rw [← (Finset.mem_filter.mp hi).2]
+  rw [Finset.prod_congr rfl hconst, Finset.prod_const]
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,

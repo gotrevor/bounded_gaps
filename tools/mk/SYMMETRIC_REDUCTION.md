@@ -117,6 +117,43 @@ EH-conditional ladder is specifically wanted:
 If built, the leverage play is: prove the parametric identity ONCE, then every rung
 (54, 5511, 41588, 309661) is an `native_decide` away — but each at its own (growing) degree.
 
+## ⭐ The CONTINGENCY-TABLE closed form (2026-06-01 — validated, the Lean target)
+
+The Lean port should NOT formalize the bespoke "partial matching" type of `mk_sym.py`. There is a
+cleaner, equivalent closed form in terms of **contingency tables** (margin-constrained `ℕ`-matrices),
+which is far more Lean-tractable. Validated exactly vs brute force on 25 structured + random cases by
+`tools/mk/validate_contingency.py`.
+
+The Lean tower (`SymmetricReduction.lean`: `orbitPair_denominator_eq` + `orbitPair_core_const` +
+`group_sum_eq_stab_smul_orbitSum`) reduces every cross-orbit denominator matrix entry to one
+single-orbit core sum
+
+    S(α,β) := ∑_{p ∈ orbit α} ∏ᵢ (pᵢ + βᵢ)!        (β fixed; orbit = distinct rearrangements over Fin k)
+
+and the validated closed form is
+
+    S(α,β) = ∑_X ( ∏_t multinomial(n_t ; x_{·,t}) ) · ∏_{u,t} ((c_u + b_t)!)^{x_{u,t}}
+
+where, over ALL k slots (zeros included):
+  • `c_u` (mult `m_u`) = distinct α-values; `b_t` (mult `n_t`) = distinct β-values; `∑m_u = ∑n_t = k`.
+  • `X` ranges over `r×s` nonneg-int matrices with **row sums `m_u` and column sums `n_t`**
+    (`x_{u,t}` = #slots with α-value `c_u` AND β-value `b_t`). A SMALL, k-bounded set: only the
+    nonzero-value sub-block is free; the zero row/col entries are fixed by the margins.
+  • `multinomial(n_t; x_{·,t}) = n_t! / ∏_u x_{u,t}!` = ways to fill β-group `t`'s `n_t` slots.
+
+The `ff(k,T)=k.descFactorial T` of the matching form re-emerges from the zero-margin multinomials
+(`n_0! / (x_{0,0}! · …)` with `n_0 = k − |β-support|`); at FIXED `k=50/54` the table sum is a concrete
+finite rational, so `native_decide`-able directly — no need to factor out `ff(k,T)` abstractly.
+
+**Two clean theorems decompose the Lean proof of `S(α,β) = ∑_X …`:**
+1. *Weight depends only on the joint type* — `∏ᵢ G(pᵢ)(βᵢ) = ∏_{vt} G(vt.1)(vt.2)^{#{i:(pᵢ,βᵢ)=vt}}`.
+   ✅ **DONE**: `prod_eq_prod_pow_joint` (`SymmetricReduction.lean`, axiom-clean). With `G a b = (a+b)!`
+   this is exactly the `∏_{u,t} ((c_u+b_t)!)^{x_{u,t}}` factor.
+2. *Fiber count* — `#{p ∈ orbit α : joint-type(p,β) = X} = ∏_t multinomial(n_t; x_{·,t})` for a table
+   `X` with the right margins (else 0). ← the remaining combinatorial heart; a product-of-multinomials
+   count (mathlib has `Nat.multinomial`). Then `Finset.sum_fiberwise` over the joint-type map assembles
+   `S(α,β) = ∑_X (fiber count)·(weight)`.
+
 ## Lean foundation status (2026-05-31, updated session 2)
 
 `BoundedGaps/SymmetricReduction.lean` (axiom-clean, green):
