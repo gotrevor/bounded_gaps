@@ -443,6 +443,51 @@ lemma orbitPair_core_const {k : ℕ} (α β : MultiIndex k) :
     exact orbitCore_const α β τ
   rw [Finset.sum_congr rfl hconst, Finset.sum_const]
 
+/-- **Orbit sum via the symmetric group (constant-fiber / orbit-stabilizer bridge).** Summing `f`
+over the *distinct* orbit `monoOrbit α` and summing `f (α ∘ σ)` over the whole symmetric group
+differ exactly by the stabilizer size: every fiber of `σ ↦ α ∘ σ` over an orbit element is a coset
+of the stabilizer `{σ : α ∘ σ = α}` (bijection `σ ↦ σ * ρ⁻¹` for a fixed preimage `ρ`), so all
+fibers share its cardinality. This is the orbit-stabilizer step that lets the matching enumeration
+operate over the group — where the overlap-pattern grouping of `∑_σ ∏ᵢ (α(σ i)+βᵢ)!` (a permanent)
+lives — rather than over distinct multisets. -/
+lemma group_sum_eq_stab_smul_orbitSum {k : ℕ} (α : MultiIndex k) (f : MultiIndex k → ℚ) :
+    ∑ σ : Equiv.Perm (Fin k), f (fun i => α (σ i))
+      = (Finset.univ.filter
+            (fun σ : Equiv.Perm (Fin k) => (fun i => α (σ i) : MultiIndex k) = α)).card •
+          ∑ p ∈ monoOrbit α, f p := by
+  have hmaps : ∀ σ ∈ (Finset.univ : Finset (Equiv.Perm (Fin k))),
+      (fun i => α (σ i) : MultiIndex k) ∈ monoOrbit α :=
+    fun σ _ => Finset.mem_image.mpr ⟨σ, Finset.mem_univ _, rfl⟩
+  rw [← Finset.sum_fiberwise_of_maps_to hmaps (fun σ => f (fun i => α (σ i))), Finset.smul_sum]
+  refine Finset.sum_congr rfl (fun p hp => ?_)
+  have hfib : ∀ σ ∈ Finset.univ.filter (fun σ : Equiv.Perm (Fin k) => (fun i => α (σ i)) = p),
+      f (fun i => α (σ i)) = f p := fun σ hσ => by rw [(Finset.mem_filter.mp hσ).2]
+  rw [Finset.sum_congr rfl hfib, Finset.sum_const]
+  congr 1
+  obtain ⟨ρ, -, hρ⟩ := Finset.mem_image.mp hp
+  apply Finset.card_bij (fun σ _ => σ * ρ⁻¹)
+  · intro σ hσ
+    have hσp : (fun i => α (σ i) : MultiIndex k) = p := (Finset.mem_filter.mp hσ).2
+    rw [Finset.mem_filter]
+    refine ⟨Finset.mem_univ _, ?_⟩
+    funext i
+    have hinv : ρ (ρ⁻¹ i) = i := by
+      rw [← Equiv.Perm.mul_apply, mul_inv_cancel, Equiv.Perm.one_apply]
+    have hi : α (σ (ρ⁻¹ i)) = α i := by
+      rw [congrFun hσp (ρ⁻¹ i), ← congrFun hρ (ρ⁻¹ i), hinv]
+    simpa [Equiv.Perm.mul_apply] using hi
+  · intro σ₁ _ σ₂ _ he
+    exact mul_right_cancel he
+  · intro τ hτ
+    have hτs : (fun i => α (τ i) : MultiIndex k) = α := (Finset.mem_filter.mp hτ).2
+    refine ⟨τ * ρ, ?_, ?_⟩
+    · rw [Finset.mem_filter]
+      refine ⟨Finset.mem_univ _, ?_⟩
+      funext i
+      simp only [Equiv.Perm.mul_apply]
+      rw [congrFun hτs (ρ i), congrFun hρ i]
+    · group
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
