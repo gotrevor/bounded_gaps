@@ -298,6 +298,79 @@ theorem polynomialMaynardDenominator_orbitSum {k : ℕ} (α : MultiIndex k) :
     exact monomialIntegral_orbitSum_const α σ
   rw [Finset.sum_congr rfl hconst, Finset.sum_const]
 
+/-- **Numerator orbit constancy** (the analog of `monomialIntegral_orbitSum_const`). For each
+representative `α ∘ σ` of the orbit, the numerator's inner double-sum over the removed index `i`
+and the orbit element `q` takes the SAME value as at `α`. Unlike the denominator, the individual
+`i`-terms are *not* orbit-invariant — but their sum over `i` is. Proof: reindex the inner `q`-sum
+by the orbit bijection `q ↦ q ∘ σ` (`monoOrbit_image_comp` + `dirichletIntegralWithSlack_removeNth_perm_add`),
+which turns the `i`-term at rep `α ∘ σ` into the `(σ i)`-term at rep `α`; then reindex the outer
+`i`-sum by `σ` (`Fintype.sum_equiv`), re-collecting all indices. -/
+lemma dirichletNum_orbitSum_const {n : ℕ} (α : MultiIndex (n + 1))
+    (σ : Equiv.Perm (Fin (n + 1))) :
+    (∑ i : Fin (n + 1), ∑ q ∈ monoOrbit α,
+        (1 : ℚ) / (((α (σ i) + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+          dirichletIntegralWithSlack (Fin.removeNth i ((fun m => α (σ m)) + q))
+            (α (σ i) + q i + 2))
+      = ∑ i : Fin (n + 1), ∑ q ∈ monoOrbit α,
+        (1 : ℚ) / (((α i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+          dirichletIntegralWithSlack (Fin.removeNth i (α + q)) (α i + q i + 2) := by
+  have hinj : ∀ x ∈ monoOrbit α, ∀ y ∈ monoOrbit α,
+      (fun i => x (σ i) : MultiIndex (n + 1)) = (fun i => y (σ i)) → x = y := by
+    intro x _ y _ h
+    funext i
+    have := congrFun h (σ.symm i)
+    simpa using this
+  refine Fintype.sum_equiv σ _ _ (fun i => ?_)
+  conv_lhs => rw [← monoOrbit_image_comp α σ]
+  rw [Finset.sum_image hinj]
+  refine Finset.sum_congr rfl (fun q _ => ?_)
+  rw [dirichletIntegralWithSlack_removeNth_perm_add σ α q i]
+
+/-- **Numerator reduction for an orbit sum.** The numerator of `orbitSum α` equals
+`(orbit card)` copies of the inner double-sum (over removed index `i` and orbit element `q`) at
+the single representative `α`. Same three-step shape as `polynomialMaynardDenominator_orbitSum`
+(`orbitSum.terms ↦ monoOrbit` via `sum_image`; constancy; `sum_const`), with the constancy step
+upgraded to the `i`-summed `dirichletNum_orbitSum_const`. -/
+theorem polynomialMaynardNumerator_orbitSum {n : ℕ} (α : MultiIndex (n + 1)) :
+    polynomialMaynardNumerator (orbitSum α)
+      = (monoOrbit α).card •
+          ∑ i : Fin (n + 1), ∑ q ∈ monoOrbit α,
+            (1 : ℚ) / (((α i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+              dirichletIntegralWithSlack (Fin.removeNth i (α + q)) (α i + q i + 2) := by
+    have hinj : ∀ a ∈ monoOrbit α, ∀ b ∈ monoOrbit α,
+        ((a, (1 : ℚ)) : MultiIndex (n + 1) × ℚ) = (b, 1) → a = b :=
+      fun a _ b _ h => ((Prod.mk.injEq _ _ _ _).mp h).1
+    have hterms : (orbitSum α).terms
+        = (monoOrbit α).image (fun m : MultiIndex (n + 1) => (m, (1 : ℚ))) := by
+      unfold orbitSum monoOrbit
+      rw [Finset.image_image]
+      rfl
+    have key : polynomialMaynardNumerator (orbitSum α)
+        = ∑ i : Fin (n + 1), ∑ pm ∈ monoOrbit α, ∑ qm ∈ monoOrbit α,
+            (1 : ℚ) / (((pm i + 1 : ℕ) : ℚ) * ((qm i + 1 : ℕ) : ℚ)) *
+              dirichletIntegralWithSlack (Fin.removeNth i (pm + qm)) (pm i + qm i + 2) := by
+      simp only [polynomialMaynardNumerator]
+      refine Finset.sum_congr rfl (fun i _ => ?_)
+      rw [hterms, Finset.sum_image hinj]
+      refine Finset.sum_congr rfl (fun pm _ => ?_)
+      rw [Finset.sum_image hinj]
+      refine Finset.sum_congr rfl (fun qm _ => ?_)
+      simp
+    rw [key, Finset.sum_comm]
+    have hconst : ∀ pm ∈ monoOrbit α,
+        (∑ i : Fin (n + 1), ∑ qm ∈ monoOrbit α,
+            (1 : ℚ) / (((pm i + 1 : ℕ) : ℚ) * ((qm i + 1 : ℕ) : ℚ)) *
+              dirichletIntegralWithSlack (Fin.removeNth i (pm + qm)) (pm i + qm i + 2))
+          = ∑ i : Fin (n + 1), ∑ q ∈ monoOrbit α,
+            (1 : ℚ) / (((α i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+              dirichletIntegralWithSlack (Fin.removeNth i (α + q)) (α i + q i + 2) := by
+      intro pm hpm
+      simp only [monoOrbit, Finset.mem_image, Finset.mem_univ, true_and] at hpm
+      obtain ⟨σ, hσ⟩ := hpm
+      rw [← hσ]
+      exact dirichletNum_orbitSum_const α σ
+    rw [Finset.sum_congr rfl hconst, Finset.sum_const]
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
@@ -305,15 +378,19 @@ DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
 constancy reduction** (`monomialIntegral_orbitSum_const`, via `monoOrbit_image_comp`); and the
 **denominator assembly** (`polynomialMaynardDenominator_orbitSum`: the denominator of `orbitSum α`
 is `(monoOrbit α).card • ∑ q ∈ monoOrbit α, monomialIntegral (α + q)` — the diagonal `Mr`-entry,
-modulo the factorial normalization `(k+|α|+|α|)!`).
+modulo the factorial normalization `(k+|α|+|α|)!`); and the **numerator assembly**
+(`polynomialMaynardNumerator_orbitSum`: the numerator of `orbitSum α` is
+`(monoOrbit α).card • ∑ i ∑ q, [1/((αᵢ+1)(qᵢ+1))]·dirichletIntegralWithSlack (removeNth i (α+q)) (αᵢ+qᵢ+2)`,
+via the `i`-summed constancy `dirichletNum_orbitSum_const`). With both, the full diagonal `Mr`-ratio
+of a single orbit sum is a closed form in the orbit's representative.
+
+The numerator constancy was subtler than the denominator's: individual `i`-terms are NOT
+orbit-invariant (the `(pᵢ+1)(qᵢ+1)` denominators and the `removeNth i` couple to `i`), but the
+*sum over `i`* is — reindexing `q ↦ q ∘ σ` turns the `i`-term at rep `α ∘ σ` into the `(σ i)`-term
+at rep `α`, and summing over `i` (`Fintype.sum_equiv σ`) re-collects them all.
 
 Remaining (host-preferred — mechanical Finset plumbing that wants fast interactive feedback):
 
-1. **Numerator analog** of `polynomialMaynardDenominator_orbitSum` — same three-step shape
-   (`orbitSum.terms` ↦ `monoOrbit` via `sum_image`; constancy; `sum_const`) but over
-   `polynomialMaynardNumerator`, whose per-`i` `dirichletIntegralWithSlack` of the removed-`i`
-   exponent vector is permutation-stable via `dirichletIntegralWithSlack_removeNth_comp_perm` (the
-   numerator constancy lemma is the analog of `monomialIntegral_orbitSum_const`, still to prove).
 3. **Cross-orbit overlap count** (the genuine combinatorial kernel): collapse
    `∑ over orbit(λ) × orbit(μ)` to `(1/aut)·∑_M ff(k,T)·W(M)` grouped by overlap pattern `M`
    (a partial matching of `λ`-parts to `μ`-parts sharing a slot), with `ff(k,T) = k.descFactorial T`
