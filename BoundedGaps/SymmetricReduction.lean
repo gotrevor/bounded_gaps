@@ -557,6 +557,22 @@ open Finset Equiv
 variable {ι V B : Type*} [Fintype ι] [DecidableEq ι] [Fintype V] [DecidableEq V]
   [Fintype B] [DecidableEq B]
 
+/-- **Existence of a witness with prescribed fiber sizes.** Whenever the targets `h v` sum to
+`|ι|`, there is a function `ι → V` whose fiber over each `v` has size exactly `h v`. Built from the
+cardinality equality `|ι| = |Σ v, Fin (h v)|` (`Fintype.equivOfCardEq`): the first projection of
+that equivalence realizes the fibers. (This is the witness the orbit/permanent count of
+`card_fiberwise_eq_multinomial` needs.) -/
+theorem exists_fiberwise (h : V → ℕ) (hsum : ∑ v, h v = Fintype.card ι) :
+    ∃ f : ι → V, ∀ v, (univ.filter (fun a => f a = v)).card = h v := by
+  have hcard : Fintype.card ι = Fintype.card (Σ v : V, Fin (h v)) := by
+    rw [Fintype.card_sigma]; simp [Fintype.card_fin, ← hsum]
+  let e : ι ≃ Σ v : V, Fin (h v) := Fintype.equivOfCardEq hcard
+  refine ⟨fun a => (e a).1, fun v => ?_⟩
+  rw [Finset.card_filter,
+      Equiv.sum_comp e (fun s : Σ w : V, Fin (h w) => if s.1 = v then 1 else 0),
+      ← Finset.card_filter, ← Fintype.card_subtype,
+      Fintype.card_congr (Equiv.sigmaSubtype v), Fintype.card_fin]
+
 /-- Restrict a function `ι → V` to its `g`-fibers: the equivalence
 `(ι → V) ≃ ∀ b, ({i // g i = b} → V)`. Built from `Equiv.sigmaFiberEquiv` + `Equiv.piCurry`. -/
 noncomputable def fiberRestrictEquiv (g : ι → B) : (ι → V) ≃ ∀ b : B, ({i // g i = b} → V) :=
