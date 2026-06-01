@@ -164,12 +164,20 @@ finite rational, so `native_decide`-able directly — no need to factor out `ff(
      (project `15ba0cd4-4b7d-445c-a105-169793b91368`, "keystone", submitted 2026-06-01): for finite
      types `ι, β`, `#{f : ι → β | ∀ b, #{i:f i=b} = h b} = Nat.multinomial univ h` when `∑ h = |ι|`.
      Validated numerically (2000 cases, `/tmp` brute check). Statement in `/tmp/keystone/Keystone.lean`.
-   - (d) **β-group product** — ⏳ **REMAINING** (the next focused session): the fiber count factorizes
-     over β-groups, `#{p | J_β(p)=X} = ∏_{b∈image β} #{q:{i//βi=b}→ℕ | fibers(q)=X(·,b)}`, then (c) on
-     each group. Via the fiber-decomposition equiv `(Fin k→ℕ) ≃ Π b:image β, ({i//βi=b}→ℕ)` +
-     `Fintype.card_pi`. ⚠️ Integration wrinkle: the keystone (c) has a **Fintype codomain**; the
-     per-group count has codomain ℕ — bridge by restricting to the finite value-support
-     (`Fintype.ofFinset`/subtype) before applying (c).
+   - (d) **β-group product** — ✅ **DONE** `card_jointType_eq_prod` (`SymmetricReduction.lean`,
+     axiom-clean, general over Fintypes `ι,V,B`): `#{f:ι→V | ∀ v b, #{i:f i=v ∧ g i=b}=X v b} =
+     ∏_b #{q:{i//g i=b}→V | ∀ v, #{j:q j=v}=X v b}`. Via `fiberRestrictEquiv` ((ι→V)≃∀b,(fiber_b→V),
+     from `sigmaFiberEquiv`+`piCurry`) + `Fintype.card_pi` + `subtypePiEquivPi`; per-coordinate fiber
+     identity by `subtypeSubtypeEquivSubtypeInter`. **Stated over a Fintype codomain `V` — so it
+     composes directly with the keystone (c) (also Fintype codomain): the integration wrinkle is
+     resolved by taking `V = ↥(image α)` (the finite value-set) throughout.**
+   - (e) **compose** — ⏳ remaining (cheap once (c) lands): `∏_b #{q | …} = ∏_b multinomial(univ, X(·,b))`
+     by applying (c) per factor in (d).
+   - (f) **value-restriction bridge** — ⏳ remaining (plumbing): connect `monoOrbit α |>.filter
+     (joint-type vs β = X)` (codomain ℕ) to (d)'s Fintype form with `V=↥(image α)`, `B=↥(image β)`.
+     Uses (a) `mem_monoOrbit_iff` (every `p ∈ monoOrbit α` has values in `image α`, and for a *realized*
+     `X` the orbit constraint is redundant — the row margins force it). Then `Finset.sum_fiberwise`
+     over the joint-type map assembles `S(α,β) = ∑_X (fiber count)·(weight from prod_eq_prod_pow_joint)`.
 
 ## Lean foundation status (2026-05-31, updated session 2)
 
