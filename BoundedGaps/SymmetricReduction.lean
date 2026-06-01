@@ -264,23 +264,56 @@ lemma monomialIntegral_orbitSum_const {k : ℕ} (α : MultiIndex k) (σ : Equiv.
             = (fun i => (α + q) (σ i)) := rfl
         rw [h, monomialIntegral_comp_perm σ (α + q)]
 
+/-- **Denominator reduction for an orbit sum.** Assembling the constancy lemma: the simplex
+integral of `(orbitSum α)²` is `(orbit card)` copies of the inner sum at the representative `α`.
+This is the `Mr`-entry of the matching closed form for the diagonal pair `λ = μ = α`, modulo the
+final factorial normalization. -/
+theorem polynomialMaynardDenominator_orbitSum {k : ℕ} (α : MultiIndex k) :
+    polynomialMaynardDenominator (orbitSum α)
+      = (monoOrbit α).card • ∑ q ∈ monoOrbit α, monomialIntegral (α + q) := by
+  have hinj : ∀ a ∈ monoOrbit α, ∀ b ∈ monoOrbit α,
+      ((a, (1 : ℚ)) : MultiIndex k × ℚ) = (b, 1) → a = b :=
+    fun a _ b _ h => ((Prod.mk.injEq _ _ _ _).mp h).1
+  have hterms : (orbitSum α).terms
+      = (monoOrbit α).image (fun m : MultiIndex k => (m, (1 : ℚ))) := by
+    unfold orbitSum monoOrbit
+    rw [Finset.image_image]
+    rfl
+  have key : polynomialMaynardDenominator (orbitSum α)
+      = ∑ pm ∈ monoOrbit α, ∑ qm ∈ monoOrbit α, monomialIntegral (pm + qm) := by
+    unfold polynomialMaynardDenominator
+    rw [hterms, Finset.sum_image hinj]
+    refine Finset.sum_congr rfl (fun pm _ => ?_)
+    rw [Finset.sum_image hinj]
+    refine Finset.sum_congr rfl (fun qm _ => ?_)
+    simp
+  rw [key]
+  have hconst : ∀ pm ∈ monoOrbit α,
+      ∑ qm ∈ monoOrbit α, monomialIntegral (pm + qm)
+        = ∑ q ∈ monoOrbit α, monomialIntegral (α + q) := by
+    intro pm hpm
+    simp only [monoOrbit, Finset.mem_image, Finset.mem_univ, true_and] at hpm
+    obtain ⟨σ, hσ⟩ := hpm
+    rw [← hσ]
+    exact monomialIntegral_orbitSum_const α σ
+  rw [Finset.sum_congr rfl hconst, Finset.sum_const]
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
-`permWeight_orbitSum`, `monomialIntegral_add_comp_perm`) and the conceptual core — the
-**orbit-sum constancy reduction** (`monomialIntegral_orbitSum_const`, via `monoOrbit_image_comp`).
+`permWeight_orbitSum`, `monomialIntegral_add_comp_perm`); the conceptual core — the **orbit-sum
+constancy reduction** (`monomialIntegral_orbitSum_const`, via `monoOrbit_image_comp`); and the
+**denominator assembly** (`polynomialMaynardDenominator_orbitSum`: the denominator of `orbitSum α`
+is `(monoOrbit α).card • ∑ q ∈ monoOrbit α, monomialIntegral (α + q)` — the diagonal `Mr`-entry,
+modulo the factorial normalization `(k+|α|+|α|)!`).
 
 Remaining (host-preferred — mechanical Finset plumbing that wants fast interactive feedback):
 
-1. **Denominator assembly** `polynomialMaynardDenominator (orbitSum α) = (monoOrbit α).card •
-   ∑ q ∈ monoOrbit α, monomialIntegral (α + q)`. Recipe, now that constancy is proved:
-   (a) `(orbitSum α).terms = (monoOrbit α).image (·, (1:ℚ))` (from `Finset.image_image`, defeq);
-   (b) push both double-sums to `monoOrbit` via `Finset.sum_image` (the `(·,1)` map is injective),
-   collapsing the `p.2*q.2` coefficients to `1`; (c) for each `p ∈ monoOrbit α`, obtain `σ` with
-   `p = α∘σ` from membership and rewrite the inner sum to the `α` representative via
-   `monomialIntegral_orbitSum_const`; (d) `Finset.sum_const` + `nsmul_eq_mul`.
-2. **Numerator analog** — same shape, with `dirichletIntegralWithSlack_removeNth_comp_perm` in
-   place of `monomialIntegral_comp_perm`.
+1. **Numerator analog** of `polynomialMaynardDenominator_orbitSum` — same three-step shape
+   (`orbitSum.terms` ↦ `monoOrbit` via `sum_image`; constancy; `sum_const`) but over
+   `polynomialMaynardNumerator`, whose per-`i` `dirichletIntegralWithSlack` of the removed-`i`
+   exponent vector is permutation-stable via `dirichletIntegralWithSlack_removeNth_comp_perm` (the
+   numerator constancy lemma is the analog of `monomialIntegral_orbitSum_const`, still to prove).
 3. **Cross-orbit overlap count** (the genuine combinatorial kernel): collapse
    `∑ over orbit(λ) × orbit(μ)` to `(1/aut)·∑_M ff(k,T)·W(M)` grouped by overlap pattern `M`
    (a partial matching of `λ`-parts to `μ`-parts sharing a slot), with `ff(k,T) = k.descFactorial T`
