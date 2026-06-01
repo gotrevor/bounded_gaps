@@ -22,3 +22,4 @@ import BoundedGaps.SievePolynomial
 import BoundedGaps.SimplexCutoff
 import BoundedGaps.SymmetricReduction
 import BoundedGaps.EpsScaling
+import BoundedGaps.EpsBridge
