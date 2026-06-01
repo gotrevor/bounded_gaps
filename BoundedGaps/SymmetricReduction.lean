@@ -184,6 +184,17 @@ noncomputable def orbitSum {k : ℕ} (α : MultiIndex k) : PolynomialSieveWeight
   ⟨Finset.univ.image
     (fun σ : Equiv.Perm (Fin k) => ((fun i => α (σ i) : MultiIndex k), (1 : ℚ)))⟩
 
+/-- **Joint-type invariance of a denominator entry.** The denominator contribution
+`monomialIntegral (p + q)` of a term-pair is invariant under simultaneously permuting both
+exponent vectors by the same `σ`. Hence it depends only on the *joint type* of the pair (the
+multiset of coordinatewise sums), not on the particular placement — the seed of the
+overlap-pattern grouping in the matching closed form. -/
+lemma monomialIntegral_add_comp_perm {k : ℕ} (σ : Equiv.Perm (Fin k)) (α β : MultiIndex k) :
+    monomialIntegral ((fun i => α (σ i)) + (fun i => β (σ i))) = monomialIntegral (α + β) := by
+  have : ((fun i => α (σ i)) + (fun i => β (σ i)) : MultiIndex k)
+      = (fun i => (α + β) (σ i)) := rfl
+  rw [this, monomialIntegral_comp_perm σ (α + β)]
+
 /-- An orbit sum lands in the symmetric subspace: it is fixed by every coordinate
 permutation `τ`. (As `σ` ranges over all permutations, so does `σ * τ`.) -/
 lemma permWeight_orbitSum {k : ℕ} (τ : Equiv.Perm (Fin k)) (α : MultiIndex k) :

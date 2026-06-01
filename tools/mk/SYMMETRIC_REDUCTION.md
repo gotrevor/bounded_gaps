@@ -37,19 +37,23 @@ in L²-norm at k=50 (factorial scaling), so float linear algebra silently corrup
 first pass reported a bogus "deg7 sup ≈ 4.36"; exact arithmetic shows deg7 is < 4. Trust
 only `inertia(A − cM)` (sign of exact pivots, Sylvester's law).
 
-| deg D | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
-|-------|---|---|---|---|---|---|---|
-| #orbits | 2 | 4 | 7 | 12 | 19 | 30 | 45 |
-| exact M_50 sup | 2.83 | 3.14 | 3.33 | 3.45 | 3.55 | <4 | <4 |
+| deg D | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|-------|---|---|---|---|---|---|---|---|
+| #orbits | 2 | 4 | 7 | 12 | 19 | 30 | 45 | 67 |
+| exact M_50 sup | 2.83 | 3.14 | 3.33 | 3.45 | 3.55 | <4 | <4 | <4 |
 
 `#orbits = Σ_{j≤D} p(j)`. Increments **decay** (+0.31, +0.20, +0.12, +0.10, …): the
 truncation creeps toward the true `M_50`, which Polymath8b established sits *just* above 4
 (this is exactly why they needed k=50 specifically). So:
 
-- **Degree 7 (45 orbits) does NOT clear 4** — exact `inertia(A−4M) = (+0, −45, 0)`, i.e.
-  `A − 4M` is negative definite, at BOTH k=50 and k=54.
-- The crossing degree is **≥ 8**, and because the true value is so close to 4, likely well
-  into the teens. No clean low-degree witness exists in this regime.
+- **Degree 8 (67 orbits) does NOT clear 4** — exact `inertia(A−4M) = (+0, −67, 0)`, i.e.
+  `A − 4M` is negative definite, at BOTH **k=50 and k=54** (verified 2026-06-01, exact LDL).
+  Degree 7 (45 orbits) likewise negative-definite at both k.
+- The crossing degree is therefore **≥ 9** (was only known `≥ 8` before), and because the true
+  value is so close to 4, likely well into the teens. No clean low-degree witness exists in
+  this regime. (Degree ≥ 9 is the `matchings(r,r)` enumeration wall for `mk_sym.py` as written:
+  the all-ones partition `1⁹` alone costs `9!` matchings per matrix entry — a smarter
+  overlap-count would be needed to push the exact table further.)
 
 ## What it would actually discharge — IMPORTANT caveat
 
