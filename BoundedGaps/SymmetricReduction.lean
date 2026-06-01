@@ -371,6 +371,40 @@ theorem polynomialMaynardNumerator_orbitSum {n : ℕ} (α : MultiIndex (n + 1)) 
       exact dirichletNum_orbitSum_const α σ
     rw [Finset.sum_congr rfl hconst, Finset.sum_const]
 
+/-- Every element of `monoOrbit α` has total degree `α.degree` (a permutation preserves the
+coordinate sum). The bare-index analog of the term-degree fact used on the ε side. -/
+lemma monoOrbit_mem_degree {k : ℕ} (α : MultiIndex k) {p : MultiIndex k}
+    (hp : p ∈ monoOrbit α) : (∑ i, p i) = α.degree := by
+  simp only [monoOrbit, Finset.mem_image, Finset.mem_univ, true_and] at hp
+  obtain ⟨σ, hσ⟩ := hp
+  rw [← hσ]
+  simpa [MultiIndex.degree] using Equiv.sum_comp σ (fun i => α i)
+
+/-- **The cross-orbit denominator core.** The off-diagonal orbit-pair sum
+`∑_{p∈orbit α} ∑_{q∈orbit β} monomialIntegral (p+q)` factors out the *constant* `monomialIntegral`
+denominator `(k+|α|+|β|)!` — constant because `(p+q).degree = α.degree + β.degree` for every pair
+of orbit elements — leaving the purely combinatorial sum `∑∑ ∏ᵢ (pᵢ+qᵢ)!`. This isolates the
+content the matching/overlap closed form must count: the `monomialIntegral` analysis is fully
+discharged, and what remains (collapsing `∑∑ ∏ᵢ (pᵢ+qᵢ)!` to `∑_M ff(k,T)·W(M)` over overlap
+patterns) is a pure combinatorial identity. The diagonal `β = α` recovers
+`polynomialMaynardDenominator_orbitSum`'s inner sum. -/
+lemma orbitPair_denominator_eq {k : ℕ} (α β : MultiIndex k) :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, monomialIntegral (p + q)
+      = (∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, (∏ i, ((p i + q i).factorial : ℚ)))
+          / ((k + α.degree + β.degree).factorial : ℚ) := by
+  rw [Finset.sum_div]
+  refine Finset.sum_congr rfl (fun p hp => ?_)
+  rw [Finset.sum_div]
+  refine Finset.sum_congr rfl (fun q hq => ?_)
+  have hsplit : (∑ i, (p + q) i) = (∑ i, p i) + (∑ i, q i) := by
+    simp only [Pi.add_apply, Finset.sum_add_distrib]
+  have hdeg : (p + q).degree = α.degree + β.degree := by
+    show (∑ i, (p + q) i) = α.degree + β.degree
+    rw [hsplit, monoOrbit_mem_degree α hp, monoOrbit_mem_degree β hq]
+  unfold monomialIntegral
+  rw [hdeg, ← add_assoc]
+  simp only [Pi.add_apply]
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
@@ -389,13 +423,22 @@ orbit-invariant (the `(pᵢ+1)(qᵢ+1)` denominators and the `removeNth i` coupl
 *sum over `i`* is — reindexing `q ↦ q ∘ σ` turns the `i`-term at rep `α ∘ σ` into the `(σ i)`-term
 at rep `α`, and summing over `i` (`Fintype.sum_equiv σ`) re-collects them all.
 
-Remaining (host-preferred — mechanical Finset plumbing that wants fast interactive feedback):
+Also DONE: `orbitPair_denominator_eq` — the **cross-orbit denominator core**: the off-diagonal
+pair sum `∑_{p∈orbit α}∑_{q∈orbit β} monomialIntegral (p+q)` factors out the constant denominator
+`(k+|α|+|β|)!`, fully discharging the `monomialIntegral` analysis and isolating the pure
+combinatorial sum `∑∑ ∏ᵢ (pᵢ+qᵢ)!` that the matching count must collapse. (The ε-flavored orbit
+reductions live in `SymmetricReductionEps.lean` — same machinery, for the unconditional `Mk_eps`
+flagship.)
 
-3. **Cross-orbit overlap count** (the genuine combinatorial kernel): collapse
-   `∑ over orbit(λ) × orbit(μ)` to `(1/aut)·∑_M ff(k,T)·W(M)` grouped by overlap pattern `M`
-   (a partial matching of `λ`-parts to `μ`-parts sharing a slot), with `ff(k,T) = k.descFactorial T`
-   (`placement_count`). Validated Python prototype: `tools/mk/mk_sym.py`; full plan + the exact
-   reaches-4 table (deg ≤ 8 < 4 at k=50,54 ⟹ witness degree ≥ 9) in `tools/mk/SYMMETRIC_REDUCTION.md`.
+Remaining (the genuine multi-session combinatorial kernel — shared bottleneck for BOTH the
+EH-conditional plain-`Mk` ladder AND the unconditional `Mk_eps 50` flagship):
+
+3. **Cross-orbit overlap count**: collapse the now-isolated `∑_{p∈orbit α}∑_{q∈orbit β} ∏ᵢ (pᵢ+qᵢ)!`
+   to `(1/aut)·∑_M ff(k,T)·W(M)` grouped by overlap pattern `M` (a partial matching of `α`-parts to
+   `β`-parts sharing a slot), with `ff(k,T) = k.descFactorial T` (`placement_count`). Needs: an
+   orbit→labelled-placement bijection counted by `placement_count`, the weight `W(M)`, and that
+   `∏ᵢ (pᵢ+qᵢ)!` depends only on the overlap type. Validated Python prototype: `tools/mk/mk_sym.py`;
+   exact reaches-4 table (deg ≤ 8 < 4 at k=50,54 ⟹ witness degree ≥ 9) in `tools/mk/SYMMETRIC_REDUCTION.md`.
 -/
 
 end BoundedGaps.SymmetricReduction
