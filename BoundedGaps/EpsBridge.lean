@@ -52,16 +52,6 @@ lemma isClosed_simplexLE (k : ℕ) (B : ℝ) : IsClosed (simplexLE k B) := by
   · exact isClosed_Iic.preimage
       (continuous_finset_sum Finset.univ (fun i _ => continuous_apply i))
 
-lemma isCompact_simplexLE (k : ℕ) {B : ℝ} (hB : 0 ≤ B) : IsCompact (simplexLE k B) := by
-  apply IsCompact.of_isClosed_subset
-    (s := Set.pi Set.univ (fun (_ : Fin k) => Set.Icc (0 : ℝ) B))
-    (isCompact_univ_pi (fun _ => isCompact_Icc)) (isClosed_simplexLE k B)
-  rintro t ⟨h_nn, h_sum⟩ i _
-  refine ⟨h_nn i, ?_⟩
-  have : t i ≤ ∑ j, t j :=
-    Finset.single_le_sum (f := t) (fun j _ => h_nn j) (Finset.mem_univ i)
-  linarith
-
 lemma convex_simplexLE (k : ℕ) (B : ℝ) : Convex ℝ (simplexLE k B) := by
   intro x hx y hy a b ha hb hab
   refine ⟨fun i => ?_, ?_⟩
@@ -100,7 +90,7 @@ lemma interior_simplexLE_subset (k : ℕ) {B : ℝ} (hB : 0 < B) :
       rw [ht', Function.update_self] at hi
       linarith
   · rcases isEmpty_or_nonempty (Fin k) with he | hne
-    · simp only [Finset.sum_empty, Fintype.sum_empty]; exact hB
+    · simp only [Fintype.sum_empty]; exact hB
     · obtain ⟨i₀⟩ := hne
       by_contra h
       push_neg at h
@@ -146,7 +136,7 @@ noncomputable def chiB (k n : ℕ) (B : ℝ) (t : Fin k → ℝ) : ℝ :=
     Real.smoothTransition (n * (B - ∑ j, t j))
 
 lemma chiB_nonneg (k n : ℕ) (B : ℝ) (t : Fin k → ℝ) : 0 ≤ chiB k n B t :=
-  mul_nonneg (Finset.prod_nonneg fun i _ => Real.smoothTransition.nonneg _)
+  mul_nonneg (Finset.prod_nonneg fun _ _ => Real.smoothTransition.nonneg _)
     (Real.smoothTransition.nonneg _)
 
 lemma chiB_le_one (k n : ℕ) (B : ℝ) (t : Fin k → ℝ) : chiB k n B t ≤ 1 := by
@@ -308,7 +298,7 @@ lemma denomEps_tendsto {ε : ℝ} (hε : 0 ≤ ε) (P : PolynomialSieveWeight k)
 
 /-! ## Inner-layer convergence (the `ti`-integral) -/
 
-lemma innerIntEps_tendsto {n : ℕ} {ε : ℝ} (hε : 0 ≤ ε) (P : PolynomialSieveWeight (n + 1))
+lemma innerIntEps_tendsto {n : ℕ} {ε : ℝ} (_hε : 0 ≤ ε) (P : PolynomialSieveWeight (n + 1))
     (i : Fin (n + 1)) {s : Fin n → ℝ} (hs : (∀ j, 0 < s j) ∧ ∑ j, s j < 1 - ε) :
     Tendsto (fun m => ∫ ti in Set.Icc (0:ℝ) (1 + ε - ∑ j, s j),
         FapproxEps P ε m (i.insertNth ti s)) atTop
@@ -442,5 +432,87 @@ theorem Mk_eps_ge_MkF_eps {ε : ℝ} (hε0 : 0 ≤ ε) (hε1 : ε < 1)
     refine ge_iff_le.mpr (le_of_tendsto hMkF ?_)
     filter_upwards [hden_ev] with n hn
     exact le_csSup (MkSet_eps_bddAbove k ε) (FapproxEps_mem_MkSet_eps P ε n hn)
+
+/-! ## The rational `Mk_eps` ratio and its bridge to `MkF_eps P.toFun`
+
+With both Rayleigh sides in closed form (`EpsScaling`), a *rational* `ε` makes
+every `(1±ε)`-power rational, so the whole `MkF_eps P.toFun` is a single rational
+`polynomialMkF_eps P ε`. This is the ε-analog of `polynomialMkF` and feeds the
+eventual `native_decide` degree-50 witness. -/
+
+/-- The rational affine-slack closed form (the ε-numerator kernel as a rational):
+`(1-ε)^{n+|a|} · Σ_m C(β,m)(2ε)^m(1-ε)^{β-m} · dirichletIntegralWithSlack(a, β-m)`. -/
+noncomputable def affineSlackRat {n : ℕ} (a : Fin n → ℕ) (β : ℕ) (ε : ℚ) : ℚ :=
+  (1 - ε) ^ (n + ∑ j, a j) *
+    ∑ m ∈ Finset.range (β + 1),
+      (2 * ε) ^ m * (1 - ε) ^ (β - m) * ((β.choose m : ℚ)) *
+        dirichletIntegralWithSlack a (β - m)
+
+/-- The real affine-slack integral over the shrunken simplex is the cast of
+`affineSlackRat` (for rational `ε < 1`). Real-izes `dirichlet_affine_slack`. -/
+lemma affineSlack_cast {n : ℕ} (a : Fin n → ℕ) (β : ℕ) {ε : ℚ} (hε1 : (ε : ℝ) < 1) :
+    (∫ s in simplex_shrunk n (ε : ℝ), (∏ j, s j ^ a j) * (1 + (ε : ℝ) - ∑ j, s j) ^ β)
+      = (affineSlackRat a β ε : ℝ) := by
+  rw [dirichlet_affine_slack a β hε1, affineSlackRat]
+  push_cast
+  ring
+
+/-- The rational `Mk_eps` denominator: `Σ_{p,q} c_p c_q (1+ε)^{k+|p+q|} monomialIntegral(p+q)`. -/
+noncomputable def polynomialMaynardDenominator_eps {k : ℕ}
+    (P : PolynomialSieveWeight k) (ε : ℚ) : ℚ :=
+  ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+    p.2 * q.2 * ((1 + ε) ^ (k + ∑ i, (p.1 + q.1) i) * monomialIntegral (p.1 + q.1))
+
+/-- The rational `Mk_eps` numerator: a triple sum of `affineSlackRat` kernels. -/
+noncomputable def polynomialMaynardNumerator_eps {k : ℕ}
+    (P : PolynomialSieveWeight k) (ε : ℚ) : ℚ :=
+  match k, P with
+  | 0, _ => 0
+  | n + 1, P =>
+      ∑ i : Fin (n + 1), ∑ p ∈ P.terms, ∑ q ∈ P.terms,
+        (p.2 * q.2 / (((p.1 i + 1 : ℕ) : ℚ) * ((q.1 i + 1 : ℕ) : ℚ))) *
+          affineSlackRat (Fin.removeNth i (p.1 + q.1)) (p.1 i + q.1 i + 2) ε
+
+/-- The rational `Mk_eps(P)` ratio. -/
+noncomputable def polynomialMkF_eps {k : ℕ} (P : PolynomialSieveWeight k) (ε : ℚ) : ℚ :=
+  polynomialMaynardNumerator_eps P ε / polynomialMaynardDenominator_eps P ε
+
+/-- **Denominator bridge for `Mk_eps`.** -/
+lemma denomEps_bridge {k : ℕ} (P : PolynomialSieveWeight k) {ε : ℚ} (hε : 0 ≤ (ε : ℝ)) :
+    mkF_eps_denominator k (ε : ℝ) P.toFun = (polynomialMaynardDenominator_eps P ε : ℝ) := by
+  rw [mkF_eps_denominator_poly hε, polynomialMaynardDenominator_eps]
+  push_cast
+  refine Finset.sum_congr rfl (fun p _ => Finset.sum_congr rfl (fun q _ => by push_cast; ring))
+
+/-- **Numerator bridge for `Mk_eps`.** -/
+lemma numerEps_bridge {k : ℕ} (P : PolynomialSieveWeight k) {ε : ℚ}
+    (hε0 : 0 ≤ (ε : ℝ)) (hε1 : (ε : ℝ) < 1) :
+    mkF_eps_numerator k (ε : ℝ) P.toFun = (polynomialMaynardNumerator_eps P ε : ℝ) := by
+  cases k with
+  | zero => simp [mkF_eps_numerator, polynomialMaynardNumerator_eps]
+  | succ n =>
+    rw [mkF_eps_numerator_poly hε0, polynomialMaynardNumerator_eps]
+    push_cast
+    refine Finset.sum_congr rfl (fun i _ => Finset.sum_congr rfl
+      (fun p _ => Finset.sum_congr rfl (fun q _ => ?_)))
+    rw [affineSlack_cast _ _ hε1]
+
+/-- **The `Mk_eps` rational bridge.** -/
+theorem polynomialMkF_eps_eq_MkF_eps {k : ℕ} (P : PolynomialSieveWeight k) {ε : ℚ}
+    (hε0 : 0 ≤ (ε : ℝ)) (hε1 : (ε : ℝ) < 1) :
+    MkF_eps k (ε : ℝ) P.toFun = (polynomialMkF_eps P ε : ℝ) := by
+  rw [MkF_eps, numerEps_bridge P hε0 hε1, denomEps_bridge P hε0, polynomialMkF_eps, Rat.cast_div]
+
+/-- **The ε-discharge lemma.** A polynomial witness with verified rational
+`polynomialMkF_eps P ε > 4` proves `Mk_eps k ε > 4` (for rational `0 ≤ ε < 1`),
+the ε-analog of `Mk_gt_four_of_polynomial_witness`. The flagship `H₁ ≤ 246`
+routes through this. -/
+theorem Mk_eps_gt_four_of_polynomial_witness {k : ℕ} (P : PolynomialSieveWeight k) {ε : ℚ}
+    (hε0 : 0 ≤ (ε : ℝ)) (hε1 : (ε : ℝ) < 1)
+    (hP : (polynomialMkF_eps P ε : ℝ) > 4) :
+    Mk_eps k (ε : ℝ) > 4 := by
+  have h1 := Mk_eps_ge_MkF_eps hε0 hε1 P
+  rw [polynomialMkF_eps_eq_MkF_eps P hε0 hε1] at h1
+  linarith
 
 end BoundedGaps.EpsBridge
