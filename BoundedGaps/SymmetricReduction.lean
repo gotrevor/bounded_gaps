@@ -509,6 +509,33 @@ lemma prod_eq_prod_pow_joint {k : ℕ} {M : Type*} [CommMonoid M]
       G (p i) (β i) = G vt.1 vt.2 := fun i hi => by rw [← (Finset.mem_filter.mp hi).2]
   rw [Finset.prod_congr rfl hconst, Finset.prod_const]
 
+/-- **`monoOrbit` characterization.** `p ∈ monoOrbit α` iff `p` has the same fiber sizes as `α`
+at every value `v` (equivalently, the same value-multiset). This is the bridge from the orbit to
+the function-counting world: the cross-orbit core fiber `{p ∈ monoOrbit α : joint-type = X}`
+becomes a set of functions with prescribed fibers, counted by a product of multinomials. The
+forward direction is `Equiv.sum_comp` (a permutation preserves every fiber's size); the reverse
+glues per-value fiber equivalences (`Fintype.equivOfCardEq`) into a single coordinate permutation
+(`Equiv.ofFiberEquiv`). -/
+lemma mem_monoOrbit_iff {k : ℕ} (α p : MultiIndex k) :
+    p ∈ monoOrbit α ↔
+      ∀ v, (Finset.univ.filter (fun i => p i = v)).card
+            = (Finset.univ.filter (fun i => α i = v)).card := by
+  constructor
+  · rintro hp v
+    obtain ⟨σ, -, rfl⟩ := Finset.mem_image.mp hp
+    simp only [Finset.card_filter]
+    exact Equiv.sum_comp σ (fun i => if α i = v then 1 else 0)
+  · intro hfib
+    have hcard : ∀ v, Fintype.card {i : Fin k // p i = v}
+        = Fintype.card {i : Fin k // α i = v} := by
+      intro v
+      simpa only [Fintype.card_subtype] using hfib v
+    let e : ∀ v, {i : Fin k // p i = v} ≃ {i : Fin k // α i = v} :=
+      fun v => Fintype.equivOfCardEq (hcard v)
+    refine Finset.mem_image.mpr ⟨Equiv.ofFiberEquiv e, Finset.mem_univ _, ?_⟩
+    funext i
+    exact Equiv.ofFiberEquiv_map e i
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
