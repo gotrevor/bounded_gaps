@@ -215,8 +215,57 @@ lemma permWeight_orbitSum {k : ℕ} (τ : Equiv.Perm (Fin k)) (α : MultiIndex k
     funext i
     simp [Equiv.Perm.mul_apply]
 
-/-! ## Next: the orbit-sum reduction (host-preferred — the Finset `sum_bij` plumbing below
-wants fast interactive feedback, not the box's slow build loop)
+/-- The orbit of a monomial `α` as a `Finset` of exponent vectors (the distinct
+coordinate-permutations of `α`). This is the index set of `orbitSum α`'s monomials. -/
+noncomputable def monoOrbit {k : ℕ} (α : MultiIndex k) : Finset (MultiIndex k) :=
+  Finset.univ.image (fun σ : Equiv.Perm (Fin k) => (fun i => α (σ i) : MultiIndex k))
+
+/-- The orbit is closed under right-composition by any permutation `σ`, and `q ↦ q ∘ σ` is a
+bijection of the orbit (as `ρ` ranges over all permutations, so does `ρ * σ`). Hence
+post-composing the orbit's elements by `σ` leaves the orbit `Finset` unchanged. -/
+lemma monoOrbit_image_comp {k : ℕ} (α : MultiIndex k) (σ : Equiv.Perm (Fin k)) :
+    (monoOrbit α).image (fun q i => q (σ i)) = monoOrbit α := by
+  unfold monoOrbit
+  rw [Finset.image_image]
+  apply Finset.ext
+  intro p
+  simp only [Finset.mem_image, Finset.mem_univ, true_and, Function.comp_apply]
+  constructor
+  · rintro ⟨ρ, rfl⟩
+    exact ⟨ρ * σ, by funext i; simp [Equiv.Perm.mul_apply]⟩
+  · rintro ⟨ρ, rfl⟩
+    exact ⟨ρ * σ⁻¹, by funext i; simp [Equiv.Perm.mul_apply]⟩
+
+/-- **The orbit-sum reduction (denominator core).** For every representative `α ∘ σ` of the
+orbit, the inner sum `∑ q ∈ orbit, monomialIntegral (rep + q)` takes the SAME value. Proof:
+reindex the `q`-sum by the orbit bijection `q ↦ q ∘ σ` (`monoOrbit_image_comp`), turning each
+term into `monomialIntegral ((α ∘ σ) + (q ∘ σ)) = monomialIntegral ((α + q) ∘ σ)`, which equals
+`monomialIntegral (α + q)` by `monomialIntegral_comp_perm`. This is the collapse that makes the
+denominator of `orbitSum α` equal `(orbit card) • (inner sum at α)`. -/
+lemma monomialIntegral_orbitSum_const {k : ℕ} (α : MultiIndex k) (σ : Equiv.Perm (Fin k)) :
+    ∑ q ∈ monoOrbit α, monomialIntegral ((fun i => α (σ i)) + q)
+      = ∑ q ∈ monoOrbit α, monomialIntegral (α + q) := by
+  have hinj : ∀ x ∈ monoOrbit α, ∀ y ∈ monoOrbit α,
+      (fun i => x (σ i) : MultiIndex k) = (fun i => y (σ i)) → x = y := by
+    intro x _ y _ h
+    funext i
+    have := congrFun h (σ.symm i)
+    simpa using this
+  calc ∑ q ∈ monoOrbit α, monomialIntegral ((fun i => α (σ i)) + q)
+      = ∑ q ∈ (monoOrbit α).image (fun q i => q (σ i)),
+          monomialIntegral ((fun i => α (σ i)) + q) := by rw [monoOrbit_image_comp α σ]
+    _ = ∑ q ∈ monoOrbit α,
+          monomialIntegral ((fun i => α (σ i)) + (fun i => q (σ i))) :=
+        Finset.sum_image hinj
+    _ = ∑ q ∈ monoOrbit α, monomialIntegral (α + q) := by
+        apply Finset.sum_congr rfl
+        intro q _
+        have h : ((fun i => α (σ i)) + (fun i => q (σ i)) : MultiIndex k)
+            = (fun i => (α + q) (σ i)) := rfl
+        rw [h, monomialIntegral_comp_perm σ (α + q)]
+
+/-! ## Next: assemble the denominator reduction (host-preferred — the remaining Finset
+plumbing wants fast interactive feedback, not the box's slow build loop)
 
 With the foundations above (`orbitSum`, `permWeight_orbitSum`, `monomialIntegral_add_comp_perm`)
 the matching closed form proceeds via these concrete obligations:
