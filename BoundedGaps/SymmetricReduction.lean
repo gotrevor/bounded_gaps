@@ -215,4 +215,24 @@ lemma permWeight_orbitSum {k : ℕ} (τ : Equiv.Perm (Fin k)) (α : MultiIndex k
     funext i
     simp [Equiv.Perm.mul_apply]
 
+/-! ## Next: the orbit-sum reduction (host-preferred — the Finset `sum_bij` plumbing below
+wants fast interactive feedback, not the box's slow build loop)
+
+With the foundations above (`orbitSum`, `permWeight_orbitSum`, `monomialIntegral_add_comp_perm`)
+the matching closed form proceeds via these concrete obligations:
+
+1. `orbitSum_denom_const` — the inner sum `∑ q ∈ orbit(α), monomialIntegral (p + q)` is the SAME
+   for every `p ∈ orbit(α)`. Proof: `monomialIntegral ((α∘σ) + q) = monomialIntegral (α + q∘σ⁻¹)`
+   — apply `monomialIntegral_comp_perm` with `σ⁻¹`, so the `α∘σ` cancels to `α` while `q` picks up
+   `∘σ⁻¹` — then reindex the `q`-sum by the orbit bijection `q ↦ q∘σ⁻¹` (`Finset.sum_bij'` with
+   inverse `q ↦ q∘σ`; the orbit is closed since `(α∘ρ)∘σ⁻¹ = α∘(ρ*σ⁻¹)`).
+2. ⟹ `polynomialMaynardDenominator (orbitSum α) = (orbit.card) • (inner sum at a fixed rep)`, and
+   the analogous numerator reduction via `dirichletIntegralWithSlack_removeNth_comp_perm`.
+3. The cross-orbit overlap count (the genuine combinatorial kernel): collapse
+   `∑ over orbit(λ) × orbit(μ)` to `(1/aut)·∑_M ff(k,T)·W(M)` grouped by overlap pattern `M`
+   (a partial matching of `λ`-parts to `μ`-parts sharing a slot), with `ff(k,T) = k.descFactorial T`
+   (`placement_count`). Validated Python prototype: `tools/mk/mk_sym.py`; full plan + the exact
+   reaches-4 table (deg ≤ 8 < 4 at k=50,54 ⟹ witness degree ≥ 9) in `tools/mk/SYMMETRIC_REDUCTION.md`.
+-/
+
 end BoundedGaps.SymmetricReduction
