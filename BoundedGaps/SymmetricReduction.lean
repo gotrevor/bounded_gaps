@@ -717,6 +717,58 @@ theorem card_jointType_eq_prod_multinomial (g : ι → B) (X : V → B → ℕ)
 
 end FiberProduct
 
+/-! ## (f) The contingency-table assembly for the cross-orbit core `S(α,β)`
+
+The cross-orbit core `S(α,β) = ∑_{p∈monoOrbit α} ∏ᵢ (pᵢ+βᵢ)!` is regrouped by the **joint
+type** of `p` against the fixed `β` — recorded as the multiset of value-pairs
+`jointMultiset β p = {(pᵢ, βᵢ)}ᵢ`. The summand depends on `p` only through this multiset
+(`prodFactorial_eq_jointWeight`), so `Finset.sum_fiberwise_of_maps_to` collapses the orbit
+sum to a sum over the *distinct* joint multisets, weighted by the fiber count:
+
+  `S(α,β) = ∑_X (#{p∈monoOrbit α : jointMultiset β p = X}) · jointWeight X`.
+
+This is step (f1) of the design doc (`tools/mk/SYMMETRIC_REDUCTION.md`). Step (f2) — the
+remaining piece — evaluates the fiber count as a product of multinomials by the
+value-restriction bridge to `card_jointType_eq_prod_multinomial`. -/
+
+/-- The **joint multiset** of a coordinate vector `p` against a fixed companion `β`: the
+multiset of value-pairs `(pᵢ, βᵢ)` over all `k` slots. Two vectors share this multiset iff
+they have the same joint histogram (contingency table) against `β`. Used as the fiber key
+that regroups the cross-orbit core `S(α,β)`. -/
+def jointMultiset {k : ℕ} (β p : MultiIndex k) : Multiset (ℕ × ℕ) :=
+  Multiset.map (fun i => (p i, β i)) Finset.univ.val
+
+/-- The **weight** attached to a joint multiset `X`: the product of `(c+b)!` over its
+value-pairs `(c,b)`. With `X = jointMultiset β p` this is exactly the cross-orbit summand
+`∏ᵢ (pᵢ+βᵢ)!` (`prodFactorial_eq_jointWeight`). -/
+noncomputable def jointWeight (X : Multiset (ℕ × ℕ)) : ℚ :=
+  (X.map (fun cb => ((cb.1 + cb.2).factorial : ℚ))).prod
+
+/-- The cross-orbit summand `∏ᵢ (pᵢ+βᵢ)!` depends on `p` only through its joint multiset
+against `β`: it equals `jointWeight (jointMultiset β p)`. (A product over `Fin k` is the
+multiset product over the mapped pairs.) -/
+theorem prodFactorial_eq_jointWeight {k : ℕ} (β p : MultiIndex k) :
+    (∏ i, ((p i + β i).factorial : ℚ)) = jointWeight (jointMultiset β p) := by
+  unfold jointWeight jointMultiset; rw [Multiset.map_map]; rfl
+
+/-- **(f1) The cross-orbit core as a weighted sum over joint types.** Regrouping
+`S(α,β) = ∑_{p∈monoOrbit α} ∏ᵢ (pᵢ+βᵢ)!` by the joint multiset `jointMultiset β p` collapses
+it to a sum over the *distinct* joint types `X`, each weighted by its fiber count
+`#{p∈monoOrbit α : jointMultiset β p = X}` times `jointWeight X`. The summand is constant on
+each fiber (`prodFactorial_eq_jointWeight`); the regrouping is `sum_fiberwise_of_maps_to`. -/
+theorem orbitCore_eq_jointType_sum {k : ℕ} (α β : MultiIndex k) :
+    ∑ p ∈ monoOrbit α, (∏ i, ((p i + β i).factorial : ℚ))
+      = ∑ X ∈ (monoOrbit α).image (jointMultiset β),
+          (((monoOrbit α).filter (fun p => jointMultiset β p = X)).card : ℚ) * jointWeight X := by
+  have hmaps : ∀ p ∈ monoOrbit α, jointMultiset β p ∈ (monoOrbit α).image (jointMultiset β) :=
+    fun p hp => Finset.mem_image_of_mem _ hp
+  rw [← Finset.sum_fiberwise_of_maps_to hmaps (fun p => ∏ i, ((p i + β i).factorial : ℚ))]
+  refine Finset.sum_congr rfl (fun X _ => ?_)
+  have hconst : ∀ p ∈ (monoOrbit α).filter (fun p => jointMultiset β p = X),
+      (∏ i, ((p i + β i).factorial : ℚ)) = jointWeight X := fun p hp => by
+    rw [prodFactorial_eq_jointWeight β p, (Finset.mem_filter.mp hp).2]
+  rw [Finset.sum_congr rfl hconst, Finset.sum_const, nsmul_eq_mul]
+
 /-! ## Status + next obligations toward the matching closed form
 
 DONE (this file, axiom-clean): the symmetric-subspace foundations (`orbitSum`,
