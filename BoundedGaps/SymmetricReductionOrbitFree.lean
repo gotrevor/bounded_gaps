@@ -121,17 +121,112 @@ theorem table_realized_in_orbit (T : CTable α β)
       = tableToMultiset α β T := by
   sorry
 
+/-- The **total clamped inverse**: read a table off any multiset (entries clamped to
+`≤ k` so they land in `Fin (k+1)`). On realized multisets the clamp is inactive. -/
+def multisetToTable (X : Multiset (ℕ × ℕ)) : CTable α β :=
+  fun v b => ⟨min (X.count (v.val, b.val)) k,
+    lt_of_le_of_lt (min_le_right _ _) (Nat.lt_succ_self k)⟩
+
+/-- On a realized multiset the clamp does nothing, so `multisetToTable` recovers
+`orbitTable` (counts are `≤ k`). -/
+lemma multisetToTable_jointMultiset (p : MultiIndex k) :
+    multisetToTable α β (jointMultiset β p) = orbitTable α β p := by
+  funext v b
+  refine Fin.ext ?_
+  simp only [multisetToTable, orbitTable]
+  exact min_eq_left ((Multiset.count_le_card _ _).trans (jointMultiset_card β p).le)
+
+/-- **Table roundtrip** (unconditional): reading a table off the multiset it names
+recovers the table. Entries `≤ k` (they are `Fin (k+1)`), so the clamp is inactive. -/
+lemma multisetToTable_tableToMultiset (T : CTable α β) :
+    multisetToTable α β (tableToMultiset α β T) = T := by
+  funext v b
+  refine Fin.ext ?_
+  simp only [multisetToTable]
+  rw [tableToMultiset_count_mem]
+  exact min_eq_left (Nat.lt_succ_iff.mp (T v b).isLt)
+
+/-- The multiset named by a table has no mass off the value sets of α (rows) and β
+(columns). -/
+lemma tableToMultiset_count_not_mem (T : CTable α β) (c d : ℕ)
+    (h : c ∉ univ.image α ∨ d ∉ univ.image β) :
+    (tableToMultiset α β T).count (c, d) = 0 := by
+  unfold tableToMultiset
+  rw [Multiset.count_sum']
+  apply Finset.sum_eq_zero; intro v _
+  rw [Multiset.count_sum']
+  apply Finset.sum_eq_zero; intro b _
+  rw [Multiset.count_replicate, if_neg]
+  intro heq
+  rw [Prod.mk.injEq] at heq
+  rcases h with h | h
+  · exact h (heq.1 ▸ v.2)
+  · exact h (heq.2 ▸ b.2)
+
+/-- The joint multiset of an `image α`-valued vector has no mass off α's and β's value
+sets. -/
+lemma jointMultiset_count_zero (p : MultiIndex k) (hp : ∀ i, p i ∈ univ.image α)
+    (c d : ℕ) (h : c ∉ univ.image α ∨ d ∉ univ.image β) :
+    (jointMultiset β p).count (c, d) = 0 := by
+  rw [jointMultiset_count_eq, Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+  rintro i _ ⟨h1, h2⟩
+  rcases h with h | h
+  · exact h (h1 ▸ hp i)
+  · exact h (h2 ▸ Finset.mem_image_of_mem β (Finset.mem_univ i))
+
+/-- **Realized roundtrip**: for an `image α`-valued vector, the multiset named by its
+table is the original joint multiset. The non-trivial direction of the bijection's
+inverse on the orbit-image side. -/
+lemma tableToMultiset_orbitTable (p : MultiIndex k) (hp : ∀ i, p i ∈ univ.image α) :
+    tableToMultiset α β (orbitTable α β p) = jointMultiset β p := by
+  ext ⟨c, d⟩
+  by_cases hc : c ∈ univ.image α
+  · by_cases hd : d ∈ univ.image β
+    · have hrw : ((c, d) : ℕ × ℕ)
+          = ((⟨c, hc⟩ : ↥(univ.image α)).val, (⟨d, hd⟩ : ↥(univ.image β)).val) := rfl
+      rw [hrw, tableToMultiset_count_mem]
+      simp only [orbitTable]
+    · rw [tableToMultiset_count_not_mem α β _ c d (Or.inr hd),
+          jointMultiset_count_zero α β p hp c d (Or.inr hd)]
+  · rw [tableToMultiset_count_not_mem α β _ c d (Or.inl hc),
+        jointMultiset_count_zero α β p hp c d (Or.inl hc)]
+
 /-- **Orbit-free cross-orbit core closed form.** The same value as
 `orbitCore_eq_multinomial_sum`, re-indexed over the margin-correct tables. The summand
 is fully computable: a product of multinomials in the table entries times the factorial
-weight `∏_{v,b} ((v+b)!)^{T v b}`. -/
+weight `∏_{v,b} ((v+b)!)^{T v b}`. Modulo `table_realized_in_orbit` (Aristotle). -/
 theorem orbitCore_eq_multinomial_sum_orbitFree :
     ∑ p ∈ monoOrbit α, (∏ i, ((p i + β i).factorial : ℚ))
       = ∑ T ∈ MarginCorrectTables α β,
           (∏ b : ↥(univ.image β), (Nat.multinomial univ
               (fun v : ↥(univ.image α) => (T v b : ℕ)) : ℚ))
             * jointWeight (tableToMultiset α β T) := by
-  sorry
+  classical
+  rw [orbitCore_eq_multinomial_sum]
+  refine Finset.sum_bij'
+    (i := fun X _ => multisetToTable α β X)
+    (j := fun T _ => tableToMultiset α β T) ?_ ?_ ?_ ?_ ?_
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    dsimp only
+    rw [multisetToTable_jointMultiset]
+    exact orbitTable_mem α β p hp
+  · intro T hT
+    obtain ⟨p, hp, heq⟩ := table_realized_in_orbit α β T hT
+    exact Finset.mem_image.mpr ⟨p, hp, heq⟩
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    dsimp only
+    rw [multisetToTable_jointMultiset]
+    exact tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)
+  · intro T _
+    exact multisetToTable_tableToMultiset α β T
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    dsimp only
+    rw [multisetToTable_jointMultiset,
+        tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)]
+    simp only [orbitTable]
 
 end OrbitFree
 
