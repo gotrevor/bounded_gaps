@@ -468,6 +468,50 @@ lemma numerator_combinatorial_factored {n : ℕ} (α β : MultiIndex (n + 1)) :
   refine Finset.sum_congr rfl (fun q _ => ?_)
   rw [Finset.mul_sum]
 
+/-- The **marked-cell sum** attached to a joint multiset `X`: `∑_{(c,b)∈X} markedCellFactor c b`.
+With `X = jointMultiset q p = {(pᵢ,qᵢ)}ᵢ` this is exactly `∑ᵢ markedCellFactor(pᵢ,qᵢ)`
+(`markedSum_jointMultiset`). The numerator analog of `jointWeight`. -/
+def markedSum (X : Multiset (ℕ × ℕ)) : ℚ :=
+  (X.map (fun cb => markedCellFactor cb.1 cb.2)).sum
+
+/-- The **numerator pair weight** of a joint multiset `X`: `jointWeight X · markedSum X`. With
+`X = jointMultiset q p` this is the full per-orbit-pair numerator summand
+(`numerator_summand_eq_pairWeight`). The numerator analog of `jointWeight` for the denominator. -/
+noncomputable def pairWeight (X : Multiset (ℕ × ℕ)) : ℚ := jointWeight X * markedSum X
+
+/-- The marked-cell sum over coordinates depends on `(p,q)` only through the pair multiset
+`jointMultiset q p = {(pᵢ,qᵢ)}ᵢ`. (A sum over `Fin k` is the multiset sum over the mapped
+marked factors.) Mirror of `prodFactorial_eq_jointWeight`. -/
+lemma markedSum_jointMultiset {k : ℕ} (p q : MultiIndex k) :
+    (∑ i, markedCellFactor (p i) (q i)) = markedSum (jointMultiset q p) := by
+  unfold markedSum jointMultiset
+  rw [Multiset.map_map]
+  rfl
+
+/-- The factored numerator summand `(∏ₘ(p+q)ₘ!) · ∑ᵢ markedCellFactor(pᵢ,qᵢ)` equals
+`pairWeight (jointMultiset q p)` — i.e. it depends on `(p,q)` only through the pair multiset.
+This is the bridge that lets the double orbit sum regroup over the (p,q) joint type. -/
+lemma numerator_summand_eq_pairWeight {k : ℕ} (p q : MultiIndex k) :
+    (∏ m, (((p + q) m).factorial : ℚ)) * (∑ i, markedCellFactor (p i) (q i))
+      = pairWeight (jointMultiset q p) := by
+  unfold pairWeight
+  rw [markedSum_jointMultiset, ← prodFactorial_eq_jointWeight q p]
+  simp only [Pi.add_apply]
+
+/-- **Numerator combinatorial sum as a pair-weighted double orbit sum.** Combining
+`numerator_combinatorial_factored` with the multiset bridge: the combinatorial numerator
+(the triple sum from `orbitPair_numerator_eq`) is `∑_{p∈orbit α}∑_{q∈orbit β} pairWeight(jointMultiset q p)`.
+The summand is now a pure function of the (p,q) joint type, ready for the orbit-free re-index. -/
+lemma numerator_combinatorial_pairWeight {n : ℕ} (α β : MultiIndex (n + 1)) :
+    (∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+        (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+          ((∏ j, ((Fin.removeNth i (p + q) j).factorial : ℚ))
+            * ((p i + q i + 2).factorial : ℚ)))
+      = ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, pairWeight (jointMultiset q p) := by
+  rw [numerator_combinatorial_factored]
+  exact Finset.sum_congr rfl (fun p _ =>
+    Finset.sum_congr rfl (fun q _ => numerator_summand_eq_pairWeight p q))
+
 end OrbitFree
 
 end BoundedGaps
