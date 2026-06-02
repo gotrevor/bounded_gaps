@@ -512,6 +512,30 @@ lemma numerator_combinatorial_pairWeight {n : ℕ} (α β : MultiIndex (n + 1)) 
   exact Finset.sum_congr rfl (fun p _ =>
     Finset.sum_congr rfl (fun q _ => numerator_summand_eq_pairWeight p q))
 
+/-- **Pair-orbit regrouping (abstract count).** Any function `F` of the pair multiset
+`jointMultiset q p = {(pᵢ,qᵢ)}ᵢ`, summed over the full orbit pair `monoOrbit α × monoOrbit β`,
+regroups over the *distinct* pair multisets `X`, each weighted by the pair-fiber count
+`#{(p,q) : jointMultiset q p = X}`. The numerator analog of `orbitCore_eq_jointType_sum`, but
+over the product of two orbits. Proof: combine the double sum over the product
+(`Finset.sum_product`), then `Finset.sum_fiberwise_of_maps_to` (the summand is constant on each
+fiber by definition of `X`). -/
+lemma pairOrbit_regroup {k : ℕ} (α β : MultiIndex k) (F : Multiset (ℕ × ℕ) → ℚ) :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, F (jointMultiset q p)
+      = ∑ X ∈ (monoOrbit α ×ˢ monoOrbit β).image (fun pq => jointMultiset pq.2 pq.1),
+          (((monoOrbit α ×ˢ monoOrbit β).filter
+              (fun pq => jointMultiset pq.2 pq.1 = X)).card : ℚ) * F X := by
+  rw [← Finset.sum_product']
+  have hmaps : ∀ pq ∈ monoOrbit α ×ˢ monoOrbit β,
+      jointMultiset pq.2 pq.1
+        ∈ (monoOrbit α ×ˢ monoOrbit β).image (fun pq => jointMultiset pq.2 pq.1) :=
+    fun pq hpq => Finset.mem_image_of_mem _ hpq
+  rw [← Finset.sum_fiberwise_of_maps_to hmaps (fun pq => F (jointMultiset pq.2 pq.1))]
+  refine Finset.sum_congr rfl (fun X _ => ?_)
+  have hconst : ∀ pq ∈ (monoOrbit α ×ˢ monoOrbit β).filter
+      (fun pq => jointMultiset pq.2 pq.1 = X),
+      F (jointMultiset pq.2 pq.1) = F X := fun pq hpq => by rw [(Finset.mem_filter.mp hpq).2]
+  rw [Finset.sum_congr rfl hconst, Finset.sum_const, nsmul_eq_mul]
+
 end OrbitFree
 
 end BoundedGaps
