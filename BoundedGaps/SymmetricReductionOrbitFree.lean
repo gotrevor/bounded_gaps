@@ -843,6 +843,47 @@ theorem numerator_orbitFree :
     rw [← hround,
         pair_fiber_card_eq_multinomial α β (orbitTable α β p) (orbitTable_mem α β p hp)]
 
+/-- **Fully orbit-free cross-orbit numerator matrix entry.** The full off-diagonal orbit-pair
+numerator (the marked-coordinate triple sum of `dirichletIntegralWithSlack`) equals the
+orbit-free contingency-table sum over `MarginCorrectTables`, divided by the constant factorial
+`(n+1+|α|+|β|+1)!`. Chains `orbitPair_numerator_eq` (factor out the constant Dirichlet
+denominator), `numerator_combinatorial_pairWeight` (regroup the marked sum into the pair weight),
+and `numerator_orbitFree` (the (p,q)-joint-type re-index). Unlike the denominator, no orbit
+cardinality factor survives: the numerator regroups over the full joint type, so the q-collapse
+is never used. The right-hand side has **no** `monoOrbit` — every object is computable from the
+shapes of α and β. -/
+theorem orbitPair_numerator_orbitFree {n : ℕ} (α β : MultiIndex (n + 1)) :
+    (∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+        (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+          dirichletIntegralWithSlack (Fin.removeNth i (p + q)) (p i + q i + 2))
+      = (∑ T ∈ MarginCorrectTables α β,
+            (Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+                (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+              * pairWeight (tableToMultiset α β T))
+          / (((n + 1) + α.degree + β.degree + 1).factorial : ℚ) := by
+  rw [orbitPair_numerator_eq, numerator_combinatorial_pairWeight, numerator_orbitFree]
+
+/-- Computable twin of `pairWeight` (the library's `jointWeight` factor is gratuitously
+`noncomputable`; `markedSum` is already computable). `= pairWeight` by `rfl`. -/
+def pairWeightC (X : Multiset (ℕ × ℕ)) : ℚ := jointWeightC X * markedSum X
+
+@[simp] lemma pairWeightC_eq (X : Multiset (ℕ × ℕ)) : pairWeightC X = pairWeight X := rfl
+
+/-- **`native_decide`-ready numerator matrix entry.** `orbitPair_numerator_orbitFree` restated
+with the computable `pairWeightC`. Every operation on the right reduces in the kernel: the
+Fintype-enumerated `MarginCorrectTables`, `Nat.multinomial`, `tableToMultiset`, and `pairWeightC`.
+(Defeq to the shape-form, since `pairWeightC = pairWeight`.) -/
+theorem orbitPair_numerator_computable {n : ℕ} (α β : MultiIndex (n + 1)) :
+    (∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+        (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+          dirichletIntegralWithSlack (Fin.removeNth i (p + q)) (p i + q i + 2))
+      = (∑ T ∈ MarginCorrectTables α β,
+            (Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+                (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+              * pairWeightC (tableToMultiset α β T))
+          / (((n + 1) + α.degree + β.degree + 1).factorial : ℚ) :=
+  orbitPair_numerator_orbitFree α β
+
 end OrbitFree
 
 end BoundedGaps
