@@ -172,6 +172,50 @@ lemma dirichletSlack_removeNth_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (i :
   simp only [Pi.add_apply]
   field_simp
 
+/-- The **ε-constant factor** of binomial index `m` at joint-type degree `d = |p+q|`:
+`(2ε)^m·(1-ε)^{n+d+2-m}/(n+d+2-m)!`. Depends on `(p,q)` only through `d` (constant per joint
+type), not the marked cell. -/
+noncomputable def affineConstFactor (n d m : ℕ) (ε : ℚ) : ℚ :=
+  (2 * ε) ^ m * (1 - ε) ^ (n + d + 2 - m) / ((n + d + 2 - m).factorial : ℚ)
+
+/-- The **ε-local cell factor** of binomial index `m` at marked cell `(a,b) = (pᵢ,qᵢ)`:
+`C(a+b+2,m)·(a+b+2-m)!/(a+b)!`. Depends on `(p,q)` only through the marked cell. -/
+noncomputable def affineLocalFactor (a b m : ℕ) : ℚ :=
+  ((Nat.choose (a + b + 2) m : ℚ)) * ((a + b + 2 - m).factorial : ℚ) / ((a + b).factorial : ℚ)
+
+/-- **ε-`affineSlackRat` factored over the marked coordinate.** `affineSlackRat(removeNthᵢ(p+q),
+pᵢ+qᵢ+2, ε)` is the joint-type product `∏ⱼ(p+q)ⱼ!` times a sum over the binomial index `m` of a
+joint-type-degree-constant factor `affineConstFactor` and a marked-cell-local factor
+`affineLocalFactor`. The full ε-analog of `numerator_summand_factor` (the `m=0` term is the non-ε
+case). The `(pᵢ+qᵢ)` cancellation (`dirichletSlack_removeNth_factor`) is what makes the const
+factor cell-independent. -/
+lemma affineSlackRat_removeNth_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (i : Fin (n + 1)) (ε : ℚ) :
+    affineSlackRat (Fin.removeNth i (p + q)) (p i + q i + 2) ε
+      = (∏ j, (((p + q) j).factorial : ℚ)) *
+          ∑ m ∈ Finset.range (p i + q i + 2 + 1),
+            affineConstFactor n (∑ j, (p + q) j) m ε * affineLocalFactor (p i) (q i) m := by
+  have hcd : (p i + q i) ≤ ∑ j, (p + q) j := by
+    have := Finset.single_le_sum (f := fun j => (p + q) j) (fun j _ => Nat.zero_le _)
+      (Finset.mem_univ i)
+    simpa [Pi.add_apply] using this
+  unfold affineSlackRat
+  rw [sum_removeNth_add p q i, Finset.mul_sum, Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun m hm => ?_)
+  have hm2 : m ≤ p i + q i + 2 := by
+    rw [Finset.mem_range] at hm; omega
+  rw [dirichletSlack_removeNth_factor p q i (p i + q i + 2 - m)]
+  have hexp : n + ((∑ j, (p + q) j) - (p i + q i)) + (p i + q i + 2 - m)
+      = n + (∑ j, (p + q) j) + 2 - m := by omega
+  have hpow : (1 - ε) ^ (n + (∑ j, (p + q) j) + 2 - m)
+      = (1 - ε) ^ (n + ((∑ j, (p + q) j) - (p i + q i))) * (1 - ε) ^ (p i + q i + 2 - m) := by
+    rw [← pow_add]; congr 1; omega
+  unfold affineConstFactor affineLocalFactor
+  rw [hexp, hpow]
+  have hne : ((p i + q i).factorial : ℚ) ≠ 0 := by exact_mod_cast (Nat.factorial_pos _).ne'
+  have hne2 : ((n + (∑ j, (p + q) j) + 2 - m).factorial : ℚ) ≠ 0 := by
+    exact_mod_cast (Nat.factorial_pos _).ne'
+  field_simp
+
 end OrbitFree
 
 end BoundedGaps
