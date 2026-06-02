@@ -234,6 +234,41 @@ lemma eps_summand_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (ε : ℚ) :
   rw [affineSlackRat_removeNth_factor p q i ε]
   ring
 
+/-- The **per-cell ε numerator factor** at marked cell `cb = (a,b)`, joint-type degree `d`:
+`1/((a+1)(b+1))·∑ₘ affineConstFactor·affineLocalFactor`. The ε-analog of `markedCellFactor`. -/
+noncomputable def epsMarkedCell (n d : ℕ) (cb : ℕ × ℕ) (ε : ℚ) : ℚ :=
+  (1 : ℚ) / (((cb.1 + 1 : ℕ) : ℚ) * ((cb.2 + 1 : ℕ) : ℚ)) *
+    ∑ m ∈ Finset.range (cb.1 + cb.2 + 2 + 1),
+      affineConstFactor n d m ε * affineLocalFactor cb.1 cb.2 m
+
+/-- The **ε numerator pair weight** of a joint multiset `X` at degree `d`: `jointWeight X` times the
+multiset sum of `epsMarkedCell`. The ε-analog of `pairWeight`; for an orbit pair `d = |α|+|β|`. -/
+noncomputable def epsPairWeight (n d : ℕ) (X : Multiset (ℕ × ℕ)) (ε : ℚ) : ℚ :=
+  jointWeight X * (X.map (fun cb => epsMarkedCell n d cb ε)).sum
+
+/-- **ε-numerator per-(p,q) summand = ε pair weight of the joint multiset.** For an orbit pair
+(`p∈orbit α`, `q∈orbit β`, so `|p+q| = |α|+|β|`), the marked sum depends on `(p,q)` only through
+`jointMultiset q p`, equalling `epsPairWeight` at the constant degree `|α|+|β|`. The ε-analog of
+`numerator_summand_eq_pairWeight` — the bridge that lets the ε double orbit sum regroup over the
+(p,q) joint type. -/
+lemma eps_numerator_summand_eq_pairWeight {n : ℕ} (α β : MultiIndex (n + 1)) (ε : ℚ)
+    {p q : MultiIndex (n + 1)} (hp : p ∈ monoOrbit α) (hq : q ∈ monoOrbit β) :
+    (∑ i, (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+        affineSlackRat (Fin.removeNth i (p + q)) (p i + q i + 2) ε)
+      = epsPairWeight n (α.degree + β.degree) (jointMultiset q p) ε := by
+  rw [eps_summand_factor p q ε]
+  have hdeg : (∑ j, (p + q) j) = α.degree + β.degree := by
+    simp only [Pi.add_apply, Finset.sum_add_distrib]
+    rw [monoOrbit_mem_degree α hp, monoOrbit_mem_degree β hq]
+  rw [hdeg]
+  unfold epsPairWeight
+  rw [← prodFactorial_eq_jointWeight q p]
+  simp only [Pi.add_apply]
+  congr 1
+  unfold epsMarkedCell jointMultiset
+  rw [Multiset.map_map]
+  rfl
+
 end OrbitFree
 
 end BoundedGaps
