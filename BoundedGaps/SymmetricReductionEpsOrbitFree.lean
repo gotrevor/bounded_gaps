@@ -313,6 +313,22 @@ theorem eps_numerator_orbitFree {n : ℕ} (α β : MultiIndex (n + 1)) (ε : ℚ
     rw [← hround,
         pair_fiber_card_eq_multinomial α β (orbitTable α β p) (orbitTable_mem α β p hp)]
 
+/-- **Orbit-free cross ε-numerator Gram entry.** Combining `crossNumerator_eps_orbitSum` (reorder
+the marked `∑ᵢ` inward), the summand bridge `eps_numerator_summand_eq_pairWeight`, and the
+orbit-free re-index `eps_numerator_orbitFree`: the ε-numerator Gram entry of the orbit basis is the
+`MarginCorrectTables` sum with `epsPairWeight`. No `monoOrbit`. -/
+theorem crossNumerator_eps_orbitSum_orbitFree {n : ℕ} (α β : MultiIndex (n + 1)) (ε : ℚ) :
+    crossNumerator_eps (orbitSum α) (orbitSum β) ε
+      = ∑ T ∈ MarginCorrectTables α β,
+          (Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+              (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+            * epsPairWeight n (α.degree + β.degree) (tableToMultiset α β T) ε := by
+  rw [crossNumerator_eps_orbitSum, Finset.sum_comm, ← eps_numerator_orbitFree α β ε]
+  refine Finset.sum_congr rfl (fun p hp => ?_)
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun q hq => ?_)
+  exact eps_numerator_summand_eq_pairWeight α β ε hp hq
+
 end OrbitFree
 
 end BoundedGaps
