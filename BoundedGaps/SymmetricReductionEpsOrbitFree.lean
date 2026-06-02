@@ -399,6 +399,31 @@ theorem mk_eps_50_witness_of_symWeight (R : Finset (MultiIndex (49 + 1)))
   rw [gt_iff_lt, show (2 : ℝ) / (ϑ : ℝ) = ((2 / ϑ : ℚ) : ℝ) by push_cast; ring]
   exact_mod_cast hwit
 
+/-- **Generic computable ε-`Mk_eps` lower bound.** For any `k = n+1` and rational `0 ≤ ε < 1`, a
+symmetric weight whose computable ε Gram quotient exceeds a rational `cthr` certifies `Mk_eps (n+1)
+ε > cthr`. The ε-analog of `Mk_gt_of_symWeight_witness_computable`; `mk_eps_50_witness_of_symWeight`
+is the `k=50`, `cthr=2/ϑ` packaging. -/
+theorem Mk_eps_gt_of_symWeight_witness_computable {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ) (ε cthr : ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (hε0 : (0 : ℚ) ≤ ε) (hε1 : ε < 1)
+    (hwit : cthr <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryEps a b ε)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryEps a b ε)) :
+    Sieve.Mk_eps (n + 1) (ε : ℝ) > (cthr : ℝ) := by
+  apply Mk_eps_gt_of_polynomial_witness (symWeight R c) (by exact_mod_cast hε0)
+    (by exact_mod_cast hε1)
+  rw [polynomialMkF_eps_symWeight_computable R c ε hR]
+  exact_mod_cast hwit
+
+/-- **End-to-end ε validation** (regression guard): `Mk_eps 3 (1/10) > 1` through the whole ε
+pipeline, with both `native_decide`s firing (histogram `hR` and the ε Gram quotient ≈ 1.048). The
+same two `native_decide`s the `k=50` ε-endgame needs. -/
+example : Sieve.Mk_eps 3 (((1 / 10 : ℚ) : ℝ)) > (((1 : ℚ) : ℝ)) := by
+  exact Mk_eps_gt_of_symWeight_witness_computable (n := 2)
+    ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1) (1 / 10) 1
+    (disjoint_of_histogram _ (by native_decide)) (by norm_num) (by norm_num) (by native_decide)
+
 end OrbitFree
 
 end BoundedGaps
