@@ -21,6 +21,7 @@ import BoundedGaps.Targets
 import BoundedGaps.SievePolynomial
 import BoundedGaps.SimplexCutoff
 import BoundedGaps.SymmetricReduction
+import BoundedGaps.SymmetricReductionFiberAlt
 import BoundedGaps.EpsScaling
 import BoundedGaps.EpsBridge
 import BoundedGaps.SymmetricReductionEps
