@@ -350,6 +350,39 @@ theorem orbitPair_denominator_shapeForm :
           / ((k + α.degree + β.degree).factorial : ℚ) := by
   rw [orbitPair_denominator_orbitFree, monoOrbit_card_eq_multinomial]
 
+/-- **Cross-orbit numerator: factor out the constant Dirichlet denominator.** The
+numerator analog of `orbitPair_denominator_eq`. Each summand's
+`dirichletIntegralWithSlack (removeNth i (p+q)) (pᵢ+qᵢ+2)` has denominator
+`(n + ∑ⱼ(removeNthᵢ(p+q))ⱼ + (pᵢ+qᵢ+2))!`, which collapses to the **constant**
+`(n+1+|α|+|β|+1)!` for every `i` and every orbit pair (the `removeNth`-sum plus the
+slack exponent restores the full degree). So the whole cross-orbit numerator sum is the
+purely combinatorial numerator over that single factorial. -/
+lemma orbitPair_numerator_eq {n : ℕ} (α β : MultiIndex (n + 1)) :
+    ∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+        (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+          dirichletIntegralWithSlack (Fin.removeNth i (p + q)) (p i + q i + 2)
+      = (∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+          (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+            ((∏ j, ((Fin.removeNth i (p + q) j).factorial : ℚ))
+              * ((p i + q i + 2).factorial : ℚ)))
+        / (((n + 1) + α.degree + β.degree + 1).factorial : ℚ) := by
+  rw [Finset.sum_div]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [Finset.sum_div]
+  refine Finset.sum_congr rfl (fun p hp => ?_)
+  rw [Finset.sum_div]
+  refine Finset.sum_congr rfl (fun q hq => ?_)
+  have hsucc : (∑ m, (p + q) m) = (p + q) i + ∑ j, (Fin.removeNth i (p + q)) j :=
+    Fin.sum_univ_succAbove (p + q) i
+  have hdeg : (∑ m, (p m + q m)) = α.degree + β.degree := by
+    rw [Finset.sum_add_distrib, monoOrbit_mem_degree α hp, monoOrbit_mem_degree β hq]
+  simp only [Pi.add_apply] at hsucc
+  have harg : n + (∑ j, (Fin.removeNth i (p + q)) j) + (p i + q i + 2)
+      = (n + 1) + α.degree + β.degree + 1 := by omega
+  unfold dirichletIntegralWithSlack
+  rw [harg]
+  ring
+
 end OrbitFree
 
 end BoundedGaps
