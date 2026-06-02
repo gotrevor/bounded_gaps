@@ -67,6 +67,76 @@ theorem polynomialMaynardDenominator_eps_symWeight {k : ℕ} (R : Finset (MultiI
   refine Finset.sum_congr rfl (fun v _ => ?_)
   rw [Finset.mul_sum]
 
+/-! ## ε-numerator Gram bilinear structure
+
+The ε-numerator is bilinear in the terms (like the non-ε one), so the Gram expansion over the
+orbit basis follows from `symWeight_double_sum` regardless of whether the entry is yet orbit-free.
+The entry's `native_decide`-ready closed form (the `affineSlackRat` orbit-free re-index) is the
+remaining TODO; this layer is the structural scaffold for it. -/
+
+/-- The **cross ε-numerator** of two weights (`k = n+1`): the marked-coordinate triple sum of
+`affineSlackRat`. `= polynomialMaynardNumerator_eps P ε` on the diagonal. -/
+noncomputable def crossNumerator_eps {n : ℕ} (P Q : PolynomialSieveWeight (n + 1)) (ε : ℚ) : ℚ :=
+  ∑ i : Fin (n + 1), ∑ p ∈ P.terms, ∑ q ∈ Q.terms,
+    (p.2 * q.2 / (((p.1 i + 1 : ℕ) : ℚ) * ((q.1 i + 1 : ℕ) : ℚ))) *
+      affineSlackRat (Fin.removeNth i (p.1 + q.1)) (p.1 i + q.1 i + 2) ε
+
+/-- **Cross ε-numerator entry = orbit-pair marked `affineSlackRat` sum.** -/
+lemma crossNumerator_eps_orbitSum {n : ℕ} (α β : MultiIndex (n + 1)) (ε : ℚ) :
+    crossNumerator_eps (orbitSum α) (orbitSum β) ε
+      = ∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+          (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+            affineSlackRat (Fin.removeNth i (p + q)) (p i + q i + 2) ε := by
+  unfold crossNumerator_eps
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [orbitSum_terms, Finset.sum_image (fun _ _ _ _ h => congrArg Prod.fst h)]
+  refine Finset.sum_congr rfl (fun pm _ => ?_)
+  rw [orbitSum_terms, Finset.sum_image (fun _ _ _ _ h => congrArg Prod.fst h)]
+  refine Finset.sum_congr rfl (fun qm _ => ?_)
+  simp
+
+/-- **Bilinear (Gram) expansion of the ε-numerator.** The ε-Maynard numerator of a symmetric
+weight is the orbit-basis quadratic form `∑_{a,b∈R} c_a c_b · crossNumerator_eps (orbitSum a)
+(orbitSum b) ε`. The ε-analog of `polynomialMaynardNumerator_symWeight`. -/
+theorem polynomialMaynardNumerator_eps_symWeight {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ) (ε : ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b)) :
+    polynomialMaynardNumerator_eps (symWeight R c) ε
+      = ∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator_eps (orbitSum a) (orbitSum b) ε := by
+  classical
+  simp only [polynomialMaynardNumerator_eps]
+  rw [Finset.sum_congr rfl (fun i (_ : i ∈ (Finset.univ : Finset (Fin (n + 1)))) =>
+        symWeight_double_sum R c hR
+          (fun p q => (p.2 * q.2 / (((p.1 i + 1 : ℕ) : ℚ) * ((q.1 i + 1 : ℕ) : ℚ))) *
+            affineSlackRat (Fin.removeNth i (p.1 + q.1)) (p.1 i + q.1 i + 2) ε))]
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun a ha => ?_)
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun b hb => ?_)
+  rw [crossNumerator_eps_orbitSum, Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun v _ => ?_)
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun w _ => ?_)
+  dsimp only
+  ring
+
+/-- **Symmetric ε-Maynard ratio as a Gram quotient.** `polynomialMkF_eps (symWeight R c) ε` in the
+orbit basis. The denominator side is fully computable (`gramDenEntryEps`); the numerator side waits
+on the `crossNumerator_eps` orbit-free re-index (TODO). The ε-analog of `polynomialMkF_symWeight`,
+and the object whose `> 2/ϑ` (via `EpsBridge.mk_eps_50_witness_of_poly`) discharges
+`mk_eps_50_witness` → unconditional `H₁ ≤ 246`. -/
+theorem polynomialMkF_eps_symWeight {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ) (ε : ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b)) :
+    polynomialMkF_eps (symWeight R c) ε
+      = (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator_eps (orbitSum a) (orbitSum b) ε)
+          / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryEps a b ε) := by
+  unfold polynomialMkF_eps
+  rw [polynomialMaynardNumerator_eps_symWeight R c ε hR,
+      polynomialMaynardDenominator_eps_symWeight R c ε hR]
+
 end OrbitFree
 
 end BoundedGaps
