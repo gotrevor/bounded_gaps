@@ -1278,6 +1278,21 @@ theorem mk_54_witness_under_EH_of_symWeight_computable (R : Finset (MultiIndex (
     ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 2 * 2 / ϑ :=
   exists_theta_of_Mk_gt_four (Mk_gt_of_symWeight_witness_computable R c hR 4 hwit)
 
+/-- **Uniform `native_decide`-ready discharge of any `2·m/ϑ` EH witness.** For any `m ≥ 1`, a
+symmetric weight whose computable Gram quotient exceeds `2·m` certifies the Polymath8b EH-witness
+shape `∃ ϑ∈(0,1), Mk (n+1) > 2·m/ϑ`. Instantiates to `mk_54` (`m=2`), `mk_5511` (`m=3`),
+`mk_41588` (`m=4`), `mk_309661` (`m=5`) — each via `… R c (disjoint_of_histogram R (by
+native_decide)) (by native_decide)` plus a `norm_num` to match the literal `2*m`. -/
+theorem mk_witness_under_EH_of_symWeight_computable {n m : ℕ} (hm : 0 < m)
+    (R : Finset (MultiIndex (n + 1))) (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (hwit : (2 * m : ℚ) <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntry a b)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntry a b)) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk (n + 1) > 2 * (m : ℝ) / ϑ :=
+  exists_theta_of_Mk_gt (2 * (m : ℝ)) (by positivity)
+    (by exact_mod_cast Mk_gt_of_symWeight_witness_computable R c hR (2 * m) hwit)
+
 /-! ## End-to-end validation (regression guard)
 
 A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
