@@ -689,6 +689,160 @@ theorem pair_fiber_card_eq_multinomial {k : ℕ} (α β : MultiIndex k) (Y : CTa
   case right_inv =>
     intro r _; funext idx; exact Prod.ext (Subtype.ext rfl) (Subtype.ext rfl)
 
+/-- **General-column row-collapse.** Summing the joint fiber `#{i : p i = v ∧ q i = b}`
+over all column values `b ∈ image β` recovers the row fiber `#{i : p i = v}`, provided the
+column vector `q` is `image β`-valued. The numerator analog of `sum_joint_eq_fiber`, but with
+the column vector `q` free instead of the section `β`. -/
+lemma joint_sum_over_col (p q : MultiIndex k) (hq : ∀ i, q i ∈ univ.image β) (v : ℕ) :
+    ∑ b : ↥(univ.image β), (univ.filter (fun i => p i = v ∧ q i = b.val)).card
+      = (univ.filter (fun i => p i = v)).card := by
+  classical
+  rw [Finset.card_eq_sum_card_fiberwise (s := univ.filter (fun i => p i = v))
+        (f := fun i => (⟨q i, hq i⟩ : ↥(univ.image β)))
+        (t := univ) (fun i _ => Finset.mem_univ _)]
+  apply Finset.sum_congr rfl; intro b _
+  rw [Finset.filter_filter]
+  apply congrArg Finset.card; apply Finset.filter_congr; intro i _
+  simp [Subtype.ext_iff, and_comm]
+
+/-- **General-column column-collapse.** Summing the joint fiber over all row values
+`v ∈ image α` recovers the column fiber `#{i : q i = b}`, provided the row vector `p` is
+`image α`-valued. The numerator analog of `sum_joint_eq_fiber_col`. -/
+lemma joint_sum_over_row (p q : MultiIndex k) (hp : ∀ i, p i ∈ univ.image α) (b : ℕ) :
+    ∑ v : ↥(univ.image α), (univ.filter (fun i => p i = v.val ∧ q i = b)).card
+      = (univ.filter (fun i => q i = b)).card := by
+  classical
+  rw [Finset.card_eq_sum_card_fiberwise (s := univ.filter (fun i => q i = b))
+        (f := fun i => (⟨p i, hp i⟩ : ↥(univ.image α)))
+        (t := univ) (fun i _ => Finset.mem_univ _)]
+  apply Finset.sum_congr rfl; intro v _
+  rw [Finset.filter_filter]
+  apply congrArg Finset.card; apply Finset.filter_congr; intro i _
+  simp [Subtype.ext_iff, and_comm]
+
+/-- The cell `(v,b)` of the table read off the joint multiset `jointMultiset q p` is the
+joint fiber count `#{i : p i = v ∧ q i = b}` (the count is `≤ k`, so the clamp is inactive). -/
+lemma joint_entry (p q : MultiIndex k) (v : ↥(univ.image α)) (b : ↥(univ.image β)) :
+    ((multisetToTable α β (jointMultiset q p) v b : ℕ))
+      = (univ.filter (fun i => p i = v.val ∧ q i = b.val)).card := by
+  simp only [multisetToTable]
+  rw [jointMultiset_count_eq q p v.val b.val]
+  exact min_eq_left
+    ((Finset.card_filter_le _ _).trans_eq (by rw [Finset.card_univ, Fintype.card_fin]))
+
+/-- **Margin-correctness of a general joint type.** For `p ∈ monoOrbit α`, `q ∈ monoOrbit β`,
+the table read off `jointMultiset q p` is margin-correct: its row margins are α's fiber sizes
+(p shares α's histogram), its column margins are β's (q shares β's). The product-orbit analog
+of `orbitTable_mem`, where the column vector `q` is a general orbit element instead of `β`. -/
+lemma joint_multisetToTable_mem (p q : MultiIndex k)
+    (hp : p ∈ monoOrbit α) (hq : q ∈ monoOrbit β) :
+    multisetToTable α β (jointMultiset q p) ∈ MarginCorrectTables α β := by
+  classical
+  rw [MarginCorrectTables, Finset.mem_filter]
+  refine ⟨Finset.mem_univ _, ?_, ?_⟩
+  · intro v
+    rw [Finset.sum_congr rfl (fun b _ => joint_entry α β p q v b),
+        joint_sum_over_col β p q (fun i => orbit_vals_mem β hq i) v.val]
+    exact (mem_monoOrbit_iff α p).mp hp v.val
+  · intro b
+    rw [Finset.sum_congr rfl (fun v _ => joint_entry α β p q v b),
+        joint_sum_over_row α p q (fun i => orbit_vals_mem α hp i) b.val]
+    exact (mem_monoOrbit_iff β q).mp hq b.val
+
+/-- **Realized roundtrip for a general joint type.** Reading the table off `jointMultiset q p`
+and naming its multiset recovers the original (entries `≤ k`, support inside `image α × image β`).
+The product-orbit analog of `tableToMultiset_orbitTable`. -/
+lemma tableToMultiset_jointTable (p q : MultiIndex k)
+    (hp : ∀ i, p i ∈ univ.image α) (hq : ∀ i, q i ∈ univ.image β) :
+    tableToMultiset α β (multisetToTable α β (jointMultiset q p)) = jointMultiset q p := by
+  ext ⟨c, d⟩
+  by_cases hc : c ∈ univ.image α
+  · by_cases hd : d ∈ univ.image β
+    · have hrw : ((c, d) : ℕ × ℕ)
+          = ((⟨c, hc⟩ : ↥(univ.image α)).val, (⟨d, hd⟩ : ↥(univ.image β)).val) := rfl
+      rw [hrw, tableToMultiset_count_mem, joint_entry, ← jointMultiset_count_eq q p c d]
+    · rw [tableToMultiset_count_not_mem α β _ c d (Or.inr hd),
+          jointMultiset_count_eq q p c d]
+      symm
+      rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+      rintro i _ ⟨-, h2⟩
+      exact hd (h2 ▸ hq i)
+  · rw [tableToMultiset_count_not_mem α β _ c d (Or.inl hc),
+        jointMultiset_count_eq q p c d]
+    symm
+    rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+    rintro i _ ⟨h1, -⟩
+    exact hc (h1 ▸ hp i)
+
+/-- **Product-orbit image collapses to the single-orbit image.** The distinct joint types
+arising from the full orbit pair `monoOrbit α × monoOrbit β` are exactly those arising from a
+single α-orbit element against the fixed `β`: every joint type `jointMultiset q p` is realized
+as `jointMultiset β p'` (via the realizability converse applied to its margin-correct table),
+and conversely `jointMultiset β p = jointMultiset pq.2 pq.1` with `pq = (p, β)`. This lets the
+pair-orbit regrouping reuse the denominator's table bijection. -/
+lemma pair_image_eq :
+    (monoOrbit α ×ˢ monoOrbit β).image (fun pq => jointMultiset pq.2 pq.1)
+      = (monoOrbit α).image (jointMultiset β) := by
+  classical
+  apply Finset.Subset.antisymm
+  · intro X hX
+    obtain ⟨pq, hpq, rfl⟩ := Finset.mem_image.mp hX
+    obtain ⟨hp, hq⟩ := Finset.mem_product.mp hpq
+    obtain ⟨p', hp', heq⟩ :=
+      table_realized_in_orbit α β _ (joint_multisetToTable_mem α β pq.1 pq.2 hp hq)
+    rw [tableToMultiset_jointTable α β pq.1 pq.2
+          (fun i => orbit_vals_mem α hp i) (fun i => orbit_vals_mem β hq i)] at heq
+    exact Finset.mem_image.mpr ⟨p', hp', heq⟩
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    refine Finset.mem_image.mpr ⟨(p, β), Finset.mem_product.mpr ⟨hp, ?_⟩, rfl⟩
+    exact (mem_monoOrbit_iff β β).mpr (fun _ => rfl)
+
+/-- **Orbit-free cross-orbit numerator re-index.** The pair-weighted double orbit sum (the
+combinatorial numerator, via `numerator_combinatorial_pairWeight`) re-indexes over the
+margin-correct contingency tables: each table `T` contributes the full-cell 2-D multinomial
+`k! / ∏_{(v,b)} (T v b)!` times the numerator pair weight of its multiset. The numerator analog
+of `orbitCore_eq_multinomial_sum_orbitFree`. Combines `pairOrbit_regroup`, the image collapse
+`pair_image_eq`, the denominator's table bijection, and `pair_fiber_card_eq_multinomial` for the
+fiber count. Axiom-clean (realizability already discharged). -/
+theorem numerator_orbitFree :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, pairWeight (jointMultiset q p)
+      = ∑ T ∈ MarginCorrectTables α β,
+          (Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+              (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+            * pairWeight (tableToMultiset α β T) := by
+  classical
+  rw [pairOrbit_regroup α β pairWeight, pair_image_eq]
+  refine Finset.sum_bij'
+    (i := fun X _ => multisetToTable α β X)
+    (j := fun T _ => tableToMultiset α β T) ?_ ?_ ?_ ?_ ?_
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    dsimp only
+    rw [multisetToTable_jointMultiset]
+    exact orbitTable_mem α β p hp
+  · intro T hT
+    obtain ⟨p, hp, heq⟩ := table_realized_in_orbit α β T hT
+    exact Finset.mem_image.mpr ⟨p, hp, heq⟩
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    dsimp only
+    rw [multisetToTable_jointMultiset]
+    exact tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)
+  · intro T _
+    exact multisetToTable_tableToMultiset α β T
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    have hvals : ∀ i, p i ∈ univ.image α := fun i => orbit_vals_mem α hp i
+    have hround : tableToMultiset α β (orbitTable α β p) = jointMultiset β p :=
+      tableToMultiset_orbitTable α β p hvals
+    dsimp only
+    rw [multisetToTable_jointMultiset, hround]
+    congr 1
+    norm_cast
+    rw [← hround,
+        pair_fiber_card_eq_multinomial α β (orbitTable α β p) (orbitTable_mem α β p hp)]
+
 end OrbitFree
 
 end BoundedGaps
