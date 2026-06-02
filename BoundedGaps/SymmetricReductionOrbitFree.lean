@@ -554,7 +554,7 @@ lemma marginCorrect_cells_sum {k : ℕ} (α β : MultiIndex k) (Y : CTable α β
       : ↥(univ.image α)))
     (fun i _ => Finset.mem_univ _)
   rw [Finset.card_univ, Fintype.card_fin] at hfib
-  rw [hfib]
+  conv_rhs => rw [hfib]
   apply Finset.sum_congr rfl
   intro v _
   apply congrArg Finset.card
@@ -585,10 +585,10 @@ theorem pair_fiber_card_eq_multinomial {k : ℕ} (α β : MultiIndex k) (Y : CTa
     (i := fun (pq : MultiIndex k × MultiIndex k)
               (hpq : pq ∈ (monoOrbit α ×ˢ monoOrbit β).filter _) =>
             (fun idx =>
-              (⟨pq.1 idx, orbit_vals_mem α
+              ((⟨pq.1 idx, orbit_vals_mem α
                   (Finset.mem_product.mp (Finset.mem_of_mem_filter _ hpq)).1 idx⟩,
                ⟨pq.2 idx, orbit_vals_mem β
-                  (Finset.mem_product.mp (Finset.mem_of_mem_filter _ hpq)).2 idx⟩) : V))
+                  (Finset.mem_product.mp (Finset.mem_of_mem_filter _ hpq)).2 idx⟩) : V)))
     (j := fun (r : Fin k → V) (_ : r ∈ univ.filter (fun r => ∀ c,
               (univ.filter (fun i => r i = c)).card = h c)) =>
             (((fun idx => (r idx).1.val), (fun idx => (r idx).2.val))
@@ -602,11 +602,12 @@ theorem pair_fiber_card_eq_multinomial {k : ℕ} (α β : MultiIndex k) (Y : CTa
     intro c
     -- #{i : r i = c} = #{i : pq.1 i = c.1.val ∧ pq.2 i = c.2.val}
     have hcard : (univ.filter (fun i =>
-        (⟨pq.1 i, _⟩, ⟨pq.2 i, _⟩ : V) = c)).card
+        ((⟨pq.1 i, orbit_vals_mem α (Finset.mem_product.mp hmem).1 i⟩,
+          ⟨pq.2 i, orbit_vals_mem β (Finset.mem_product.mp hmem).2 i⟩) : V) = c)).card
           = (univ.filter (fun i => pq.1 i = c.1.val ∧ pq.2 i = c.2.val)).card := by
       apply congrArg Finset.card; apply Finset.filter_congr; intro i _
       simp [Prod.ext_iff, Subtype.ext_iff]
-    rw [hcard, ← jointMultiset_count_eq c.2.val pq.1 c.1.val c.2.val, hjoint]
+    rw [hcard, ← jointMultiset_count_eq pq.2 pq.1 c.1.val c.2.val, hjoint]
     have : ((c.1.val, c.2.val) : ℕ × ℕ)
         = ((c.1 : ↥(univ.image α)).val, (c.2 : ↥(univ.image β)).val) := rfl
     rw [this, tableToMultiset_count_mem]
@@ -664,21 +665,25 @@ theorem pair_fiber_card_eq_multinomial {k : ℕ} (α β : MultiIndex k) (Y : CTa
         rw [hcoe, hβ]
     · -- jointMultiset q p = tableToMultiset Y
       ext ⟨c, d⟩
+      rw [jointMultiset_count_eq (fun idx => (r idx).2.val) (fun idx => (r idx).1.val) c d]
       by_cases hc : c ∈ univ.image α
       · by_cases hd : d ∈ univ.image β
         · have hrw : ((c, d) : ℕ × ℕ)
               = ((⟨c, hc⟩ : ↥(univ.image α)).val, (⟨d, hd⟩ : ↥(univ.image β)).val) := rfl
-          rw [jointMultiset_count_eq d (fun idx => (r idx).1.val) c d, hrw,
-              tableToMultiset_count_mem]
+          rw [hrw, tableToMultiset_count_mem]
           have : (univ.filter (fun i => (r i).1.val = c ∧ (r i).2.val = d)).card
               = (univ.filter (fun i => r i = (⟨c, hc⟩, ⟨d, hd⟩))).card := by
             apply congrArg Finset.card; apply Finset.filter_congr; intro i _
             simp [Prod.ext_iff, Subtype.ext_iff]
           rw [this]; exact hPV (⟨c, hc⟩, ⟨d, hd⟩)
         · rw [tableToMultiset_count_not_mem α β _ c d (Or.inr hd),
-              jointMultiset_count_zero α β _ (fun i => (r i).2.2) c d (Or.inr hd)]
+              Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+          rintro i _ ⟨-, h2⟩
+          exact hd (h2 ▸ (r i).2.2)
       · rw [tableToMultiset_count_not_mem α β _ c d (Or.inl hc),
-            jointMultiset_count_zero α β _ (fun i => (r i).1.2) c d (Or.inl hc)]
+            Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+        rintro i _ ⟨h1, -⟩
+        exact hc (h1 ▸ (r i).1.2)
   case left_inv =>
     intro pq _; exact Prod.ext (funext fun _ => rfl) (funext fun _ => rfl)
   case right_inv =>
