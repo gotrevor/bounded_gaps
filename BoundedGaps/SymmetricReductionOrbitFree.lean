@@ -1134,6 +1134,38 @@ theorem Mk_gt_four_of_symWeight_witness {n : ℕ} (R : Finset (MultiIndex (n + 1
   rw [polynomialMkF_symWeight R c hR]
   exact_mod_cast hwit
 
+/-- **EH-witness existential from `Mk k > 4`.** The Polymath8b EH-witness shape `∃ ϑ∈(0,1),
+Mk k > 2·2/ϑ` follows from the bare `Mk k > 4`: since `Mk k > 4`, the threshold `4/M < 1`, so any
+`ϑ ∈ (4/M, 1)` works (take the midpoint). This is the wrapper that turns a `native_decide`'d
+`Mk 54 > 4` into exactly `mk_54_witness_under_EH`'s statement. -/
+theorem exists_theta_of_Mk_gt_four {k : ℕ} (h : (4 : ℝ) < Sieve.Mk k) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk k > 2 * 2 / ϑ := by
+  have hM : (0 : ℝ) < Sieve.Mk k := by linarith
+  set M := Sieve.Mk k with hMdef
+  have h4M : 4 / M < 1 := (div_lt_one hM).mpr h
+  have h4Mpos : 0 < 4 / M := div_pos (by norm_num) hM
+  refine ⟨(4 / M + 1) / 2, ⟨by linarith, by linarith⟩, ?_⟩
+  have hϑpos : 0 < (4 / M + 1) / 2 := by linarith
+  rw [gt_iff_lt, show (2 : ℝ) * 2 = 4 by norm_num, div_lt_iff₀ hϑpos]
+  calc (4 : ℝ) = M * (4 / M) := by field_simp
+    _ < M * ((4 / M + 1) / 2) := by
+        apply mul_lt_mul_of_pos_left _ hM; linarith
+
+/-- **Conditional discharge of `mk_54_witness_under_EH`.** Given `k = 54` orbit representatives
+`R` (pairwise in distinct orbits) and LDL coefficients `c` whose orbit-basis Gram quotient
+exceeds `4` (a pure rational `native_decide`), the Polymath8b EH-witness for `k = 54` holds. This
+is the entire reduction: orbit symmetry → `native_decide`-ready Gram matrices → `Mk 54 > 4` →
+the EH-witness existential. The remaining input is the concrete `(R, c)` and the rational check. -/
+theorem mk_54_witness_under_EH_of_symWeight (R : Finset (MultiIndex (53 + 1)))
+    (c : MultiIndex (53 + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → monoOrbit a ≠ monoOrbit b)
+    (hwit : (4 : ℚ) <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator (orbitSum a) (orbitSum b))
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossDenominator (orbitSum a) (orbitSum b))) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 2 * 2 / ϑ :=
+  exists_theta_of_Mk_gt_four
+    (Mk_gt_four_of_symWeight_witness R c (disjoint_of_distinct_orbit R hR) hwit)
+
 end OrbitFree
 
 end BoundedGaps
