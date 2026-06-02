@@ -264,3 +264,29 @@ summand = [∏cells ((a+b)!)^{Y}] · [∑cells Y·M(a,b)] · (pair-count). The q
 fails, but the joint-type regrouping does NOT need it. Next: a `MarginCorrectTables`-style
 sum for the numerator + the pair-count (card_jointType machinery). Denominator-grade, not a
 new theory.
+
+## NUMERATOR DONE (2026-06-02, later still) — both matrix entries orbit-free + native_decide-ready
+
+`BoundedGaps/SymmetricReductionOrbitFree.lean` (sorry-free, axiom-clean):
+- **Numerator: COMPLETE & fully orbit-free.** `orbitPair_numerator_orbitFree`: the full
+  off-diagonal numerator (marked-coordinate triple sum of `dirichletIntegralWithSlack`) =
+  `(∑_{T∈MarginCorrectTables} multinomial(T cells)·pairWeight(tableToMultiset T)) /
+  (n+1+|α|+|β|+1)!`. **No monoOrbit on the RHS, and — unlike the denominator — NO orbit
+  cardinality factor**: the numerator regroups over the full (p,q) joint type, so the
+  q-collapse is never invoked. `orbitPair_numerator_computable` is the `native_decide`-ready
+  restatement (`pairWeightC` = computable twin of `pairWeight`; verified `pairWeightC
+  {(2,1),(1,1),(0,0)} = 100` in-kernel).
+- The re-index keystone `numerator_orbitFree` reuses the denominator's table bijection via
+  `pair_image_eq` (the product-orbit joint-type image collapses to the single-orbit image,
+  realizing the column vector as `q=β`) + `pair_fiber_card_eq_multinomial` (pair-fiber count =
+  full-cell 2-D multinomial, the numerator analog of the denominator fiber count). New
+  general-column joint machinery: `joint_sum_over_col/_row`, `joint_entry`,
+  `joint_multisetToTable_mem`, `tableToMultiset_jointTable`.
+- **Both Rayleigh matrix entries are now orbit-free closed forms computable from α,β shapes
+  alone.** This finishes the orbit-free re-index milestone (Coding Step 1–3 of the prior plan).
+
+### Next: matrix assembly (doc Remaining Step toward `Mk 54 > 4`)
+Symmetric weight `P_sym = ∑_λ c_λ orbitSum_λ` → bilinear `∑_{λ,μ} c_λ c_μ Mr[λ][μ]` with
+`Mr` built from `orbitPair_denominator_computable` / `orbitPair_numerator_computable`; then at
+k=54 `native_decide` the LDL inertia at degree ≥9. Chain `Mk_ge_polynomialMkF` →
+`Mk 54 > 4` → discharge `mk_54_witness_under_EH`. Genuinely multi-session.
