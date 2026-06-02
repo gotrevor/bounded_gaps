@@ -1134,6 +1134,22 @@ theorem Mk_gt_four_of_symWeight_witness {n : ℕ} (R : Finset (MultiIndex (n + 1
   rw [polynomialMkF_symWeight R c hR]
   exact_mod_cast hwit
 
+/-- **Symmetric-weight `Mk` lower bound, general threshold.** A symmetric weight whose orbit-basis
+Gram quotient exceeds a rational `T` certifies `Mk (n+1) > T`. Generalizes
+`Mk_gt_four_of_symWeight_witness` to any threshold; pairs with `exists_theta_of_Mk_gt` to discharge
+any `2·m/ϑ` EH witness. Routes through the real `Mk_ge_polynomialMkF` + `polynomialMkF_eq_MkF`. -/
+theorem Mk_gt_of_symWeight_witness {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (T : ℚ)
+    (hwit : T <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator (orbitSum a) (orbitSum b))
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossDenominator (orbitSum a) (orbitSum b))) :
+    (T : ℝ) < Sieve.Mk (n + 1) := by
+  have h1 := Mk_ge_polynomialMkF (symWeight R c)
+  rw [ge_iff_le, polynomialMkF_eq_MkF, polynomialMkF_symWeight R c hR] at h1
+  exact lt_of_lt_of_le (by exact_mod_cast hwit) h1
+
 /-- **EH-witness existential, general threshold.** For any positive `T < Mk k`, there is `ϑ∈(0,1)`
 with `Mk k > T/ϑ` (take `ϑ` the midpoint of `(T/M, 1)`, which is `<1` since `T<M`). The Polymath8b
 EH witnesses are the case `T = 2·m`: `mk_54` (`m=2`), `mk_5511` (`m=3`), `mk_41588` (`m=4`),
