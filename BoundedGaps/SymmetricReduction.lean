@@ -727,9 +727,10 @@ sum to a sum over the *distinct* joint multisets, weighted by the fiber count:
 
   `S(α,β) = ∑_X (#{p∈monoOrbit α : jointMultiset β p = X}) · jointWeight X`.
 
-This is step (f1) of the design doc (`tools/mk/SYMMETRIC_REDUCTION.md`). Step (f2) — the
-remaining piece — evaluates the fiber count as a product of multinomials by the
-value-restriction bridge to `card_jointType_eq_prod_multinomial`. -/
+This is step (f1) of the design doc (`tools/mk/SYMMETRIC_REDUCTION.md`). Step (f2) — evaluating
+the fiber count as a product of multinomials by the value-restriction bridge to
+`card_jointType_eq_prod_multinomial` — is now also done (`section FiberMultinomial` below),
+culminating in the fully-evaluated closed form `orbitCore_eq_multinomial_sum`. -/
 
 /-- The **joint multiset** of a coordinate vector `p` against a fixed companion `β`: the
 multiset of value-pairs `(pᵢ, βᵢ)` over all `k` slots. Two vectors share this multiset iff
@@ -768,6 +769,228 @@ theorem orbitCore_eq_jointType_sum {k : ℕ} (α β : MultiIndex k) :
       (∏ i, ((p i + β i).factorial : ℚ)) = jointWeight X := fun p hp => by
     rw [prodFactorial_eq_jointWeight β p, (Finset.mem_filter.mp hp).2]
   rw [Finset.sum_congr rfl hconst, Finset.sum_const, nsmul_eq_mul]
+
+/-! ## (f2) Evaluating the joint-type fiber count as a product of multinomials
+
+The fiber count `#{p∈monoOrbit α : jointMultiset β p = X}` left abstract by
+`orbitCore_eq_jointType_sum` is now evaluated. The value-restriction bridge
+`orbit_fiber_eq_multinomial` reduces it (over the finite value sets `↥(image α)`, `↥(image β)`) to
+`card_jointType_eq_prod_multinomial`'s contingency-table
+count `∏_b multinomial(n_b; X(·,b))`; `jointType_fiber_card_eq_multinomial` then transports that
+across the `jointMultiset`↔contingency-table dictionary, and `orbitCore_eq_multinomial_sum`
+assembles the fully-evaluated design-doc closed form. -/
+
+section FiberMultinomial
+open Finset
+open scoped Nat
+
+variable {k : ℕ} (α β : MultiIndex k)
+
+/-- Every element of `monoOrbit α` takes its values in `image α`. -/
+lemma orbit_vals_mem {p : MultiIndex k} (hp : p ∈ monoOrbit α) (i : Fin k) :
+    p i ∈ Finset.univ.image α := by
+  simp only [monoOrbit, Finset.mem_image, Finset.mem_univ, true_and] at hp
+  obtain ⟨σ, rfl⟩ := hp
+  exact Finset.mem_image_of_mem α (Finset.mem_univ (σ i))
+
+/-- **The value-restriction bridge.** The cross-orbit fiber count
+`#{p ∈ monoOrbit α : joint-type(p,β) = X}` equals the contingency-table closed form
+`∏_b multinomial(n_b; X(·,b))`, for a table `X` with the correct row margins (α's fiber sizes) and
+column margins (β's fiber sizes). The orbit constraint is redundant given the row margins, so the
+count over `monoOrbit α` matches the count of all functions `Fin k → ↥(image α)` with joint type
+`X`, which `card_jointType_eq_prod_multinomial` evaluates. -/
+lemma orbit_fiber_eq_multinomial
+    (X : ↥(univ.image α) → ↥(univ.image β) → ℕ)
+    (hrow : ∀ v : ↥(univ.image α), ∑ b, X v b = (univ.filter (fun i => α i = v.val)).card)
+    (hcol : ∀ b : ↥(univ.image β), ∑ v, X v b = (univ.filter (fun i => β i = b.val)).card) :
+    ((monoOrbit α).filter (fun p => ∀ v b,
+        (univ.filter (fun i => p i = v.val ∧ β i = b.val)).card = X v b)).card
+      = ∏ b : ↥(univ.image β), Nat.multinomial univ (fun v => X v b) := by
+  classical
+  set g : Fin k → ↥(univ.image β) :=
+    fun i => ⟨β i, Finset.mem_image_of_mem β (Finset.mem_univ i)⟩ with hg
+  set PV : (Fin k → ↥(univ.image α)) → Prop := fun f =>
+    ∀ v b, (univ.filter (fun i => f i = v ∧ g i = b)).card = X v b with hPV
+  have hstep2 : (univ.filter PV).card = ∏ b, Nat.multinomial univ (fun v => X v b) := by
+    have hcol' : ∀ b, ∑ v, X v b = Fintype.card {i // g i = b} := by
+      intro b
+      rw [Fintype.card_subtype, hcol b]
+      congr 1
+      apply Finset.filter_congr
+      intro i _
+      simp [hg, Subtype.ext_iff]
+    exact card_jointType_eq_prod_multinomial g X hcol'
+  rw [← hstep2]
+  apply Finset.card_bij'
+    (i := fun (p : MultiIndex k) (hp : p ∈ (monoOrbit α).filter _) =>
+            (fun idx => (⟨p idx, orbit_vals_mem α (Finset.mem_of_mem_filter _ hp) idx⟩
+              : ↥(univ.image α))))
+    (j := fun (f : Fin k → ↥(univ.image α)) (_ : f ∈ univ.filter PV) =>
+            (fun idx => (f idx).val : MultiIndex k))
+  case hi =>
+    intro p hp
+    rw [Finset.mem_filter]
+    refine ⟨Finset.mem_univ _, ?_⟩
+    have hP := (Finset.mem_filter.mp hp).2
+    intro v b
+    rw [← hP v b]; congr 1; apply Finset.filter_congr; intro i _; simp [hg, Subtype.ext_iff]
+  case hj =>
+    intro f hf
+    have hPV := (Finset.mem_filter.mp hf).2
+    rw [Finset.mem_filter]
+    refine ⟨?_, ?_⟩
+    · rw [mem_monoOrbit_iff]
+      intro c
+      by_cases hc : c ∈ univ.image α
+      · set vc : ↥(univ.image α) := ⟨c, hc⟩ with hvc
+        have e1 : (univ.filter (fun i => (fun idx => (f idx).val) i = c)).card
+                = (univ.filter (fun i => f i = vc)).card := by
+          congr 1; apply Finset.filter_congr; intro i _; simp [hvc, Subtype.ext_iff]
+        have e2 : (univ.filter (fun i => f i = vc)).card
+                = ∑ b, (univ.filter (fun i => f i = vc ∧ g i = b)).card := by
+          rw [Finset.card_eq_sum_card_fiberwise (f := g) (t := univ) (fun i _ => Finset.mem_univ _)]
+          apply Finset.sum_congr rfl; intro b _; rw [Finset.filter_filter]
+        rw [e1, e2, Finset.sum_congr rfl (fun b _ => hPV vc b), hrow vc]
+      · have hcoe : (univ.filter (fun i => (fun idx => (f idx).val) i = c)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ h; exact hc (h ▸ (f i).2)
+        have hα : (univ.filter (fun i => α i = c)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ h
+          exact hc (h ▸ Finset.mem_image_of_mem α (Finset.mem_univ i))
+        rw [hcoe, hα]
+    · intro v b
+      rw [← hPV v b]; congr 1; apply Finset.filter_congr; intro i _
+      simp only [hg, Subtype.ext_iff]
+  case left_inv =>
+    intro p _; funext idx; rfl
+  case right_inv =>
+    intro f _; funext idx; exact Subtype.ext rfl
+
+/-- **Row margin = α-fiber size.** Summing the joint count over all β-values recovers the
+`q`-fiber size at `v`. (Pure: no orbit hypothesis.) -/
+lemma sum_joint_eq_fiber (q : MultiIndex k) (v : ℕ) :
+    ∑ b : ↥(univ.image β), (univ.filter (fun i => q i = v ∧ β i = b.val)).card
+      = (univ.filter (fun i => q i = v)).card := by
+  classical
+  rw [Finset.card_eq_sum_card_fiberwise (s := univ.filter (fun i => q i = v))
+        (f := fun i => (⟨β i, Finset.mem_image_of_mem β (Finset.mem_univ i)⟩ : ↥(univ.image β)))
+        (t := univ) (fun i _ => Finset.mem_univ _)]
+  apply Finset.sum_congr rfl
+  intro b _
+  rw [Finset.filter_filter]
+  apply congrArg Finset.card
+  apply Finset.filter_congr
+  intro i _
+  simp [Subtype.ext_iff, and_comm]
+
+/-- **Column margin = β-fiber size.** Summing the joint count over all α-values (the value set of a
+`q` whose values lie in `image α`) recovers the `β`-fiber size at `b`. -/
+lemma sum_joint_eq_fiber_col (q : MultiIndex k) (hq : ∀ i, q i ∈ univ.image α) (b : ℕ) :
+    ∑ v : ↥(univ.image α), (univ.filter (fun i => q i = v.val ∧ β i = b)).card
+      = (univ.filter (fun i => β i = b)).card := by
+  classical
+  rw [Finset.card_eq_sum_card_fiberwise (s := univ.filter (fun i => β i = b))
+        (f := fun i => (⟨q i, hq i⟩ : ↥(univ.image α)))
+        (t := univ) (fun i _ => Finset.mem_univ _)]
+  apply Finset.sum_congr rfl
+  intro v _
+  rw [Finset.filter_filter]
+  apply congrArg Finset.card
+  apply Finset.filter_congr
+  intro i _
+  simp [Subtype.ext_iff, and_comm]
+
+/-- The count of a pair `(c,b)` in `jointMultiset β p` is the size of the joint fiber. -/
+lemma jointMultiset_count_eq (p : MultiIndex k) (c b : ℕ) :
+    (jointMultiset β p).count (c, b) = (univ.filter (fun i => p i = c ∧ β i = b)).card := by
+  classical
+  unfold jointMultiset
+  rw [Multiset.count_map, ← Finset.filter_val, ← Finset.card_def]
+  apply congrArg Finset.card
+  apply Finset.filter_congr
+  intro i _
+  simp [Prod.ext_iff, eq_comm]
+
+/-- **(f2) The joint-type fiber count as a product of multinomials.** For a realized joint type
+`jointMultiset β p₀`, the orbit fiber count equals `∏_b multinomial(n_b ; X(·,b))` where
+`X v b = (jointMultiset β p₀).count (v,b)` is the contingency table. Reduces the multiset-equality
+filter to the table-predicate filter (counts = fiber sizes; pairs outside `image α × image β`
+vanish on both sides) and applies the value-restriction bridge. -/
+theorem jointType_fiber_card_eq_multinomial (p₀ : MultiIndex k) (hp₀ : p₀ ∈ monoOrbit α) :
+    ((monoOrbit α).filter (fun p => jointMultiset β p = jointMultiset β p₀)).card
+      = ∏ b : ↥(univ.image β), Nat.multinomial univ
+          (fun v : ↥(univ.image α) => (jointMultiset β p₀).count (v.val, b.val)) := by
+  classical
+  set X : ↥(univ.image α) → ↥(univ.image β) → ℕ :=
+    fun v b => (jointMultiset β p₀).count (v.val, b.val) with hX
+  have hfilter : (monoOrbit α).filter (fun p => jointMultiset β p = jointMultiset β p₀)
+      = (monoOrbit α).filter (fun p => ∀ v b,
+          (univ.filter (fun i => p i = v.val ∧ β i = b.val)).card = X v b) := by
+    apply Finset.filter_congr
+    intro p hp
+    constructor
+    · intro heq v b
+      rw [← jointMultiset_count_eq β p v.val b.val, hX, heq]
+    · intro htab
+      rw [Multiset.ext]
+      rintro ⟨c, b⟩
+      rw [jointMultiset_count_eq β p c b, jointMultiset_count_eq β p₀ c b]
+      by_cases hcα : c ∈ univ.image α
+      · by_cases hbβ : b ∈ univ.image β
+        · rw [htab ⟨c, hcα⟩ ⟨b, hbβ⟩]
+          change (jointMultiset β p₀).count (c, b)
+            = (univ.filter (fun i => p₀ i = c ∧ β i = b)).card
+          exact jointMultiset_count_eq β p₀ c b
+        · have hp0 : (univ.filter (fun i => p i = c ∧ β i = b)) = ∅ := by
+            rw [Finset.filter_eq_empty_iff]; intro i _ h
+            exact hbβ (h.2 ▸ Finset.mem_image_of_mem β (Finset.mem_univ i))
+          have hp0' : (univ.filter (fun i => p₀ i = c ∧ β i = b)) = ∅ := by
+            rw [Finset.filter_eq_empty_iff]; intro i _ h
+            exact hbβ (h.2 ▸ Finset.mem_image_of_mem β (Finset.mem_univ i))
+          rw [hp0, hp0']
+      · have hp0 : (univ.filter (fun i => p i = c ∧ β i = b)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ h
+          exact hcα (h.1 ▸ orbit_vals_mem α hp i)
+        have hp0' : (univ.filter (fun i => p₀ i = c ∧ β i = b)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ h
+          exact hcα (h.1 ▸ orbit_vals_mem α hp₀ i)
+        rw [hp0, hp0']
+  rw [hfilter]
+  apply orbit_fiber_eq_multinomial α β X
+  · intro v
+    have hXv : ∀ b : ↥(univ.image β), X v b
+        = (univ.filter (fun i => p₀ i = v.val ∧ β i = b.val)).card :=
+      fun b => jointMultiset_count_eq β p₀ v.val b.val
+    rw [Finset.sum_congr rfl (fun b _ => hXv b), sum_joint_eq_fiber β p₀ v.val]
+    exact (mem_monoOrbit_iff α p₀).mp hp₀ v.val
+  · intro b
+    have hXv : ∀ v : ↥(univ.image α), X v b
+        = (univ.filter (fun i => p₀ i = v.val ∧ β i = b.val)).card :=
+      fun v => jointMultiset_count_eq β p₀ v.val b.val
+    rw [Finset.sum_congr rfl (fun v _ => hXv v),
+        sum_joint_eq_fiber_col α β p₀ (fun i => orbit_vals_mem α hp₀ i) b.val]
+
+/-- **The cross-orbit core closed form (f).** Combining the joint-type regrouping
+(`orbitCore_eq_jointType_sum`) with the fiber-count evaluation
+(`jointType_fiber_card_eq_multinomial`): the single-orbit core
+`S(α,β) = ∑_{p∈monoOrbit α} ∏ᵢ (pᵢ+βᵢ)!` equals the contingency-table sum
+`∑_X (∏_b multinomial(n_b; X(·,b))) · jointWeight X` over the realized joint types. This is the
+design-doc closed form: the fiber count is now an explicit product of multinomials. -/
+theorem orbitCore_eq_multinomial_sum :
+    ∑ p ∈ monoOrbit α, (∏ i, ((p i + β i).factorial : ℚ))
+      = ∑ X ∈ (monoOrbit α).image (jointMultiset β),
+          (∏ b : ↥(univ.image β), (Nat.multinomial univ
+              (fun v : ↥(univ.image α) => X.count (v.val, b.val)) : ℚ))
+            * jointWeight X := by
+  classical
+  rw [orbitCore_eq_jointType_sum]
+  apply Finset.sum_congr rfl
+  intro X hX
+  obtain ⟨p₀, hp₀, rfl⟩ := Finset.mem_image.mp hX
+  rw [jointType_fiber_card_eq_multinomial α β p₀ hp₀]
+  push_cast
+  ring
+
+end FiberMultinomial
 
 /-! ## Status + next obligations toward the matching closed form
 
