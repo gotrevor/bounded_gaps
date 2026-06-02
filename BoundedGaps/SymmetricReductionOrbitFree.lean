@@ -1134,22 +1134,29 @@ theorem Mk_gt_four_of_symWeight_witness {n : ℕ} (R : Finset (MultiIndex (n + 1
   rw [polynomialMkF_symWeight R c hR]
   exact_mod_cast hwit
 
-/-- **EH-witness existential from `Mk k > 4`.** The Polymath8b EH-witness shape `∃ ϑ∈(0,1),
-Mk k > 2·2/ϑ` follows from the bare `Mk k > 4`: since `Mk k > 4`, the threshold `4/M < 1`, so any
-`ϑ ∈ (4/M, 1)` works (take the midpoint). This is the wrapper that turns a `native_decide`'d
-`Mk 54 > 4` into exactly `mk_54_witness_under_EH`'s statement. -/
+/-- **EH-witness existential, general threshold.** For any positive `T < Mk k`, there is `ϑ∈(0,1)`
+with `Mk k > T/ϑ` (take `ϑ` the midpoint of `(T/M, 1)`, which is `<1` since `T<M`). The Polymath8b
+EH witnesses are the case `T = 2·m`: `mk_54` (`m=2`), `mk_5511` (`m=3`), `mk_41588` (`m=4`),
+`mk_309661` (`m=5`). -/
+theorem exists_theta_of_Mk_gt {k : ℕ} (T : ℝ) (hT : 0 < T) (h : T < Sieve.Mk k) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk k > T / ϑ := by
+  have hM : (0 : ℝ) < Sieve.Mk k := lt_trans hT h
+  set M := Sieve.Mk k with hMdef
+  have hTM : T / M < 1 := (div_lt_one hM).mpr h
+  have hTMpos : 0 < T / M := div_pos hT hM
+  refine ⟨(T / M + 1) / 2, ⟨by linarith, by linarith⟩, ?_⟩
+  have hϑpos : 0 < (T / M + 1) / 2 := by linarith
+  rw [gt_iff_lt, div_lt_iff₀ hϑpos]
+  calc T = M * (T / M) := by field_simp
+    _ < M * ((T / M + 1) / 2) := by apply mul_lt_mul_of_pos_left _ hM; linarith
+
+/-- **EH-witness existential from `Mk k > 4`.** The `mk_54_witness_under_EH` shape `∃ ϑ∈(0,1),
+Mk k > 2·2/ϑ` follows from bare `Mk k > 4` (the `T = 4` case of `exists_theta_of_Mk_gt`). Turns a
+`native_decide`'d `Mk 54 > 4` into exactly the axiom's statement. -/
 theorem exists_theta_of_Mk_gt_four {k : ℕ} (h : (4 : ℝ) < Sieve.Mk k) :
     ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk k > 2 * 2 / ϑ := by
-  have hM : (0 : ℝ) < Sieve.Mk k := by linarith
-  set M := Sieve.Mk k with hMdef
-  have h4M : 4 / M < 1 := (div_lt_one hM).mpr h
-  have h4Mpos : 0 < 4 / M := div_pos (by norm_num) hM
-  refine ⟨(4 / M + 1) / 2, ⟨by linarith, by linarith⟩, ?_⟩
-  have hϑpos : 0 < (4 / M + 1) / 2 := by linarith
-  rw [gt_iff_lt, show (2 : ℝ) * 2 = 4 by norm_num, div_lt_iff₀ hϑpos]
-  calc (4 : ℝ) = M * (4 / M) := by field_simp
-    _ < M * ((4 / M + 1) / 2) := by
-        apply mul_lt_mul_of_pos_left _ hM; linarith
+  obtain ⟨ϑ, hϑ, hgt⟩ := exists_theta_of_Mk_gt 4 (by norm_num) h
+  exact ⟨ϑ, hϑ, by rw [show (2 : ℝ) * 2 = 4 by norm_num]; exact hgt⟩
 
 /-- **Conditional discharge of `mk_54_witness_under_EH`.** Given `k = 54` orbit representatives
 `R` (pairwise in distinct orbits) and LDL coefficients `c` whose orbit-basis Gram quotient
