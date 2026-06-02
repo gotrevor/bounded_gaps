@@ -1086,13 +1086,43 @@ theorem polynomialMkF_symWeight {n : ℕ} (R : Finset (MultiIndex (n + 1)))
   rw [polynomialMaynardNumerator_symWeight R c hR,
       polynomialMaynardDenominator_symWeight R c hR]
 
+/-- **Orbits partition.** Two monomial orbits are either equal or disjoint: they share an element
+iff the two monomials have the same value-histogram, in which case their orbits coincide
+(`mem_monoOrbit_iff`). -/
+lemma monoOrbit_eq_or_disjoint {k : ℕ} (a b : MultiIndex k) :
+    monoOrbit a = monoOrbit b ∨ Disjoint (monoOrbit a) (monoOrbit b) := by
+  classical
+  by_cases h : ∀ v, (univ.filter (fun i => a i = v)).card
+      = (univ.filter (fun i => b i = v)).card
+  · left
+    apply Finset.ext; intro p
+    rw [mem_monoOrbit_iff, mem_monoOrbit_iff]
+    constructor
+    · intro hp v; rw [hp v]; exact h v
+    · intro hp v; rw [hp v]; exact (h v).symm
+  · right
+    rw [Finset.disjoint_left]
+    intro p hpa hpb
+    apply h
+    intro v
+    rw [← (mem_monoOrbit_iff a p).mp hpa v, (mem_monoOrbit_iff b p).mp hpb v]
+
+/-- **Disjointness from distinct orbits.** The `symWeight` disjointness hypothesis `hR` is implied
+by the cleaner "distinct representatives lie in distinct orbits" — which for a canonical (e.g.
+non-increasing) representative set is just "distinct value-multisets". Discharges `hR` for the
+`Mk` witness lemmas at a concrete `k`. -/
+lemma disjoint_of_distinct_orbit {k : ℕ} (R : Finset (MultiIndex k))
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → monoOrbit a ≠ monoOrbit b) :
+    ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b) :=
+  fun a ha b hb hab => (monoOrbit_eq_or_disjoint a b).resolve_left (hR a ha b hb hab)
+
 /-- **Symmetric-weight `Mk` witness.** A symmetric weight whose orbit-basis Gram quotient exceeds
 `4` certifies `Mk (n+1) > 4`. Combines `polynomialMkF_symWeight` with the abstract bridge
 `Mk_gt_four_of_polynomial_witness` (`Mk_ge_polynomialMkF` + `polynomialMkF_eq_MkF`). This reduces
 the witness goal to a **single rational inequality** on the two `native_decide`-ready Gram
 matrices — the only step left for `mk_54_witness_under_EH` is to plug in the `k=54` orbit
-representatives `R`, the LDL eigenvector coefficients `c`, discharge the disjointness `hR`, and
-`native_decide` the quotient. -/
+representatives `R`, the LDL eigenvector coefficients `c`, discharge the disjointness `hR` (via
+`disjoint_of_distinct_orbit`), and `native_decide` the quotient. -/
 theorem Mk_gt_four_of_symWeight_witness {n : ℕ} (R : Finset (MultiIndex (n + 1)))
     (c : MultiIndex (n + 1) → ℚ)
     (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
