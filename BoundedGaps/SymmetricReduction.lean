@@ -553,6 +553,7 @@ lemma card_filter_eq_sum_joint {k : ℕ} (p β : Fin k → ℕ) (c : ℕ) :
 
 section FiberProduct
 open Finset Equiv
+open scoped Nat
 
 variable {ι V B : Type*} [Fintype ι] [DecidableEq ι] [Fintype V] [DecidableEq V]
   [Fintype B] [DecidableEq B]
@@ -621,6 +622,82 @@ theorem card_jointType_eq_prod (g : ι → B) (X : V → B → ℕ) :
   constructor
   · intro hpf b v; rw [← key v b]; exact hpf v b
   · intro hqf v b; rw [key v b]; exact hqf b v
+
+/-- **The keystone: count of functions with prescribed fiber sizes = multinomial.** The number of
+functions `ι → V` whose fiber over each `v` has size exactly `h v` equals `Nat.multinomial univ h`,
+provided the sizes sum to `|ι|`. (Without `hsum` the LHS is 0 but the RHS is positive.)
+
+Proof by orbit–stabilizer: `Equiv.Perm ι` acts on `ι → V` by precomposition; the orbit of a witness
+`f₀` (built by `exists_fiberwise`) is exactly the set of functions with `f₀`'s fibers, so the map
+`σ ↦ f₀ ∘ σ` is a surjection onto it whose fibers are cosets of the stabilizer
+`{τ // f₀ ∘ τ = f₀}`. Hence `|Perm ι| = #{f | fibers = h} · |stab|`, i.e.
+`|ι|! = #{f | fibers = h} · ∏ (h v)!` (`DomMulAct.stabilizer_card`). Since
+`∏ (h v)! · multinomial = (∑ h)! = |ι|!` (`Nat.multinomial_spec`), cancelling `∏ (h v)! > 0` gives
+the result. This is the per-fiber count that `card_jointType_eq_prod` multiplies over `g`-fibers. -/
+theorem card_fiberwise_eq_multinomial (h : V → ℕ) (hsum : ∑ v, h v = Fintype.card ι) :
+    (univ.filter (fun f : ι → V => ∀ v, (univ.filter (fun a => f a = v)).card = h v)).card
+      = Nat.multinomial univ h := by
+  classical
+  set P : (ι → V) → Prop := fun f => ∀ v, (univ.filter (fun a => f a = v)).card = h v with hPdef
+  obtain ⟨f₀, hf₀⟩ : ∃ f, P f := exists_fiberwise h hsum
+  have hsurj : ∀ f, P f → ∃ σ : Perm ι, f₀ ∘ σ = f := by
+    intro f hf
+    have hc : ∀ v, Fintype.card {a // f a = v} = Fintype.card {a // f₀ a = v} := fun v => by
+      simp only [Fintype.card_subtype]; rw [hf v, hf₀ v]
+    exact ⟨Equiv.ofFiberEquiv (fun v => Fintype.equivOfCardEq (hc v)),
+           funext fun a => Equiv.ofFiberEquiv_map _ a⟩
+  choose c hc using fun y : {f : ι → V // P f} => hsurj y.1 y.2
+  have hPcomp : ∀ σ : Perm ι, P (f₀ ∘ σ) := by
+    intro σ v
+    rw [← hf₀ v]
+    simp only [Function.comp_apply, Finset.card_filter]
+    exact Equiv.sum_comp σ (fun a => if f₀ a = v then 1 else 0)
+  have hfiber : ∀ y : {f : ι → V // P f},
+      (univ.filter (fun σ : Perm ι => f₀ ∘ ⇑σ = y.val)).card
+        = Fintype.card {τ : Perm ι // f₀ ∘ ⇑τ = f₀} := by
+    intro y
+    rw [← Fintype.card_subtype]
+    apply Fintype.card_congr
+    refine ⟨fun σ => ⟨σ.1 * (c y)⁻¹, ?_⟩, fun τ => ⟨τ.1 * c y, ?_⟩, ?_, ?_⟩
+    · funext a
+      have h1 : f₀ ∘ ⇑(c y) = f₀ ∘ ⇑σ.1 := by rw [hc y]; exact σ.2.symm
+      have h2 := congrFun h1 ((c y)⁻¹ a)
+      simp only [Function.comp_apply] at h2
+      rw [show (c y) ((c y)⁻¹ a) = a from by
+        rw [← Equiv.Perm.mul_apply, mul_inv_cancel, Equiv.Perm.one_apply]] at h2
+      simp only [Function.comp_apply, Equiv.Perm.mul_apply]; exact h2.symm
+    · funext a
+      have h1 := congrFun (hc y) a
+      simp only [Function.comp_apply] at h1 ⊢
+      rw [Equiv.Perm.mul_apply]
+      have h3 : f₀ (τ.1 ((c y) a)) = f₀ ((c y) a) := congrFun τ.2 ((c y) a)
+      rw [h3]; exact h1
+    · intro σ; exact Subtype.ext (by group)
+    · intro τ; exact Subtype.ext (by group)
+  have hmaps : ∀ σ ∈ (univ : Finset (Perm ι)),
+      (⟨f₀ ∘ ⇑σ, hPcomp σ⟩ : {f // P f}) ∈ (univ : Finset {f // P f}) := fun _ _ => mem_univ _
+  have step : ∀ y : {f // P f},
+      (univ.filter (fun σ : Perm ι => (⟨f₀ ∘ ⇑σ, hPcomp σ⟩ : {f // P f}) = y)).card
+        = Fintype.card {τ : Perm ι // f₀ ∘ ⇑τ = f₀} := by
+    intro y; rw [← hfiber y]; congr 1; ext σ
+    simp only [mem_filter, mem_univ, true_and, Subtype.ext_iff]
+  have hcardeq : Fintype.card (Perm ι)
+      = Fintype.card {f // P f} * Fintype.card {τ : Perm ι // f₀ ∘ ⇑τ = f₀} := by
+    rw [← Finset.card_univ (α := Perm ι), Finset.card_eq_sum_card_fiberwise hmaps,
+        Finset.sum_congr rfl (fun y _ => step y), Finset.sum_const, Finset.card_univ,
+        smul_eq_mul, mul_comm]
+  have hSstab : Fintype.card {τ : Perm ι // f₀ ∘ ⇑τ = f₀} = ∏ v, (h v)! := by
+    rw [DomMulAct.stabilizer_card f₀]
+    exact Finset.prod_congr rfl (fun v _ => by rw [Fintype.card_subtype, hf₀ v])
+  have key : Fintype.card {f // P f} * (∏ v, (h v)!)
+      = Nat.multinomial univ h * (∏ v, (h v)!) := by
+    have hL : Fintype.card {f // P f} * (∏ v, (h v)!) = (Fintype.card ι)! := by
+      rw [← hSstab, ← hcardeq, Fintype.card_perm]
+    have hR : Nat.multinomial univ h * (∏ v, (h v)!) = (Fintype.card ι)! := by
+      rw [mul_comm, ← hsum]; exact Nat.multinomial_spec univ h
+    rw [hL, hR]
+  rw [← Fintype.card_subtype P]
+  exact Nat.eq_of_mul_eq_mul_right (Finset.prod_pos (fun v _ => Nat.factorial_pos (h v))) key
 
 end FiberProduct
 
