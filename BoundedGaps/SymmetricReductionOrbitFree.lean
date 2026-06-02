@@ -1200,19 +1200,19 @@ theorem exists_theta_of_Mk_gt_four {k : ℕ} (h : (4 : ℝ) < Sieve.Mk k) :
   exact ⟨ϑ, hϑ, by rw [show (2 : ℝ) * 2 = 4 by norm_num]; exact hgt⟩
 
 /-- **Conditional discharge of `mk_54_witness_under_EH`.** Given `k = 54` orbit representatives
-`R` (pairwise in distinct orbits) and LDL coefficients `c` whose orbit-basis Gram quotient
-exceeds `4` (a pure rational `native_decide`), the Polymath8b EH-witness for `k = 54` holds. This
-is the entire reduction: orbit symmetry → `native_decide`-ready Gram matrices → `Mk 54 > 4` →
-the EH-witness existential. The remaining input is the concrete `(R, c)` and the rational check. -/
+`R` (pairwise-disjoint orbits — supply `disjoint_of_histogram R (by native_decide)`) and LDL
+coefficients `c` whose orbit-basis Gram quotient exceeds `4` (a pure rational `native_decide`), the
+Polymath8b EH-witness for `k = 54` holds. This is the entire reduction: orbit symmetry →
+`native_decide`-ready Gram matrices → `Mk 54 > 4` → the EH-witness existential. The remaining input
+is the concrete `(R, c)` and the two `native_decide`s. -/
 theorem mk_54_witness_under_EH_of_symWeight (R : Finset (MultiIndex (53 + 1)))
     (c : MultiIndex (53 + 1) → ℚ)
-    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → monoOrbit a ≠ monoOrbit b)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
     (hwit : (4 : ℚ) <
       (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator (orbitSum a) (orbitSum b))
         / (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossDenominator (orbitSum a) (orbitSum b))) :
     ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 2 * 2 / ϑ :=
-  exists_theta_of_Mk_gt_four
-    (Mk_gt_four_of_symWeight_witness R c (disjoint_of_distinct_orbit R hR) hwit)
+  exists_theta_of_Mk_gt_four (Mk_gt_four_of_symWeight_witness R c hR hwit)
 
 end OrbitFree
 
