@@ -1214,6 +1214,70 @@ theorem mk_54_witness_under_EH_of_symWeight (R : Finset (MultiIndex (53 + 1)))
     ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 2 * 2 / ϑ :=
   exists_theta_of_Mk_gt_four (Mk_gt_four_of_symWeight_witness R c hR hwit)
 
+/-! ## Computable Gram entries — the `native_decide` bridge
+
+`crossDenominator`/`crossNumerator` are `noncomputable` (they go through `monomialIntegral` /
+`dirichletIntegralWithSlack`), so a witness stated with them cannot be `native_decide`'d. These
+`def`s are their `native_decide`-ready closed forms (`= crossDenominator_orbitSum_computable` /
+`crossNumerator_orbitSum_computable`, by definitional unfolding); the witness restated with them
+*is* `native_decide`-able. Verified in-kernel: `gramDenEntry ![2,1,0] ![1,1,0] = 11/3360`,
+`gramNumEntry ![2,1,0] ![1,1,0] = 7/2160`. -/
+
+/-- Computable denominator Gram entry (`= crossDenominator (orbitSum a) (orbitSum b)`). -/
+def gramDenEntry {k : ℕ} (a b : MultiIndex k) : ℚ :=
+  ((Nat.multinomial (univ : Finset ↥(univ.image b))
+        (fun bb => (univ.filter (fun i => b i = bb.val)).card)) •
+      ∑ T ∈ MarginCorrectTables a b,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => (T v bb : ℕ)) : ℚ))
+          * jointWeightC (tableToMultiset a b T))
+    / ((k + a.degree + b.degree).factorial : ℚ)
+
+/-- Computable numerator Gram entry (`= crossNumerator (orbitSum a) (orbitSum b)`). -/
+def gramNumEntry {n : ℕ} (a b : MultiIndex (n + 1)) : ℚ :=
+  (∑ T ∈ MarginCorrectTables a b,
+      (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+          (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+        * pairWeightC (tableToMultiset a b T))
+    / (((n + 1) + a.degree + b.degree + 1).factorial : ℚ)
+
+lemma gramDenEntry_eq {k : ℕ} (a b : MultiIndex k) :
+    crossDenominator (orbitSum a) (orbitSum b) = gramDenEntry a b :=
+  crossDenominator_orbitSum_computable a b
+
+lemma gramNumEntry_eq {n : ℕ} (a b : MultiIndex (n + 1)) :
+    crossNumerator (orbitSum a) (orbitSum b) = gramNumEntry a b :=
+  crossNumerator_orbitSum_computable a b
+
+/-- **Computable-form symmetric-weight `Mk` lower bound.** `Mk_gt_of_symWeight_witness` restated
+with the computable `gram*Entry` matrices, so `hwit` is a `native_decide`-able rational inequality.
+This is the witness shape the endgame actually feeds. -/
+theorem Mk_gt_of_symWeight_witness_computable {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (T : ℚ)
+    (hwit : T <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntry a b)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntry a b)) :
+    (T : ℝ) < Sieve.Mk (n + 1) := by
+  apply Mk_gt_of_symWeight_witness R c hR T
+  simp only [gramNumEntry_eq, gramDenEntry_eq]
+  exact hwit
+
+/-- **Fully `native_decide`-ready discharge of `mk_54_witness_under_EH`.** Given `k=54` orbit reps
+`R`, coeffs `c`, the (decidable) disjointness `hR`, and a `native_decide`-able rational inequality
+on the computable Gram matrices, produces exactly `mk_54_witness_under_EH`. Endgame invocation:
+`mk_54_witness_under_EH_of_symWeight_computable R c (disjoint_of_histogram R (by native_decide))
+(by native_decide)`. -/
+theorem mk_54_witness_under_EH_of_symWeight_computable (R : Finset (MultiIndex (53 + 1)))
+    (c : MultiIndex (53 + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (hwit : (4 : ℚ) <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntry a b)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntry a b)) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 2 * 2 / ϑ :=
+  exists_theta_of_Mk_gt_four (Mk_gt_of_symWeight_witness_computable R c hR 4 hwit)
+
 end OrbitFree
 
 end BoundedGaps
