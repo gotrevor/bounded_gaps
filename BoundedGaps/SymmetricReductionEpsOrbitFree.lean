@@ -175,12 +175,12 @@ lemma dirichletSlack_removeNth_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (i :
 /-- The **ε-constant factor** of binomial index `m` at joint-type degree `d = |p+q|`:
 `(2ε)^m·(1-ε)^{n+d+2-m}/(n+d+2-m)!`. Depends on `(p,q)` only through `d` (constant per joint
 type), not the marked cell. -/
-noncomputable def affineConstFactor (n d m : ℕ) (ε : ℚ) : ℚ :=
+def affineConstFactor (n d m : ℕ) (ε : ℚ) : ℚ :=
   (2 * ε) ^ m * (1 - ε) ^ (n + d + 2 - m) / ((n + d + 2 - m).factorial : ℚ)
 
 /-- The **ε-local cell factor** of binomial index `m` at marked cell `(a,b) = (pᵢ,qᵢ)`:
 `C(a+b+2,m)·(a+b+2-m)!/(a+b)!`. Depends on `(p,q)` only through the marked cell. -/
-noncomputable def affineLocalFactor (a b m : ℕ) : ℚ :=
+def affineLocalFactor (a b m : ℕ) : ℚ :=
   ((Nat.choose (a + b + 2) m : ℚ)) * ((a + b + 2 - m).factorial : ℚ) / ((a + b).factorial : ℚ)
 
 /-- **ε-`affineSlackRat` factored over the marked coordinate.** `affineSlackRat(removeNthᵢ(p+q),
@@ -236,7 +236,7 @@ lemma eps_summand_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (ε : ℚ) :
 
 /-- The **per-cell ε numerator factor** at marked cell `cb = (a,b)`, joint-type degree `d`:
 `1/((a+1)(b+1))·∑ₘ affineConstFactor·affineLocalFactor`. The ε-analog of `markedCellFactor`. -/
-noncomputable def epsMarkedCell (n d : ℕ) (cb : ℕ × ℕ) (ε : ℚ) : ℚ :=
+def epsMarkedCell (n d : ℕ) (cb : ℕ × ℕ) (ε : ℚ) : ℚ :=
   (1 : ℚ) / (((cb.1 + 1 : ℕ) : ℚ) * ((cb.2 + 1 : ℕ) : ℚ)) *
     ∑ m ∈ Finset.range (cb.1 + cb.2 + 2 + 1),
       affineConstFactor n d m ε * affineLocalFactor cb.1 cb.2 m
@@ -328,6 +328,25 @@ theorem crossNumerator_eps_orbitSum_orbitFree {n : ℕ} (α β : MultiIndex (n +
   rw [Finset.sum_comm]
   refine Finset.sum_congr rfl (fun q hq => ?_)
   exact eps_numerator_summand_eq_pairWeight α β ε hp hq
+
+/-- Computable twin of `epsPairWeight` (only the `jointWeight` factor was gratuitously
+`noncomputable`; `epsMarkedCell` is computable). `= epsPairWeight` by `rfl`. -/
+def epsPairWeightC (n d : ℕ) (X : Multiset (ℕ × ℕ)) (ε : ℚ) : ℚ :=
+  jointWeightC X * (X.map (fun cb => epsMarkedCell n d cb ε)).sum
+
+@[simp] lemma epsPairWeightC_eq (n d : ℕ) (X : Multiset (ℕ × ℕ)) (ε : ℚ) :
+    epsPairWeightC n d X ε = epsPairWeight n d X ε := rfl
+
+/-- **`native_decide`-ready cross ε-numerator Gram entry.** `crossNumerator_eps_orbitSum_orbitFree`
+restated with the computable `epsPairWeightC`. Every operation reduces in the kernel
+(`MarginCorrectTables`, `Nat.multinomial`, `tableToMultiset`, `epsPairWeightC`). -/
+theorem crossNumerator_eps_orbitSum_computable {n : ℕ} (α β : MultiIndex (n + 1)) (ε : ℚ) :
+    crossNumerator_eps (orbitSum α) (orbitSum β) ε
+      = ∑ T ∈ MarginCorrectTables α β,
+          (Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+              (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+            * epsPairWeightC n (α.degree + β.degree) (tableToMultiset α β T) ε :=
+  crossNumerator_eps_orbitSum_orbitFree α β ε
 
 end OrbitFree
 
