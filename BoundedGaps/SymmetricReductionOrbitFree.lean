@@ -1116,6 +1116,31 @@ lemma disjoint_of_distinct_orbit {k : ℕ} (R : Finset (MultiIndex k))
     ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b) :=
   fun a ha b hb hab => (monoOrbit_eq_or_disjoint a b).resolve_left (hR a ha b hb hab)
 
+/-- **Distinct orbits from a histogram witness.** A single value `v` where `a` and `b` have
+different fiber sizes certifies `monoOrbit a ≠ monoOrbit b` (equal orbits ⟹ same histogram, since
+`a ∈ monoOrbit a`). Since `monoOrbit` is `noncomputable`, this histogram form — not a direct
+`decide` on orbit equality — is how `hR` gets discharged. -/
+lemma monoOrbit_ne_of_histogram_witness {k : ℕ} (a b : MultiIndex k) (v : ℕ)
+    (h : (univ.filter (fun i => a i = v)).card ≠ (univ.filter (fun i => b i = v)).card) :
+    monoOrbit a ≠ monoOrbit b := by
+  intro heq
+  apply h
+  have ha : a ∈ monoOrbit b := heq ▸ (mem_monoOrbit_iff a a).mpr (fun _ => rfl)
+  exact (mem_monoOrbit_iff b a).mp ha v
+
+/-- **Decidable discharge of the `symWeight` disjointness `hR`.** Reduces `hR` to the **decidable**
+proposition "every distinct pair in `R` differs in some value-fiber size" (the search bounded to
+`image a ∪ image b`). For concrete `R` the hypothesis is closed by `decide` / `native_decide`;
+it is exactly "distinct representatives have distinct value-multisets". -/
+lemma disjoint_of_histogram {k : ℕ} (R : Finset (MultiIndex k))
+    (h : ∀ a ∈ R, ∀ b ∈ R, a ≠ b →
+        ∃ v ∈ univ.image a ∪ univ.image b,
+          (univ.filter (fun i => a i = v)).card ≠ (univ.filter (fun i => b i = v)).card) :
+    ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b) := by
+  intro a ha b hb hab
+  obtain ⟨v, _, hv⟩ := h a ha b hb hab
+  exact (monoOrbit_eq_or_disjoint a b).resolve_left (monoOrbit_ne_of_histogram_witness a b v hv)
+
 /-- **Symmetric-weight `Mk` witness.** A symmetric weight whose orbit-basis Gram quotient exceeds
 `4` certifies `Mk (n+1) > 4`. Combines `polynomialMkF_symWeight` with the abstract bridge
 `Mk_gt_four_of_polynomial_witness` (`Mk_ge_polynomialMkF` + `polynomialMkF_eq_MkF`). This reduces
