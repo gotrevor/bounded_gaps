@@ -269,6 +269,50 @@ lemma eps_numerator_summand_eq_pairWeight {n : ℕ} (α β : MultiIndex (n + 1))
   rw [Multiset.map_map]
   rfl
 
+/-- **Orbit-free cross-orbit ε-numerator re-index.** The ε pair-weighted double orbit sum
+re-indexes over the margin-correct contingency tables, exactly like the non-ε `numerator_orbitFree`
+(the table bijection `pairOrbit_regroup`/`pair_image_eq` and the fiber count
+`pair_fiber_card_eq_multinomial` are `F`-generic, so the proof is verbatim with `F = epsPairWeight
+n (|α|+|β|) · ε`). Each table contributes the full-cell multinomial times the ε pair weight. -/
+theorem eps_numerator_orbitFree {n : ℕ} (α β : MultiIndex (n + 1)) (ε : ℚ) :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+        epsPairWeight n (α.degree + β.degree) (jointMultiset q p) ε
+      = ∑ T ∈ MarginCorrectTables α β,
+          (Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+              (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+            * epsPairWeight n (α.degree + β.degree) (tableToMultiset α β T) ε := by
+  classical
+  rw [pairOrbit_regroup α β (fun X => epsPairWeight n (α.degree + β.degree) X ε), pair_image_eq]
+  refine Finset.sum_bij'
+    (i := fun X _ => multisetToTable α β X)
+    (j := fun T _ => tableToMultiset α β T) ?_ ?_ ?_ ?_ ?_
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    dsimp only
+    rw [multisetToTable_jointMultiset]
+    exact orbitTable_mem α β p hp
+  · intro T hT
+    obtain ⟨p, hp, heq⟩ := table_realized_in_orbit α β T hT
+    exact Finset.mem_image.mpr ⟨p, hp, heq⟩
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    dsimp only
+    rw [multisetToTable_jointMultiset]
+    exact tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)
+  · intro T _
+    exact multisetToTable_tableToMultiset α β T
+  · intro X hX
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
+    have hvals : ∀ i, p i ∈ univ.image α := fun i => orbit_vals_mem α hp i
+    have hround : tableToMultiset α β (orbitTable α β p) = jointMultiset β p :=
+      tableToMultiset_orbitTable α β p hvals
+    dsimp only
+    rw [multisetToTable_jointMultiset, hround]
+    congr 1
+    norm_cast
+    rw [← hround,
+        pair_fiber_card_eq_multinomial α β (orbitTable α β p) (orbitTable_mem α β p hp)]
+
 end OrbitFree
 
 end BoundedGaps
