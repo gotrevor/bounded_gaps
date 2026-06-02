@@ -348,6 +348,57 @@ theorem crossNumerator_eps_orbitSum_computable {n : ℕ} (α β : MultiIndex (n 
             * epsPairWeightC n (α.degree + β.degree) (tableToMultiset α β T) ε :=
   crossNumerator_eps_orbitSum_orbitFree α β ε
 
+/-- Computable ε-numerator Gram entry (`= crossNumerator_eps (orbitSum a) (orbitSum b) ε`). -/
+def gramNumEntryEps {n : ℕ} (a b : MultiIndex (n + 1)) (ε : ℚ) : ℚ :=
+  ∑ T ∈ MarginCorrectTables a b,
+    (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+        (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+      * epsPairWeightC n (a.degree + b.degree) (tableToMultiset a b T) ε
+
+lemma gramNumEntryEps_eq {n : ℕ} (a b : MultiIndex (n + 1)) (ε : ℚ) :
+    crossNumerator_eps (orbitSum a) (orbitSum b) ε = gramNumEntryEps a b ε :=
+  crossNumerator_eps_orbitSum_computable a b ε
+
+/-- **Symmetric ε-Maynard ratio as a fully computable Gram quotient.** Both Gram matrices are
+`native_decide`-ready (`gramNumEntryEps`, `gramDenEntryEps`), so the whole ε-ratio is a rational
+computable from the shapes in `R` and the coefficients `c`. -/
+theorem polynomialMkF_eps_symWeight_computable {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ) (ε : ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b)) :
+    polynomialMkF_eps (symWeight R c) ε
+      = (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryEps a b ε)
+          / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryEps a b ε) := by
+  rw [polynomialMkF_eps_symWeight R c ε hR]
+  simp only [gramNumEntryEps_eq]
+
+/-- **`native_decide`-ready discharge of `mk_eps_50_witness` (unconditional H₁≤246).** Given
+`k=50` orbit reps `R`, coeffs `c`, rationals `(ε, ϑ)` meeting the witness side conditions, the
+(decidable) disjointness `hR`, and a `native_decide`-able rational Rayleigh bound on the computable
+ε Gram matrices, the Polymath8b ε-witness holds. Endgame: supply `(R, c, ε, ϑ)` and run the
+`native_decide`s. -/
+theorem mk_eps_50_witness_of_symWeight (R : Finset (MultiIndex (49 + 1)))
+    (c : MultiIndex (49 + 1) → ℚ) (ε ϑ : ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (hε0 : (0 : ℚ) < ε) (hε1 : ε < 1) (hϑ0 : (0 : ℚ) < ϑ) (hϑ2 : ϑ < 1 / 2)
+    (hcoup : 1 + ε < 1 / ϑ)
+    (hwit : 2 / ϑ <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryEps a b ε)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryEps a b ε)) :
+    ∃ ε ϑ : ℝ, 0 < ε ∧ (0 < ϑ ∧ ϑ < 1 / 2) ∧
+      1 + ε < 1 / ϑ ∧ Sieve.Mk_eps 50 ε > 2 / ϑ := by
+  have hε0' : (0 : ℝ) < (ε : ℝ) := by exact_mod_cast hε0
+  have hε1' : (ε : ℝ) < 1 := by exact_mod_cast hε1
+  have hϑ0' : (0 : ℝ) < (ϑ : ℝ) := by exact_mod_cast hϑ0
+  have hϑ2' : (ϑ : ℝ) < 1 / 2 := by
+    have h := (Rat.cast_lt (K := ℝ)).mpr hϑ2; push_cast at h; exact h
+  have hcoup' : 1 + (ε : ℝ) < 1 / (ϑ : ℝ) := by
+    have h := (Rat.cast_lt (K := ℝ)).mpr hcoup; push_cast at h; exact h
+  refine mk_eps_50_witness_of_poly (symWeight R c) (ε := ε) (ϑ := ϑ)
+    hε0' hε1' hϑ0' hϑ2' hcoup' ?_
+  rw [polynomialMkF_eps_symWeight_computable R c ε hR]
+  rw [gt_iff_lt, show (2 : ℝ) / (ϑ : ℝ) = ((2 / ϑ : ℚ) : ℝ) by push_cast; ring]
+  exact_mod_cast hwit
+
 end OrbitFree
 
 end BoundedGaps
