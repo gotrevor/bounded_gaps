@@ -253,6 +253,22 @@ theorem orbitCore_eq_multinomial_sum_orbitFree :
         tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)]
     simp only [orbitTable]
 
+/-- **Orbit-free cross-orbit denominator matrix entry.** The full off-diagonal orbit-pair
+denominator `∑_{p∈orbit α} ∑_{q∈orbit β} monomialIntegral (p+q)` equals `|monoOrbit β|`
+copies of the orbit-free contingency-table sum, divided by the constant factorial
+`(k+|α|+|β|)!`. Chains `orbitPair_denominator_eq` (factor the constant denominator),
+`orbitPair_core_const` (collapse the `q`-sum), and the orbit-free re-index. The only
+residual orbit reference is the scalar `(monoOrbit β).card`. -/
+theorem orbitPair_denominator_orbitFree :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, monomialIntegral (p + q)
+      = ((monoOrbit β).card • ∑ T ∈ MarginCorrectTables α β,
+            (∏ b : ↥(univ.image β), (Nat.multinomial univ
+                (fun v : ↥(univ.image α) => (T v b : ℕ)) : ℚ))
+              * jointWeight (tableToMultiset α β T))
+          / ((k + α.degree + β.degree).factorial : ℚ) := by
+  rw [orbitPair_denominator_eq, orbitPair_core_const,
+      orbitCore_eq_multinomial_sum_orbitFree]
+
 end OrbitFree
 
 end BoundedGaps
