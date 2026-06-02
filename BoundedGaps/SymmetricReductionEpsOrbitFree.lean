@@ -216,6 +216,24 @@ lemma affineSlackRat_removeNth_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (i :
     exact_mod_cast (Nat.factorial_pos _).ne'
   field_simp
 
+/-- **ε-numerator per-(p,q) summand: pull the joint-type product out of the marked sum.** The
+joint-type product `∏ⱼ(p+q)ⱼ!` is independent of the marked coordinate `i`, so the marked-sum
+`∑ᵢ 1/((pᵢ+1)(qᵢ+1))·affineSlackRat(...)` factors as `∏ⱼ(p+q)ⱼ!` times a sum of per-cell
+`affineConstFactor·affineLocalFactor` weights. The ε-analog of `numerator_combinatorial_factored`'s
+per-pair collapse — each per-`i` summand depends on `(p,q)` only through the joint type
+(`∏ⱼ(p+q)ⱼ!` and the cell `(pᵢ,qᵢ)` plus the constant degree `|p+q|`). -/
+lemma eps_summand_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (ε : ℚ) :
+    (∑ i, (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+        affineSlackRat (Fin.removeNth i (p + q)) (p i + q i + 2) ε)
+      = (∏ j, (((p + q) j).factorial : ℚ)) *
+          ∑ i, (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+            ∑ m ∈ Finset.range (p i + q i + 2 + 1),
+              affineConstFactor n (∑ j, (p + q) j) m ε * affineLocalFactor (p i) (q i) m := by
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [affineSlackRat_removeNth_factor p q i ε]
+  ring
+
 end OrbitFree
 
 end BoundedGaps
