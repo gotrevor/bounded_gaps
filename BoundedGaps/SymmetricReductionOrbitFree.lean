@@ -1249,6 +1249,159 @@ lemma gramNumEntry_eq {n : ℕ} (a b : MultiIndex (n + 1)) :
     crossNumerator (orbitSum a) (orbitSum b) = gramNumEntry a b :=
   crossNumerator_orbitSum_computable a b
 
+/-! ## Margin-bounded tables — the tractable `native_decide` enumeration
+
+`MarginCorrectTables α β` is `univ.filter` over `CTable α β = img(α) → img(β) → Fin (k+1)`,
+whose `univ` has cardinality `(k+1)^(|img α|·|img β|)`. For any real witness (orbits with
+`≥ 3` distinct exponent values, hence `≥ 9` cells) this is astronomically large — `native_decide`
+on `gram*Entry` is infeasible even at `k = 6`. But margin-correctness forces every entry
+`T v b ≤ min(rowmargin v, colmargin b)` (a single term is `≤` its row/column sum), so re-typing
+the entries to `Fin (min + 1)` is a **value-preserving bijection** on the margin-correct tables.
+The bounded `univ` has cardinality `∏ (min + 1)` — and since the only large margins are the
+`0`-value ones, this is `(k+1) · (small)^(cells-1)` (e.g. `(k+1)·2⁸ ≈ 77k` for an img-3 pair vs
+`(k+1)⁹ ≈ 10²²`). The expensive bignum multinomials run only on the *accepted* (filtered) tables.
+`gram*EntryBdd` is `gram*Entry` restated over this bounded type; the witness lemmas use it. -/
+
+/-- Margin-bounded contingency table: entry `(v,b)` capped at `min(rowmargin v, colmargin b)`. -/
+abbrev CTableBdd : Type :=
+  (v : ↥(univ.image α)) → (b : ↥(univ.image β)) →
+    Fin (min ((univ.filter (fun i => α i = v.val)).card)
+             ((univ.filter (fun i => β i = b.val)).card) + 1)
+
+/-- Margin-correct bounded tables: same margin filter as `MarginCorrectTables`, over the
+bounded type. Its `univ` is `∏ (min+1)` — tractable. -/
+def MarginCorrectTablesBdd : Finset (CTableBdd α β) :=
+  univ.filter (fun T =>
+    (∀ v, ∑ b, (T v b : ℕ) = (univ.filter (fun i => α i = v.val)).card) ∧
+    (∀ b, ∑ v, (T v b : ℕ) = (univ.filter (fun i => β i = b.val)).card))
+
+/-- The joint multiset named by a bounded table (identical formula to `tableToMultiset`). -/
+def tableToMultisetBdd (T : CTableBdd α β) : Multiset (ℕ × ℕ) :=
+  ∑ v : ↥(univ.image α), ∑ b : ↥(univ.image β),
+    Multiset.replicate (T v b) (v.val, b.val)
+
+/-- Cast a bounded table up to a full `CTable` (always valid: `min + 1 ≤ k + 1`). -/
+def ctableCastUp (T : CTableBdd α β) : CTable α β :=
+  fun v b => ⟨(T v b : ℕ), by
+    have hle : (T v b : ℕ) ≤
+        min ((univ.filter (fun i => α i = v.val)).card)
+            ((univ.filter (fun i => β i = b.val)).card) :=
+      Nat.lt_succ_iff.mp (T v b).isLt
+    have hk : (univ.filter (fun i => α i = v.val)).card ≤ k := by
+      have := Finset.card_filter_le (univ : Finset (Fin k)) (fun i => α i = v.val)
+      simpa using this
+    exact Nat.lt_succ_of_le (le_trans (le_trans hle (min_le_left _ _)) hk)⟩
+
+@[simp] lemma ctableCastUp_val (T : CTableBdd α β) (v : ↥(univ.image α)) (b : ↥(univ.image β)) :
+    (ctableCastUp α β T v b : ℕ) = (T v b : ℕ) := rfl
+
+/-- Cast a margin-correct full table down to the bounded type (entries fit by margin-correctness). -/
+def ctableCastDown (T : CTable α β) (hT : T ∈ MarginCorrectTables α β) : CTableBdd α β :=
+  fun v b => ⟨(T v b : ℕ), by
+    rw [MarginCorrectTables, Finset.mem_filter] at hT
+    obtain ⟨_, hrow, hcol⟩ := hT
+    have h1 : (T v b : ℕ) ≤ (univ.filter (fun i => α i = v.val)).card := by
+      rw [← hrow v]
+      exact Finset.single_le_sum (f := fun b' => (T v b' : ℕ)) (fun i _ => Nat.zero_le _)
+        (Finset.mem_univ b)
+    have h2 : (T v b : ℕ) ≤ (univ.filter (fun i => β i = b.val)).card := by
+      rw [← hcol b]
+      exact Finset.single_le_sum (f := fun v' => (T v' b : ℕ)) (fun i _ => Nat.zero_le _)
+        (Finset.mem_univ v)
+    exact Nat.lt_succ_of_le (le_min h1 h2)⟩
+
+@[simp] lemma ctableCastDown_val (T : CTable α β) (hT : T ∈ MarginCorrectTables α β)
+    (v : ↥(univ.image α)) (b : ↥(univ.image β)) :
+    (ctableCastDown α β T hT v b : ℕ) = (T v b : ℕ) := rfl
+
+/-- `ctableCastUp` of a bounded margin-correct table is margin-correct (values preserved). -/
+lemma ctableCastUp_mem {T : CTableBdd α β} (hT : T ∈ MarginCorrectTablesBdd α β) :
+    ctableCastUp α β T ∈ MarginCorrectTables α β := by
+  rw [MarginCorrectTablesBdd, Finset.mem_filter] at hT
+  obtain ⟨_, hrow, hcol⟩ := hT
+  rw [MarginCorrectTables, Finset.mem_filter]
+  exact ⟨Finset.mem_univ _,
+    fun v => by simpa only [ctableCastUp_val] using hrow v,
+    fun b => by simpa only [ctableCastUp_val] using hcol b⟩
+
+/-- `ctableCastDown` of a margin-correct table is margin-correct in the bounded type. -/
+lemma ctableCastDown_mem {T : CTable α β} (hT : T ∈ MarginCorrectTables α β) :
+    ctableCastDown α β T hT ∈ MarginCorrectTablesBdd α β := by
+  rw [MarginCorrectTablesBdd, Finset.mem_filter]
+  have hT' := hT
+  rw [MarginCorrectTables, Finset.mem_filter] at hT'
+  obtain ⟨_, hrow, hcol⟩ := hT'
+  refine ⟨Finset.mem_univ _, fun v => ?_, fun b => ?_⟩
+  · simp only [ctableCastDown_val]; exact hrow v
+  · simp only [ctableCastDown_val]; exact hcol b
+
+lemma ctableCastDown_castUp {T : CTableBdd α β} (hT : T ∈ MarginCorrectTablesBdd α β) :
+    ctableCastDown α β (ctableCastUp α β T) (ctableCastUp_mem α β hT) = T := by
+  funext v b; apply Fin.ext; rfl
+
+lemma ctableCastUp_castDown {T : CTable α β} (hT : T ∈ MarginCorrectTables α β) :
+    ctableCastUp α β (ctableCastDown α β T hT) = T := by
+  funext v b; apply Fin.ext; rfl
+
+/-- **Margin-bounded denominator Gram entry** — `gramDenEntry` over the tractable bounded
+table type (`= gramDenEntry`, see `gramDenEntryBdd_eq`). This is what `native_decide` evaluates. -/
+def gramDenEntryBdd {k : ℕ} (a b : MultiIndex k) : ℚ :=
+  ((Nat.multinomial (univ : Finset ↥(univ.image b))
+        (fun bb => (univ.filter (fun i => b i = bb.val)).card)) •
+      ∑ T ∈ MarginCorrectTablesBdd a b,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => (T v bb : ℕ)) : ℚ))
+          * jointWeightC (tableToMultisetBdd a b T))
+    / ((k + a.degree + b.degree).factorial : ℚ)
+
+/-- **Margin-bounded numerator Gram entry** (`= gramNumEntry`, see `gramNumEntryBdd_eq`). -/
+def gramNumEntryBdd {n : ℕ} (a b : MultiIndex (n + 1)) : ℚ :=
+  (∑ T ∈ MarginCorrectTablesBdd a b,
+      (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+          (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+        * pairWeightC (tableToMultisetBdd a b T))
+    / (((n + 1) + a.degree + b.degree + 1).factorial : ℚ)
+
+lemma gramDenEntryBdd_eq {k : ℕ} (a b : MultiIndex k) :
+    gramDenEntryBdd a b = gramDenEntry a b := by
+  have hS : (∑ T ∈ MarginCorrectTablesBdd a b,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => (T v bb : ℕ)) : ℚ))
+          * jointWeightC (tableToMultisetBdd a b T))
+      = ∑ T ∈ MarginCorrectTables a b,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => (T v bb : ℕ)) : ℚ))
+          * jointWeightC (tableToMultiset a b T) :=
+    Finset.sum_bij' (i := fun T _ => ctableCastUp a b T)
+      (j := fun T hT => ctableCastDown a b T hT)
+      (fun T hT => ctableCastUp_mem a b hT)
+      (fun T hT => ctableCastDown_mem a b hT)
+      (fun T hT => ctableCastDown_castUp a b hT)
+      (fun T hT => ctableCastUp_castDown a b hT)
+      (fun T _ => rfl)
+  unfold gramDenEntryBdd gramDenEntry
+  rw [hS]
+
+lemma gramNumEntryBdd_eq {n : ℕ} (a b : MultiIndex (n + 1)) :
+    gramNumEntryBdd a b = gramNumEntry a b := by
+  have hS : (∑ T ∈ MarginCorrectTablesBdd a b,
+        (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+            (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+          * pairWeightC (tableToMultisetBdd a b T))
+      = ∑ T ∈ MarginCorrectTables a b,
+        (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+            (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+          * pairWeightC (tableToMultiset a b T) :=
+    Finset.sum_bij' (i := fun T _ => ctableCastUp a b T)
+      (j := fun T hT => ctableCastDown a b T hT)
+      (fun T hT => ctableCastUp_mem a b hT)
+      (fun T hT => ctableCastDown_mem a b hT)
+      (fun T hT => ctableCastDown_castUp a b hT)
+      (fun T hT => ctableCastUp_castDown a b hT)
+      (fun T _ => rfl)
+  unfold gramNumEntryBdd gramNumEntry
+  rw [hS]
+
 /-- **Computable-form symmetric-weight `Mk` lower bound.** `Mk_gt_of_symWeight_witness` restated
 with the computable `gram*Entry` matrices, so `hwit` is a `native_decide`-able rational inequality.
 This is the witness shape the endgame actually feeds. -/
@@ -1293,6 +1446,34 @@ theorem mk_witness_under_EH_of_symWeight_computable {n m : ℕ} (hm : 0 < m)
   exists_theta_of_Mk_gt (2 * (m : ℝ)) (by positivity)
     (by exact_mod_cast Mk_gt_of_symWeight_witness_computable R c hR (2 * m) hwit)
 
+/-- **Margin-bounded `Mk` lower bound** — `Mk_gt_of_symWeight_witness_computable` restated with the
+tractable `gram*EntryBdd` matrices. The `hwit` inequality is the one `native_decide` actually
+evaluates: it enumerates the bounded `univ` (card `∏ (min+1)`), not `(k+1)^(cells)`. -/
+theorem Mk_gt_of_symWeight_witness_bdd {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (T : ℚ)
+    (hwit : T <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryBdd a b)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryBdd a b)) :
+    (T : ℝ) < Sieve.Mk (n + 1) := by
+  apply Mk_gt_of_symWeight_witness_computable R c hR T
+  simp only [gramNumEntryBdd_eq, gramDenEntryBdd_eq] at hwit
+  exact hwit
+
+/-- **Margin-bounded `2·m/ϑ` EH-witness discharge** — the `native_decide`-feasible form of
+`mk_witness_under_EH_of_symWeight_computable`. The bounded Gram matrices make the `hwit`
+`native_decide` tractable (no `(k+1)^(cells)` table enumeration). -/
+theorem mk_witness_under_EH_of_symWeight_bdd {n m : ℕ} (hm : 0 < m)
+    (R : Finset (MultiIndex (n + 1))) (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (hwit : (2 * m : ℚ) <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryBdd a b)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryBdd a b)) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk (n + 1) > 2 * (m : ℝ) / ϑ :=
+  exists_theta_of_Mk_gt (2 * (m : ℝ)) (by positivity)
+    (by exact_mod_cast Mk_gt_of_symWeight_witness_bdd R c hR (2 * m) hwit)
+
 /-! ## End-to-end validation (regression guard)
 
 A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
@@ -1303,6 +1484,17 @@ data. This confirms the orbit-symmetry → Gram → `Mk` chain is sound and the 
 fire. (`Mk 3 > 1` is itself a weak bound; the point is the mechanism.) -/
 example : (1 : ℝ) < Sieve.Mk 3 := by
   have h := Mk_gt_of_symWeight_witness_computable (n := 2)
+    ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
+    (disjoint_of_histogram _ (by native_decide)) 1 (by native_decide)
+  exact_mod_cast h
+
+/-- **Same bound through the margin-bounded path.** Identical witness, but the Gram quotient
+`native_decide` now runs over `gram*EntryBdd` — enumerating the bounded table `univ` (card
+`∏ (min+1)`) instead of `(k+1)^(cells)`. This is the `native_decide` shape that actually scales:
+e.g. `gramDenEntryBdd (![2,1] padded) (![2,1] padded)` at `k = 50` evaluates in seconds, whereas
+the unbounded `gramDenEntry` (over `(51)⁹ ≈ 10¹⁵` tables) does not finish. -/
+example : (1 : ℝ) < Sieve.Mk 3 := by
+  have h := Mk_gt_of_symWeight_witness_bdd (n := 2)
     ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
     (disjoint_of_histogram _ (by native_decide)) 1 (by native_decide)
   exact_mod_cast h
