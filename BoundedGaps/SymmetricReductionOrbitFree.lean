@@ -406,6 +406,26 @@ lemma orbitPair_numerator_eq {n : ℕ} (α β : MultiIndex (n + 1)) :
   rw [harg]
   ring
 
+/-- **Numerator summand factorization** (the insight that makes the numerator
+denominator-grade, not a harder pointed build). The `removeNth`-product times the slack
+factorial factors as the *full* joint-type product `∏ₘ((p+q)ₘ)!` times a **local
+marked-cell factor** `(pᵢ+qᵢ+2)!/(pᵢ+qᵢ)!` depending only on the value pair at `i`. Via
+`Fin.prod_univ_succAbove`: `∏ₘ((p+q)ₘ)! = ((p+q)ᵢ)! · ∏ⱼ(removeNthᵢ(p+q))ⱼ!`. Consequence:
+`∑ᵢ (local factor) = ∑cells Y·(factor)` for the (p,q) joint type `Y`, so the whole
+numerator regroups over the (p,q) joint type like the denominator. -/
+lemma numerator_summand_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (i : Fin (n + 1)) :
+    (∏ j, ((Fin.removeNth i (p + q) j).factorial : ℚ)) * ((p i + q i + 2).factorial : ℚ)
+      = (∏ m, (((p + q) m).factorial : ℚ))
+          * ((p i + q i + 2).factorial : ℚ) / ((p i + q i).factorial : ℚ) := by
+  have hprod : (∏ m, (((p + q) m).factorial : ℚ))
+      = (((p + q) i).factorial : ℚ) * ∏ j, ((Fin.removeNth i (p + q) j).factorial : ℚ) :=
+    Fin.prod_univ_succAbove (fun m => (((p + q) m).factorial : ℚ)) i
+  have hne : ((p i + q i).factorial : ℚ) ≠ 0 := by
+    exact_mod_cast (Nat.factorial_pos _).ne'
+  rw [hprod]
+  simp only [Pi.add_apply]
+  field_simp
+
 end OrbitFree
 
 end BoundedGaps
