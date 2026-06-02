@@ -699,6 +699,22 @@ theorem card_fiberwise_eq_multinomial (h : V → ℕ) (hsum : ∑ v, h v = Finty
   rw [← Fintype.card_subtype P]
   exact Nat.eq_of_mul_eq_mul_right (Finset.prod_pos (fun v _ => Nat.factorial_pos (h v))) key
 
+/-- **The general fiber count (β-group product + keystone).** Counting functions `f : ι → V` whose
+joint histogram against a fixed companion `g : ι → B` equals a target table `X` is the product over
+the `g`-fibers of a multinomial coefficient — provided each column margin `∑ v, X v b` equals the
+size of the `b`-fiber `{i // g i = b}` (else that factor's fiber set is empty). Combines
+`card_jointType_eq_prod` (the structural decomposition) with `card_fiberwise_eq_multinomial` (the
+per-fiber keystone). This is the contingency-table closed form for the cross-orbit core `S(α,β)`,
+ready to be specialized to `ι = Fin k`, `V = ↥(image α)`, `B = ↥(image β)`. -/
+theorem card_jointType_eq_prod_multinomial (g : ι → B) (X : V → B → ℕ)
+    (hcol : ∀ b, ∑ v, X v b = Fintype.card {i // g i = b}) :
+    (univ.filter (fun f : ι → V =>
+        ∀ v b, (univ.filter (fun i => f i = v ∧ g i = b)).card = X v b)).card
+      = ∏ b : B, Nat.multinomial univ (fun v => X v b) := by
+  rw [card_jointType_eq_prod g X]
+  exact Finset.prod_congr rfl
+    (fun b _ => card_fiberwise_eq_multinomial (fun v => X v b) (hcol b))
+
 end FiberProduct
 
 /-! ## Status + next obligations toward the matching closed form
