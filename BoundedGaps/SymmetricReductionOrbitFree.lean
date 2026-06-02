@@ -79,6 +79,38 @@ lemma tableToMultiset_count_mem (T : CTable α β)
     exact hv (Subtype.ext (congrArg Prod.fst h))
   · intro h; exact absurd (Finset.mem_univ v₀) h
 
+/-- The joint multiset against `β` has exactly `k` pairs (one per slot). -/
+lemma jointMultiset_card (p : MultiIndex k) : (jointMultiset β p).card = k := by
+  unfold jointMultiset
+  rw [Multiset.card_map, ← Finset.card_def, Finset.card_univ, Fintype.card_fin]
+
+/-- The **inverse map**: the contingency table read off a coordinate vector `p` (its
+joint histogram against `β`). Entries are `≤ k` so they land in `Fin (k+1)`. -/
+def orbitTable (p : MultiIndex k) : CTable α β :=
+  fun v b => ⟨(jointMultiset β p).count (v.val, b.val),
+    Nat.lt_succ_of_le ((Multiset.count_le_card _ _).trans (jointMultiset_card β p).le)⟩
+
+/-- **Forward (j) direction.** The table read off any orbit element is margin-correct:
+its row margins are α's value-fiber sizes (orbit ⟹ same histogram as α) and its column
+margins are β's. Pure; uses only `sum_joint_eq_fiber` / `_col` and `mem_monoOrbit_iff`. -/
+lemma orbitTable_mem (p : MultiIndex k) (hp : p ∈ monoOrbit α) :
+    orbitTable α β p ∈ MarginCorrectTables α β := by
+  classical
+  rw [MarginCorrectTables, Finset.mem_filter]
+  refine ⟨Finset.mem_univ _, ?_, ?_⟩
+  · intro v
+    have hval : ∀ b : ↥(univ.image β), ((orbitTable α β p v b : ℕ))
+        = (univ.filter (fun i => p i = v.val ∧ β i = b.val)).card :=
+      fun b => jointMultiset_count_eq β p v.val b.val
+    rw [Finset.sum_congr rfl (fun b _ => hval b), sum_joint_eq_fiber β p v.val]
+    exact (mem_monoOrbit_iff α p).mp hp v.val
+  · intro b
+    have hval : ∀ v : ↥(univ.image α), ((orbitTable α β p v b : ℕ))
+        = (univ.filter (fun i => p i = v.val ∧ β i = b.val)).card :=
+      fun v => jointMultiset_count_eq β p v.val b.val
+    rw [Finset.sum_congr rfl (fun v _ => hval v),
+        sum_joint_eq_fiber_col α β p (fun i => orbit_vals_mem α hp i) b.val]
+
 /-- **The realizability converse** (Aristotle target `joint_realizability`). A
 margin-correct table is realized by a permutation of α against β: there is `σ` whose
 joint histogram of `(α ∘ σ, β)` is exactly `T`. Forward direction is in-repo;
