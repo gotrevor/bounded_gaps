@@ -1,4 +1,5 @@
 import BoundedGaps.SymmetricReduction
+import BoundedGaps.JointRealizability
 
 /-!
 # Orbit-free re-indexing of the cross-orbit core closed form
@@ -111,16 +112,6 @@ lemma orbitTable_mem (p : MultiIndex k) (hp : p ∈ monoOrbit α) :
     rw [Finset.sum_congr rfl (fun v _ => hval v),
         sum_joint_eq_fiber_col α β p (fun i => orbit_vals_mem α hp i) b.val]
 
-/-- **The realizability converse** (Aristotle target `joint_realizability`). A
-margin-correct table is realized by a permutation of α against β: there is `σ` whose
-joint histogram of `(α ∘ σ, β)` is exactly `T`. Forward direction is in-repo;
-this backward direction is the offloaded `sorry`. -/
-theorem table_realized_in_orbit (T : CTable α β)
-    (hT : T ∈ MarginCorrectTables α β) :
-    ∃ p ∈ monoOrbit α, jointMultiset β p
-      = tableToMultiset α β T := by
-  sorry
-
 /-- The **total clamped inverse**: read a table off any multiset (entries clamped to
 `≤ k` so they land in `Fin (k+1)`). On realized multisets the clamp is inactive. -/
 def multisetToTable (X : Multiset (ℕ × ℕ)) : CTable α β :=
@@ -191,10 +182,44 @@ lemma tableToMultiset_orbitTable (p : MultiIndex k) (hp : ∀ i, p i ∈ univ.im
   · rw [tableToMultiset_count_not_mem α β _ c d (Or.inl hc),
         jointMultiset_count_zero α β p hp c d (Or.inl hc)]
 
+/-- **The realizability converse** (`joint_realizability`, formalized by Aristotle and
+ported in `JointRealizability.lean`). A margin-correct table is realized by a
+permutation of α against β: there is `σ` with `α ∘ σ ∈ monoOrbit α` whose joint
+histogram against β is exactly `T`. The bridge applies `joint_realizability` to `T`'s
+entries and reads off the histogram via `jointMultiset_count_eq` / the off-support
+vanishing lemmas. -/
+theorem table_realized_in_orbit (T : CTable α β)
+    (hT : T ∈ MarginCorrectTables α β) :
+    ∃ p ∈ monoOrbit α, jointMultiset β p
+      = tableToMultiset α β T := by
+  classical
+  rw [MarginCorrectTables, Finset.mem_filter] at hT
+  obtain ⟨-, hrow, hcol⟩ := hT
+  obtain ⟨σ, hσ⟩ :=
+    JointReal.joint_realizability α β (fun v b => (T v b : ℕ)) hrow hcol
+  refine ⟨fun i => α (σ i), ?_, ?_⟩
+  · rw [mem_monoOrbit_iff]
+    intro v
+    simp only [Finset.card_filter]
+    exact Equiv.sum_comp σ (fun i => if α i = v then 1 else 0)
+  · have hpval : ∀ i, α (σ i) ∈ univ.image α :=
+      fun i => Finset.mem_image_of_mem α (Finset.mem_univ (σ i))
+    ext ⟨c, d⟩
+    by_cases hc : c ∈ univ.image α
+    · by_cases hd : d ∈ univ.image β
+      · have hrw : ((c, d) : ℕ × ℕ)
+            = ((⟨c, hc⟩ : ↥(univ.image α)).val, (⟨d, hd⟩ : ↥(univ.image β)).val) := rfl
+        rw [hrw, jointMultiset_count_eq, tableToMultiset_count_mem]
+        exact hσ ⟨c, hc⟩ ⟨d, hd⟩
+      · rw [jointMultiset_count_zero α β _ hpval c d (Or.inr hd),
+            tableToMultiset_count_not_mem α β _ c d (Or.inr hd)]
+    · rw [jointMultiset_count_zero α β _ hpval c d (Or.inl hc),
+          tableToMultiset_count_not_mem α β _ c d (Or.inl hc)]
+
 /-- **Orbit-free cross-orbit core closed form.** The same value as
 `orbitCore_eq_multinomial_sum`, re-indexed over the margin-correct tables. The summand
 is fully computable: a product of multinomials in the table entries times the factorial
-weight `∏_{v,b} ((v+b)!)^{T v b}`. Modulo `table_realized_in_orbit` (Aristotle). -/
+weight `∏_{v,b} ((v+b)!)^{T v b}`. Now axiom-clean (realizability discharged). -/
 theorem orbitCore_eq_multinomial_sum_orbitFree :
     ∑ p ∈ monoOrbit α, (∏ i, ((p i + β i).factorial : ℚ))
       = ∑ T ∈ MarginCorrectTables α β,
