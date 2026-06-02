@@ -884,6 +884,90 @@ theorem orbitPair_numerator_computable {n : ℕ} (α β : MultiIndex (n + 1)) :
           / (((n + 1) + α.degree + β.degree + 1).factorial : ℚ) :=
   orbitPair_numerator_orbitFree α β
 
+/-! ## Cross-orbit Rayleigh matrix entries
+
+The `Mr[λ][μ]` matrix entries of the symmetric-reduction Gram matrix are bilinear forms in two
+polynomial sieve weights. For the orbit basis `orbitSum λ`, the denominator/numerator cross
+terms evaluate to the orbit-pair sums computed orbit-freely above, so each matrix entry is a
+closed form computable from the shapes `λ, μ` alone. These are the building blocks of the
+bilinear expansion `polynomialMaynard* (∑_λ c_λ orbitSum λ) = ∑_{λ,μ} c_λ c_μ Mr[λ][μ]`
+(the remaining assembly step needs the disjoint-orbit-union weight representation). -/
+
+/-- The **cross denominator** of two polynomial sieve weights: `∫ (P·Q)` over the simplex,
+`∑_{p∈P}∑_{q∈Q} c_p c_q monomialIntegral(p+q)`. `crossDenominator P P = polynomialMaynardDenominator P`
+by definition; the symmetric Gram-matrix denominator entry is `crossDenominator (orbitSum λ) (orbitSum μ)`. -/
+noncomputable def crossDenominator {k : ℕ} (P Q : PolynomialSieveWeight k) : ℚ :=
+  ∑ p ∈ P.terms, ∑ q ∈ Q.terms, p.2 * q.2 * monomialIntegral (p.1 + q.1)
+
+/-- The **cross numerator** of two polynomial sieve weights (the `Mk` numerator bilinear form,
+`k = n+1`): the marked-coordinate triple sum of `dirichletIntegralWithSlack`. `crossNumerator P P
+= polynomialMaynardNumerator P` for `k = n+1`. -/
+noncomputable def crossNumerator {n : ℕ} (P Q : PolynomialSieveWeight (n + 1)) : ℚ :=
+  ∑ i : Fin (n + 1), ∑ p ∈ P.terms, ∑ q ∈ Q.terms,
+    (p.2 * q.2 : ℚ) / (((p.1 i + 1 : ℕ) : ℚ) * ((q.1 i + 1 : ℕ) : ℚ)) *
+      dirichletIntegralWithSlack (Fin.removeNth i (p.1 + q.1)) (p.1 i + q.1 i + 2)
+
+/-- `orbitSum`'s terms are the orbit vectors with coefficient `1`. -/
+lemma orbitSum_terms {k : ℕ} (α : MultiIndex k) :
+    (orbitSum α).terms = (monoOrbit α).image (fun m : MultiIndex k => (m, (1 : ℚ))) := by
+  unfold orbitSum monoOrbit; rw [Finset.image_image]; rfl
+
+private lemma coe_one_inj {k : ℕ} (s : Finset (MultiIndex k)) :
+    ∀ a ∈ s, ∀ b ∈ s, ((a, (1 : ℚ)) : MultiIndex k × ℚ) = (b, 1) → a = b :=
+  fun a _ b _ h => ((Prod.mk.injEq _ _ _ _).mp h).1
+
+/-- **Cross-orbit denominator entry = orbit-pair sum.** The Gram-matrix denominator entry of the
+orbit basis is the off-diagonal orbit-pair sum (`orbitPair_denominator_*`); the diagonal recovers
+`polynomialMaynardDenominator_orbitSum`. -/
+lemma crossDenominator_orbitSum {k : ℕ} (α β : MultiIndex k) :
+    crossDenominator (orbitSum α) (orbitSum β)
+      = ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, monomialIntegral (p + q) := by
+  unfold crossDenominator
+  rw [orbitSum_terms, Finset.sum_image (coe_one_inj _)]
+  refine Finset.sum_congr rfl (fun pm _ => ?_)
+  rw [orbitSum_terms, Finset.sum_image (coe_one_inj _)]
+  refine Finset.sum_congr rfl (fun qm _ => ?_)
+  simp
+
+/-- **Cross-orbit numerator entry = orbit-pair marked sum.** The Gram-matrix numerator entry of
+the orbit basis is the marked-coordinate orbit-pair sum (`orbitPair_numerator_*`). -/
+lemma crossNumerator_orbitSum {n : ℕ} (α β : MultiIndex (n + 1)) :
+    crossNumerator (orbitSum α) (orbitSum β)
+      = ∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+          (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+            dirichletIntegralWithSlack (Fin.removeNth i (p + q)) (p i + q i + 2) := by
+  unfold crossNumerator
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [orbitSum_terms, Finset.sum_image (coe_one_inj _)]
+  refine Finset.sum_congr rfl (fun pm _ => ?_)
+  rw [orbitSum_terms, Finset.sum_image (coe_one_inj _)]
+  refine Finset.sum_congr rfl (fun qm _ => ?_)
+  simp
+
+/-- **`native_decide`-ready denominator Gram entry.** The orbit-basis denominator matrix entry as
+a closed form computable from the shapes `α, β` (no `monoOrbit`). -/
+theorem crossDenominator_orbitSum_computable {k : ℕ} (α β : MultiIndex k) :
+    crossDenominator (orbitSum α) (orbitSum β)
+      = ((Nat.multinomial (univ : Finset ↥(univ.image β))
+            (fun b => (univ.filter (fun i => β i = b.val)).card)) •
+          ∑ T ∈ MarginCorrectTables α β,
+            (∏ b : ↥(univ.image β), (Nat.multinomial univ
+                (fun v : ↥(univ.image α) => (T v b : ℕ)) : ℚ))
+              * jointWeightC (tableToMultiset α β T))
+          / ((k + α.degree + β.degree).factorial : ℚ) :=
+  (crossDenominator_orbitSum α β).trans (orbitPair_denominator_computable α β)
+
+/-- **`native_decide`-ready numerator Gram entry.** The orbit-basis numerator matrix entry as a
+closed form computable from the shapes `α, β` (no `monoOrbit`, no orbit cardinality factor). -/
+theorem crossNumerator_orbitSum_computable {n : ℕ} (α β : MultiIndex (n + 1)) :
+    crossNumerator (orbitSum α) (orbitSum β)
+      = (∑ T ∈ MarginCorrectTables α β,
+            (Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+                (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+              * pairWeightC (tableToMultiset α β T))
+          / (((n + 1) + α.degree + β.degree + 1).factorial : ℚ) :=
+  (crossNumerator_orbitSum α β).trans (orbitPair_numerator_computable α β)
+
 end OrbitFree
 
 end BoundedGaps
