@@ -968,6 +968,59 @@ theorem crossNumerator_orbitSum_computable {n : ℕ} (α β : MultiIndex (n + 1)
           / (((n + 1) + α.degree + β.degree + 1).factorial : ℚ) :=
   (crossNumerator_orbitSum α β).trans (orbitPair_numerator_computable α β)
 
+/-! ## Symmetric weights and the bilinear (Gram) expansion
+
+A symmetric polynomial sieve weight is a linear combination `∑_λ c_λ orbitSum λ` over a family
+`R` of orbit representatives. Its terms are the disjoint union of the per-orbit term sets (orbit
+vectors carrying coefficient `c λ`). Because distinct representatives have disjoint orbits, the
+Maynard denominator/numerator — both bilinear in the terms — expand as the Gram quadratic form
+`∑_{λ,μ∈R} c_λ c_μ Mr[λ][μ]` with `Mr` the cross-orbit entries above. -/
+
+/-- The **symmetric weight** `∑_{λ∈R} c_λ · orbitSum λ`: terms are the per-orbit vectors carrying
+coefficient `c λ`, disjointly unioned over the representative family `R`. -/
+noncomputable def symWeight {k : ℕ} (R : Finset (MultiIndex k)) (c : MultiIndex k → ℚ) :
+    PolynomialSieveWeight k :=
+  ⟨R.biUnion (fun lam => (monoOrbit lam).image (fun v => (v, c lam)))⟩
+
+/-- The per-orbit term sets of a symmetric weight are pairwise disjoint, given that distinct
+representatives have disjoint orbits (a `(v, c a) = (w, c b)` forces `v = w ∈ orbit a ∩ orbit b`). -/
+lemma symWeight_termSets_disjoint {k : ℕ} (R : Finset (MultiIndex k)) (c : MultiIndex k → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b)) :
+    (R : Set (MultiIndex k)).PairwiseDisjoint
+      (fun lam => (monoOrbit lam).image (fun v => (v, c lam))) := by
+  intro a ha b hb hab
+  rw [Function.onFun, Finset.disjoint_left]
+  rintro x hxa hxb
+  obtain ⟨v, hv, rfl⟩ := Finset.mem_image.mp hxa
+  obtain ⟨w, hw, hw2⟩ := Finset.mem_image.mp hxb
+  have hvw : w = v := congrArg Prod.fst hw2
+  exact (hR a ha b hb hab).forall_ne_finset hv (hvw ▸ hw) rfl
+
+private lemma fst_inj {k : ℕ} (c : ℚ) (s : Finset (MultiIndex k)) :
+    ∀ x ∈ s, ∀ y ∈ s, ((fun v => (v, c)) x : MultiIndex k × ℚ) = (fun v => (v, c)) y → x = y :=
+  fun _ _ _ _ h => congrArg Prod.fst h
+
+/-- **Bilinear (Gram) expansion of the denominator.** The Maynard denominator of a symmetric
+weight is the quadratic form `∑_{a,b∈R} c_a c_b · crossDenominator (orbitSum a) (orbitSum b)` in
+the orbit basis. Each entry is the `native_decide`-ready closed form
+`crossDenominator_orbitSum_computable`. -/
+theorem polynomialMaynardDenominator_symWeight {k : ℕ} (R : Finset (MultiIndex k))
+    (c : MultiIndex k → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b)) :
+    polynomialMaynardDenominator (symWeight R c)
+      = ∑ a ∈ R, ∑ b ∈ R, c a * c b * crossDenominator (orbitSum a) (orbitSum b) := by
+  classical
+  have hdisj := symWeight_termSets_disjoint R c hR
+  unfold polynomialMaynardDenominator symWeight
+  rw [Finset.sum_biUnion hdisj]
+  refine Finset.sum_congr rfl (fun a ha => ?_)
+  rw [Finset.sum_congr rfl (fun p _ => Finset.sum_biUnion hdisj), Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun b hb => ?_)
+  rw [crossDenominator_orbitSum,
+      Finset.sum_image (fst_inj (c a) (monoOrbit a)), Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun v _ => ?_)
+  rw [Finset.sum_image (fst_inj (c b) (monoOrbit b)), Finset.mul_sum]
+
 end OrbitFree
 
 end BoundedGaps
