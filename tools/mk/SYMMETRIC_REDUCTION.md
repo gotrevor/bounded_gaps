@@ -285,8 +285,32 @@ new theory.
 - **Both Rayleigh matrix entries are now orbit-free closed forms computable from α,β shapes
   alone.** This finishes the orbit-free re-index milestone (Coding Step 1–3 of the prior plan).
 
-### Next: matrix assembly (doc Remaining Step toward `Mk 54 > 4`)
-Symmetric weight `P_sym = ∑_λ c_λ orbitSum_λ` → bilinear `∑_{λ,μ} c_λ c_μ Mr[λ][μ]` with
-`Mr` built from `orbitPair_denominator_computable` / `orbitPair_numerator_computable`; then at
-k=54 `native_decide` the LDL inertia at degree ≥9. Chain `Mk_ge_polynomialMkF` →
-`Mk 54 > 4` → discharge `mk_54_witness_under_EH`. Genuinely multi-session.
+## PIPELINE COMPLETE + VALIDATED (2026-06-02, final) — only data + native_decide remain
+
+The matrix assembly and the entire chain to `mk_54_witness_under_EH` are **built, axiom-clean, and
+validated end-to-end** in `BoundedGaps/SymmetricReductionOrbitFree.lean`:
+- **Gram entries** `crossDenominator` / `crossNumerator` (bilinear forms on two weights) +
+  `cross*_orbitSum_computable` (= the orbit-free closed forms). Computable twins `gramDenEntry` /
+  `gramNumEntry` (`#eval`: `gramDenEntry ![2,1,0] ![1,1,0] = 11/3360`, `gramNumEntry = 7/2160`).
+- **Bilinear expansion**: `symWeight R c` (= `∑_λ c_λ orbitSum λ`, disjoint-union terms) and
+  `polynomialMaynard{Denominator,Numerator}_symWeight` = `∑_{a,b∈R} c_a c_b cross*(a)(b)`; ratio
+  `polynomialMkF_symWeight`.
+- **Witness chain**: `Mk_gt_of_symWeight_witness(_computable)` (Gram quotient `> T` ⟹ `Mk(n+1) > T`,
+  via the real `Mk_ge_polynomialMkF`), `exists_theta_of_Mk_gt` (⟹ the `∃ϑ, Mk > T/ϑ` shape),
+  `mk_54_witness_under_EH_of_symWeight_computable` and the uniform `mk_witness_under_EH_of_symWeight_computable`
+  (all 5 EH witnesses, `T = 2m`).
+- **`hR` mechanized**: `disjoint_of_histogram R (by native_decide)` (orbits partition;
+  `monoOrbit` is noncomputable so the histogram form is the decidable route).
+- **END-TO-END VALIDATED**: a committed `example` proves `Mk 3 > 1` through the whole pipeline,
+  both `native_decide`s firing (R = {![2,1,0],![1,1,0]}, c≡1, quotient 2063/2060).
+
+### The ONLY remaining step (host/data-side)
+Produce the optimal `k=54` data `(R, c)` from `mk_sym.py` / `_ldl.py` (orbit reps + LDL coeffs,
+degree ≥9), then in `BoundedGaps/Polymath8b.lean`:
+```
+theorem mk_54_witness_under_EH := OrbitFree.mk_54_witness_under_EH_of_symWeight_computable
+  R c (OrbitFree.disjoint_of_histogram R (by native_decide)) (by native_decide)
+```
+The two `native_decide`s are the same ones validated at k=3; at k=54 they are heavy
+(degree-9 contingency-table enumeration) — **host-better, may OOM the box**. If too slow, fall
+back to a `Fin`-indexed table reformulation of `gram*Entry`. No more theory is required.
