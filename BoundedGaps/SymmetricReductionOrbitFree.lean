@@ -1069,6 +1069,23 @@ theorem polynomialMaynardNumerator_symWeight {n : ℕ} (R : Finset (MultiIndex (
   dsimp only
   ring
 
+/-- **Symmetric Maynard ratio as a Gram quotient.** The polynomial Maynard ratio of a symmetric
+weight `∑_{λ∈R} c_λ orbitSum λ` is the orbit-basis quadratic-form quotient
+`(∑ c_a c_b crossNumerator) / (∑ c_a c_b crossDenominator)`. Both Gram matrices are entrywise
+`native_decide`-ready closed forms (`crossNumerator_orbitSum_computable`,
+`crossDenominator_orbitSum_computable`) — so the whole ratio is computable from the shapes in `R`
+and the coefficients `c`, with no `monoOrbit` enumeration. This is the object whose `> 4` (at
+`k = 54`, degree ≥ 9) discharges `mk_54_witness_under_EH` via `Mk_ge_polynomialMkF`. -/
+theorem polynomialMkF_symWeight {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b)) :
+    polynomialMkF (symWeight R c)
+      = (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator (orbitSum a) (orbitSum b))
+          / (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossDenominator (orbitSum a) (orbitSum b)) := by
+  unfold polynomialMkF
+  rw [polynomialMaynardNumerator_symWeight R c hR,
+      polynomialMaynardDenominator_symWeight R c hR]
+
 end OrbitFree
 
 end BoundedGaps
