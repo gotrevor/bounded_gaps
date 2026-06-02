@@ -253,6 +253,71 @@ theorem orbitCore_eq_multinomial_sum_orbitFree :
         tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)]
     simp only [orbitTable]
 
+/-- **Orbit cardinality is a multinomial.** The number of distinct rearrangements of β
+equals the multinomial coefficient of β's value-fiber sizes — computable from β's shape
+alone, no orbit enumeration. Discharges the last orbit reference in the denominator entry.
+Proven via the keystone `card_fiberwise_eq_multinomial` and a `card_bij'` from `monoOrbit β`
+to the `image β`-valued functions with β's fiber sizes. -/
+lemma monoOrbit_card_eq_multinomial :
+    (monoOrbit β).card
+      = Nat.multinomial (univ : Finset ↥(univ.image β))
+          (fun b => (univ.filter (fun i => β i = b.val)).card) := by
+  classical
+  set h : ↥(univ.image β) → ℕ :=
+    fun b => (univ.filter (fun i => β i = b.val)).card with hh
+  have hsum : ∑ b, h b = Fintype.card (Fin k) := by
+    have hfib := Finset.card_eq_sum_card_fiberwise
+      (s := (univ : Finset (Fin k))) (t := (univ : Finset ↥(univ.image β)))
+      (f := fun i => (⟨β i, Finset.mem_image_of_mem β (Finset.mem_univ i)⟩
+        : ↥(univ.image β)))
+      (fun i _ => Finset.mem_univ _)
+    rw [Finset.card_univ] at hfib
+    rw [hfib]
+    apply Finset.sum_congr rfl
+    intro b _
+    apply congrArg Finset.card
+    apply Finset.filter_congr
+    intro i _
+    simp [Subtype.ext_iff, eq_comm]
+  rw [← card_fiberwise_eq_multinomial h hsum]
+  apply Finset.card_bij'
+    (i := fun (p : MultiIndex k) (hp : p ∈ monoOrbit β) =>
+            (fun idx => (⟨p idx, orbit_vals_mem β hp idx⟩ : ↥(univ.image β))))
+    (j := fun (f : Fin k → ↥(univ.image β)) (_ : f ∈ univ.filter _) =>
+            (fun idx => (f idx).val : MultiIndex k))
+  case hi =>
+    intro p hp
+    rw [Finset.mem_filter]
+    refine ⟨Finset.mem_univ _, ?_⟩
+    intro b
+    have key : (univ.filter (fun a => p a = b.val)).card = h b :=
+      (mem_monoOrbit_iff β p).mp hp b.val
+    rw [← key]
+    apply congrArg Finset.card
+    apply Finset.filter_congr
+    intro i _
+    simp [Subtype.ext_iff]
+  case hj =>
+    intro f hf
+    have hPV : ∀ v, (univ.filter (fun a => f a = v)).card = h v :=
+      (Finset.mem_filter.mp hf).2
+    rw [mem_monoOrbit_iff]
+    intro c
+    by_cases hc : c ∈ univ.image β
+    · have e1 : (univ.filter (fun i => (f i).val = c)).card
+              = (univ.filter (fun i => f i = (⟨c, hc⟩ : ↥(univ.image β)))).card := by
+        apply congrArg Finset.card; apply Finset.filter_congr; intro i _
+        simp [Subtype.ext_iff]
+      rw [e1, hPV ⟨c, hc⟩]
+    · have e0 : (univ.filter (fun i => (f i).val = c)) = ∅ := by
+        rw [Finset.filter_eq_empty_iff]; intro i _ heq; exact hc (heq ▸ (f i).2)
+      have eβ : (univ.filter (fun i => β i = c)) = ∅ := by
+        rw [Finset.filter_eq_empty_iff]; intro i _ heq
+        exact hc (heq ▸ Finset.mem_image_of_mem β (Finset.mem_univ i))
+      rw [e0, eβ]
+  case left_inv => intro p _; funext idx; rfl
+  case right_inv => intro f _; funext idx; exact Subtype.ext rfl
+
 /-- **Orbit-free cross-orbit denominator matrix entry.** The full off-diagonal orbit-pair
 denominator `∑_{p∈orbit α} ∑_{q∈orbit β} monomialIntegral (p+q)` equals `|monoOrbit β|`
 copies of the orbit-free contingency-table sum, divided by the constant factorial
@@ -268,6 +333,22 @@ theorem orbitPair_denominator_orbitFree :
           / ((k + α.degree + β.degree).factorial : ℚ) := by
   rw [orbitPair_denominator_eq, orbitPair_core_const,
       orbitCore_eq_multinomial_sum_orbitFree]
+
+/-- **Fully orbit-free cross-orbit denominator matrix entry.** Eliminating the last
+orbit reference `(monoOrbit β).card` via `monoOrbit_card_eq_multinomial`, the entire
+off-diagonal denominator is expressed in objects computable from the *shapes* of α and β
+alone: a multinomial of β's fiber sizes, the margin-correct contingency-table sum, and the
+constant factorial. No `monoOrbit` appears on the right. -/
+theorem orbitPair_denominator_shapeForm :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, monomialIntegral (p + q)
+      = ((Nat.multinomial (univ : Finset ↥(univ.image β))
+            (fun b => (univ.filter (fun i => β i = b.val)).card)) •
+          ∑ T ∈ MarginCorrectTables α β,
+            (∏ b : ↥(univ.image β), (Nat.multinomial univ
+                (fun v : ↥(univ.image α) => (T v b : ℕ)) : ℚ))
+              * jointWeight (tableToMultiset α β T))
+          / ((k + α.degree + β.degree).factorial : ℚ) := by
+  rw [orbitPair_denominator_orbitFree, monoOrbit_card_eq_multinomial]
 
 end OrbitFree
 
