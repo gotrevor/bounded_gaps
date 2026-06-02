@@ -137,6 +137,41 @@ theorem polynomialMkF_eps_symWeight {n : ℕ} (R : Finset (MultiIndex (n + 1)))
   rw [polynomialMaynardNumerator_eps_symWeight R c ε hR,
       polynomialMaynardDenominator_eps_symWeight R c ε hR]
 
+/-! ## ε-numerator orbit-free re-index — keystone factorizations
+
+The ε-numerator is denominator-grade per binomial index `m`: the marked coordinate's `(pᵢ+qᵢ)`
+cancels in both the `(1-ε)` power and the Dirichlet denominator, leaving a joint-type product
+times an `m`-local cell factor. These lemmas isolate that structure. -/
+
+/-- **`removeNth` deletes the marked coordinate from the coordinate sum.** -/
+lemma sum_removeNth_add {n : ℕ} (p q : Fin (n + 1) → ℕ) (i : Fin (n + 1)) :
+    (∑ j, Fin.removeNth i (p + q) j) = (∑ j, (p + q) j) - (p i + q i) := by
+  have hre : (∑ j, Fin.removeNth i (p + q) j) = ∑ j, ((p + q) (i.succAbove j)) := rfl
+  have h := Fin.sum_univ_succAbove (fun j => (p + q) j) i
+  rw [hre]
+  simp only [Pi.add_apply] at h ⊢
+  omega
+
+/-- **Dirichlet-slack factorization at the marked coordinate.** Deleting coordinate `i` from
+`p+q` factors `dirichletIntegralWithSlack` as the full joint-type product `∏ⱼ(p+q)ⱼ!` over the
+marked-cell factorial `(pᵢ+qᵢ)!`, times the slack factorial, over the (per-joint-type, per-slack
+**constant**) Dirichlet denominator `(n + |p+q| - (pᵢ+qᵢ) + s)!`. The ε-analog core of
+`numerator_summand_factor`. -/
+lemma dirichletSlack_removeNth_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (i : Fin (n + 1)) (s : ℕ) :
+    dirichletIntegralWithSlack (Fin.removeNth i (p + q)) s
+      = (∏ j, (((p + q) j).factorial : ℚ)) * (s.factorial : ℚ)
+          / (((p i + q i).factorial : ℚ) *
+              ((n + ((∑ j, (p + q) j) - (p i + q i)) + s).factorial : ℚ)) := by
+  unfold dirichletIntegralWithSlack
+  rw [sum_removeNth_add p q i]
+  have hprod : (∏ j, (((p + q) j).factorial : ℚ))
+      = (((p + q) i).factorial : ℚ) * ∏ j, ((Fin.removeNth i (p + q) j).factorial : ℚ) :=
+    Fin.prod_univ_succAbove (fun m => (((p + q) m).factorial : ℚ)) i
+  have hne : ((p i + q i).factorial : ℚ) ≠ 0 := by exact_mod_cast (Nat.factorial_pos _).ne'
+  rw [hprod]
+  simp only [Pi.add_apply]
+  field_simp
+
 end OrbitFree
 
 end BoundedGaps
