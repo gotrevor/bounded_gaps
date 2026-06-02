@@ -285,10 +285,18 @@ new theory.
 - **Both Rayleigh matrix entries are now orbit-free closed forms computable from α,β shapes
   alone.** This finishes the orbit-free re-index milestone (Coding Step 1–3 of the prior plan).
 
-## PIPELINE COMPLETE + VALIDATED (2026-06-02, final) — only data + native_decide remain
+## BOTH PIPELINES COMPLETE + VALIDATED (2026-06-02, final) — only data + native_decide remain
 
-The matrix assembly and the entire chain to `mk_54_witness_under_EH` are **built, axiom-clean, and
-validated end-to-end** in `BoundedGaps/SymmetricReductionOrbitFree.lean`:
+**EH path (`mk_54_witness_under_EH` → H₁≤246) AND the ε path (`mk_eps_50_witness` → unconditional
+H₁≤246) are both built, axiom-clean, and validated end-to-end.** The ε analog is in
+`BoundedGaps/SymmetricReductionEpsOrbitFree.lean`: `gramDenEntryEps`/`gramNumEntryEps` (computable
+ε Gram entries — the ε-numerator via `affineSlackRat_removeNth_factor`, which is denominator-grade
+per binomial index `m` thanks to the `(pᵢ+qᵢ)` cancellation), `polynomialMkF_eps_symWeight_computable`,
+`mk_eps_50_witness_of_symWeight`, `Mk_eps_gt_of_symWeight_witness_computable` (generic). Validated:
+committed `example` proves `Mk_eps 3 (1/10) > 1`, both `native_decide`s firing (ε quotient ≈1.048).
+
+The EH matrix assembly and the entire chain to `mk_54_witness_under_EH` in
+`BoundedGaps/SymmetricReductionOrbitFree.lean`:
 - **Gram entries** `crossDenominator` / `crossNumerator` (bilinear forms on two weights) +
   `cross*_orbitSum_computable` (= the orbit-free closed forms). Computable twins `gramDenEntry` /
   `gramNumEntry` (`#eval`: `gramDenEntry ![2,1,0] ![1,1,0] = 11/3360`, `gramNumEntry = 7/2160`).
