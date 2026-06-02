@@ -252,3 +252,15 @@ analog. The numerator orbit-free form needs the **joint route**: lift both orbit
 full symmetric group (`group_sum_eq_stab_smul_orbitSum`, divide by stabilizers), reindex
 `(p,q,i)` together, and land on a **pointed contingency table** (joint type of (p,q) PLUS the
 value pair at the marked coordinate i). This is the genuine multi-session theory build.
+
+### CORRECTION (2026-06-02, later) — numerator is denominator-grade after all
+The "q-collapse fails → multi-session pointed build" pessimism above is SUPERSEDED.
+`numerator_summand_factor` (SymmetricReductionOrbitFree.lean): the removeNth-product times
+the slack factorial factors as `(∏ₘ(p+q)ₘ!) · (pᵢ+qᵢ+2)!/(pᵢ+qᵢ)!` — a joint-type weight
+times a LOCAL factor in (pᵢ,qᵢ) only. So `∑ᵢ` of the local factor = `∑cells Y_{a,b}·M(a,b)`
+for the (p,q) joint type Y, and the numerator double-sum regroups over the SAME (p,q)
+joint-type contingency tables as the denominator (margins = α-fibers × β-fibers), with
+summand = [∏cells ((a+b)!)^{Y}] · [∑cells Y·M(a,b)] · (pair-count). The q-collapse still
+fails, but the joint-type regrouping does NOT need it. Next: a `MarginCorrectTables`-style
+sum for the numerator + the pair-count (card_jointType machinery). Denominator-grade, not a
+new theory.
