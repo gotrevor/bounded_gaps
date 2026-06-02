@@ -160,10 +160,17 @@ finite rational, so `native_decide`-able directly — no need to factor out `ff(
    - (b) **margin lemma** — ✅ **DONE** `card_filter_eq_sum_joint`: `#{i:pᵢ=c} = ∑_b #{i:pᵢ=c ∧ βᵢ=b}`.
      With (a) this pins `X`'s row margins to α's fiber sizes (fiber empty otherwise); column margins are
      β's fiber sizes by symmetry.
-   - (c) **keystone counting lemma** — *atomic combinatorial fact, OFFLOADED to Aristotle*
-     (project `15ba0cd4-4b7d-445c-a105-169793b91368`, "keystone", submitted 2026-06-01): for finite
-     types `ι, β`, `#{f : ι → β | ∀ b, #{i:f i=b} = h b} = Nat.multinomial univ h` when `∑ h = |ι|`.
-     Validated numerically (2000 cases, `/tmp` brute check). Statement in `/tmp/keystone/Keystone.lean`.
+   - (c) **keystone counting lemma** — ✅ **DONE** `card_fiberwise_eq_multinomial`
+     (`SymmetricReduction.lean`, axiom-clean). `#{f : ι → V | ∀ v, #{i:f i=v} = h v} =
+     Nat.multinomial univ h` when `∑ h = |ι|`. **Proven natively (NOT via Aristotle)** by
+     orbit–stabilizer: `σ ↦ f₀ ∘ σ` surjects `Perm ι` onto the fiber set with fibers = stabilizer
+     cosets, so `|ι|! = #{fibers=h}·∏(h v)!` (`DomMulAct.stabilizer_card`); cancel against
+     `Nat.multinomial_spec`. Witness from `exists_fiberwise`; surjectivity from `Equiv.ofFiberEquiv`.
+     (Aristotle project `15ba0cd4` was cancelled — landed by hand first, no v4.28→29 port needed.)
+   - (e) **compose** — ✅ **DONE** `card_jointType_eq_prod_multinomial`: `#{f:ι→V | J_g(f)=X} =
+     ∏_b multinomial(univ, X(·,b))`, given column margins `∑v X v b = |{i//g i=b}|`. The general
+     contingency-table closed form, over arbitrary Fintypes. **The full general fiber count is
+     complete.**
    - (d) **β-group product** — ✅ **DONE** `card_jointType_eq_prod` (`SymmetricReduction.lean`,
      axiom-clean, general over Fintypes `ι,V,B`): `#{f:ι→V | ∀ v b, #{i:f i=v ∧ g i=b}=X v b} =
      ∏_b #{q:{i//g i=b}→V | ∀ v, #{j:q j=v}=X v b}`. Via `fiberRestrictEquiv` ((ι→V)≃∀b,(fiber_b→V),
@@ -171,9 +178,7 @@ finite rational, so `native_decide`-able directly — no need to factor out `ff(
      identity by `subtypeSubtypeEquivSubtypeInter`. **Stated over a Fintype codomain `V` — so it
      composes directly with the keystone (c) (also Fintype codomain): the integration wrinkle is
      resolved by taking `V = ↥(image α)` (the finite value-set) throughout.**
-   - (e) **compose** — ⏳ remaining (cheap once (c) lands): `∏_b #{q | …} = ∏_b multinomial(univ, X(·,b))`
-     by applying (c) per factor in (d).
-   - (f) **value-restriction bridge** — ⏳ remaining (plumbing): connect `monoOrbit α |>.filter
+   - (f) **value-restriction bridge** — ⏳ **the only remaining piece**: connect `monoOrbit α |>.filter
      (joint-type vs β = X)` (codomain ℕ) to (d)'s Fintype form with `V=↥(image α)`, `B=↥(image β)`.
      Uses (a) `mem_monoOrbit_iff` (every `p ∈ monoOrbit α` has values in `image α`, and for a *realized*
      `X` the orbit constraint is redundant — the row margins force it). Then `Finset.sum_fiberwise`
