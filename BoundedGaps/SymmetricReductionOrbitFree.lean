@@ -1086,6 +1086,24 @@ theorem polynomialMkF_symWeight {n : ℕ} (R : Finset (MultiIndex (n + 1)))
   rw [polynomialMaynardNumerator_symWeight R c hR,
       polynomialMaynardDenominator_symWeight R c hR]
 
+/-- **Symmetric-weight `Mk` witness.** A symmetric weight whose orbit-basis Gram quotient exceeds
+`4` certifies `Mk (n+1) > 4`. Combines `polynomialMkF_symWeight` with the abstract bridge
+`Mk_gt_four_of_polynomial_witness` (`Mk_ge_polynomialMkF` + `polynomialMkF_eq_MkF`). This reduces
+the witness goal to a **single rational inequality** on the two `native_decide`-ready Gram
+matrices — the only step left for `mk_54_witness_under_EH` is to plug in the `k=54` orbit
+representatives `R`, the LDL eigenvector coefficients `c`, discharge the disjointness `hR`, and
+`native_decide` the quotient. -/
+theorem Mk_gt_four_of_symWeight_witness {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (hwit : (4 : ℚ) <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator (orbitSum a) (orbitSum b))
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * crossDenominator (orbitSum a) (orbitSum b))) :
+    Sieve.Mk (n + 1) > 4 := by
+  apply Mk_gt_four_of_polynomial_witness (symWeight R c)
+  rw [polynomialMkF_symWeight R c hR]
+  exact_mod_cast hwit
+
 end OrbitFree
 
 end BoundedGaps
