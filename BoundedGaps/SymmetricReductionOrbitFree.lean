@@ -1021,6 +1021,54 @@ theorem polynomialMaynardDenominator_symWeight {k : ℕ} (R : Finset (MultiIndex
   refine Finset.sum_congr rfl (fun v _ => ?_)
   rw [Finset.sum_image (fst_inj (c b) (monoOrbit b)), Finset.mul_sum]
 
+/-- **Disjoint-union double-sum reindex.** Any bilinear summand `h p q` summed over the term
+pairs of a symmetric weight regroups over the orbit basis: `∑_{a,b∈R} ∑_{v∈orbit a}∑_{w∈orbit b}
+h (v, c_a) (w, c_b)`. The shared engine for both the denominator and numerator bilinear
+expansions (double `sum_biUnion` + per-orbit `sum_image`). -/
+lemma symWeight_double_sum {k : ℕ} (R : Finset (MultiIndex k)) (c : MultiIndex k → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (h : (MultiIndex k × ℚ) → (MultiIndex k × ℚ) → ℚ) :
+    ∑ p ∈ (symWeight R c).terms, ∑ q ∈ (symWeight R c).terms, h p q
+      = ∑ a ∈ R, ∑ b ∈ R, ∑ v ∈ monoOrbit a, ∑ w ∈ monoOrbit b, h (v, c a) (w, c b) := by
+  classical
+  have hdisj := symWeight_termSets_disjoint R c hR
+  show ∑ p ∈ R.biUnion _, ∑ q ∈ R.biUnion _, h p q = _
+  rw [Finset.sum_biUnion hdisj]
+  refine Finset.sum_congr rfl (fun a ha => ?_)
+  rw [Finset.sum_congr rfl (fun p _ => Finset.sum_biUnion hdisj), Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun b hb => ?_)
+  rw [Finset.sum_image (fst_inj (c a) (monoOrbit a))]
+  refine Finset.sum_congr rfl (fun v _ => ?_)
+  rw [Finset.sum_image (fst_inj (c b) (monoOrbit b))]
+
+/-- **Bilinear (Gram) expansion of the numerator.** The Maynard numerator of a symmetric weight
+is the quadratic form `∑_{a,b∈R} c_a c_b · crossNumerator (orbitSum a) (orbitSum b)` in the orbit
+basis. Applies `symWeight_double_sum` per marked coordinate `i`, then commutes the `∑ i` inward to
+collect each `crossNumerator` entry. Each entry is `crossNumerator_orbitSum_computable`. -/
+theorem polynomialMaynardNumerator_symWeight {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b)) :
+    polynomialMaynardNumerator (symWeight R c)
+      = ∑ a ∈ R, ∑ b ∈ R, c a * c b * crossNumerator (orbitSum a) (orbitSum b) := by
+  classical
+  simp only [polynomialMaynardNumerator]
+  rw [Finset.sum_congr rfl (fun i (_ : i ∈ (Finset.univ : Finset (Fin (n + 1)))) =>
+        symWeight_double_sum R c hR
+          (fun p q => (p.2 * q.2 : ℚ) / (((p.1 i + 1 : ℕ) : ℚ) * ((q.1 i + 1 : ℕ) : ℚ)) *
+            dirichletIntegralWithSlack (Fin.removeNth i (p.1 + q.1)) (p.1 i + q.1 i + 2)))]
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun a ha => ?_)
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun b hb => ?_)
+  rw [crossNumerator_orbitSum, Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun v _ => ?_)
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun w _ => ?_)
+  dsimp only
+  ring
+
 end OrbitFree
 
 end BoundedGaps
