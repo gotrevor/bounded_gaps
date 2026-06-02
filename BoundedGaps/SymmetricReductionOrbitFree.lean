@@ -536,6 +536,154 @@ lemma pairOrbit_regroup {k : ℕ} (α β : MultiIndex k) (F : Multiset (ℕ × �
       F (jointMultiset pq.2 pq.1) = F X := fun pq hpq => by rw [(Finset.mem_filter.mp hpq).2]
   rw [Finset.sum_congr rfl hconst, Finset.sum_const, nsmul_eq_mul]
 
+/-- The cell counts of a margin-correct table sum to `k`: `∑_{(v,b)} Y v b = k`. Both
+`∑_v∑_b` and the row margins recover the full slot count. (The `Fin k` version of the
+`monoOrbit_card_eq_multinomial` margin sum, but over both axes.) -/
+lemma marginCorrect_cells_sum {k : ℕ} (α β : MultiIndex k) (Y : CTable α β)
+    (hY : Y ∈ MarginCorrectTables α β) :
+    ∑ c : ↥(univ.image α) × ↥(univ.image β), (Y c.1 c.2 : ℕ) = k := by
+  classical
+  rw [MarginCorrectTables, Finset.mem_filter] at hY
+  obtain ⟨-, hrow, -⟩ := hY
+  rw [Fintype.sum_prod_type]
+  rw [Finset.sum_congr rfl (fun v _ => hrow v)]
+  -- ∑_{v∈image α} #{i : α i = v} = k
+  have hfib := Finset.card_eq_sum_card_fiberwise
+    (s := (univ : Finset (Fin k))) (t := (univ : Finset ↥(univ.image α)))
+    (f := fun i => (⟨α i, Finset.mem_image_of_mem α (Finset.mem_univ i)⟩
+      : ↥(univ.image α)))
+    (fun i _ => Finset.mem_univ _)
+  rw [Finset.card_univ, Fintype.card_fin] at hfib
+  rw [hfib]
+  apply Finset.sum_congr rfl
+  intro v _
+  apply congrArg Finset.card
+  apply Finset.filter_congr
+  intro i _
+  simp [Subtype.ext_iff, eq_comm]
+
+/-- **Pair-fiber count = full-cell multinomial.** The number of orbit pairs `(p,q)` whose joint
+type is the margin-correct table `Y` equals the 2-D multinomial `k! / ∏_{(v,b)} (Y v b)!`. Each
+`(p,q)` corresponds to a function `r : Fin k → (image α × image β)` (the per-slot value pair), the
+orbit constraints being implied by `Y`'s margins; `card_fiberwise_eq_multinomial` then counts those
+functions. The numerator analog of `jointType_fiber_card_eq_multinomial`, but over the orbit
+product and landing on a single multinomial over all cells. -/
+theorem pair_fiber_card_eq_multinomial {k : ℕ} (α β : MultiIndex k) (Y : CTable α β)
+    (hY : Y ∈ MarginCorrectTables α β) :
+    ((monoOrbit α ×ˢ monoOrbit β).filter
+        (fun pq => jointMultiset pq.2 pq.1 = tableToMultiset α β Y)).card
+      = Nat.multinomial (univ : Finset (↥(univ.image α) × ↥(univ.image β)))
+          (fun c => (Y c.1 c.2 : ℕ)) := by
+  classical
+  set V := ↥(univ.image α) × ↥(univ.image β) with hVdef
+  set h : V → ℕ := fun c => (Y c.1 c.2 : ℕ) with hh
+  have hsum : ∑ c, h c = Fintype.card (Fin k) := by
+    rw [Fintype.card_fin]; exact marginCorrect_cells_sum α β Y hY
+  rw [← card_fiberwise_eq_multinomial h hsum]
+  obtain ⟨-, hrow, hcol⟩ := Finset.mem_filter.mp hY
+  apply Finset.card_bij'
+    (i := fun (pq : MultiIndex k × MultiIndex k)
+              (hpq : pq ∈ (monoOrbit α ×ˢ monoOrbit β).filter _) =>
+            (fun idx =>
+              (⟨pq.1 idx, orbit_vals_mem α
+                  (Finset.mem_product.mp (Finset.mem_of_mem_filter _ hpq)).1 idx⟩,
+               ⟨pq.2 idx, orbit_vals_mem β
+                  (Finset.mem_product.mp (Finset.mem_of_mem_filter _ hpq)).2 idx⟩) : V))
+    (j := fun (r : Fin k → V) (_ : r ∈ univ.filter (fun r => ∀ c,
+              (univ.filter (fun i => r i = c)).card = h c)) =>
+            (((fun idx => (r idx).1.val), (fun idx => (r idx).2.val))
+              : MultiIndex k × MultiIndex k))
+  case hi =>
+    -- forward map lands in the function fiber set
+    intro pq hpq
+    obtain ⟨hmem, hjoint⟩ := Finset.mem_filter.mp hpq
+    rw [Finset.mem_filter]
+    refine ⟨Finset.mem_univ _, ?_⟩
+    intro c
+    -- #{i : r i = c} = #{i : pq.1 i = c.1.val ∧ pq.2 i = c.2.val}
+    have hcard : (univ.filter (fun i =>
+        (⟨pq.1 i, _⟩, ⟨pq.2 i, _⟩ : V) = c)).card
+          = (univ.filter (fun i => pq.1 i = c.1.val ∧ pq.2 i = c.2.val)).card := by
+      apply congrArg Finset.card; apply Finset.filter_congr; intro i _
+      simp [Prod.ext_iff, Subtype.ext_iff]
+    rw [hcard, ← jointMultiset_count_eq c.2.val pq.1 c.1.val c.2.val, hjoint]
+    have : ((c.1.val, c.2.val) : ℕ × ℕ)
+        = ((c.1 : ↥(univ.image α)).val, (c.2 : ↥(univ.image β)).val) := rfl
+    rw [this, tableToMultiset_count_mem]
+  case hj =>
+    -- backward map lands in the orbit-pair fiber set
+    intro r hr
+    have hPV := (Finset.mem_filter.mp hr).2
+    rw [Finset.mem_filter]
+    refine ⟨Finset.mem_product.mpr ⟨?_, ?_⟩, ?_⟩
+    · -- (r ·).1.val ∈ monoOrbit α
+      rw [mem_monoOrbit_iff]
+      intro c
+      by_cases hc : c ∈ univ.image α
+      · set vc : ↥(univ.image α) := ⟨c, hc⟩ with hvc
+        have e1 : (univ.filter (fun i => (r i).1.val = c)).card
+                = (univ.filter (fun i => (r i).1 = vc)).card := by
+          apply congrArg Finset.card; apply Finset.filter_congr; intro i _
+          simp [hvc, Subtype.ext_iff]
+        have e2 : (univ.filter (fun i => (r i).1 = vc)).card
+                = ∑ b : ↥(univ.image β), (univ.filter (fun i => r i = (vc, b))).card := by
+          rw [Finset.card_eq_sum_card_fiberwise (f := fun i => (r i).2) (t := univ)
+                (fun i _ => Finset.mem_univ _)]
+          apply Finset.sum_congr rfl; intro b _
+          rw [Finset.filter_filter]; apply congrArg Finset.card; apply Finset.filter_congr
+          intro i _; rw [Prod.ext_iff]
+        rw [e1, e2, Finset.sum_congr rfl (fun b _ => hPV (vc, b)), hrow vc]
+      · have hcoe : (univ.filter (fun i => (r i).1.val = c)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ heq; exact hc (heq ▸ (r i).1.2)
+        have hα : (univ.filter (fun i => α i = c)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ heq
+          exact hc (heq ▸ Finset.mem_image_of_mem α (Finset.mem_univ i))
+        rw [hcoe, hα]
+    · -- (r ·).2.val ∈ monoOrbit β
+      rw [mem_monoOrbit_iff]
+      intro c
+      by_cases hc : c ∈ univ.image β
+      · set bc : ↥(univ.image β) := ⟨c, hc⟩ with hbc
+        have e1 : (univ.filter (fun i => (r i).2.val = c)).card
+                = (univ.filter (fun i => (r i).2 = bc)).card := by
+          apply congrArg Finset.card; apply Finset.filter_congr; intro i _
+          simp [hbc, Subtype.ext_iff]
+        have e2 : (univ.filter (fun i => (r i).2 = bc)).card
+                = ∑ v : ↥(univ.image α), (univ.filter (fun i => r i = (v, bc))).card := by
+          rw [Finset.card_eq_sum_card_fiberwise (f := fun i => (r i).1) (t := univ)
+                (fun i _ => Finset.mem_univ _)]
+          apply Finset.sum_congr rfl; intro v _
+          rw [Finset.filter_filter]; apply congrArg Finset.card; apply Finset.filter_congr
+          intro i _; rw [Prod.ext_iff]; tauto
+        rw [e1, e2, Finset.sum_congr rfl (fun v _ => hPV (v, bc)), hcol bc]
+      · have hcoe : (univ.filter (fun i => (r i).2.val = c)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ heq; exact hc (heq ▸ (r i).2.2)
+        have hβ : (univ.filter (fun i => β i = c)) = ∅ := by
+          rw [Finset.filter_eq_empty_iff]; intro i _ heq
+          exact hc (heq ▸ Finset.mem_image_of_mem β (Finset.mem_univ i))
+        rw [hcoe, hβ]
+    · -- jointMultiset q p = tableToMultiset Y
+      ext ⟨c, d⟩
+      by_cases hc : c ∈ univ.image α
+      · by_cases hd : d ∈ univ.image β
+        · have hrw : ((c, d) : ℕ × ℕ)
+              = ((⟨c, hc⟩ : ↥(univ.image α)).val, (⟨d, hd⟩ : ↥(univ.image β)).val) := rfl
+          rw [jointMultiset_count_eq d (fun idx => (r idx).1.val) c d, hrw,
+              tableToMultiset_count_mem]
+          have : (univ.filter (fun i => (r i).1.val = c ∧ (r i).2.val = d)).card
+              = (univ.filter (fun i => r i = (⟨c, hc⟩, ⟨d, hd⟩))).card := by
+            apply congrArg Finset.card; apply Finset.filter_congr; intro i _
+            simp [Prod.ext_iff, Subtype.ext_iff]
+          rw [this]; exact hPV (⟨c, hc⟩, ⟨d, hd⟩)
+        · rw [tableToMultiset_count_not_mem α β _ c d (Or.inr hd),
+              jointMultiset_count_zero α β _ (fun i => (r i).2.2) c d (Or.inr hd)]
+      · rw [tableToMultiset_count_not_mem α β _ c d (Or.inl hc),
+            jointMultiset_count_zero α β _ (fun i => (r i).1.2) c d (Or.inl hc)]
+  case left_inv =>
+    intro pq _; exact Prod.ext (funext fun _ => rfl) (funext fun _ => rfl)
+  case right_inv =>
+    intro r _; funext idx; exact Prod.ext (Subtype.ext rfl) (Subtype.ext rfl)
+
 end OrbitFree
 
 end BoundedGaps
