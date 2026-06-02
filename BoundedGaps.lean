@@ -25,3 +25,5 @@ import BoundedGaps.SymmetricReductionFiberAlt
 import BoundedGaps.EpsScaling
 import BoundedGaps.EpsBridge
 import BoundedGaps.SymmetricReductionEps
+import BoundedGaps.SymmetricReductionOrbitFree
+import BoundedGaps.SymmetricReductionEpsOrbitFree
