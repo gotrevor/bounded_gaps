@@ -228,3 +228,27 @@ Remaining Lean steps (genuinely multi-session each; host-better — box builds O
 - `_exact.py`, `_ldl.py` — exact LDL-inertia sup / threshold tests (the trustworthy path).
 - `mk5_sym.py` — original brute monomial reduction (validation oracle, k≤~10).
 - `mk50_p1.py` — the earlier P_1-only probe (plateau ≈3.23).
+
+## Orbit-free re-index status (2026-06-02) — DENOMINATOR done, NUMERATOR partial
+
+`BoundedGaps/SymmetricReductionOrbitFree.lean` (new, sorry-free, axiom-clean):
+- **Denominator: COMPLETE & fully orbit-free.** `orbitCore_eq_multinomial_sum_orbitFree`
+  (S(α,β) re-indexed over `MarginCorrectTables`, a Fintype-bounded contingency Finset),
+  `orbitPair_denominator_shapeForm` (whole entry = `multinomial(β fibers) • table-sum /
+  (k+|α|+|β|)!`, NO monoOrbit). Realizability converse `joint_realizability` was formalized
+  by **Aristotle** (job 38089125) and ported v4.28→v4.29 with zero edits
+  (`BoundedGaps/JointRealizability.lean`). `monoOrbit_card_eq_multinomial` kills the last
+  orbit reference.
+- **Numerator: constant factored only.** `orbitPair_numerator_eq` factors out the constant
+  Dirichlet denominator `(n+1+|α|+|β|+1)!` (the clean first step, mirrors
+  `orbitPair_denominator_eq`).
+
+**KEY FINDING — the numerator q-collapse FAILS (so it's NOT a denominator mirror).** The
+summand `1/((pᵢ+1)(qᵢ+1))·dirichlet(removeNthᵢ(p+q))(pᵢ+qᵢ+2)` couples `p`, `q`, and the
+marked coordinate `i` at the same index. Reindexing `q=β∘τ` alone sends `qᵢ→β(τi)` but leaves
+`pᵢ` pinned, so `∑ᵢ g(i,p,β∘τ) ≠ ∑ᵢ g(i,p,β)` — the inner sum is NOT orbit-β-constant for
+fixed p (unlike the denominator's `∑ₚ∏(pᵢ+βᵢ)!`). So `orbitPair_core_const` has no numerator
+analog. The numerator orbit-free form needs the **joint route**: lift both orbit sums to the
+full symmetric group (`group_sum_eq_stab_smul_orbitSum`, divide by stabilizers), reindex
+`(p,q,i)` together, and land on a **pointed contingency table** (joint type of (p,q) PLUS the
+value pair at the marked coordinate i). This is the genuine multi-session theory build.
