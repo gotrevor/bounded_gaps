@@ -426,6 +426,48 @@ lemma numerator_summand_factor {n : ℕ} (p q : Fin (n + 1) → ℕ) (i : Fin (n
   simp only [Pi.add_apply]
   field_simp
 
+/-- **The local marked-cell factor.** For a marked coordinate with value pair `(a,b) = (pᵢ,qᵢ)`,
+the part of the numerator summand that depends *only* on that cell:
+`1/((a+1)(b+1)) · (a+b+2)!/(a+b)!`. (The `(a+b+2)!/(a+b)!` is the slack-factorial ratio
+`numerator_summand_factor` isolates; `1/((a+1)(b+1))` is the `1/((pᵢ+1)(qᵢ+1))` weight.)
+Computable, so the eventual `native_decide` form can `#eval` it. -/
+def markedCellFactor (a b : ℕ) : ℚ :=
+  (1 : ℚ) / (((a + 1 : ℕ) : ℚ) * ((b + 1 : ℕ) : ℚ))
+    * ((a + b + 2).factorial : ℚ) / ((a + b).factorial : ℚ)
+
+/-- **Numerator combinatorial sum, factored over the joint type.** The combinatorial numerator
+sum isolated by `orbitPair_numerator_eq` (the triple sum `∑ᵢ∑ₚ∑_q`) regroups, for each orbit
+pair `(p,q)`, as the **whole joint-type product** `∏ₘ((p+q)ₘ)!` times the **marked-cell sum**
+`∑ᵢ markedCellFactor(pᵢ,qᵢ)`. The marked coordinate `i` is moved innermost (`Finset.sum_comm`),
+the joint-type product (independent of `i`) is pulled out (`Finset.mul_sum`), and the per-`i`
+summand is collapsed by `numerator_summand_factor`. Both factors depend on `(p,q)` only through
+the pair multiset `{(pₘ,qₘ)}ₘ` — the bridge to the orbit-free (p,q)-joint-type re-index. -/
+lemma numerator_combinatorial_factored {n : ℕ} (α β : MultiIndex (n + 1)) :
+    (∑ i : Fin (n + 1), ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+        (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+          ((∏ j, ((Fin.removeNth i (p + q) j).factorial : ℚ))
+            * ((p i + q i + 2).factorial : ℚ)))
+      = ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β,
+          (∏ m, (((p + q) m).factorial : ℚ)) * (∑ i, markedCellFactor (p i) (q i)) := by
+  -- Step 1: collapse each per-`i` summand to `(joint product) * markedCellFactor(pᵢ,qᵢ)`.
+  have h1 : ∀ (i : Fin (n + 1)) (p q : MultiIndex (n + 1)),
+      (1 : ℚ) / (((p i + 1 : ℕ) : ℚ) * ((q i + 1 : ℕ) : ℚ)) *
+        ((∏ j, ((Fin.removeNth i (p + q) j).factorial : ℚ))
+          * ((p i + q i + 2).factorial : ℚ))
+        = (∏ m, (((p + q) m).factorial : ℚ)) * markedCellFactor (p i) (q i) := by
+    intro i p q
+    rw [numerator_summand_factor p q i]
+    unfold markedCellFactor
+    ring
+  rw [Finset.sum_congr rfl (fun i _ => Finset.sum_congr rfl (fun p _ =>
+        Finset.sum_congr rfl (fun q _ => h1 i p q)))]
+  -- Step 2: move `i` innermost (swap with `p`, then with `q`) and factor the joint product out.
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun q _ => ?_)
+  rw [Finset.mul_sum]
+
 end OrbitFree
 
 end BoundedGaps
