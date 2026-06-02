@@ -1278,6 +1278,20 @@ theorem mk_54_witness_under_EH_of_symWeight_computable (R : Finset (MultiIndex (
     ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk 54 > 2 * 2 / ϑ :=
   exists_theta_of_Mk_gt_four (Mk_gt_of_symWeight_witness_computable R c hR 4 hwit)
 
+/-! ## End-to-end validation (regression guard)
+
+A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
+`R = {![2,1,0], ![1,1,0]}` with unit coefficients has Gram quotient `2063/2060 > 1`, certifying
+`Mk 3 > 1`. **Both** the disjointness `hR` and the rational Gram inequality are discharged by
+`native_decide` — exactly the two `native_decide`s the `k=54` endgame needs, just with larger
+data. This confirms the orbit-symmetry → Gram → `Mk` chain is sound and the `native_decide`s
+fire. (`Mk 3 > 1` is itself a weak bound; the point is the mechanism.) -/
+example : (1 : ℝ) < Sieve.Mk 3 := by
+  have h := Mk_gt_of_symWeight_witness_computable (n := 2)
+    ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
+    (disjoint_of_histogram _ (by native_decide)) 1 (by native_decide)
+  exact_mod_cast h
+
 end OrbitFree
 
 end BoundedGaps
