@@ -350,6 +350,29 @@ theorem orbitPair_denominator_shapeForm :
           / ((k + α.degree + β.degree).factorial : ℚ) := by
   rw [orbitPair_denominator_orbitFree, monoOrbit_card_eq_multinomial]
 
+/-- Computable twin of `jointWeight` (identical body; the library's `noncomputable`
+marker is gratuitous — `ℚ` arithmetic and `Multiset.prod` reduce in the kernel). Lets the
+shape-form expression evaluate for `native_decide`. -/
+def jointWeightC (X : Multiset (ℕ × ℕ)) : ℚ :=
+  (X.map (fun cb => ((cb.1 + cb.2).factorial : ℚ))).prod
+
+@[simp] lemma jointWeightC_eq (X : Multiset (ℕ × ℕ)) : jointWeightC X = jointWeight X := rfl
+
+/-- **`native_decide`-ready denominator matrix entry.** `orbitPair_denominator_shapeForm`
+restated with the computable `jointWeightC`. Every operation on the right reduces in the
+kernel: the Fintype-enumerated `MarginCorrectTables`, `Nat.multinomial`, `tableToMultiset`,
+and `jointWeightC`. (Defeq to the shape-form, since `jointWeightC = jointWeight`.) -/
+theorem orbitPair_denominator_computable :
+    ∑ p ∈ monoOrbit α, ∑ q ∈ monoOrbit β, monomialIntegral (p + q)
+      = ((Nat.multinomial (univ : Finset ↥(univ.image β))
+            (fun b => (univ.filter (fun i => β i = b.val)).card)) •
+          ∑ T ∈ MarginCorrectTables α β,
+            (∏ b : ↥(univ.image β), (Nat.multinomial univ
+                (fun v : ↥(univ.image α) => (T v b : ℕ)) : ℚ))
+              * jointWeightC (tableToMultiset α β T))
+          / ((k + α.degree + β.degree).factorial : ℚ) :=
+  orbitPair_denominator_shapeForm α β
+
 /-- **Cross-orbit numerator: factor out the constant Dirichlet denominator.** The
 numerator analog of `orbitPair_denominator_eq`. Each summand's
 `dirichletIntegralWithSlack (removeNth i (p+q)) (pᵢ+qᵢ+2)` has denominator
