@@ -1980,6 +1980,120 @@ def partsHist (k : ℕ) (L : List ℕ) : ℕ → ℕ :=
   show partsHist k L v = (univ.filter (fun i : Fin k => L.getD i.val 0 = v)).card
   rw [card_filter_ofParts k L hL v]; rfl
 
+/-! ## A.2: the matchings closed form — the box-feasible Gram entries
+
+Empirically (lap 2026-06-03), the windowed enumeration is `native_decide`-infeasible for img-4
+orbits: even with the `Fin k` scan hoisted (`partsHist`), an img-4 orbit gives `~131072` windowed
+tables *per entry* (k-independent), so the full 45-orbit witness is hours/OOM. The fix is to
+REPLACE the table enumeration by the **matchings closed form** (`tools/mk/mk_sym.py`, validated vs
+brute force and vs the Lean spot-checks `11/3360`, `7/2160`):
+
+  `gramDenEntry (ofParts La) (ofParts Lb) = matchDenForm La Lb k`,
+  `gramNumEntry (ofParts La) (ofParts Lb) = matchNumForm La Lb k`,
+
+a sum over the (k-INDEPENDENT, `~34`-term) partial matchings of the nonzero parts, with
+`Nat.descFactorial` (a ≤`2·deg`-term product, no factorial) in place of the falling factorial and
+ONE `(k+|La|+|Lb|)!` per entry. These `#eval`/`native_decide` **instantly** even at `k=300` img-4.
+
+`matchData La Lb`: for every partial matching of `La`-parts to `Lb`-parts, the pair
+`(numPairs, W)` with `W = ∏ paired (a+b)! · ∏ unmatched a! · ∏ unmatched b!`. The recursion sends
+each `La` head to *unmatched* (`×a!`) or *matched* to a current `Lb` entry (erase it, `×(a+b)!`,
+`numPairs+1`) — a bijective enumeration of partial matchings. -/
+def matchData : List ℕ → List ℕ → List (ℕ × ℕ)
+  | [], Lb => [(0, (Lb.map Nat.factorial).prod)]
+  | (a :: La), Lb =>
+      (matchData La Lb).map (fun pw => (pw.1, a.factorial * pw.2))
+      ++ ((List.range Lb.length).zip Lb).flatMap (fun jb =>
+          (matchData La (Lb.eraseIdx jb.1)).map (fun pw => (pw.1 + 1, (a + jb.2).factorial * pw.2)))
+
+/-- `Sden = ∑_M ff(k,T_M)·W(M)`, with `T_M = |La|+|Lb|-numPairs` and `ff(k,T) = k.descFactorial T`. -/
+def matchDenSum (La Lb : List ℕ) (k : ℕ) : ℕ :=
+  ((matchData La Lb).map
+    (fun pw => k.descFactorial (La.length + Lb.length - pw.1) * pw.2)).sum
+
+/-- `aut L = ∏_v (multiplicity of value v in L)!`. -/
+def autParts (L : List ℕ) : ℕ := (L.dedup.map (fun v => (L.count v).factorial)).prod
+
+/-- **Matchings closed form, denominator Gram entry** (`= gramDenEntry (ofParts La) (ofParts Lb)`,
+see `gramDenEntry_eq_matchDenForm`). `native_decide`-instant: no table enumeration. -/
+def matchDenForm (La Lb : List ℕ) (k : ℕ) : ℚ :=
+  (matchDenSum La Lb k : ℚ) / (autParts La * autParts Lb * (k + La.sum + Lb.sum).factorial : ℚ)
+
+/-- `g(a,b) = (a+b+2)!/((a+1)(b+1)(a+b)!)`; `g(0,0)=2`. The numerator's per-token weight. -/
+def gWeight (a b : ℕ) : ℚ := ((a + b + 2).factorial : ℚ) / ((a + 1) * (b + 1) * (a + b).factorial : ℚ)
+
+/-- Per matching, `(numPairs, W, Gocc)` where `Gocc = ∑ over occupied tokens of g(content)`
+(paired → `g(a,b)`, `La`-solo → `g(a,0)`, `Lb`-solo → `g(0,b)`). -/
+def matchDataN : List ℕ → List ℕ → List (ℕ × ℕ × ℚ)
+  | [], Lb => [(0, (Lb.map Nat.factorial).prod, (Lb.map (fun b => gWeight 0 b)).sum)]
+  | (a :: La), Lb =>
+      (matchDataN La Lb).map (fun t => (t.1, a.factorial * t.2.1, gWeight a 0 + t.2.2))
+      ++ ((List.range Lb.length).zip Lb).flatMap (fun jb =>
+          (matchDataN La (Lb.eraseIdx jb.1)).map
+            (fun t => (t.1 + 1, (a + jb.2).factorial * t.2.1, gWeight a jb.2 + t.2.2)))
+
+/-- `Snum = ∑_M ff(k,T)·W·(Gocc + (k-T)·g(0,0))`, `g(0,0)=2`. -/
+def matchNumSum (La Lb : List ℕ) (k : ℕ) : ℚ :=
+  ((matchDataN La Lb).map (fun t =>
+    let T := La.length + Lb.length - t.1
+    (k.descFactorial T : ℚ) * t.2.1 * (t.2.2 + (k - T : ℕ) * gWeight 0 0))).sum
+
+/-- **Matchings closed form, numerator Gram entry** (`= gramNumEntry (ofParts La) (ofParts Lb)`,
+see `gramNumEntry_eq_matchNumForm`). -/
+def matchNumForm (La Lb : List ℕ) (k : ℕ) : ℚ :=
+  matchNumSum La Lb k / (autParts La * autParts Lb * (k + La.sum + Lb.sum + 1).factorial : ℚ)
+
+/-- **Bridge (DENOMINATOR): the table-sum Gram entry equals the matchings closed form.** This is
+the genuine combinatorial identity (contingency-table sum = partial-matchings sum, the
+permanent/rook expansion of `∑_{p∈orbit a}∑_{q∈orbit b} ∏ᵢ(pᵢ+qᵢ)!` grouped by overlap pattern).
+NUMERICALLY VALIDATED: `matchDenForm [2,1] [1,1] 3 = 11/3360 = gramDenEntry ![2,1,0] ![1,1,0]`,
+and against `tools/mk/mk_sym.py reduced_closed` across `k`. Disclosed `axiom` pending the formal
+proof (the open A.2 theorem; see `PENDING_WORK.md §A`). `La, Lb` are the nonzero parts (positive,
+length ≤ k). -/
+axiom gramDenEntry_eq_matchDenForm {k : ℕ} (La Lb : List ℕ)
+    (hLa : La.length ≤ k) (hLb : Lb.length ≤ k)
+    (hposa : ∀ x ∈ La, 0 < x) (hposb : ∀ x ∈ Lb, 0 < x) :
+    gramDenEntry (ofParts La : MultiIndex k) (ofParts Lb) = matchDenForm La Lb k
+
+/-- **Bridge (NUMERATOR): the table-sum numerator equals the matchings closed form.** Numerator
+analog of `gramDenEntry_eq_matchDenForm` (with the per-token `g` weights and the `(k-T)·g(0,0)`
+empty-slot term). NUMERICALLY VALIDATED: `matchNumForm [2,1] [1,1] 3 = 7/2160 =
+gramNumEntry ![2,1,0] ![1,1,0]`. Disclosed `axiom` pending the A.2 proof. -/
+axiom gramNumEntry_eq_matchNumForm {n : ℕ} (La Lb : List ℕ)
+    (hLa : La.length ≤ n + 1) (hLb : Lb.length ≤ n + 1)
+    (hposa : ∀ x ∈ La, 0 < x) (hposb : ∀ x ∈ Lb, 0 < x) :
+    gramNumEntry (ofParts La : MultiIndex (n + 1)) (ofParts Lb) = matchNumForm La Lb (n + 1)
+
+/-- **Matchings-form `Mk` lower bound — the box-feasible witness shape.** Each Gram entry is the
+`native_decide`-instant matchings closed form (no `~131072`-table enumeration). The reps are
+`ofParts (P a)` for parts-lists `P a` (positive, length ≤ `n+1`), supplied so the matchings forms
+can be evaluated directly. Rests on the two bridge axioms (A.2). -/
+theorem Mk_gt_of_symWeight_witness_match {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (P : MultiIndex (n + 1) → List ℕ)
+    (hP : ∀ a ∈ R, a = ofParts (P a) ∧ (∀ x ∈ P a, 0 < x) ∧ (P a).length ≤ n + 1)
+    (T : ℚ)
+    (hwit : T <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * matchNumForm (P a) (P b) (n + 1))
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * matchDenForm (P a) (P b) (n + 1))) :
+    (T : ℝ) < Sieve.Mk (n + 1) := by
+  apply Mk_gt_of_symWeight_witness_computable R c hR T
+  have hnum : (∑ a ∈ R, ∑ b ∈ R, c a * c b * matchNumForm (P a) (P b) (n + 1))
+            = (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntry a b) :=
+    Finset.sum_congr rfl (fun a ha => Finset.sum_congr rfl (fun b hb => by
+      obtain ⟨hPa, hposa, hlena⟩ := hP a ha
+      obtain ⟨hPb, hposb, hlenb⟩ := hP b hb
+      rw [← gramNumEntry_eq_matchNumForm (P a) (P b) hlena hlenb hposa hposb, ← hPa, ← hPb]))
+  have hden : (∑ a ∈ R, ∑ b ∈ R, c a * c b * matchDenForm (P a) (P b) (n + 1))
+            = (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntry a b) :=
+    Finset.sum_congr rfl (fun a ha => Finset.sum_congr rfl (fun b hb => by
+      obtain ⟨hPa, hposa, hlena⟩ := hP a ha
+      obtain ⟨hPb, hposb, hlenb⟩ := hP b hb
+      rw [← gramDenEntry_eq_matchDenForm (P a) (P b) hlena hlenb hposa hposb, ← hPa, ← hPb]))
+  rw [hnum, hden] at hwit
+  exact hwit
+
 /-! ## End-to-end validation (regression guard)
 
 A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
@@ -2026,6 +2140,19 @@ example : (1 : ℝ) < Sieve.Mk 3 := by
     ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
     (disjoint_of_histogram _ (by native_decide))
     (fun a => histArr 2 a) (by native_decide) 1 (by native_decide)
+  exact_mod_cast h
+
+/-- **Same bound through the matchings closed form (A.2).** Identical witness, but each Gram entry
+is the `native_decide`-instant `matchNumForm`/`matchDenForm` — NO table enumeration at all. This is
+the only box-feasible shape for the real `Mk k > 4` witness, since img-4 orbits make the windowed
+enumeration (`~131072` tables/entry) intractable. Rests on the two bridge axioms
+`gram*Entry_eq_match*Form` (numerically validated; the A.2 combinatorial identity is the open
+target). The reps `![2,1,0], ![1,1,0]` are `ofParts [2,1]`, `ofParts [1,1]`. -/
+example : (1 : ℝ) < Sieve.Mk 3 := by
+  have h := Mk_gt_of_symWeight_witness_match (n := 2)
+    ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
+    (disjoint_of_histogram _ (by native_decide))
+    (fun a => if a = ![2, 1, 0] then [2, 1] else [1, 1]) (by decide) 1 (by native_decide)
   exact_mod_cast h
 
 end OrbitFree
