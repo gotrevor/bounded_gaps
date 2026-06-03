@@ -2178,6 +2178,24 @@ lemma sum_getD_fin (k : ℕ) (L : List ℕ) (hL : L.length ≤ k) :
       simp only [Fin.val_zero, List.getD_cons_zero]
       rw [key, ih L hL', List.sum_cons]
 
+/-- Multiplicative analog of `sum_getD_fin`: if `f 0 = 1` then `∏_{i<k} f (L.getD i 0) = ∏ f L`
+(the padding slots contribute `f 0 = 1`). Used for the `denom_bridge` base case (`f = factorial`). -/
+lemma prod_getD_fin (f : ℕ → ℕ) (hf0 : f 0 = 1) (k : ℕ) (L : List ℕ) (hL : L.length ≤ k) :
+    (∏ i : Fin k, f (L.getD i.val 0)) = (L.map f).prod := by
+  induction k generalizing L with
+  | zero => rw [Nat.le_zero, List.length_eq_zero_iff] at hL; subst hL; simp
+  | succ k ih =>
+    cases L with
+    | nil => simp [hf0]
+    | cons x L =>
+      rw [Fin.prod_univ_succ]
+      have hL' : L.length ≤ k := by simpa using hL
+      have key : (∏ j : Fin k, f ((x :: L).getD (Fin.succ j).val 0))
+               = ∏ j : Fin k, f (L.getD j.val 0) :=
+        Finset.prod_congr rfl (fun j _ => by simp)
+      simp only [Fin.val_zero, List.getD_cons_zero]
+      rw [key, ih L hL', List.map_cons, List.prod_cons]
+
 /-- The degree (coordinate sum) of `ofParts L` over `Fin k` (`k ≥ |L|`) is `L.sum`. The constant
 factorial in `gramDenEntry`/`matchDenForm` is `(k + |La| + |Lb|)!` exactly when degrees are sums. -/
 lemma ofParts_degree {k : ℕ} (L : List ℕ) (hL : L.length ≤ k) :
@@ -2200,6 +2218,42 @@ axiom denom_bridge {k : ℕ} (La Lb : List ℕ)
       (∑ p ∈ monoOrbit (ofParts La : MultiIndex k), ∑ q ∈ monoOrbit (ofParts Lb),
         ∏ i, (p i + q i).factorial)
       = matchDenSum La Lb k
+
+/-- **`denom_bridge` base case (`La = []`), PROVEN.** The `La = []` slice of `denom_bridge` is a
+theorem, not part of the axiom: `orbit (ofParts [])` is the singleton `{0}`, the inner product
+`∏ᵢ(0+qᵢ)! = ∏ᵢ qᵢ!` is permutation-invariant (so constant `= ∏ Lbᵢ!` over the orbit), and the
+orbit sum collapses to `(autParts Lb · |orbit Lb|)·∏Lbᵢ! = k.descFactorial|Lb|·∏Lbᵢ!`
+(`autParts_mul_orbit_card`), which is exactly `matchDenSum [] Lb k` (since `matchData [] Lb =
+[(0, ∏Lbᵢ!)]`). This is the base case for the induction on `La` that would discharge the full
+`denom_bridge` (the open inductive step is the genuine permanent/rook core; see PENDING_WORK §A P2).
+Kernel-clean. -/
+theorem denom_bridge_nil {k : ℕ} (Lb : List ℕ) (hLb : Lb.length ≤ k)
+    (hposb : ∀ x ∈ Lb, 0 < x) :
+    autParts [] * autParts Lb *
+      (∑ p ∈ monoOrbit (ofParts [] : MultiIndex k), ∑ q ∈ monoOrbit (ofParts Lb),
+        ∏ i, (p i + q i).factorial)
+      = matchDenSum [] Lb k := by
+  classical
+  have hP0 : (ofParts [] : MultiIndex k) = 0 := by funext i; simp [ofParts]
+  have horb0 : monoOrbit (ofParts [] : MultiIndex k) = {0} := by
+    rw [hP0]; unfold monoOrbit
+    rw [show (fun σ : Equiv.Perm (Fin k) => (fun i => (0 : MultiIndex k) (σ i)))
+          = (fun _ : Equiv.Perm (Fin k) => (0 : MultiIndex k)) from by funext σ; funext i; rfl]
+    exact Finset.image_const Finset.univ_nonempty 0
+  rw [horb0, Finset.sum_singleton]
+  have hinner : ∀ q ∈ monoOrbit (ofParts Lb : MultiIndex k),
+      (∏ i, ((0 : MultiIndex k) i + q i).factorial) = (Lb.map Nat.factorial).prod := by
+    intro q hq
+    rw [show (∏ i, ((0 : MultiIndex k) i + q i).factorial) = ∏ i, (q i).factorial from
+      Finset.prod_congr rfl (fun i _ => by simp)]
+    rw [monoOrbit, Finset.mem_image] at hq
+    obtain ⟨σ, _, rfl⟩ := hq
+    rw [Equiv.prod_comp σ (fun j => ((ofParts Lb : MultiIndex k) j).factorial)]
+    exact prod_getD_fin Nat.factorial (by simp) k Lb hLb
+  rw [Finset.sum_congr rfl hinner, Finset.sum_const, smul_eq_mul]
+  have hA0 : autParts ([] : List ℕ) = 1 := by simp [autParts]
+  rw [hA0, one_mul, ← mul_assoc, autParts_mul_orbit_card Lb hLb hposb]
+  simp [matchDenSum, matchData]
 
 /-- **Bridge (DENOMINATOR): the table-sum Gram entry equals the matchings closed form.** Now a
 THEOREM (was a disclosed axiom): the surrounding plumbing — `gramDenEntry = orbit-sum / (k+|α|+|β|)!`
