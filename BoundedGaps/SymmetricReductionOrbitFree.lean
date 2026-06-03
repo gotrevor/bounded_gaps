@@ -2370,6 +2370,18 @@ example : (1 : ℝ) < Sieve.Mk 3 := by
     (fun a => if a = ![2, 1, 0] then [2, 1] else [1, 1]) (by decide) 1 (by native_decide)
   exact_mod_cast h
 
+/-- **Same bound through the parts-list-keyed matchings witness (capstone shape).** Identical
+witness, but supplied as a single pair-list `LCs = [([2,1],1), ([1,1],1)]` and the Gram quotient is
+the DIRECT list-indexed double sum — the box-feasible shape for the real `k=200` witness (no 45-way
+match over 200-entry functions). The `native_decide` runs on `LCs.map (… matchNumForm …)`,
+confirming `Mk_gt_of_symWeight_witness_match_parts` fires end to end. -/
+example : (1 : ℝ) < Sieve.Mk 3 := by
+  have h := Mk_gt_of_symWeight_witness_match_parts (n := 2)
+    [([2, 1], (1 : ℚ)), ([1, 1], (1 : ℚ))]
+    (by decide) (by decide) (by native_decide)
+    (disjoint_of_histogram _ (by native_decide)) 1 (by native_decide)
+  exact_mod_cast h
+
 end OrbitFree
 
 end BoundedGaps
