@@ -75,6 +75,14 @@ Bombieri-Vinogradov) → `liminfGap 1 ≤ diameter H` for an admissible 200-tupl
 200-tuple is needed for a meaningful diameter; `Engelsma` has 48–54 + 5511, not 200 — harvest one,
 or use `exists_admissible_of_length` for a valid-but-weak bound first.)
 
+**No small-witness shortcut** (checked 2026-06-03, `tools/mk/subset.py`): the Rayleigh sup builds
+*collectively* — a greedy subset of 31 of the 45 `D=7` orbits only reaches `3.78`; the full 45
+reach `4.011`. So a small (≤15-orbit) witness with a single expensive img-4 entry is **not**
+available; the discharge needs ~all 45 orbits (2025 Gram entries), making path A.1 (the ~75× filter-
+card speedup) effectively mandatory for box feasibility. Cost estimate at `k=300` *without* A.1:
+~10¹⁰ ops (`enum × O(k) filter-card`) ≈ tens of min–hours; *with* A.1 (O(1) histogram lookup):
+~10⁸ ops ≈ seconds–minutes. ⇒ **A.1 is the gating step for a kernel-checked `M_k > 4`.**
+
 The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/54` at degree ~20+
 (n ~ 600 orbits) — even with the above, much heavier; **host-better** and a separate push.
 
