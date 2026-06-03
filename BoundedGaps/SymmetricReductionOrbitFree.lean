@@ -2070,17 +2070,84 @@ see `gramNumEntry_eq_matchNumForm`). -/
 def matchNumForm (La Lb : List ℕ) (k : ℕ) : ℚ :=
   matchNumSum La Lb k / (autParts La * autParts Lb * (k + La.sum + Lb.sum + 1).factorial : ℚ)
 
-/-- **Bridge (DENOMINATOR): the table-sum Gram entry equals the matchings closed form.** This is
-the genuine combinatorial identity (contingency-table sum = partial-matchings sum, the
-permanent/rook expansion of `∑_{p∈orbit a}∑_{q∈orbit b} ∏ᵢ(pᵢ+qᵢ)!` grouped by overlap pattern).
-NUMERICALLY VALIDATED: `matchDenForm [2,1] [1,1] 3 = 11/3360 = gramDenEntry ![2,1,0] ![1,1,0]`,
-and against `tools/mk/mk_sym.py reduced_closed` across `k`. Disclosed `axiom` pending the formal
-proof (the open A.2 theorem; see `PENDING_WORK.md §A`). `La, Lb` are the nonzero parts (positive,
-length ≤ k). -/
-axiom gramDenEntry_eq_matchDenForm {k : ℕ} (La Lb : List ℕ)
+/-- The auto-product `autParts L` (a product of factorials) is positive. -/
+lemma autParts_pos (L : List ℕ) : 0 < autParts L := by
+  unfold autParts
+  refine List.prod_pos (fun x hx => ?_)
+  simp only [List.mem_map] at hx
+  obtain ⟨v, _, rfl⟩ := hx
+  exact Nat.factorial_pos _
+
+/-- Sum of `L.getD · 0` over `Fin k` (for `k ≥ |L|`) is `L.sum`: the padding slots are zero.
+Mirrors `card_filter_ofParts`'s `Fin (k+1)`/`cons` recursion. -/
+lemma sum_getD_fin (k : ℕ) (L : List ℕ) (hL : L.length ≤ k) :
+    (∑ i : Fin k, L.getD i.val 0) = L.sum := by
+  induction k generalizing L with
+  | zero =>
+    rw [Nat.le_zero, List.length_eq_zero_iff] at hL; subst hL; simp
+  | succ k ih =>
+    cases L with
+    | nil => simp
+    | cons x L =>
+      rw [Fin.sum_univ_succ]
+      have hL' : L.length ≤ k := by simpa using hL
+      have key : (∑ j : Fin k, (x :: L).getD (Fin.succ j).val 0)
+               = ∑ j : Fin k, L.getD j.val 0 :=
+        Finset.sum_congr rfl (fun j _ => by simp [List.getD_cons_succ])
+      simp only [Fin.val_zero, List.getD_cons_zero]
+      rw [key, ih L hL', List.sum_cons]
+
+/-- The degree (coordinate sum) of `ofParts L` over `Fin k` (`k ≥ |L|`) is `L.sum`. The constant
+factorial in `gramDenEntry`/`matchDenForm` is `(k + |La| + |Lb|)!` exactly when degrees are sums. -/
+lemma ofParts_degree {k : ℕ} (L : List ℕ) (hL : L.length ≤ k) :
+    (ofParts L : MultiIndex k).degree = L.sum := by
+  show (∑ i : Fin k, L.getD i.val 0) = L.sum
+  exact sum_getD_fin k L hL
+
+/-- **Denominator bridge — the combinatorial core.** The orbit-sum of `∏ᵢ(pᵢ+qᵢ)!` over the two
+permutation orbits equals the matchings sum `matchDenSum`, up to the `autParts` over-count from
+repeated parts (the permanent/rook expansion grouped by overlap pattern). This is the *entire*
+remaining mathematical gap on the denominator side. NUMERICALLY VERIFIED (`La=[2,1], Lb=[1,1],
+k=3`: orbit-sum `132`, `autParts La · autParts Lb = 2`, `matchDenSum = 264 = 2·132`). Submitted to
+Aristotle (job `0b5bf5be`, `aristotle-denbridge/DenBridge.lean`); disclosed `axiom` pending that
+machine-checked proof. `monoOrbit (ofParts L) = orbitFin L k` is the distinct-coordinate-permutation
+orbit. -/
+axiom denom_bridge {k : ℕ} (La Lb : List ℕ)
     (hLa : La.length ≤ k) (hLb : Lb.length ≤ k)
     (hposa : ∀ x ∈ La, 0 < x) (hposb : ∀ x ∈ Lb, 0 < x) :
-    gramDenEntry (ofParts La : MultiIndex k) (ofParts Lb) = matchDenForm La Lb k
+    autParts La * autParts Lb *
+      (∑ p ∈ monoOrbit (ofParts La : MultiIndex k), ∑ q ∈ monoOrbit (ofParts Lb),
+        ∏ i, (p i + q i).factorial)
+      = matchDenSum La Lb k
+
+/-- **Bridge (DENOMINATOR): the table-sum Gram entry equals the matchings closed form.** Now a
+THEOREM (was a disclosed axiom): the surrounding plumbing — `gramDenEntry = orbit-sum / (k+|α|+|β|)!`
+(`orbitPair_denominator_computable` then `orbitPair_denominator_eq`), `degree (ofParts L) = L.sum`
+(`ofParts_degree`), and the `autParts > 0` cancellation — is discharged in-kernel, reducing the
+denominator gap to exactly the combinatorial core `denom_bridge` (Aristotle `0b5bf5be`). NUMERICALLY
+VALIDATED: `matchDenForm [2,1] [1,1] 3 = 11/3360 = gramDenEntry ![2,1,0] ![1,1,0]`. `La, Lb` are the
+nonzero parts (positive, length ≤ k). -/
+theorem gramDenEntry_eq_matchDenForm {k : ℕ} (La Lb : List ℕ)
+    (hLa : La.length ≤ k) (hLb : Lb.length ≤ k)
+    (hposa : ∀ x ∈ La, 0 < x) (hposb : ∀ x ∈ Lb, 0 < x) :
+    gramDenEntry (ofParts La : MultiIndex k) (ofParts Lb) = matchDenForm La Lb k := by
+  have hgram : gramDenEntry (ofParts La : MultiIndex k) (ofParts Lb)
+      = (∑ p ∈ monoOrbit (ofParts La : MultiIndex k), ∑ q ∈ monoOrbit (ofParts Lb),
+            ∏ i, ((p i + q i).factorial : ℚ))
+        / ((k + La.sum + Lb.sum).factorial : ℚ) := by
+    rw [show ((k + La.sum + Lb.sum).factorial : ℚ)
+          = ((k + (ofParts La : MultiIndex k).degree
+                + (ofParts Lb : MultiIndex k).degree).factorial : ℚ) by
+        rw [ofParts_degree La hLa, ofParts_degree Lb hLb]]
+    rw [← orbitPair_denominator_eq (ofParts La) (ofParts Lb)]
+    exact (orbitPair_denominator_computable (ofParts La) (ofParts Lb)).symm
+  have hA : (autParts La : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (autParts_pos La).ne'
+  have hB : (autParts Lb : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (autParts_pos Lb).ne'
+  rw [hgram]
+  unfold matchDenForm
+  rw [← denom_bridge La Lb hLa hLb hposa hposb]
+  push_cast
+  rw [mul_div_mul_left _ _ (mul_ne_zero hA hB)]
 
 /-- **Bridge (NUMERATOR): the table-sum numerator equals the matchings closed form.** Numerator
 analog of `gramDenEntry_eq_matchDenForm` (with the per-token `g` weights and the `(k-T)·g(0,0)`
