@@ -126,12 +126,12 @@ actually finishable. It is the right target because:
 
 1. **Finish `num_bridge`/`denom_bridge`** (in flight). Kills the only non-std
    axioms on the just-landed `Mk_200_gt_4` chain. Family B, free.
-2. **The s1/s2 sieve asymptotics** (`Sieve.lean`). "Elementary" (sieve-sum
-   manipulation conditional on EH), and mathlib's `SelbergSieve` gives the
-   scaffold. Weeks-to-a-couple-months. **Highest leverage** — this is the real
-   "depth into the sieve" and was previously, wrongly, waved off as out of
-   scope. *Caveat: estimate is untested; read the axiom bodies + the
-   EH-conditional argument and try-to-fail before committing to "weeks."*
+2. **The s1/s2 sieve asymptotics** (`Sieve.lean`). The real "depth into the
+   sieve." **Estimate corrected from "weeks" to multi-month** by the
+   try-to-fail below — these are the full GPY/Maynard multidimensional sieve
+   asymptotic, and the analytic core (a Mertens/singular-series summation) is
+   unsupported by mathlib. See "Try-to-fail result" below for the
+   sub-decomposition and the revised target.
 3. **The Large Sieve Inequality.** The multi-month nut. Standalone mathlib
    contribution + the biggest down payment on BV.
 4. **(Someday) PNT → Siegel-Walfisz → assemble BV.** The multi-year prize.
@@ -144,15 +144,61 @@ sieve burn-down (step 2) and the BV burn-down (steps 3-4) are independent
 contributions that only combine into "unconditional, axiom-free" once both are
 done.
 
+## Try-to-fail result (2026-06-03): the s1/s2 "weeks" estimate was wrong
+
+Per the project rule, the step-2 estimate was tested by reading the actual
+axiom bodies before committing to it. Result: **it does not survive.** What the
+`s1/s2` axioms actually assert (verified, not assumed):
+
+- The weight is the genuine GPY/Maynard squared Möbius-divisor sum:
+  `selberg_nu(n) = (∑_j c_j ∏_i λ_{F_{j,i}}(R, n+h_i))²`, with
+  `λ_g(R,n) = ∑_{d|n} μ(d) · g(log d / log R)` (a real `noncomputable def` over
+  `Nat.divisors` and mathlib's `ArithmeticFunction.moebius`).
+- `alphaBound`/`betaBound` are **real** `Asymptotics.IsLittleO` statements (not
+  opaque, not trivially-true) of the sieve-sum excess against real main terms
+  `B^{-k}·x/W` and `B^{1-k}·x/φ(W)`, with `sieveSum = ∑_{x≤n≤2x, n≡b(W)} ν(n)`
+  and the prime-weighted `sieveThetaSum` using `primeTheta(m) = log m · [m prime]`.
+
+So discharging `s1/s2` means **proving the GPY/Maynard sieve asymptotic** — not
+shoving work sideways. It decomposes into four sub-steps:
+
+| Sub-step | Content | Estimate | mathlib? |
+|---|---|---|---|
+| (a) square + expand + swap | `sieveSum(ν) = ∑_{d,e} (μμ coeffs)·#{n∈[x,2x]: n≡b(W), [dᵢ,eᵢ]∣(n+hᵢ)}` | **weeks** | ✅ `divisors`, `moebius`, `Finset.sum_comm` |
+| (b) inner lattice count | `#{n} = (x/W)·(density) + O(err)` via CRT (W ⟂ moduli by W-trick + squarefree) | **weeks-month** | ⚠️ elementary, build it |
+| (c) singular-series / Mertens summation → integral | `∑_{d,e} (coeffs)·density → I(F)·B^{-k}` (resp. `Jᵢ(F)·B^{1-k}`); the `λ_d ↔ F(log d/log R)` Riemann-sum needs Mertens asymptotics (`∑_{d≤R} μ²(d)/φ(d) ~ log R`, multidim) | **MULTI-MONTH** ⭐ | ❌ no Mertens, no summatory-Λ asymptotic |
+| (d) error bound | s1: unconditional (moduli `≤ R² = x^θ < x^{1/2}`, paper says "Trivial"); s2: **this is where EH/BV is consumed** | s1 small / s2 nontrivial | gated on EH |
+
+**Net correction.** The sieve side has its own multi-month nut, mirroring the
+Large Sieve on the BV side: **sub-step (c), the Mertens/singular-series-to-integral
+asymptotic.** It is arguably the *better first multi-month target* than the
+Large Sieve, because:
+
+- The **s1** half (sub-step (c) for `alphaBound`) is **unconditional** — no EH,
+  so independently meaningful progress.
+- Its prerequisite — **Mertens' theorems** (`∑ 1/p`, `∏(1-1/p)`, `∑ μ²/φ`) — is
+  a clean, famous, self-contained mathlib contribution in its own right.
+- Sub-steps (a)+(b) are genuine weeks-scale warm-ups that, even alone, reduce
+  `s1/s2` to a *sharper, smaller* singular-series axiom (the "isolate the real
+  nut" move ROADMAP values).
+
+**Revised ordering of the multi-month targets:** do **Mertens' theorems →
+s1 (unconditional) sieve asymptotic** *before* the Large Sieve. Same depth of
+nut, but EH-free payoff and a cleaner mathlib-shaped prerequisite.
+
 ## Confidence + caveats
 
 - mathlib inventory above: **high confidence** (grepped the actual checkout).
-- "Large sieve is the right multi-month nut": **~80%**.
+- "Large sieve is *a* right multi-month nut": **~80%**.
 - BV dependency structure (needs Siegel-Walfisz → PNT → Siegel zeros):
   **~85%** on the structure; variant proofs exist but none escapes the
   small-modulus / Siegel-zero branch.
-- Step-2 "weeks-to-a-couple-months": **low confidence until tried.** Per the
-  project's own rule, treat as a hypothesis to refute, not a plan.
+- Step-2 "weeks": **refuted** (try-to-fail above). s1/s2 is multi-month,
+  dominated by the Mertens/singular-series asymptotic.
+- GPY decomposition (a)-(d) above: **~80%** on structure; **~75%** that
+  sub-step (c) is genuinely multi-month (a slick proof reusing
+  `ArithmeticFunction` + `EulerProduct` could be shorter — needs the next
+  level of try-to-fail: actually attempt the Mertens lemma `∑_{d≤R} μ²/φ ~ log R`).
 
 ## Provenance
 
