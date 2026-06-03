@@ -2078,6 +2078,87 @@ lemma autParts_pos (L : List ℕ) : 0 < autParts L := by
   obtain ⟨v, _, rfl⟩ := hx
   exact Nat.factorial_pos _
 
+/-- **Orbit size as a falling factorial.** The number of distinct coordinate-permutations of
+`ofParts L` over `Fin k`, weighted by `autParts L` (the repeated-part over-count), is exactly the
+falling factorial `k.descFactorial |L|`. Equivalently `|monoOrbit (ofParts L)| = k!/((k-|L|)!·autParts L)`.
+This is the orbit-counting fact underlying the **base case** of `denom_bridge` (for `La = []` the
+combinatorial core collapses to exactly this), and a sharper companion to
+`monoOrbit_card_eq_multinomial`. Proof: orbit-card = multinomial of the value-fiber sizes
+(`monoOrbit_card_eq_multinomial`); the fiber product `∏ (size)!` factors as `(k-|L|)!·autParts L`
+(the 0-fiber has `k-|L|` slots, the positive values give `autParts`); cancel against
+`(k-|L|)!·descFactorial = k!`. -/
+theorem autParts_mul_orbit_card {k : ℕ} (L : List ℕ) (hL : L.length ≤ k)
+    (hpos : ∀ x ∈ L, 0 < x) :
+    autParts L * (monoOrbit (ofParts L : MultiIndex k)).card = k.descFactorial L.length := by
+  classical
+  set β : MultiIndex k := ofParts L with hβ
+  set S : Finset ℕ := univ.image β with hS
+  set fib : ℕ → ℕ := fun b => (univ.filter (fun i : Fin k => β i = b)).card with hfib
+  have hspec : (∏ b ∈ S, (fib b)!) * (monoOrbit β).card = (∑ b ∈ S, fib b)! := by
+    have hc := monoOrbit_card_eq_multinomial (β := β)
+    rw [hc]
+    have hsum : (∏ b : ↥S, ((fun b : ↥S => fib b.val) b)!)
+          * Nat.multinomial univ (fun b : ↥S => fib b.val)
+        = (∑ b : ↥S, (fun b : ↥S => fib b.val) b)! := Nat.multinomial_spec _ _
+    rw [Finset.prod_coe_sort S (fun b => (fib b)!)] at hsum
+    rw [Finset.sum_coe_sort S fib] at hsum
+    convert hsum using 3
+  have hsumk : (∑ b ∈ S, fib b) = k := by
+    have := Finset.card_eq_sum_card_fiberwise (s := (univ : Finset (Fin k)))
+      (t := S) (f := β) (fun i _ => Finset.mem_image_of_mem β (Finset.mem_univ i))
+    simpa [hfib, Finset.card_univ] using this.symm
+  have hAut : autParts L = ∏ b ∈ L.toFinset, (L.count b)! := by
+    unfold autParts; rw [Finset.prod, List.toFinset_val]; rfl
+  have hc0 : L.count 0 = 0 := List.count_eq_zero.mpr (fun h => absurd (hpos 0 h) (lt_irrefl 0))
+  have h0notin : (0 : ℕ) ∉ L.toFinset := by
+    rw [List.mem_toFinset]; exact fun h => absurd (hpos 0 h) (lt_irrefl 0)
+  have hfibP : ∀ b, fib b = partsHist k L b := fun b => (partsHist_eq L hL b).symm
+  have hprodTo : (∏ b ∈ L.toFinset, (partsHist k L b)!) = autParts L := by
+    rw [hAut]; apply Finset.prod_congr rfl; intro b hb
+    have hbne : b ≠ 0 := fun h => h0notin (h ▸ hb)
+    simp [partsHist, hbne]
+  have hprod : (∏ b ∈ S, (fib b)!) = (k - L.length)! * autParts L := by
+    have hrw : (∏ b ∈ S, (fib b)!) = ∏ b ∈ S, (partsHist k L b)! := by
+      apply Finset.prod_congr rfl; intro b _; rw [hfibP b]
+    rw [hrw]
+    by_cases hlt : L.length < k
+    · have hSeq : S = insert 0 L.toFinset := by
+        ext b
+        simp only [hS, hβ, ofParts, Finset.mem_image, Finset.mem_univ, true_and, Finset.mem_insert,
+          List.mem_toFinset]
+        constructor
+        · rintro ⟨i, hi⟩
+          by_cases hidx : i.val < L.length
+          · right; rw [← hi, List.getD_eq_getElem _ _ hidx]; exact List.getElem_mem _
+          · left; rw [← hi]; exact List.getD_eq_default _ _ (by omega)
+        · rintro (rfl | hbL)
+          · exact ⟨⟨L.length, hlt⟩, List.getD_eq_default _ _ (le_refl _)⟩
+          · obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hbL
+            exact ⟨⟨j, by omega⟩, List.getD_eq_getElem _ _ hj⟩
+      rw [hSeq, Finset.prod_insert h0notin, hprodTo]
+      congr 1
+      simp [partsHist, hc0]
+    · have hlen : L.length = k := le_antisymm hL (not_lt.mp hlt)
+      have hSeq : S = L.toFinset := by
+        ext b
+        simp only [hS, hβ, ofParts, Finset.mem_image, Finset.mem_univ, true_and, List.mem_toFinset]
+        constructor
+        · rintro ⟨i, hi⟩
+          rw [← hi, List.getD_eq_getElem _ _ (by omega)]; exact List.getElem_mem _
+        · intro hbL
+          obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hbL
+          exact ⟨⟨j, by omega⟩, List.getD_eq_getElem _ _ hj⟩
+      rw [hSeq, hprodTo, hlen, Nat.sub_self]; simp
+  rw [hsumk] at hspec
+  rw [hprod] at hspec
+  have hfd : (k - L.length)! * k.descFactorial L.length = k ! :=
+    Nat.factorial_mul_descFactorial hL
+  have hpos' : 0 < (k - L.length)! := Nat.factorial_pos _
+  have key : (k - L.length)! * (autParts L * (monoOrbit β).card)
+      = (k - L.length)! * k.descFactorial L.length := by
+    rw [hfd]; rw [← hspec]; ring
+  exact Nat.eq_of_mul_eq_mul_left hpos' key
+
 /-- Sum of `L.getD · 0` over `Fin k` (for `k ≥ |L|`) is `L.sum`: the padding slots are zero.
 Mirrors `card_filter_ofParts`'s `Fin (k+1)`/`cons` recursion. -/
 lemma sum_getD_fin (k : ℕ) (L : List ℕ) (hL : L.length ≤ k) :
