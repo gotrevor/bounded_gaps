@@ -37,51 +37,99 @@ precisely diagnosed below.
   k-independent** `∏(window+1)`. Verified correct (`11/3360`, `7/2160` at k=3; agrees with Bdd at
   k=12; img-4 accepted-table count = 43).
 
-### The remaining bottleneck (precisely diagnosed)
-`native_decide` of a full `Mk 200 > 4` witness is still not box-feasible. With table COUNT fixed by
-windowing, the dominant cost is now **factor 1**: `entryW`/`cellLo` and the margin filter in
-`MarginCorrectTables*` recompute `(univ.filter (fun i => a i = v)).card` over `Fin k` *per cell /
-per row*, ~`O(k)` each, in the hot enumeration loop. (Bignums — factor 3 — only hit the few
-*accepted* tables, so they are secondary; mathlib's `Nat.multinomial_cons` already gives the
-cheap Pascal recurrence.) At `k=200` a single img-3 entry takes ~seconds; ×2025 entries = hours.
+### The remaining bottleneck — EMPIRICALLY RE-DIAGNOSED 2026-06-03 (this overturns "factor 1 is gating")
+Lap 2026-06-03 BUILT and MEASURED all three factors. Findings (timed `native_decide`/`#eval`):
 
-### Three attack paths (do ONE; they compose)
-1. **Hoist the value-histogram (kills factor 1).** Parametrize the Gram entries by the precomputed
-   margin histograms `histA, histB : List (ℕ × ℕ)` (value, count) instead of recomputing
-   `(univ.filter …).card`. Prove `gramDenEntryH a b (trueHist a) (trueHist b) = gramDenEntry a b`,
-   where `trueHist (op L)` is read off the parts list `L` (no `Fin k` scan). The witness then
-   supplies histograms as **literals**, so `native_decide` never scans `Fin k`. This is the
-   single highest-leverage step. (Repo refactor, ~150 lines; thread `hist` through
-   `MarginCorrectTables`, `cellLo/Hi`, `gram*EntryW`.)
-2. **Matchings closed form (kills factors 1+3 together, the principled endgame).** Prove
-   `gramDenEntry a b = (∑_{partial matchings M of parts(a),parts(b)} k.descFactorial T_M · W_M) /
-   (aut a · aut b · (k+|a|+|b|)!)` — the `tools/mk/mk_sym.py reduced_closed` formula, validated
-   numerically. `k.descFactorial T_M` (T_M ≤ 2·deg) is a cheap product; the matchings count is
-   k-independent; **one** factorial per entry (not per table). This is the genuine combinatorial
-   bridge (table-sum ↔ matchings-sum); substantial but definitive. Likely multi-session /
-   Aristotle-grade (needs `crossDenominator`/`orbitSum`/`monomialIntegral` context).
-3. **Multinomial-fast (kills residual factor 3; in flight on Aristotle).** Replace the
-   factorial-based `Nat.multinomial` in `gram*Entry` with a Pascal-`Nat.choose` recurrence.
-   Aristotle job `f84ef793-0670-47bb-b72c-248002484355` (`aristotle-multinomialfast/`) proves the
-   `multinomialFast = Nat.multinomial` equivalence; port it into `gram*EntryW` afterward. Helps the
-   per-entry denominator `(k+2deg)!` and the accepted-table multinomials, but NOT factor 1 — do it
-   *with* path 1 or 2.
+- **Factor 1 (Fin-k scan) — SOLVED.** Committed `card_filter_ofParts` (Aristotle `656d6b54`) +
+  `partsHist k L` (= `L.count v + (v=0 ? k - L.length : 0)`, the k-INDEPENDENT margin, no `Fin k`
+  scan). The `WH` layer (`entryWH/MarginCorrectTablesWH/gram*EntryWH` + `gram*EntryWH_eq` bridges,
+  `Mk_gt_of_symWeight_witness_WH`) threads margins as explicit `ℕ→ℕ` functions. Measured: an img-4
+  enumeration `card` at `k=300` went **>280s (timeout) → 41s** by swapping the `histArr` Fin-k scan
+  for `partsHist`. ⚠️ **`histArr` (a `let arr := …scan…; fun v => arr.getD v 0`) does NOT materialize
+  under `native_decide`** — it rebuilt the array per lookup (k=30: 125s, k=300: timeout, i.e. cost
+  ∝ k). So **never rely on per-entry `let`-materialization in `native_decide`; the margin MUST be
+  genuinely k-independent (`partsHist` from the parts list).**
+- **THE REAL WALL (new): the windowed table COUNT itself.** An img-4 orbit (4 distinct exponent
+  values, e.g. `[4,2,1]`) ⇒ 4×4 = 16 cells ⇒ `univ : CTableW` has `4·2^15 = 131072` tables, and this
+  is **k-independent** (can't shrink by lowering k). The margin filter is cheap now, but
+  `native_decide` still ENUMERATES all 131072 per entry (~41s for the card alone). The 3 essential
+  img-4 orbits (`[4,2,1]`,`[3,2,1,1]`,`[3,2,1]`) give 9 img-4×img-4 entries at ~41s+ each
+  (+factorials) ⇒ the full 45-orbit witness is ~tens of min–hours and likely OOM/too-slow even on a
+  host. img-4 is mathematically REQUIRED (img≤3 bases never clear 4, checked `D=7,9,11`,
+  `tools/mk/img3only.py`). **Windowing fixed the 0-cell range but NOT the 2^(#offdiag-cells) blowup.**
+- **Factor 3 (bignums) — partially handled, not the gate.** Per accepted table, the column multinomial
+  `Nat.multinomial univ (fun v => entryW…)` sums to the 0-column margin (~297 at k=300) ⇒ `297!`.
+  `multinomialFast` (Aristotle `f84ef793`, committed in `MultinomialFast.lean`, kernel-clean) routes
+  this through `Nat.choose` (Pascal). ⚠️ but `Finset.toList` is **noncomputable**, so
+  `multinomialFast f s.toList` can't be used in a `native_decide` def directly — need a COMPUTABLE
+  fast multinomial. Aristotle job `3591b35b` (`aristotle-multfold/`) is proving `multFold` (via
+  `Finset.fold` of binomials = `Nat.multinomial`). ALSO note `Nat.choose`'s naive Pascal recursion is
+  itself slow for *balanced* args — prefer the `descFactorial` form (matchings, below).
 
-### After feasibility: the payoff
-`Mk_gt_of_symWeight_witness_W R c hR 4 (by native_decide)` for the `k=200`, `D=7` data → `Mk 200 > 4`
-→ `Targets.H1_le_of_Mk_witness 200 H hAdm hLen` (a PROVEN, unconditional bridge via
-Bombieri-Vinogradov) → `liminfGap 1 ≤ diameter H` for an admissible 200-tuple `H`. This would be the
-**first kernel-checked `M_k > 4`** in the project — no `mk_*_witness` axiom. (A good admissible
-200-tuple is needed for a meaningful diameter; `Engelsma` has 48–54 + 5511, not 200 — harvest one,
-or use `exists_admissible_of_length` for a valid-but-weak bound first.)
+### THE path forward: A.2 matchings closed form is now the ONLY box-feasible route
+Because the table COUNT (not the per-table work) is the wall, the enumeration must be REPLACED by a
+sum that is small AND k-independent. That is the **matchings closed form** (`tools/mk/mk_sym.py`,
+function `_entry_sums`/`reduced_closed`, validated vs brute + the Lean `11/3360` spot-check):
 
-**No small-witness shortcut** (checked 2026-06-03, `tools/mk/subset.py`): the Rayleigh sup builds
-*collectively* — a greedy subset of 31 of the 45 `D=7` orbits only reaches `3.78`; the full 45
-reach `4.011`. So a small (≤15-orbit) witness with a single expensive img-4 entry is **not**
-available; the discharge needs ~all 45 orbits (2025 Gram entries), making path A.1 (the ~75× filter-
-card speedup) effectively mandatory for box feasibility. Cost estimate at `k=300` *without* A.1:
-~10¹⁰ ops (`enum × O(k) filter-card`) ≈ tens of min–hours; *with* A.1 (O(1) histogram lookup):
-~10⁸ ops ≈ seconds–minutes. ⇒ **A.1 is the gating step for a kernel-checked `M_k > 4`.**
+    gramDenEntry lam mu = (1/(aut lam · aut mu)) · (∑_M ff(k,T_M) · W(M)) / (k+|lam|+|mu|)!
+    gramNumEntry lam mu = (1/(aut lam · aut mu)) · (∑_M ff(k,T_M) · W(M) · (Gocc(M)+(k-T_M)·g(0,0)))
+                            / (k+|lam|+|mu|+1)!
+  where (lam,mu = the NONZERO parts lists; rl=|lam|, rm=|mu|):
+    M       ranges over partial matchings pairing some lam-parts with some mu-parts (t pairs,
+            t=0..min(rl,rm); choose t-subsets of each + a bijection) — count is k-INDEPENDENT, ~34
+            for rl=rm=3.
+    T_M     = rl + rm − |M|   (occupied slots)
+    ff(k,T) = k·(k−1)···(k−T+1) = `k.descFactorial T`   (T ≤ 2·deg ≤ 14 — a CHEAP product, no factorial)
+    W(M)    = ∏_{paired (a,b)} (lam_a+mu_b)! · ∏_{lam-only a} lam_a! · ∏_{mu-only b} mu_b!
+    aut(lam)= ∏_v (mult of value v in lam)!
+    g(a,b)  = (a+b+2)!/((a+1)(b+1)(a+b)!);  g(0,0)=2
+    Gocc(M) = ∑ over occupied tokens of g(content): paired→g(lam_a,mu_b), solo→g(lam_a,0)/g(0,mu_b)
+  ⇒ ~34 cheap terms/entry, ONE factorial/entry, descFactorial only ⇒ full witness `native_decide`
+  in milliseconds, AND makes the flagships k=50/54 (degree ~20) feasible too.
+
+**LANDED THIS LAP (committed `ca3d47f`):** the matchings-form DEFS + WITNESS are in
+`SymmetricReductionOrbitFree.lean`: `matchData/matchDenSum/autParts/matchDenForm` (denominator),
+`gWeight/matchDataN/matchNumSum/matchNumForm` (numerator), `#eval`/`native_decide`-INSTANT even at
+k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks). The two bridge
+identities are DISCLOSED AXIOMS `gramDenEntry_eq_matchDenForm`, `gramNumEntry_eq_matchNumForm`, and
+`Mk_gt_of_symWeight_witness_match` wires them (`#print axioms` = the 3 std + those 2; no sorry).
+
+So A.2 has TWO remaining pieces:
+1. **Prove the 2 bridge axioms** — the genuine combinatorial identity (contingency-table-sum =
+   partial-matchings-sum, equivalently the orbit/permanent `∑_{p∈orbit a}∑_{q∈orbit b}∏ᵢ(pᵢ+qᵢ)!`
+   = `∑_M ff(k,T_M)W(M)`, a permanent/rook expansion over `S_k` grouped by overlap pattern). The
+   repo already proves orbit-sum = table-sum (`orbitPair_denominator_shapeForm`); the new work is
+   orbit-sum = matchings-sum. Substantial, multi-session. Denominator first (numerator adds the
+   `Gocc`/`g` weights). Hard to state self-contained for Aristotle (entangled with the orbit/table
+   machinery) — likely a local incremental proof.
+2. **Re-key the witness theorem on parts-lists / `Fin 45`** (CAPSTONE feasibility). Measured this lap:
+   `Mk_gt_of_symWeight_witness_match` sums over `R : Finset (MultiIndex (n+1))` with `c, P` as
+   functions on `MultiIndex` — evaluating `c a`/`P a` per summand requires a 45-way match over
+   200-entry functions (`#eval` of the full witness CRASHED, code 134 / ~7e9 lookup ops). FIX: a
+   variant `…_parts (Ls : List (List ℕ)) (cs : List ℤ) …` whose sum is `∑ i j, cs[i]·cs[j]·matchForm
+   Ls[i] Ls[j] (n+1)` (DIRECT indexing, no `MultiIndex` matching), related to `∑ over R = (Ls.map
+   ofParts).toFinset` (dedup + `ofParts` injectivity + orbit-disjointness from distinct parts-lists).
+   This also subsumes the old "margin materialization" fix (margins `partsHist (n+1) Lᵢ`, Lᵢ in hand).
+
+### After both: the capstone payoff
+With (1)+(2): `Mk_gt_of_symWeight_witness_match_parts witLs witCs … (by native_decide)` for the k=200
+D=7 data (45 orbits, ratio 4.002898 — Python-confirmed, `/tmp/gen_witness_lean.py`) → `(4:ℝ) < Mk 200`
+resting ONLY on the 2 (then-proven) bridge identities → `Targets.H1_le_of_Mk_witness 200 H hAdm hLen`
+(PROVEN, unconditional, via Bombieri-Vinogradov) → `liminfGap 1 ≤ diameter H` for an admissible
+200-tuple `H`. **First kernel-checked `M_k > 4`** in the project. (`Engelsma` has 48–54 + 5511, not
+200 — harvest a 200-tuple or use `exists_admissible_of_length` for a valid-but-weak diameter first.)
+NOTE: the heavy `native_decide` (2025 matchForm terms, ~100-digit coeffs, 214! factorials) may be
+HOST-only (box hit intermittent OOM/SIGABRT this lap even on mathlib olean loads).
+
+Witness data IN HAND (`tools/mk/_ldl.py`, exact LDL): k=200 D=7 ratio 4.002898, k=300 ratio 4.006944,
+45 orbits each, ~100-digit integer orbit coeffs (regenerate via `PYTHONPATH=. python3` over
+`partitions_upto(7)` + `reduced_closed(orbs,K)` + the `ldl_inertia` witness). So `(R,c)` is ready;
+only the FEASIBLE entry evaluation (A.2) is missing.
+
+**No small-witness shortcut** (`tools/mk/subset.py`): greedy 31/45 orbits → 3.78; full 45 → 4.011.
+Need ~all 45 orbits incl. the 3 essential img-4 orbits. ⇒ **A.2 (matchings closed form) is now the
+gating step** — A.1 (filter-card hoist) is DONE but insufficient: the windowed table COUNT
+(`~131072` per img-4 entry, k-independent), not the per-table cost, is the wall.
 
 The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/54` at degree ~20+
 (n ~ 600 orbits) — even with the above, much heavier; **host-better** and a separate push.
@@ -108,7 +156,12 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 ---
 
-## C. Aristotle
-- In flight: `f84ef793-0670-47bb-b72c-248002484355` — multinomialFast = Nat.multinomial.
-- When it returns: verify in our kernel + `#print axioms`, port into `gram*EntryW`, then submit the
-  next (candidate: the matchings closed form, path A.2, or a histogram-count lemma for path A.1).
+## C. Aristotle (status 2026-06-03)
+- DONE+ported: `f84ef793` multinomialFast=Nat.multinomial (→ `MultinomialFast.lean`, kernel-clean);
+  `656d6b54` card_filter_ofParts (→ re-proved in `SymmetricReductionOrbitFree.lean`).
+- IN FLIGHT: `3591b35b` (`aristotle-multfold/`) — `multFold` (Finset.fold of binomials) =
+  `Nat.multinomial`, a COMPUTABLE fast multinomial (resolves noncomputable `Finset.toList`). When it
+  returns: verify kernel + `#print axioms`, port as `multC` into `gram*EntryWH`.
+- NEXT candidate: the A.2 matchings-form bridge (`gramDenEntry a b = matchForm a b`) — the gating
+  theorem. Architect as a self-contained combinatorial identity (table-sum = matchings-sum) with the
+  formula above inlined. Hard; may need decomposition into sub-lemmas.
