@@ -247,6 +247,27 @@ Format: `YYYY-MM-DD | tier | what landed | session-equivalents (1.0 = full eveni
 | 2026-05-28 | "lambda-algebra" | 6 real `lambdaTransform_*` lemmas (#59): `_prime` (g(0)−g(log p/log R)), `_prime_of_support` (paper eqn lambdan-prime), `_add`/`_smul`/`_neg`/`_linear`. Toolkit for the s1/s2 divisor-sum expansions. HANDOFF #60. | 0.3 |
 | 2026-05-28 | **"Dig" round (Tier 2 + cleanup)** | Systemic consumption audit → dropped orphan axiom `narrowness_asymptotic_lower` (uses=0, **37 axioms**, #61); discharged `Mk_le_one_of_k_le_one` k=1 via `funUnique` change-of-vars + Jensen on [0,1] (**15 sorries**, #62, load-bearing for `H1_le_of_Mk_witness`). First metric moves since the flagship burst. | 0.5 |
 
+#### Ledger gap 2026-05-28 → 2026-06-02 (reconstructed retroactively 2026-06-03)
+
+The ledger went dark while the work pivoted to one big **off-roadmap thread**: discharge the
+`Polymath8b.mk_*_witness` numerical axioms (ROADMAP Bucket A / Tier-6 "out of scope") by *proving*
+`Mk k > 4` in Lean via a symmetric-reduction → orbit-basis Gram-quotient pipeline (branch
+`path-a-selberg-nu`). Condensed arcs (session-weights are estimates; ~55 commits total):
+
+| Date | Tier | What landed | Sessions |
+|---|---|---|---|
+| 2026-06-01/02 | **off-roadmap (Mk>4 build)** | Symmetric-reduction Gram pipeline: `orbitSum`→ cross-orbit denominator+numerator bilinear forms → orbit-free re-index over `MarginCorrectTables` → computable `gram*Entry` → `Mk_gt_four_of_symWeight_witness` / general-threshold `Mk_gt_of_symWeight_witness`; `disjoint_of_histogram` mechanizes the orbit-disjointness `hR`. `mk_54_witness_under_EH` reduced to data + 2 `native_decide`s. End-to-end `Mk 3 > 1` regression. | ~3.0 |
+| 2026-06-02 | **off-roadmap (eps path)** | `SymmetricReductionEpsOrbitFree`: full ε-trick analog (eps-denominator + eps-numerator Gram, `affineSlackRat` marked-coordinate factorization, `pairOrbit_regroup` reused) → `mk_eps_50_witness` conditional discharge, axiom-clean. Both named flagships reduced to data + `native_decide`. | ~2.0 |
+| 2026-06-03 | **off-roadmap (feasibility R&D)** | Discovered the committed `gram*Entry` table enumeration is `native_decide`-INFEASIBLE for real witnesses (`(k+1)^cells`). Built + measured 3 reformulations: margin-bounded (`gram*EntryBdd`), Fréchet-windowed (`gram*EntryW`, k-independent), filter-card-hoisted (`partsHist`, A.1). Empirically diagnosed the real wall = the windowed table COUNT itself (`~131072`/img-4 entry). Aristotle: `multinomialFast`, `card_filter_ofParts` ported. | ~2.0 |
+| 2026-06-03 | **off-roadmap (A.2 matchings)** | The box-feasible route: matchings closed form (`matchDenForm`/`matchNumForm`, k-independent ~34-term sums, `#eval`-instant at k=300). Landed as defs + witness `Mk_gt_of_symWeight_witness_match` resting on 2 disclosed bridge axioms (numerically validated). `ofParts_inj`. | ~1.5 |
+| 2026-06-03 (late) | **off-roadmap (bridge discharge)** | Both bridges turned from axioms into **theorems** (`c9cb696`/`8d46bcd`): all orbit-sum↔table-sum↔matchings plumbing discharged in-kernel, reducing the gap to 2 *atomic* combinatorial cores `denom_bridge`/`num_bridge` (numerically pre-verified, both submitted to Aristotle). Witness re-keyed on parts-lists `Mk_gt_of_symWeight_witness_match_parts` (`ef2b071`, capstone-feasible direct list-form quotient) + k=3 regression. | ~1.5 |
+
+**Net on this thread:** the named numerical witnesses `mk_54_witness_under_EH` / `mk_eps_50_witness`
+are reduced from opaque citations to `data + native_decide` resting on 2 atomic permanent/rook
+identities (on Aristotle) + the witness `LCs` literal + one host-scale `native_decide`. This is
+**Tier-6 work the ROADMAP deferred as out-of-scope** — so it's both ahead of stated scope (attacking
+Bucket A) and orthogonal to Tiers 1–5 (which sat untouched: the 3 opaques are still opaque).
+
 ### Scorecard at ~10% of one-month horizon (2026-05-27 ~18:00, 20h post-ROADMAP)
 
 | Tier | Estimate | Done so far | Comment |
