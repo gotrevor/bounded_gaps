@@ -87,22 +87,39 @@ function `_entry_sums`/`reduced_closed`, validated vs brute + the Lean `11/3360`
   ⇒ ~34 cheap terms/entry, ONE factorial/entry, descFactorial only ⇒ full witness `native_decide`
   in milliseconds, AND makes the flagships k=50/54 (degree ~20) feasible too.
 
-**LANDED THIS LAP (committed `ca3d47f`):** the matchings-form DEFS + WITNESS are in
+**LANDED (committed `ca3d47f`):** the matchings-form DEFS + WITNESS are in
 `SymmetricReductionOrbitFree.lean`: `matchData/matchDenSum/autParts/matchDenForm` (denominator),
 `gWeight/matchDataN/matchNumSum/matchNumForm` (numerator), `#eval`/`native_decide`-INSTANT even at
-k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks). The two bridge
-identities are DISCLOSED AXIOMS `gramDenEntry_eq_matchDenForm`, `gramNumEntry_eq_matchNumForm`, and
-`Mk_gt_of_symWeight_witness_match` wires them (`#print axioms` = the 3 std + those 2; no sorry).
+k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks).
 
-So A.2 has TWO remaining pieces:
-1. **Prove the 2 bridge axioms** — the genuine combinatorial identity (contingency-table-sum =
-   partial-matchings-sum, equivalently the orbit/permanent `∑_{p∈orbit a}∑_{q∈orbit b}∏ᵢ(pᵢ+qᵢ)!`
-   = `∑_M ff(k,T_M)W(M)`, a permanent/rook expansion over `S_k` grouped by overlap pattern). The
-   repo already proves orbit-sum = table-sum (`orbitPair_denominator_shapeForm`); the new work is
-   orbit-sum = matchings-sum. Substantial, multi-session. Denominator first (numerator adds the
-   `Gocc`/`g` weights). Hard to state self-contained for Aristotle (entangled with the orbit/table
-   machinery) — likely a local incremental proof.
-2. **Re-key the witness theorem on parts-lists / `Fin 45`** (CAPSTONE feasibility). Measured this lap:
+**LANDED 2026-06-03 (commits `c9cb696`, `8d46bcd`, `ef2b071`, `8a5a6ba`):** both bridges are now
+**THEOREMS**, and the witness is re-keyed on parts-lists. The two A.2 pieces collapsed to:
+
+1. **Bridges PROVEN modulo two atomic combinatorial cores.** `gramDenEntry_eq_matchDenForm` /
+   `gramNumEntry_eq_matchNumForm` are no longer axioms — they're theorems. All surrounding plumbing
+   is discharged in-kernel: `gramDenEntry = orbit-sum/(k+|α|+|β|)!` (`orbitPair_denominator_
+   computable` ∘ `orbitPair_denominator_eq`), the numerator analog (`crossNumerator_orbitSum` ∘
+   `orbitPair_numerator_eq` ∘ `numerator_combinatorial_factored`, `markedCellFactor_eq_gWeight`),
+   `ofParts_degree` (= `L.sum`), and the `autParts>0` cancellation. What remains is exactly two
+   **atomic** axioms — the genuine permanent/rook identities:
+   - `denom_bridge`: `autParts La·autParts Lb·(∑_{p∈orbit}∑_{q∈orbit}∏ᵢ(pᵢ+qᵢ)!) = matchDenSum`.
+   - `num_bridge`: ℚ analog, summand `(∏ᵢ(pᵢ+qᵢ)!)·∑ᵢ g(pᵢ,qᵢ)`, `= matchNumSum`.
+   Both numerically verified (denom 4 cases; num 5 incl. img-3/asymmetric). **Both on Aristotle:
+   denom `0b5bf5be`, num `9d05dbaa`** (`aristotle-{den,num}bridge/`). When they land: verify in-kernel
+   + `#print axioms`, port (repo axiom stated on `monoOrbit (ofParts L)` = `orbitFin L k`, defeq) →
+   both Gram sides fully kernel-clean. `Mk_gt_of_symWeight_witness_match` now depends on
+   `[3 std, denom_bridge, num_bridge]`.
+2. **Re-keying DONE** (`ef2b071`): `Mk_gt_of_symWeight_witness_match_parts (LCs : List (List ℕ × ℚ))`
+   — the Gram quotient is the DIRECT list-form double sum `(LCs.map (fun la => (LCs.map (fun lb =>
+   la.2·lb.2·matchForm la.1 lb.1 (n+1))).sum)).sum`; no 45-way `MultiIndex` match. Reduces to
+   `…_witness_match` via `R = (LCs.map (ofParts∘fst)).toFinset` + noncomputable `partsInv`/`coefInv`
+   (`ofParts` inj on `LCs` by `hnodup`; reindex via `List.sum_toFinset`×2). k=3 regression
+   (`8a5a6ba`) fires the `native_decide` on the list-form quotient end to end.
+
+(Superseded note — the OLD 2-pieces, for history:)
+- ~~Prove the 2 bridge axioms (orbit-sum = matchings-sum, permanent/rook over `S_k`).~~ → now atomic
+  `denom_bridge`/`num_bridge`, plumbing done, on Aristotle.
+- ~~Re-key the witness on parts-lists / `Fin 45`.~~ → DONE (`…_witness_match_parts`). Measured prior:
    `Mk_gt_of_symWeight_witness_match` sums over `R : Finset (MultiIndex (n+1))` with `c, P` as
    functions on `MultiIndex` — evaluating `c a`/`P a` per summand requires a 45-way match over
    200-entry functions (`#eval` of the full witness CRASHED, code 134 / ~7e9 lookup ops). FIX: a
@@ -156,12 +173,17 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 ---
 
-## C. Aristotle (status 2026-06-03)
-- DONE+ported: `f84ef793` multinomialFast=Nat.multinomial (→ `MultinomialFast.lean`, kernel-clean);
-  `656d6b54` card_filter_ofParts (→ re-proved in `SymmetricReductionOrbitFree.lean`).
-- IN FLIGHT: `3591b35b` (`aristotle-multfold/`) — `multFold` (Finset.fold of binomials) =
-  `Nat.multinomial`, a COMPUTABLE fast multinomial (resolves noncomputable `Finset.toList`). When it
-  returns: verify kernel + `#print axioms`, port as `multC` into `gram*EntryWH`.
-- NEXT candidate: the A.2 matchings-form bridge (`gramDenEntry a b = matchForm a b`) — the gating
-  theorem. Architect as a self-contained combinatorial identity (table-sum = matchings-sum) with the
-  formula above inlined. Hard; may need decomposition into sub-lemmas.
+## C. Aristotle (status 2026-06-03, late)
+- **IN FLIGHT — THE TWO GATING CORES** (both numerically pre-verified, self-contained):
+  - `0b5bf5be` (`aristotle-denbridge/DenBridge.lean`) — `denom_bridge`: orbit-sum of `∏(pᵢ+qᵢ)!` =
+    `matchDenSum`, up to `autParts`. The permanent/rook identity, ℕ.
+  - `9d05dbaa` (`aristotle-numbridge/NumBridge.lean`) — `num_bridge`: ℚ analog with `∑ g(pᵢ,qᵢ)`.
+  When EITHER returns: `aristotle list` (one-shot) → download → verify in our kernel + `#print
+  axioms` clean → port (repo axiom is on `monoOrbit (ofParts L)`; the job uses `orbitFin L k`, which
+  is defeq — a `rfl`/`Finset` rewrite) → the corresponding Gram side is fully kernel-clean.
+- DONE+ported (earlier): `f84ef793` multinomialFast (→ `MultinomialFast.lean`); `656d6b54`
+  card_filter_ofParts (→ re-proved). `3591b35b` multfold = dead path (enumeration abandoned).
+- After both bridges land: the ONLY remaining gap to a kernel-checked `Mk 200 > 4` is the heavy
+  capstone `native_decide` on `Mk_gt_of_symWeight_witness_match_parts witLCs … ` — likely HOST-only
+  (2025 matchForm terms, 214! factorials; box OOMs). The witness `LCs` literal still needs to be
+  generated from `tools/mk/_ldl.py` (k=200 D=7, 45 orbits) and `#eval`-checked > 4 (fast, computable).
