@@ -2233,6 +2233,82 @@ theorem Mk_gt_of_symWeight_witness_match {n : ℕ} (R : Finset (MultiIndex (n + 
   rw [hnum, hden] at hwit
   exact hwit
 
+/-- Inverse of `ofParts` on a witness pair-list `LCs`: the parts-list paired with the index `a`
+(noncomputable — only used to feed `Mk_gt_of_symWeight_witness_match`; the `native_decide` runs on
+the list-form quotient, never on this). -/
+noncomputable def partsInv {n : ℕ} (LCs : List (List ℕ × ℚ)) (a : MultiIndex (n + 1)) : List ℕ :=
+  if h : ∃ lc ∈ LCs, (ofParts lc.1 : MultiIndex (n + 1)) = a then (Classical.choose h).1 else []
+
+/-- Inverse of `ofParts` on `LCs`, returning the paired coefficient. -/
+noncomputable def coefInv {n : ℕ} (LCs : List (List ℕ × ℚ)) (a : MultiIndex (n + 1)) : ℚ :=
+  if h : ∃ lc ∈ LCs, (ofParts lc.1 : MultiIndex (n + 1)) = a then (Classical.choose h).2 else 0
+
+/-- **Parts-list-keyed matchings witness — the box-feasible capstone shape.** The witness data is a
+single list `LCs` of `(parts-list, coefficient)` pairs. The Gram quotient is a *direct list-indexed*
+double sum `∑ᵢⱼ cᵢcⱼ·matchForm Lᵢ Lⱼ` — evaluating each summand is `Lᵢ`/`cᵢ` list access, NOT a
+45-way match over 200-entry functions (which crashed the `MultiIndex`-keyed `…_witness_match`
+`#eval`). Reduces to `Mk_gt_of_symWeight_witness_match` via `R = (LCs.map (ofParts ∘ fst)).toFinset`,
+with the orbit reps recovered by `partsInv`/`coefInv` (`ofParts` injective on `LCs` by `hnodup`).
+The two `native_decide`s the caller supplies: `hR` (disjointness, via `disjoint_of_histogram`) and
+`hwit` (the rational quotient). -/
+theorem Mk_gt_of_symWeight_witness_match_parts {n : ℕ}
+    (LCs : List (List ℕ × ℚ))
+    (hpos : ∀ lc ∈ LCs, ∀ x ∈ lc.1, 0 < x)
+    (hLk : ∀ lc ∈ LCs, lc.1.length ≤ n + 1)
+    (hnodup : (LCs.map (fun lc => (ofParts lc.1 : MultiIndex (n + 1)))).Nodup)
+    (hR : ∀ a ∈ (LCs.map (fun lc => (ofParts lc.1 : MultiIndex (n + 1)))).toFinset,
+          ∀ b ∈ (LCs.map (fun lc => (ofParts lc.1 : MultiIndex (n + 1)))).toFinset,
+          a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (T : ℚ)
+    (hwit : T <
+      (LCs.map (fun la => (LCs.map (fun lb => la.2 * lb.2 * matchNumForm la.1 lb.1 (n + 1))).sum)).sum
+        / (LCs.map (fun la =>
+            (LCs.map (fun lb => la.2 * lb.2 * matchDenForm la.1 lb.1 (n + 1))).sum)).sum) :
+    (T : ℝ) < Sieve.Mk (n + 1) := by
+  set g : (List ℕ × ℚ) → MultiIndex (n + 1) := fun lc => ofParts lc.1 with hg
+  set R := (LCs.map g).toFinset with hRdef
+  have hinj := List.inj_on_of_nodup_map hnodup
+  -- `partsInv`/`coefInv` invert `g` on `LCs`.
+  have hPc : ∀ lc ∈ LCs, partsInv LCs (g lc) = lc.1 ∧ coefInv LCs (g lc) = lc.2 := by
+    intro lc hlc
+    have hex : ∃ lc' ∈ LCs, (ofParts lc'.1 : MultiIndex (n + 1)) = g lc := ⟨lc, hlc, rfl⟩
+    have hsp := Classical.choose_spec hex
+    have hcceq : Classical.choose hex = lc := hinj hsp.1 hlc hsp.2
+    refine ⟨?_, ?_⟩
+    · simp only [partsInv, dif_pos hex, hcceq]
+    · simp only [coefInv, dif_pos hex, hcceq]
+  -- `hP` for `_witness_match`.
+  have hP : ∀ a ∈ R, a = ofParts (partsInv LCs a) ∧
+      (∀ x ∈ partsInv LCs a, 0 < x) ∧ (partsInv LCs a).length ≤ n + 1 := by
+    intro a ha
+    rw [hRdef, List.mem_toFinset, List.mem_map] at ha
+    obtain ⟨lc, hlc, rfl⟩ := ha
+    obtain ⟨hP1, _⟩ := hPc lc hlc
+    rw [hP1]
+    exact ⟨rfl, hpos lc hlc, hLk lc hlc⟩
+  -- Reindex the orbit double sum to the direct list-indexed double sum.
+  have hsum_eq : ∀ (Mf : List ℕ → List ℕ → ℕ → ℚ),
+      (∑ a ∈ R, ∑ b ∈ R,
+          coefInv LCs a * coefInv LCs b * Mf (partsInv LCs a) (partsInv LCs b) (n + 1))
+        = (LCs.map (fun la => (LCs.map (fun lb => la.2 * lb.2 * Mf la.1 lb.1 (n + 1))).sum)).sum := by
+    intro Mf
+    rw [hRdef, List.sum_toFinset _ hnodup, List.map_map]
+    apply congrArg List.sum
+    apply List.map_congr_left
+    intro la hla
+    simp only [Function.comp_apply]
+    rw [List.sum_toFinset _ hnodup, List.map_map]
+    apply congrArg List.sum
+    apply List.map_congr_left
+    intro lb hlb
+    simp only [Function.comp_apply]
+    obtain ⟨hPa, hca⟩ := hPc la hla
+    obtain ⟨hPb, hcb⟩ := hPc lb hlb
+    rw [hca, hcb, hPa, hPb]
+  apply Mk_gt_of_symWeight_witness_match R (coefInv LCs) hR (partsInv LCs) hP T
+  rw [hsum_eq matchNumForm, hsum_eq matchDenForm]
+  exact hwit
+
 /-! ## End-to-end validation (regression guard)
 
 A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
