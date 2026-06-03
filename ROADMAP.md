@@ -29,6 +29,14 @@ This file is a **falsifiable commitment**: tier-by-tier estimates of work,
 with a measurement checkpoint in one month (2026-06-26) to compare
 estimate vs actual.
 
+> **Companion: `ANALYTIC_AXIOM_BURNDOWN.md`** takes the *opposite* stance for
+> the deep cited axioms (Bombieri-Vinogradov, GBV, MPZ, the s1/s2 sieve
+> estimates). Where this file brackets them as "the contract, not the debt,"
+> the burn-down doc treats them as eventual proof targets and maps the
+> literature path: a verified mathlib v4.29.1 inventory, the BV dependency
+> tree, and the call that the Large Sieve Inequality is the multi-month nut
+> worth cracking. (Trevor's directive, 2026-06-03.)
+
 ## Current axiom inventory
 
 **As of 2026-05-28 (post-PR #62)**: **37 axioms, 3 opaques, 15 sorries.**
