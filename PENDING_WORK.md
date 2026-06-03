@@ -100,37 +100,42 @@ k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks).
    is discharged in-kernel: `gramDenEntry = orbit-sum/(k+|α|+|β|)!` (`orbitPair_denominator_
    computable` ∘ `orbitPair_denominator_eq`), the numerator analog (`crossNumerator_orbitSum` ∘
    `orbitPair_numerator_eq` ∘ `numerator_combinatorial_factored`, `markedCellFactor_eq_gWeight`),
-   `ofParts_degree` (= `L.sum`), and the `autParts>0` cancellation. What remains is exactly two
-   **atomic** axioms — the genuine permanent/rook identities:
-   - `denom_bridge`: `autParts La·autParts Lb·(∑_{p∈orbit}∑_{q∈orbit}∏ᵢ(pᵢ+qᵢ)!) = matchDenSum`.
-   - `num_bridge`: ℚ analog, summand `(∏ᵢ(pᵢ+qᵢ)!)·∑ᵢ g(pᵢ,qᵢ)`, `= matchNumSum`.
-   Both numerically verified (denom 4 cases; num 5 incl. img-3/asymmetric). **Both on Aristotle:
-   denom `0b5bf5be`, num `9d05dbaa`** (`aristotle-{den,num}bridge/`). When they land: verify in-kernel
-   + `#print axioms`, port (repo axiom stated on `monoOrbit (ofParts L)` = `orbitFin L k`, defeq) →
-   both Gram sides fully kernel-clean. `Mk_gt_of_symWeight_witness_match` now depends on
-   `[3 std, denom_bridge, num_bridge]`.
+   `ofParts_degree` (= `L.sum`), and the `autParts>0` cancellation. The two **atomic** permanent/rook
+   identities were `denom_bridge` / `num_bridge`. **STATUS 2026-06-03 (commits `b8fd8f5`, `d18ca93`):
+   BOTH ELIMINATED as deep axioms.**
+   - **`denom_bridge` — FULLY PROVEN (axiom gone).** Discharged via the **permanent route** (NOT the
+     orbit-recursion P2 below). Define `permDenSum La Lb k = ∑_{ρ∈Perm(Fin k)} ∏ᵢ(ofParts La i +
+     ofParts Lb(ρ i))!`. Then `lhs_eq_perm` (orbit double-sum·(k-|La|)!(k-|Lb|)! = k!·permDenSum, via
+     the proven `ofParts_autParts_orbit_sum`) and `rhs_eq_perm` (matchDenSum·(...) = k!·permDenSum, by
+     induction on `La`) share `permDenSum` and cancel. The hard core `permDenSum_laplace` (the inner
+     perm-sum after `permDenSum_cons`/decomposeFin collapses to permDenSum on the column-removed list)
+     was cracked via: swap↦succAbove perm bridge (`Fin.exists_succAbove_eq`), `permSum_perm_invariant`,
+     and the EXACT identity `ofParts Lb ∘ Fin.succAbove j = ofParts (eraseIdx j)` (`ofParts_comp_succAbove`).
+     Also `descFactorial_succ_eq'` (UNCONDITIONAL) makes `matchDenSum_cons_eq'` unconditional.
+   - **`num_bridge` — PROVEN, reduced to one elementary axiom.** Same permanent route, ℚ-valued, with
+     the extra `∑ᵢ gWeight(pᵢ,qᵢ)` factor. New: `permNumSum`, `permNumSum_cons` (`Fintype.sum_prod_type`),
+     `permSum_gw_invariant`, `inner_num_eq`/`inner_den_eq` (gWeight-weighted column collapse),
+     `permNumSum_laplace` (the j-row gWeight term splits into permDenSum + permNumSum), `lhs_num`,
+     `rhs_num` (induction: IH for num + the proven `rhs_eq_perm` for den), `num_bridge`. The ONLY
+     remaining axiom is **`matchNumSum_cons_eq'`** (the `matchDataN` recursion; numerically validated by
+     `native_decide`; analog of the PROVEN `matchDenSum_cons_eq'`).
+   - **`Mk_200_gt_4` now rests on `[propext, Classical.choice, Quot.sound, matchNumSum_cons_eq',
+     native_decide]`** — both deep bridges gone; only the elementary list-recursion axiom remains.
 
-   **`denom_bridge` / `num_bridge` — three attack paths (the central remaining gap):**
-   - **(P1) Aristotle (in flight).** `0b5bf5be` (den), `9d05dbaa` (num), both RUNNING ~1.5h as of
-     2026-06-03 ~04:30. When EITHER returns: download → verify in-kernel + `#print axioms` clean →
-     port (`orbitFin L k = monoOrbit (ofParts L)` is **rfl**: both are `univ.image (fun σ => fun i =>
-     (ofParts L)(σ i))`, `image f univ = univ.image f`) → replace the `axiom` → that Gram side clean.
-     IMMEDIATELY submit the next job.
-   - **(P2) Hand induction on `La`, base case DONE.** `autParts_mul_orbit_card` (committed `4fa053c`,
-     kernel-clean) IS the base case: for `La=[]`, `orbit [] = {const 0}`, `∏(0+qᵢ)! = ∏ qᵢ!` is
-     perm-invariant so the orbit sum `= |orbit Lb|·∏Lbᵢ!`, and `denom_bridge [] Lb` reduces to exactly
-     `autParts Lb·|monoOrbit (ofParts Lb)| = k.descFactorial |Lb|` (= the lemma) after cancelling
-     `∏Lbᵢ!`. STILL OPEN: the **inductive step** (`a::La'`) — the orbit of `ofParts (a::La')` vs
-     `ofParts La'` (where the head value `a` lands, overlapping a `q`-nonzero slot → `(a+b)!`,
-     `numPairs+1` OR a `q`-zero slot → `a!`), mirroring `matchData`'s two-branch recursion. This is
-     the genuine permanent/rook heart — the hard part, same as P1. Needs a `monoOrbit` recursion lemma
-     + perm-invariance product lemma. Estimate: multi-hundred lines.
-   - **(P3) Direct permanent route (reformulate).** `autParts La·autParts Lb·S = (∑_{σ,τ∈Sₖ} ∏ᵢ
-     (A(σi)+B(τi))!)/((k−rl)!(k−rm)!)` via orbit-stabilizer (each orbit pair hit `(k−rl)!·autParts La·
-     (k−rm)!·autParts Lb` times), `= (k!/((k−rl)!(k−rm)!))·perm[(A(j)+B(i))!]` (reindex σ,τ → one
-     permutation), then the permanent's rook expansion grouped by the overlap matching = `matchDenSum`.
-     Cleaner conceptually but the permanent expansion is still substantial Lean. Build on
-     `autParts_mul_orbit_card`'s orbit-stabilizer machinery.
+   **`matchNumSum_cons_eq'` — finish it (the LAST in-scope axiom). Recipe is fully worked out:**
+   - **(P1) Aristotle.** Job `d314bdc2` (`aristotle-numrec-job/NumRec.lean`) grinding it (mechanical,
+     analog of what Aristotle did for matchDenSum). When it lands: verify in-kernel, replace the
+     `axiom matchNumSum_cons_eq'` in `SymmetricReductionOrbitFree.lean` with the proof → ZERO math
+     axioms on the Mk chain (just std + native_decide).
+   - **(P2) Hand proof — ALL helpers proven in `scratch_mns.lean`** (kernel-clean): `matchDenSum_dataN`
+     (matchDenSum via matchDataN), `list_sum_flatMap`, `sum_range_eq_list` (List.range↔Finset.range),
+     `zip_range_eq_map`. The main proof: `unfold matchNumSum; rw [matchDataN, List.map_append,
+     List.sum_append]` → sumU + sumM. **sumU**: `List.map_map`; per-element via `matchDataN_fst_le`
+     (t.1≤|La|) + `descFactorial_succ_eq'` rewrite the weight to `↑k·↑a!·(numSummand t + gWeight a 0·
+     denSummand t)`; `List.sum_map_mul_left`, `List.sum_map_add`, `List.sum_map_mul_left`; fold via
+     matchNumSum/`matchDenSum_dataN`. **sumM**: `zip_range_eq_map` + `List.flatMap_map`/`List.map_flatMap`
+     + `list_sum_flatMap` reduce to `((List.range|Lb|).map G).sum`; same per-element analysis per j
+     (with eraseIdx, |Lb|≥1); `sum_range_eq_list` → `∑ j ∈ Finset.range|Lb|`. Combine: `ring`.
 2. **Re-keying DONE** (`ef2b071`): `Mk_gt_of_symWeight_witness_match_parts (LCs : List (List ℕ × ℚ))`
    — the Gram quotient is the DIRECT list-form double sum `(LCs.map (fun la => (LCs.map (fun lb =>
    la.2·lb.2·matchForm la.1 lb.1 (n+1))).sum)).sum`; no 45-way `MultiIndex` match. Reduces to
@@ -155,7 +160,9 @@ k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks).
 `BoundedGaps/MkWitness200.lean` (built by the default target, full build 8271 jobs). It instantiates
 `Mk_gt_of_symWeight_witness_match_parts` with the exact k=200 D=7 witness `witnessLCs200` (45 orbits,
 exact-LDL coeffs, rational Rayleigh quotient 4.002898). **First kernel-checked `M_k > 4`.**
-`#print axioms Mk_200_gt_4 = [3 std, denom_bridge, num_bridge, native_decide]`.
+`#print axioms Mk_200_gt_4 = [3 std, matchNumSum_cons_eq', native_decide]` (2026-06-03: both
+`denom_bridge` and `num_bridge` are now PROVEN theorems; only the elementary `matchNumSum_cons_eq'`
+list-recursion axiom remains — see §A.1 for the finish recipe).
 
 The companion **`bounded_gap_of_Mk_200`** feeds it into `Targets.H1_le_of_Mk_witness` →
 `∃ H, Admissible H ∧ H.length = 200 ∧ liminfGap 1 ≤ diameter H` — the first **unconditional**
