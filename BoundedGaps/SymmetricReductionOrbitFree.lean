@@ -1618,6 +1618,185 @@ lemma gramNumEntryW_eq {n : ℕ} (a b : MultiIndex (n + 1)) :
   unfold gramNumEntryW gramNumEntry
   rw [hS]
 
+/-! ### A.1: filter-card-hoisted windowed entries — the box-feasible `native_decide` shape
+
+`gramDenEntryW`/`gramNumEntryW` recompute the value-fiber size
+`(univ.filter (fun i => α i = v.val)).card` (an `O(k)` scan of `Fin k`) inside `entryW`'s
+`cellLo` and the `MarginCorrectTablesW` margin filter — **per table**, in the hot enumeration
+loop. For an img-4 orbit at `k = 300` that is `~10⁵` tables × `~10⁴` ops = `~10⁹` ops per
+entry (empirically: a single img-4 `gramDenEntryW` does not finish in minutes, while an img-3
+one — `~10³` tables — finishes in seconds).
+
+The `WH` variants take the row/column margins as **explicit functions** `ra, rb : ℕ → ℕ`
+(value → fiber size). The witness supplies them *materialized* (the histogram computed once and
+captured in an `O(1)`-lookup closure — see `histArr` below), so every hot-loop access is `O(1)`
+and no `Fin k` scan happens per table. The bridge lemmas (`gram*EntryWH_eq`) show that feeding
+the *true* margins recovers `gram*EntryW` exactly, so soundness needs no new axiom — the margins
+are the literal cards by construction. -/
+
+/-- `entryW` with the margin cards passed as explicit functions (no `Fin k` scan):
+`entryWH ra rb T v b = (ra v + rb b - k) + raw`. Equals `entryW` when `ra, rb` are the true
+fiber sizes (`entryWH_eq_entryW`). -/
+def entryWH (ra rb : ℕ → ℕ) (T : CTableW α β) (v : ↥(univ.image α)) (b : ↥(univ.image β)) : ℕ :=
+  (ra v.val + rb b.val - k) + (T v b).val
+
+/-- Margin-correct windowed tables with hoisted margins (filter uses `ra, rb`, not `Fin k` scans). -/
+def MarginCorrectTablesWH (ra rb : ℕ → ℕ) : Finset (CTableW α β) :=
+  univ.filter (fun T =>
+    (∀ v, ∑ b, entryWH α β ra rb T v b = ra v.val) ∧
+    (∀ b, ∑ v, entryWH α β ra rb T v b = rb b.val))
+
+/-- The joint multiset named by a windowed table, using the hoisted `entryWH`. -/
+def tableToMultisetWH (ra rb : ℕ → ℕ) (T : CTableW α β) : Multiset (ℕ × ℕ) :=
+  ∑ v : ↥(univ.image α), ∑ b : ↥(univ.image β),
+    Multiset.replicate (entryWH α β ra rb T v b) (v.val, b.val)
+
+/-- **Filter-card-hoisted denominator Gram entry** (`= gramDenEntryW` when fed true margins,
+see `gramDenEntryWH_eq`). This is the box-feasible `native_decide` shape: the witness supplies
+`ra, rb` as `O(1)`-lookup closures, so the table enumeration never scans `Fin k`. -/
+def gramDenEntryWH {k : ℕ} (a b : MultiIndex k) (ra rb : ℕ → ℕ) : ℚ :=
+  ((Nat.multinomial (univ : Finset ↥(univ.image b)) (fun bb => rb bb.val)) •
+      ∑ T ∈ MarginCorrectTablesWH a b ra rb,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => entryWH a b ra rb T v bb) : ℚ))
+          * jointWeightC (tableToMultisetWH a b ra rb T))
+    / ((k + a.degree + b.degree).factorial : ℚ)
+
+/-- **Filter-card-hoisted numerator Gram entry** (`= gramNumEntryW`, see `gramNumEntryWH_eq`). -/
+def gramNumEntryWH {n : ℕ} (a b : MultiIndex (n + 1)) (ra rb : ℕ → ℕ) : ℚ :=
+  (∑ T ∈ MarginCorrectTablesWH a b ra rb,
+      (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+          (fun c => entryWH a b ra rb T c.1 c.2) : ℚ)
+        * pairWeightC (tableToMultisetWH a b ra rb T))
+    / (((n + 1) + a.degree + b.degree + 1).factorial : ℚ)
+
+/-- The materialized histogram of `a` as an `O(1)`-lookup function: `histArr D a v` reads the
+`v`-th entry of the precomputed array `[card(a=0), …, card(a=D)]`. The array is built once
+(per use site) by `k` scans; thereafter every `histArr D a v` is an array index, so threading
+`histArr D a` into `gram*EntryWH` keeps the table loop `Fin k`-scan-free. Agrees with the true
+fiber size for every value `≤ D` (`histArr_eq`); the witness uses `D = ` max degree. -/
+def histArr (D : ℕ) (a : MultiIndex k) : ℕ → ℕ :=
+  let arr := (List.range (D + 1)).map (fun w => (univ.filter (fun i => a i = w)).card)
+  fun v => arr.getD v 0
+
+lemma histArr_eq (D : ℕ) (a : MultiIndex k) {v : ℕ} (hv : v ≤ D) :
+    histArr D a v = (univ.filter (fun i => a i = v)).card := by
+  show ((List.range (D + 1)).map (fun w => (univ.filter (fun i => a i = w)).card)).getD v 0
+      = (univ.filter (fun i => a i = v)).card
+  rw [List.getD_eq_getElem?_getD, List.getElem?_map, List.getElem?_range (Nat.lt_succ_of_le hv)]
+  rfl
+
+/-- The pointwise equality `entryWH = entryW` under the margin-agreement hypotheses; shared by
+both bridge lemmas. -/
+lemma entryWH_eq_entryW {k : ℕ} (a b : MultiIndex k) (ra rb : ℕ → ℕ)
+    (ha : ∀ v ∈ univ.image a, ra v = (univ.filter (fun i => a i = v)).card)
+    (hb : ∀ w ∈ univ.image b, rb w = (univ.filter (fun i => b i = w)).card)
+    (T : CTableW a b) (v : ↥(univ.image a)) (w : ↥(univ.image b)) :
+    entryWH a b ra rb T v w = entryW a b T v w := by
+  unfold entryWH entryW cellLo
+  rw [ha v.val v.property, hb w.val w.property]
+
+/-- The margin-correct table sets coincide under the agreement hypotheses; shared. -/
+lemma marginCorrectTablesWH_eq {k : ℕ} (a b : MultiIndex k) (ra rb : ℕ → ℕ)
+    (ha : ∀ v ∈ univ.image a, ra v = (univ.filter (fun i => a i = v)).card)
+    (hb : ∀ w ∈ univ.image b, rb w = (univ.filter (fun i => b i = w)).card) :
+    MarginCorrectTablesWH a b ra rb = MarginCorrectTablesW a b := by
+  have hentry := entryWH_eq_entryW a b ra rb ha hb
+  unfold MarginCorrectTablesWH MarginCorrectTablesW
+  apply Finset.filter_congr
+  intro T _
+  refine and_congr (forall_congr' fun v => ?_) (forall_congr' fun w => ?_)
+  · constructor
+    · intro h
+      calc (∑ w, entryW a b T v w) = ∑ w, entryWH a b ra rb T v w :=
+            Finset.sum_congr rfl (fun w _ => (hentry T v w).symm)
+        _ = ra v.val := h
+        _ = _ := ha v.val v.property
+    · intro h
+      calc (∑ w, entryWH a b ra rb T v w) = ∑ w, entryW a b T v w :=
+            Finset.sum_congr rfl (fun w _ => hentry T v w)
+        _ = (univ.filter (fun i => a i = v.val)).card := h
+        _ = ra v.val := (ha v.val v.property).symm
+  · constructor
+    · intro h
+      calc (∑ v, entryW a b T v w) = ∑ v, entryWH a b ra rb T v w :=
+            Finset.sum_congr rfl (fun v _ => (hentry T v w).symm)
+        _ = rb w.val := h
+        _ = _ := hb w.val w.property
+    · intro h
+      calc (∑ v, entryWH a b ra rb T v w) = ∑ v, entryW a b T v w :=
+            Finset.sum_congr rfl (fun v _ => hentry T v w)
+        _ = (univ.filter (fun i => b i = w.val)).card := h
+        _ = rb w.val := (hb w.val w.property).symm
+
+/-- The joint multisets coincide under the agreement hypotheses; shared. -/
+lemma tableToMultisetWH_eq {k : ℕ} (a b : MultiIndex k) (ra rb : ℕ → ℕ)
+    (ha : ∀ v ∈ univ.image a, ra v = (univ.filter (fun i => a i = v)).card)
+    (hb : ∀ w ∈ univ.image b, rb w = (univ.filter (fun i => b i = w)).card)
+    (T : CTableW a b) :
+    tableToMultisetWH a b ra rb T = tableToMultisetW a b T := by
+  have hentry := entryWH_eq_entryW a b ra rb ha hb
+  unfold tableToMultisetWH tableToMultisetW
+  exact Finset.sum_congr rfl (fun v _ =>
+    Finset.sum_congr rfl (fun w _ => by rw [hentry T v w]))
+
+/-- **Bridge: hoisted denominator entry = windowed denominator entry**, given that `ra, rb` agree
+with the true fiber sizes on the value sets of `a, b`. The whole point: with this, the witness
+evaluates `gramDenEntryWH a b (litRa) (litRb)` (fast) and discharges the agreement separately. -/
+lemma gramDenEntryWH_eq {k : ℕ} (a b : MultiIndex k) (ra rb : ℕ → ℕ)
+    (ha : ∀ v ∈ univ.image a, ra v = (univ.filter (fun i => a i = v)).card)
+    (hb : ∀ w ∈ univ.image b, rb w = (univ.filter (fun i => b i = w)).card) :
+    gramDenEntryWH a b ra rb = gramDenEntryW a b := by
+  have hentry := entryWH_eq_entryW a b ra rb ha hb
+  have hMfun : (fun bb : ↥(univ.image b) => rb bb.val)
+             = (fun bb : ↥(univ.image b) => (univ.filter (fun i => b i = bb.val)).card) :=
+    funext (fun bb => hb bb.val bb.property)
+  have hM : Nat.multinomial (univ : Finset ↥(univ.image b)) (fun bb => rb bb.val)
+          = Nat.multinomial (univ : Finset ↥(univ.image b))
+              (fun bb => (univ.filter (fun i => b i = bb.val)).card) :=
+    congrArg (Nat.multinomial univ) hMfun
+  have hsummand : ∀ T : CTableW a b,
+      (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+          (fun v : ↥(univ.image a) => entryWH a b ra rb T v bb) : ℚ))
+        * jointWeightC (tableToMultisetWH a b ra rb T)
+      = (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+          (fun v : ↥(univ.image a) => entryW a b T v bb) : ℚ))
+        * jointWeightC (tableToMultisetW a b T) := by
+    intro T
+    congr 1
+    · refine Finset.prod_congr rfl (fun bb _ => ?_)
+      have hf : (fun v : ↥(univ.image a) => entryWH a b ra rb T v bb)
+              = (fun v : ↥(univ.image a) => entryW a b T v bb) := funext (fun v => hentry T v bb)
+      rw [hf]
+    · rw [tableToMultisetWH_eq a b ra rb ha hb T]
+  unfold gramDenEntryWH gramDenEntryW
+  rw [marginCorrectTablesWH_eq a b ra rb ha hb, hM,
+    Finset.sum_congr rfl (fun T _ => hsummand T)]
+
+/-- **Bridge: hoisted numerator entry = windowed numerator entry** (numerator analog of
+`gramDenEntryWH_eq`). -/
+lemma gramNumEntryWH_eq {n : ℕ} (a b : MultiIndex (n + 1)) (ra rb : ℕ → ℕ)
+    (ha : ∀ v ∈ univ.image a, ra v = (univ.filter (fun i => a i = v)).card)
+    (hb : ∀ w ∈ univ.image b, rb w = (univ.filter (fun i => b i = w)).card) :
+    gramNumEntryWH a b ra rb = gramNumEntryW a b := by
+  have hentry := entryWH_eq_entryW a b ra rb ha hb
+  have hsummand : ∀ T : CTableW a b,
+      (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+          (fun c => entryWH a b ra rb T c.1 c.2) : ℚ)
+        * pairWeightC (tableToMultisetWH a b ra rb T)
+      = (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+          (fun c => entryW a b T c.1 c.2) : ℚ)
+        * pairWeightC (tableToMultisetW a b T) := by
+    intro T
+    congr 1
+    · have hf : (fun c : ↥(univ.image a) × ↥(univ.image b) => entryWH a b ra rb T c.1 c.2)
+              = (fun c => entryW a b T c.1 c.2) := funext (fun c => hentry T c.1 c.2)
+      rw [hf]
+    · rw [tableToMultisetWH_eq a b ra rb ha hb T]
+  unfold gramNumEntryWH gramNumEntryW
+  rw [marginCorrectTablesWH_eq a b ra rb ha hb,
+    Finset.sum_congr rfl (fun T _ => hsummand T)]
+
 /-- **Computable-form symmetric-weight `Mk` lower bound.** `Mk_gt_of_symWeight_witness` restated
 with the computable `gram*Entry` matrices, so `hwit` is a `native_decide`-able rational inequality.
 This is the witness shape the endgame actually feeds. -/
@@ -1716,6 +1895,48 @@ theorem mk_witness_under_EH_of_symWeight_W {n m : ℕ} (hm : 0 < m)
   exists_theta_of_Mk_gt (2 * (m : ℝ)) (by positivity)
     (by exact_mod_cast Mk_gt_of_symWeight_witness_W R c hR (2 * m) hwit)
 
+/-- **Filter-card-hoisted `Mk` lower bound — the box-feasible witness shape.** Identical to
+`Mk_gt_of_symWeight_witness_W`, but each Gram entry is evaluated with margins supplied by a
+per-rep histogram function `m : MultiIndex (n+1) → ℕ → ℕ` (so `native_decide` never scans
+`Fin k` inside the table enumeration). The agreement `hm` — that `m a` reproduces `a`'s value-
+fiber sizes — is discharged once per rep by `decide`/`native_decide` (outside the hot loop), and
+`gram*EntryWH_eq` then shows the hoisted entries equal the windowed ones. -/
+theorem Mk_gt_of_symWeight_witness_WH {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (m : MultiIndex (n + 1) → ℕ → ℕ)
+    (hm : ∀ a ∈ R, ∀ v ∈ univ.image a, m a v = (univ.filter (fun i => a i = v)).card)
+    (T : ℚ)
+    (hwit : T <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryWH a b (m a) (m b))
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryWH a b (m a) (m b))) :
+    (T : ℝ) < Sieve.Mk (n + 1) := by
+  apply Mk_gt_of_symWeight_witness_W R c hR T
+  have hnum : (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryWH a b (m a) (m b))
+            = (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryW a b) :=
+    Finset.sum_congr rfl (fun a ha => Finset.sum_congr rfl (fun b hb => by
+      rw [gramNumEntryWH_eq a b (m a) (m b) (hm a ha) (hm b hb)]))
+  have hden : (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryWH a b (m a) (m b))
+            = (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryW a b) :=
+    Finset.sum_congr rfl (fun a ha => Finset.sum_congr rfl (fun b hb => by
+      rw [gramDenEntryWH_eq a b (m a) (m b) (hm a ha) (hm b hb)]))
+  rw [hnum, hden] at hwit
+  exact hwit
+
+/-- **Filter-card-hoisted `2·m/ϑ` EH-witness discharge** — the box-feasible analog of
+`mk_witness_under_EH_of_symWeight_W`. -/
+theorem mk_witness_under_EH_of_symWeight_WH {n mm : ℕ} (hmm : 0 < mm)
+    (R : Finset (MultiIndex (n + 1))) (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (m : MultiIndex (n + 1) → ℕ → ℕ)
+    (hm : ∀ a ∈ R, ∀ v ∈ univ.image a, m a v = (univ.filter (fun i => a i = v)).card)
+    (hwit : (2 * mm : ℚ) <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryWH a b (m a) (m b))
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryWH a b (m a) (m b))) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk (n + 1) > 2 * (mm : ℝ) / ϑ :=
+  exists_theta_of_Mk_gt (2 * (mm : ℝ)) (by positivity)
+    (by exact_mod_cast Mk_gt_of_symWeight_witness_WH R c hR m hm (2 * mm) hwit)
+
 /-- **Canonical witness encoding.** A descending parts list `L` as a padded `MultiIndex k`
 (zeros beyond `L`). The orbit representatives of an `Mk k > 4` witness are `ofParts` of the
 degree-≤`D` partitions; `Mk_gt_of_symWeight_witness_W {ofParts Lᵢ} c …` is the discharge shape.
@@ -1756,6 +1977,19 @@ example : (1 : ℝ) < Sieve.Mk 3 := by
   have h := Mk_gt_of_symWeight_witness_W (n := 2)
     ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
     (disjoint_of_histogram _ (by native_decide)) 1 (by native_decide)
+  exact_mod_cast h
+
+/-- **Same bound through the filter-card-hoisted path (A.1).** Identical witness, but each Gram
+entry is evaluated with margins supplied by `histArr 2` (the value-histogram materialized as an
+`O(1)`-lookup array), so the `native_decide` never scans `Fin k` inside the table enumeration.
+The agreement `hm` (`histArr 2 a` reproduces `a`'s fiber sizes) is itself a `native_decide`. This
+is the box-feasible shape that makes a full `Mk k > 4` witness at large `k` tractable — without it
+an img-4 orbit at `k = 300` (`~10⁵` tables × per-table `Fin k` scan) does not finish in minutes. -/
+example : (1 : ℝ) < Sieve.Mk 3 := by
+  have h := Mk_gt_of_symWeight_witness_WH (n := 2)
+    ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
+    (disjoint_of_histogram _ (by native_decide))
+    (fun a => histArr 2 a) (by native_decide) 1 (by native_decide)
   exact_mod_cast h
 
 end OrbitFree
