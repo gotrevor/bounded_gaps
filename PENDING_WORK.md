@@ -109,6 +109,28 @@ k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks).
    + `#print axioms`, port (repo axiom stated on `monoOrbit (ofParts L)` = `orbitFin L k`, defeq) →
    both Gram sides fully kernel-clean. `Mk_gt_of_symWeight_witness_match` now depends on
    `[3 std, denom_bridge, num_bridge]`.
+
+   **`denom_bridge` / `num_bridge` — three attack paths (the central remaining gap):**
+   - **(P1) Aristotle (in flight).** `0b5bf5be` (den), `9d05dbaa` (num), both RUNNING ~1.5h as of
+     2026-06-03 ~04:30. When EITHER returns: download → verify in-kernel + `#print axioms` clean →
+     port (`orbitFin L k = monoOrbit (ofParts L)` is **rfl**: both are `univ.image (fun σ => fun i =>
+     (ofParts L)(σ i))`, `image f univ = univ.image f`) → replace the `axiom` → that Gram side clean.
+     IMMEDIATELY submit the next job.
+   - **(P2) Hand induction on `La`, base case DONE.** `autParts_mul_orbit_card` (committed `4fa053c`,
+     kernel-clean) IS the base case: for `La=[]`, `orbit [] = {const 0}`, `∏(0+qᵢ)! = ∏ qᵢ!` is
+     perm-invariant so the orbit sum `= |orbit Lb|·∏Lbᵢ!`, and `denom_bridge [] Lb` reduces to exactly
+     `autParts Lb·|monoOrbit (ofParts Lb)| = k.descFactorial |Lb|` (= the lemma) after cancelling
+     `∏Lbᵢ!`. STILL OPEN: the **inductive step** (`a::La'`) — the orbit of `ofParts (a::La')` vs
+     `ofParts La'` (where the head value `a` lands, overlapping a `q`-nonzero slot → `(a+b)!`,
+     `numPairs+1` OR a `q`-zero slot → `a!`), mirroring `matchData`'s two-branch recursion. This is
+     the genuine permanent/rook heart — the hard part, same as P1. Needs a `monoOrbit` recursion lemma
+     + perm-invariance product lemma. Estimate: multi-hundred lines.
+   - **(P3) Direct permanent route (reformulate).** `autParts La·autParts Lb·S = (∑_{σ,τ∈Sₖ} ∏ᵢ
+     (A(σi)+B(τi))!)/((k−rl)!(k−rm)!)` via orbit-stabilizer (each orbit pair hit `(k−rl)!·autParts La·
+     (k−rm)!·autParts Lb` times), `= (k!/((k−rl)!(k−rm)!))·perm[(A(j)+B(i))!]` (reindex σ,τ → one
+     permutation), then the permanent's rook expansion grouped by the overlap matching = `matchDenSum`.
+     Cleaner conceptually but the permanent expansion is still substantial Lean. Build on
+     `autParts_mul_orbit_card`'s orbit-stabilizer machinery.
 2. **Re-keying DONE** (`ef2b071`): `Mk_gt_of_symWeight_witness_match_parts (LCs : List (List ℕ × ℚ))`
    — the Gram quotient is the DIRECT list-form double sum `(LCs.map (fun la => (LCs.map (fun lb =>
    la.2·lb.2·matchForm la.1 lb.1 (n+1))).sum)).sum`; no 45-way `MultiIndex` match. Reduces to
