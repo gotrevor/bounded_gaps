@@ -186,6 +186,42 @@ Large Sieve, because:
 s1 (unconditional) sieve asymptotic** *before* the Large Sieve. Same depth of
 nut, but EH-free payoff and a cleaner mathlib-shaped prerequisite.
 
+## Next-level probe (2026-06-03): the 1D Mertens lemma is a weeks-scale on-ramp
+
+Took the test one level deeper — actually attempted the entry lemma in Lean
+(`scratch_mertens.lean`, repo root, **typechecks**). Statement attempted:
+`log N ≤ ∑_{n≤N} μ²(n)/φ(n)`. What it revealed:
+
+- **Both endpoints are already in mathlib.** `log_le_harmonic_floor`
+  (`Real.log y ≤ harmonic ⌊y⌋₊`) gives `log N ≤ harmonic N` in ~2 lines
+  (compiles, no sorry). `tsum_geometric_of_lt_one` covers `1/(p-1) = ∑_j p^{-j}`.
+- **The whole lemma reduces to ONE real sub-lemma**, `mertens_crux`:
+  `∑_{n≤N} 1/n ≤ ∑_{n≤N} μ²(n)/φ(n)` (true in aggregate; fails termwise at
+  non-squarefree `n`, e.g. `n=4`). Its proof is the radical-fiber /
+  Euler-product rearrangement `∑_{q≤N} g(q) = ∑_{rad(m)≤N} 1/m ≥ ∑_{m≤N} 1/m`.
+  (The other `sorry`, `harmonic_eq_icc_sum`, is pure range↔Icc plumbing.)
+- **mathlib gap**: no `radical : ℕ → ℕ`, no `∑∏ = ∏∑` Euler expansion of a
+  multiplicative function over `primeFactors`. So `mertens_crux` must be built —
+  but it is ONE bounded, well-posed lemma, not a campaign.
+
+**Refined estimate.** The *1D Mertens lower bound* is a **weeks-scale on-ramp**,
+not multi-month: two endpoints free, one rearrangement lemma to build. The
+multi-month label belongs to the *full sub-step (c)* — the **two-sided,
+multidimensional** asymptotic with the singular series and the
+divisor-sum→∫F² Riemann-sum convergence — for which 1D Mertens is the first
+brick. The on-ramp is concrete and EH-free: a first target you can start now.
+
+**Aristotle bet**: `mertens_crux` submitted as job
+`6c45fd6b-3757-4a2c-87ba-059478d10cff` (2026-06-03). A sorry-free return shrinks
+the on-ramp from "weeks" to "verify + port"; grinding out corroborates the weeks
+estimate. Poll `aristotle list`; verify in-kernel + `#print axioms` before
+trusting (Aristotle pins v4.28; this repo is v4.29.1).
+
+Artifact: `scratch_mertens.lean` — standalone, NOT in the lakefile lib (so it
+doesn't touch the fleet build), typechecks with the two sorries isolated above.
+Left untracked per the repo's scratch convention (and to avoid tripping the
+pre-commit `lake build` gate against concurrent WIP).
+
 ## Confidence + caveats
 
 - mathlib inventory above: **high confidence** (grepped the actual checkout).
@@ -196,9 +232,11 @@ nut, but EH-free payoff and a cleaner mathlib-shaped prerequisite.
 - Step-2 "weeks": **refuted** (try-to-fail above). s1/s2 is multi-month,
   dominated by the Mertens/singular-series asymptotic.
 - GPY decomposition (a)-(d) above: **~80%** on structure; **~75%** that
-  sub-step (c) is genuinely multi-month (a slick proof reusing
-  `ArithmeticFunction` + `EulerProduct` could be shorter — needs the next
-  level of try-to-fail: actually attempt the Mertens lemma `∑_{d≤R} μ²/φ ~ log R`).
+  sub-step (c) is genuinely multi-month.
+- 1D Mertens lower bound is a weeks-scale on-ramp (endpoints free, one crux
+  lemma): **~85%** (verified the endpoint compiles + the gap is one lemma).
+  Whether `mertens_crux` itself is days or weeks is the open question Aristotle
+  job `6c45fd6b` is now testing.
 
 ## Provenance
 
