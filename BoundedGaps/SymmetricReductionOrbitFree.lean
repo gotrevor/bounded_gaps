@@ -2196,6 +2196,28 @@ lemma prod_getD_fin (f : ℕ → ℕ) (hf0 : f 0 = 1) (k : ℕ) (L : List ℕ) (
       simp only [Fin.val_zero, List.getD_cons_zero]
       rw [key, ih L hL', List.map_cons, List.prod_cons]
 
+/-- Generalized additive `getD`-sum over `Fin k` for an arbitrary `AddCommMonoid`-valued `f`: the
+`k - |L|` padding slots each contribute `f 0`. (`sum_getD_fin` is the `f = id`, `f 0 = 0` case.)
+Used for the `num_bridge` base case's `g`-weight aggregate (`f b = gWeight 0 b`). -/
+lemma sum_getD_fin_gen {M : Type*} [AddCommMonoid M] (f : ℕ → M) (k : ℕ) (L : List ℕ)
+    (hL : L.length ≤ k) :
+    (∑ i : Fin k, f (L.getD i.val 0)) = (L.map f).sum + (k - L.length) • f 0 := by
+  induction k generalizing L with
+  | zero => rw [Nat.le_zero, List.length_eq_zero_iff] at hL; subst hL; simp
+  | succ k ih =>
+    cases L with
+    | nil => simp
+    | cons x L =>
+      rw [Fin.sum_univ_succ]
+      have hL' : L.length ≤ k := by simpa using hL
+      have key : (∑ j : Fin k, f ((x :: L).getD (Fin.succ j).val 0))
+               = ∑ j : Fin k, f (L.getD j.val 0) :=
+        Finset.sum_congr rfl (fun j _ => by simp)
+      simp only [Fin.val_zero, List.getD_cons_zero]
+      rw [key, ih L hL', List.map_cons, List.sum_cons]
+      have hlen : k + 1 - (x :: L).length = k - L.length := by simp [Nat.succ_sub_succ]
+      rw [hlen]; abel
+
 /-- The degree (coordinate sum) of `ofParts L` over `Fin k` (`k ≥ |L|`) is `L.sum`. The constant
 factorial in `gramDenEntry`/`matchDenForm` is `(k + |La| + |Lb|)!` exactly when degrees are sums. -/
 lemma ofParts_degree {k : ℕ} (L : List ℕ) (hL : L.length ≤ k) :
@@ -2308,6 +2330,61 @@ axiom num_bridge {n : ℕ} (La Lb : List ℕ)
       (∑ p ∈ monoOrbit (ofParts La : MultiIndex (n + 1)), ∑ q ∈ monoOrbit (ofParts Lb),
         (∏ m, ((p m + q m).factorial : ℚ)) * (∑ i, gWeight (p i) (q i)))
       = matchNumSum La Lb (n + 1)
+
+/-- **`num_bridge` base case (`La = []`), PROVEN.** Numerator analog of `denom_bridge_nil`: for
+`La = []` the orbit of `ofParts []` is `{0}`; the inner `(∏ᵢ(0+qᵢ)!)·(∑ᵢ gWeight 0 qᵢ)` is
+permutation-invariant, constant `= (∏Lbᵢ!)·(∑_b gWeight 0 b + (k-|Lb|)·gWeight 0 0)` over the orbit
+(`prod_getD_fin`, `sum_getD_fin_gen`), so the orbit sum collapses via `autParts_mul_orbit_card` to
+exactly `matchNumSum [] Lb k` (since `matchDataN [] Lb = [(0, ∏Lbᵢ!, ∑_b gWeight 0 b)]`). The base
+case for the induction on `La`; the inductive step is open (PENDING_WORK §A P2). Kernel-clean. -/
+theorem num_bridge_nil {n : ℕ} (Lb : List ℕ) (hLb : Lb.length ≤ n + 1)
+    (hposb : ∀ x ∈ Lb, 0 < x) :
+    (autParts [] : ℚ) * (autParts Lb : ℚ) *
+      (∑ p ∈ monoOrbit (ofParts [] : MultiIndex (n + 1)), ∑ q ∈ monoOrbit (ofParts Lb),
+        (∏ m, ((p m + q m).factorial : ℚ)) * (∑ i, gWeight (p i) (q i)))
+      = matchNumSum [] Lb (n + 1) := by
+  classical
+  set k := n + 1 with hk
+  have horb0 : monoOrbit (ofParts [] : MultiIndex k) = {0} := by
+    rw [show (ofParts [] : MultiIndex k) = 0 from by funext i; simp [ofParts]]; unfold monoOrbit
+    rw [show (fun σ : Equiv.Perm (Fin k) => (fun i => (0 : MultiIndex k) (σ i)))
+          = (fun _ : Equiv.Perm (Fin k) => (0 : MultiIndex k)) from by funext σ; funext i; rfl]
+    exact Finset.image_const Finset.univ_nonempty 0
+  rw [horb0, Finset.sum_singleton]
+  set W : ℚ := ((Lb.map Nat.factorial).prod : ℚ) with hW
+  set V : ℚ := W * ((Lb.map (fun b => gWeight 0 b)).sum + ((k - Lb.length : ℕ) : ℚ) * gWeight 0 0)
+    with hV
+  have hinner : ∀ q ∈ monoOrbit (ofParts Lb : MultiIndex k),
+      (∏ m, (((0 : MultiIndex k) m + q m).factorial : ℚ))
+        * (∑ i, gWeight ((0 : MultiIndex k) i) (q i)) = V := by
+    intro q hq
+    rw [monoOrbit, Finset.mem_image] at hq
+    obtain ⟨σ, _, rfl⟩ := hq
+    have hprod : (∏ m, (((0 : MultiIndex k) m
+          + (ofParts Lb : MultiIndex k) (σ m)).factorial : ℚ)) = W := by
+      rw [show (∏ m, (((0 : MultiIndex k) m + (ofParts Lb : MultiIndex k) (σ m)).factorial : ℚ))
+            = ∏ m, (((ofParts Lb : MultiIndex k) (σ m)).factorial : ℚ) from
+        Finset.prod_congr rfl (fun m _ => by simp)]
+      rw [Equiv.prod_comp σ (fun j => (((ofParts Lb : MultiIndex k) j).factorial : ℚ)), hW,
+        ← Nat.cast_prod]
+      norm_cast
+      exact prod_getD_fin Nat.factorial (by simp) k Lb hLb
+    have hsum : (∑ i, gWeight ((0 : MultiIndex k) i) ((ofParts Lb : MultiIndex k) (σ i)))
+        = (Lb.map (fun b => gWeight 0 b)).sum + ((k - Lb.length : ℕ) : ℚ) * gWeight 0 0 := by
+      rw [show (∑ i, gWeight ((0 : MultiIndex k) i) ((ofParts Lb : MultiIndex k) (σ i)))
+            = ∑ i, gWeight 0 ((ofParts Lb : MultiIndex k) (σ i)) from
+        Finset.sum_congr rfl (fun i _ => by simp)]
+      rw [Equiv.sum_comp σ (fun j => gWeight 0 ((ofParts Lb : MultiIndex k) j))]
+      simp only [ofParts]
+      rw [sum_getD_fin_gen (fun b => gWeight 0 b) k Lb hLb, nsmul_eq_mul]
+    rw [hprod, hsum, hV]
+  rw [Finset.sum_congr rfl hinner, Finset.sum_const, nsmul_eq_mul]
+  have hA0 : (autParts ([] : List ℕ) : ℚ) = 1 := by simp [autParts]
+  have hRHS : matchNumSum [] Lb k = ((k.descFactorial Lb.length : ℕ) : ℚ) * V := by
+    simp only [matchNumSum, matchDataN, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil,
+      add_zero, Nat.zero_add, Nat.sub_zero, List.length_nil]
+    rw [hV, hW]; push_cast; ring
+  rw [hRHS, hA0, one_mul, ← mul_assoc, ← Nat.cast_mul, autParts_mul_orbit_card Lb hLb hposb]
 
 /-- **Bridge (NUMERATOR): the table-sum Gram entry equals the matchings closed form.** Now a
 THEOREM (was a disclosed axiom): same in-kernel plumbing as the denominator —
