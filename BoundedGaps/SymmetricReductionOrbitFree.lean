@@ -562,6 +562,49 @@ lemma marginCorrect_cells_sum {k : ℕ} (α β : MultiIndex k) (Y : CTable α β
   intro i _
   simp [Subtype.ext_iff, eq_comm]
 
+/-- **Fréchet lower bound** for a margin-correct table entry: `rowmargin v + colmargin b ≤
+T v b + k`. (Equivalently `T v b ≥ rowmargin v + colmargin b - k`, the standard contingency-table
+lower bound.) For the dominant `0`-value cell this caps the free range at `k - max(margins) =
+#nonzero-positions`, so it shrinks the bounded enumeration's largest factor from `~k` to `~2·deg`. -/
+lemma marginCorrect_frechet {k : ℕ} (α β : MultiIndex k) (T : CTable α β)
+    (hT : T ∈ MarginCorrectTables α β) (v : ↥(univ.image α)) (b : ↥(univ.image β)) :
+    (univ.filter (fun i => α i = v.val)).card + (univ.filter (fun i => β i = b.val)).card
+      ≤ (T v b : ℕ) + k := by
+  classical
+  have hmem := hT
+  rw [MarginCorrectTables, Finset.mem_filter] at hmem
+  obtain ⟨-, hrow, hcol⟩ := hmem
+  set rM : ↥(univ.image α) → ℕ := fun v' => (univ.filter (fun i => α i = v'.val)).card with hrMdef
+  set cM : ↥(univ.image β) → ℕ := fun b' => (univ.filter (fun i => β i = b'.val)).card with hcMdef
+  -- row-sums total to k
+  have hrowsum : ∑ v' : ↥(univ.image α), rM v' = k := by
+    have hcells := marginCorrect_cells_sum α β T hT
+    rw [Fintype.sum_prod_type] at hcells
+    calc ∑ v' : ↥(univ.image α), rM v'
+        = ∑ v' : ↥(univ.image α), ∑ b' : ↥(univ.image β), (T v' b' : ℕ) :=
+          Finset.sum_congr rfl (fun v' _ => (hrow v').symm)
+      _ = k := hcells
+  -- split the column margin off the `v` cell
+  have hcolsplit : cM b = (T v b : ℕ) + ∑ v' ∈ univ.erase v, (T v' b : ℕ) :=
+    calc cM b = ∑ v' : ↥(univ.image α), (T v' b : ℕ) := (hcol b).symm
+      _ = (T v b : ℕ) + ∑ v' ∈ univ.erase v, (T v' b : ℕ) :=
+          (Finset.add_sum_erase _ (fun v' => (T v' b : ℕ)) (Finset.mem_univ v)).symm
+  -- split k off the `v` row
+  have hksplit : k = rM v + ∑ v' ∈ univ.erase v, rM v' :=
+    calc k = ∑ v' : ↥(univ.image α), rM v' := hrowsum.symm
+      _ = rM v + ∑ v' ∈ univ.erase v, rM v' :=
+          (Finset.add_sum_erase _ rM (Finset.mem_univ v)).symm
+  -- each off-row column cell ≤ that row's full margin
+  have hbound : ∑ v' ∈ univ.erase v, (T v' b : ℕ) ≤ ∑ v' ∈ univ.erase v, rM v' := by
+    apply Finset.sum_le_sum
+    intro v' _
+    calc (T v' b : ℕ) ≤ ∑ b' : ↥(univ.image β), (T v' b' : ℕ) :=
+          Finset.single_le_sum (f := fun b' => (T v' b' : ℕ)) (fun _ _ => Nat.zero_le _)
+            (Finset.mem_univ b)
+      _ = rM v' := hrow v'
+  show rM v + cM b ≤ (T v b : ℕ) + k
+  omega
+
 /-- **Pair-fiber count = full-cell multinomial.** The number of orbit pairs `(p,q)` whose joint
 type is the margin-correct table `Y` equals the 2-D multinomial `k! / ∏_{(v,b)} (Y v b)!`. Each
 `(p,q)` corresponds to a function `r : Fin k → (image α × image β)` (the per-slot value pair), the
@@ -1402,6 +1445,179 @@ lemma gramNumEntryBdd_eq {n : ℕ} (a b : MultiIndex (n + 1)) :
   unfold gramNumEntryBdd gramNumEntry
   rw [hS]
 
+/-! ### Fréchet-windowed tables — the fully tractable enumeration
+
+`MarginCorrectTablesBdd` still enumerates the dominant `0`-value cell over `0..min(margins) ≈ k`.
+The Fréchet bound `T v b ≥ rowmargin + colmargin - k` (`marginCorrect_frechet`) caps that cell's
+*free* range at `min - (row+col-k) = k - max(row,col) = #nonzero-positions ≤ 2·deg`. Re-typing each
+entry to `Fin (cellHi - cellLo + 1)` (with `entryW = cellLo + raw`) makes the `0`-cell factor
+`~2·deg` instead of `~k`, so the whole bounded enumeration is `(2·deg)^(cells)` — fully
+`k`-independent. This is what makes a full `Mk k > 4` witness `native_decide` feasible. -/
+
+/-- Fréchet upper window bound: `min(rowmargin v, colmargin b)`. -/
+def cellHi (v : ↥(univ.image α)) (b : ↥(univ.image β)) : ℕ :=
+  min ((univ.filter (fun i => α i = v.val)).card) ((univ.filter (fun i => β i = b.val)).card)
+
+/-- Fréchet lower window bound: `rowmargin v + colmargin b - k` (truncated). -/
+def cellLo (v : ↥(univ.image α)) (b : ↥(univ.image β)) : ℕ :=
+  (univ.filter (fun i => α i = v.val)).card + (univ.filter (fun i => β i = b.val)).card - k
+
+/-- Fréchet-windowed contingency table: entry `(v,b)` stored as an offset `raw ∈ Fin(width+1)`
+into the window `[cellLo, cellHi]`. -/
+abbrev CTableW : Type :=
+  (v : ↥(univ.image α)) → (b : ↥(univ.image β)) → Fin (cellHi α β v b - cellLo α β v b + 1)
+
+/-- The actual entry value of a windowed table: `cellLo + raw`. -/
+def entryW (T : CTableW α β) (v : ↥(univ.image α)) (b : ↥(univ.image β)) : ℕ :=
+  cellLo α β v b + (T v b).val
+
+/-- Margin-correct windowed tables. -/
+def MarginCorrectTablesW : Finset (CTableW α β) :=
+  univ.filter (fun T =>
+    (∀ v, ∑ b, entryW α β T v b = (univ.filter (fun i => α i = v.val)).card) ∧
+    (∀ b, ∑ v, entryW α β T v b = (univ.filter (fun i => β i = b.val)).card))
+
+/-- The joint multiset named by a windowed table (uses `entryW`). -/
+def tableToMultisetW (T : CTableW α β) : Multiset (ℕ × ℕ) :=
+  ∑ v : ↥(univ.image α), ∑ b : ↥(univ.image β),
+    Multiset.replicate (entryW α β T v b) (v.val, b.val)
+
+lemma cellHi_le_k (v : ↥(univ.image α)) (b : ↥(univ.image β)) : cellHi α β v b ≤ k := by
+  simp only [cellHi]
+  exact le_trans (min_le_left _ _)
+    (by simpa using Finset.card_filter_le (univ : Finset (Fin k)) (fun i => α i = v.val))
+
+/-- Cast a windowed table up to a full `CTable` (`entryW ≤ cellHi ≤ k`). -/
+def ctableCastUpW (T : CTableW α β) : CTable α β :=
+  fun v b => ⟨entryW α β T v b, by
+    have hrk : (univ.filter (fun i => α i = v.val)).card ≤ k := by
+      simpa using Finset.card_filter_le (univ : Finset (Fin k)) (fun i => α i = v.val)
+    have hck : (univ.filter (fun i => β i = b.val)).card ≤ k := by
+      simpa using Finset.card_filter_le (univ : Finset (Fin k)) (fun i => β i = b.val)
+    have hraw : (T v b).val ≤ cellHi α β v b - cellLo α β v b := Nat.lt_succ_iff.mp (T v b).isLt
+    simp only [entryW, cellHi, cellLo] at hraw ⊢
+    omega⟩
+
+@[simp] lemma ctableCastUpW_val (T : CTableW α β) (v : ↥(univ.image α)) (b : ↥(univ.image β)) :
+    (ctableCastUpW α β T v b : ℕ) = entryW α β T v b := rfl
+
+/-- Cast a margin-correct full table down to the windowed type (entries fit the Fréchet window). -/
+def ctableCastDownW (T : CTable α β) (hT : T ∈ MarginCorrectTables α β) : CTableW α β :=
+  fun v b => ⟨(T v b : ℕ) - cellLo α β v b, by
+    have hub : (T v b : ℕ) ≤ cellHi α β v b := by
+      have hmem := hT; rw [MarginCorrectTables, Finset.mem_filter] at hmem
+      obtain ⟨_, hrow, hcol⟩ := hmem
+      simp only [cellHi]
+      refine le_min ?_ ?_
+      · rw [← hrow v]
+        exact Finset.single_le_sum (f := fun b' => (T v b' : ℕ)) (fun _ _ => Nat.zero_le _)
+          (Finset.mem_univ b)
+      · rw [← hcol b]
+        exact Finset.single_le_sum (f := fun v' => (T v' b : ℕ)) (fun _ _ => Nat.zero_le _)
+          (Finset.mem_univ v)
+    omega⟩
+
+/-- `entryW` of a downcast recovers the original entry (Fréchet: `cellLo ≤ T v b`). -/
+lemma entryW_ctableCastDownW (T : CTable α β) (hT : T ∈ MarginCorrectTables α β)
+    (v : ↥(univ.image α)) (b : ↥(univ.image β)) :
+    entryW α β (ctableCastDownW α β T hT) v b = (T v b : ℕ) := by
+  have hlo : cellLo α β v b ≤ (T v b : ℕ) := by
+    have := marginCorrect_frechet α β T hT v b
+    simp only [cellLo]; omega
+  show cellLo α β v b + ((T v b : ℕ) - cellLo α β v b) = (T v b : ℕ)
+  omega
+
+lemma ctableCastUpW_mem {T : CTableW α β} (hT : T ∈ MarginCorrectTablesW α β) :
+    ctableCastUpW α β T ∈ MarginCorrectTables α β := by
+  rw [MarginCorrectTablesW, Finset.mem_filter] at hT
+  obtain ⟨_, hrow, hcol⟩ := hT
+  rw [MarginCorrectTables, Finset.mem_filter]
+  exact ⟨Finset.mem_univ _,
+    fun v => by simpa only [ctableCastUpW_val] using hrow v,
+    fun b => by simpa only [ctableCastUpW_val] using hcol b⟩
+
+lemma ctableCastDownW_mem {T : CTable α β} (hT : T ∈ MarginCorrectTables α β) :
+    ctableCastDownW α β T hT ∈ MarginCorrectTablesW α β := by
+  rw [MarginCorrectTablesW, Finset.mem_filter]
+  have hmem := hT; rw [MarginCorrectTables, Finset.mem_filter] at hmem
+  obtain ⟨_, hrow, hcol⟩ := hmem
+  refine ⟨Finset.mem_univ _, fun v => ?_, fun b => ?_⟩
+  · rw [Finset.sum_congr rfl (fun b' _ => entryW_ctableCastDownW α β T hT v b')]; exact hrow v
+  · rw [Finset.sum_congr rfl (fun v' _ => entryW_ctableCastDownW α β T hT v' b)]; exact hcol b
+
+lemma ctableCastDownW_castUpW {T : CTableW α β} (hT : T ∈ MarginCorrectTablesW α β) :
+    ctableCastDownW α β (ctableCastUpW α β T) (ctableCastUpW_mem α β hT) = T := by
+  funext v b; apply Fin.ext
+  show (ctableCastUpW α β T v b : ℕ) - cellLo α β v b = (T v b).val
+  rw [ctableCastUpW_val]
+  show cellLo α β v b + (T v b).val - cellLo α β v b = (T v b).val
+  omega
+
+lemma ctableCastUpW_castDownW {T : CTable α β} (hT : T ∈ MarginCorrectTables α β) :
+    ctableCastUpW α β (ctableCastDownW α β T hT) = T := by
+  funext v b; apply Fin.ext
+  show entryW α β (ctableCastDownW α β T hT) v b = (T v b : ℕ)
+  exact entryW_ctableCastDownW α β T hT v b
+
+/-- **Fréchet-windowed denominator Gram entry** (`= gramDenEntry`, see `gramDenEntryW_eq`). The
+`native_decide`-feasible form: enumerates `univ` over `CTableW` (card `∏ (window+1)`, `k`-independent). -/
+def gramDenEntryW {k : ℕ} (a b : MultiIndex k) : ℚ :=
+  ((Nat.multinomial (univ : Finset ↥(univ.image b))
+        (fun bb => (univ.filter (fun i => b i = bb.val)).card)) •
+      ∑ T ∈ MarginCorrectTablesW a b,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => entryW a b T v bb) : ℚ))
+          * jointWeightC (tableToMultisetW a b T))
+    / ((k + a.degree + b.degree).factorial : ℚ)
+
+/-- **Fréchet-windowed numerator Gram entry** (`= gramNumEntry`, see `gramNumEntryW_eq`). -/
+def gramNumEntryW {n : ℕ} (a b : MultiIndex (n + 1)) : ℚ :=
+  (∑ T ∈ MarginCorrectTablesW a b,
+      (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+          (fun c => entryW a b T c.1 c.2) : ℚ)
+        * pairWeightC (tableToMultisetW a b T))
+    / (((n + 1) + a.degree + b.degree + 1).factorial : ℚ)
+
+lemma gramDenEntryW_eq {k : ℕ} (a b : MultiIndex k) :
+    gramDenEntryW a b = gramDenEntry a b := by
+  have hS : (∑ T ∈ MarginCorrectTablesW a b,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => entryW a b T v bb) : ℚ))
+          * jointWeightC (tableToMultisetW a b T))
+      = ∑ T ∈ MarginCorrectTables a b,
+        (∏ bb : ↥(univ.image b), (Nat.multinomial univ
+            (fun v : ↥(univ.image a) => (T v bb : ℕ)) : ℚ))
+          * jointWeightC (tableToMultiset a b T) :=
+    Finset.sum_bij' (i := fun T _ => ctableCastUpW a b T)
+      (j := fun T hT => ctableCastDownW a b T hT)
+      (fun T hT => ctableCastUpW_mem a b hT)
+      (fun T hT => ctableCastDownW_mem a b hT)
+      (fun T hT => ctableCastDownW_castUpW a b hT)
+      (fun T hT => ctableCastUpW_castDownW a b hT)
+      (fun T _ => rfl)
+  unfold gramDenEntryW gramDenEntry
+  rw [hS]
+
+lemma gramNumEntryW_eq {n : ℕ} (a b : MultiIndex (n + 1)) :
+    gramNumEntryW a b = gramNumEntry a b := by
+  have hS : (∑ T ∈ MarginCorrectTablesW a b,
+        (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+            (fun c => entryW a b T c.1 c.2) : ℚ)
+          * pairWeightC (tableToMultisetW a b T))
+      = ∑ T ∈ MarginCorrectTables a b,
+        (Nat.multinomial (univ : Finset (↥(univ.image a) × ↥(univ.image b)))
+            (fun c => (T c.1 c.2 : ℕ)) : ℚ)
+          * pairWeightC (tableToMultiset a b T) :=
+    Finset.sum_bij' (i := fun T _ => ctableCastUpW a b T)
+      (j := fun T hT => ctableCastDownW a b T hT)
+      (fun T hT => ctableCastUpW_mem a b hT)
+      (fun T hT => ctableCastDownW_mem a b hT)
+      (fun T hT => ctableCastDownW_castUpW a b hT)
+      (fun T hT => ctableCastUpW_castDownW a b hT)
+      (fun T _ => rfl)
+  unfold gramNumEntryW gramNumEntry
+  rw [hS]
+
 /-- **Computable-form symmetric-weight `Mk` lower bound.** `Mk_gt_of_symWeight_witness` restated
 with the computable `gram*Entry` matrices, so `hwit` is a `native_decide`-able rational inequality.
 This is the witness shape the endgame actually feeds. -/
@@ -1474,6 +1690,32 @@ theorem mk_witness_under_EH_of_symWeight_bdd {n m : ℕ} (hm : 0 < m)
   exists_theta_of_Mk_gt (2 * (m : ℝ)) (by positivity)
     (by exact_mod_cast Mk_gt_of_symWeight_witness_bdd R c hR (2 * m) hwit)
 
+/-- **Fréchet-windowed `Mk` lower bound** — the fully `k`-independent-enumeration witness shape.
+`hwit` is evaluated by `native_decide` over `gram*EntryW`, whose tables enumerate
+`∏(window+1)` (no `~k` factor on the `0`-cell). This is the shape a full `Mk k > 4` discharge feeds. -/
+theorem Mk_gt_of_symWeight_witness_W {n : ℕ} (R : Finset (MultiIndex (n + 1)))
+    (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (T : ℚ)
+    (hwit : T <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryW a b)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryW a b)) :
+    (T : ℝ) < Sieve.Mk (n + 1) := by
+  apply Mk_gt_of_symWeight_witness_computable R c hR T
+  simp only [gramNumEntryW_eq, gramDenEntryW_eq] at hwit
+  exact hwit
+
+/-- **Fréchet-windowed `2·m/ϑ` EH-witness discharge** — the most tractable `native_decide` shape. -/
+theorem mk_witness_under_EH_of_symWeight_W {n m : ℕ} (hm : 0 < m)
+    (R : Finset (MultiIndex (n + 1))) (c : MultiIndex (n + 1) → ℚ)
+    (hR : ∀ a ∈ R, ∀ b ∈ R, a ≠ b → Disjoint (monoOrbit a) (monoOrbit b))
+    (hwit : (2 * m : ℚ) <
+      (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramNumEntryW a b)
+        / (∑ a ∈ R, ∑ b ∈ R, c a * c b * gramDenEntryW a b)) :
+    ∃ ϑ : ℝ, (0 < ϑ ∧ ϑ < 1) ∧ Sieve.Mk (n + 1) > 2 * (m : ℝ) / ϑ :=
+  exists_theta_of_Mk_gt (2 * (m : ℝ)) (by positivity)
+    (by exact_mod_cast Mk_gt_of_symWeight_witness_W R c hR (2 * m) hwit)
+
 /-! ## End-to-end validation (regression guard)
 
 A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
@@ -1495,6 +1737,16 @@ e.g. `gramDenEntryBdd (![2,1] padded) (![2,1] padded)` at `k = 50` evaluates in 
 the unbounded `gramDenEntry` (over `(51)⁹ ≈ 10¹⁵` tables) does not finish. -/
 example : (1 : ℝ) < Sieve.Mk 3 := by
   have h := Mk_gt_of_symWeight_witness_bdd (n := 2)
+    ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
+    (disjoint_of_histogram _ (by native_decide)) 1 (by native_decide)
+  exact_mod_cast h
+
+/-- **Same bound through the Fréchet-windowed path.** Identical witness, but the Gram quotient
+`native_decide` runs over `gram*EntryW` — the table `univ` here has the `0`-cell range Fréchet-capped
+(`cellHi - cellLo + 1`), giving a fully `k`-independent enumeration. This is the shape that scales
+to a real `Mk k > 4` witness at large `k`. -/
+example : (1 : ℝ) < Sieve.Mk 3 := by
+  have h := Mk_gt_of_symWeight_witness_W (n := 2)
     ({![2, 1, 0], ![1, 1, 0]} : Finset (MultiIndex 3)) (fun _ => 1)
     (disjoint_of_histogram _ (by native_decide)) 1 (by native_decide)
   exact_mod_cast h
