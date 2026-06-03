@@ -2149,14 +2149,59 @@ theorem gramDenEntry_eq_matchDenForm {k : ℕ} (La Lb : List ℕ)
   push_cast
   rw [mul_div_mul_left _ _ (mul_ne_zero hA hB)]
 
-/-- **Bridge (NUMERATOR): the table-sum numerator equals the matchings closed form.** Numerator
-analog of `gramDenEntry_eq_matchDenForm` (with the per-token `g` weights and the `(k-T)·g(0,0)`
-empty-slot term). NUMERICALLY VALIDATED: `matchNumForm [2,1] [1,1] 3 = 7/2160 =
-gramNumEntry ![2,1,0] ![1,1,0]`. Disclosed `axiom` pending the A.2 proof. -/
-axiom gramNumEntry_eq_matchNumForm {n : ℕ} (La Lb : List ℕ)
+/-- The numerator's per-cell weight `markedCellFactor` (from the slack-factorial analysis) equals
+the matchings form's `gWeight`. Pure ℚ algebra: `1/((a+1)(b+1)) · (a+b+2)!/(a+b)! =
+(a+b+2)!/((a+1)(b+1)(a+b)!)`. -/
+lemma markedCellFactor_eq_gWeight (a b : ℕ) : markedCellFactor a b = gWeight a b := by
+  have h1 : (a : ℚ) + 1 ≠ 0 := by positivity
+  have h2 : (b : ℚ) + 1 ≠ 0 := by positivity
+  have h3 : ((a + b).factorial : ℚ) ≠ 0 := by exact_mod_cast (Nat.factorial_pos _).ne'
+  unfold markedCellFactor gWeight
+  push_cast
+  field_simp
+
+/-- **Numerator bridge — the combinatorial core.** The orbit-sum of `(∏ₘ(p+q)ₘ!)·∑ᵢ g(pᵢ,qᵢ)`
+over the two permutation orbits equals the matchings numerator sum `matchNumSum`, up to the
+`autParts` over-count. Numerator analog of `denom_bridge`: the per-token `g`-weights collect into
+the matching's `Gocc`, and the empty slots `pᵢ=qᵢ=0` each contribute `g(0,0)=2` (the `(k-T)·g(0,0)`
+term). NUMERICALLY VALIDATED: `matchNumForm [2,1] [1,1] 3 = 7/2160 = gramNumEntry ![2,1,0] ![1,1,0]`.
+Disclosed `axiom` pending the Aristotle proof (numerator analog of job `0b5bf5be`). -/
+axiom num_bridge {n : ℕ} (La Lb : List ℕ)
     (hLa : La.length ≤ n + 1) (hLb : Lb.length ≤ n + 1)
     (hposa : ∀ x ∈ La, 0 < x) (hposb : ∀ x ∈ Lb, 0 < x) :
-    gramNumEntry (ofParts La : MultiIndex (n + 1)) (ofParts Lb) = matchNumForm La Lb (n + 1)
+    (autParts La : ℚ) * (autParts Lb : ℚ) *
+      (∑ p ∈ monoOrbit (ofParts La : MultiIndex (n + 1)), ∑ q ∈ monoOrbit (ofParts Lb),
+        (∏ m, ((p m + q m).factorial : ℚ)) * (∑ i, gWeight (p i) (q i)))
+      = matchNumSum La Lb (n + 1)
+
+/-- **Bridge (NUMERATOR): the table-sum Gram entry equals the matchings closed form.** Now a
+THEOREM (was a disclosed axiom): same in-kernel plumbing as the denominator —
+`gramNumEntry = orbit-sum / ((n+1)+|α|+|β|+1)!` (`crossNumerator_orbitSum` ∘
+`orbitPair_numerator_eq` ∘ `numerator_combinatorial_factored`, with `markedCellFactor = gWeight`),
+`degree (ofParts L) = L.sum`, and the `autParts > 0` cancellation — reducing the numerator gap to
+exactly the combinatorial core `num_bridge`. NUMERICALLY VALIDATED: `matchNumForm [2,1] [1,1] 3 =
+7/2160 = gramNumEntry ![2,1,0] ![1,1,0]`. -/
+theorem gramNumEntry_eq_matchNumForm {n : ℕ} (La Lb : List ℕ)
+    (hLa : La.length ≤ n + 1) (hLb : Lb.length ≤ n + 1)
+    (hposa : ∀ x ∈ La, 0 < x) (hposb : ∀ x ∈ Lb, 0 < x) :
+    gramNumEntry (ofParts La : MultiIndex (n + 1)) (ofParts Lb) = matchNumForm La Lb (n + 1) := by
+  have hgramN : gramNumEntry (ofParts La : MultiIndex (n + 1)) (ofParts Lb)
+      = (∑ p ∈ monoOrbit (ofParts La : MultiIndex (n + 1)), ∑ q ∈ monoOrbit (ofParts Lb),
+            (∏ m, ((p m + q m).factorial : ℚ)) * (∑ i, gWeight (p i) (q i)))
+        / (((n + 1) + La.sum + Lb.sum + 1).factorial : ℚ) := by
+    rw [show (((n + 1) + La.sum + Lb.sum + 1).factorial : ℚ)
+          = (((n + 1) + (ofParts La : MultiIndex (n + 1)).degree
+                + (ofParts Lb : MultiIndex (n + 1)).degree + 1).factorial : ℚ) by
+        rw [ofParts_degree La hLa, ofParts_degree Lb hLb]]
+    rw [← gramNumEntry_eq (ofParts La) (ofParts Lb), crossNumerator_orbitSum,
+        orbitPair_numerator_eq, numerator_combinatorial_factored]
+    simp only [Pi.add_apply, markedCellFactor_eq_gWeight]
+  have hA : (autParts La : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (autParts_pos La).ne'
+  have hB : (autParts Lb : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (autParts_pos Lb).ne'
+  rw [hgramN]
+  unfold matchNumForm
+  rw [← num_bridge La Lb hLa hLb hposa hposb]
+  rw [mul_div_mul_left _ _ (mul_ne_zero hA hB)]
 
 /-- **Matchings-form `Mk` lower bound — the box-feasible witness shape.** Each Gram entry is the
 `native_decide`-instant matchings closed form (no `~131072`-table enumeration). The reps are
