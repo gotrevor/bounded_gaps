@@ -224,3 +224,12 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
   capstone `native_decide` on `Mk_gt_of_symWeight_witness_match_parts witLCs … ` — likely HOST-only
   (2025 matchForm terms, 214! factorials; box OOMs). The witness `LCs` literal still needs to be
   generated from `tools/mk/_ldl.py` (k=200 D=7, 45 orbits) and `#eval`-checked > 4 (fast, computable).
+- **NEW — analytic-NT burn-down track (2026-06-03), for the fleet to pick up in due course:**
+  `6c45fd6b-3757-4a2c-87ba-059478d10cff` (`mertensSummand`/`mertens_crux`) — the entry lemma for the
+  s1/s2 sieve-asymptotic burn-down: `∑_{n≤N} 1/n ≤ ∑_{n≤N} μ²(n)/φ(n)` (radical-fiber/Euler-product
+  rearrangement; mathlib has no `radical:ℕ→ℕ` nor `∑∏=∏∑` over `primeFactors`). On return: verify
+  in-kernel + `#print axioms` (Aristotle pins v4.28; we're v4.29.1), then it discharges the lone
+  real `sorry` in the skeleton `scratch_mertens.lean` (repo root, untracked, typechecks — the endpoint
+  `log N ≤ harmonic N` already compiles via `log_le_harmonic_floor`). **Full map of why this matters and
+  the whole analytic-axiom ladder (BV / Large Sieve / s1/s2 / PNT) is in `ANALYTIC_AXIOM_BURNDOWN.md`.**
+  A NEW, EH-free, weeks-scale on-ramp — independent of the `Mk` main thread above.
