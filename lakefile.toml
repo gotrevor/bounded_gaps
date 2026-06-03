@@ -16,3 +16,7 @@ rev = "v4.29.1"
 
 [[lean_lib]]
 name = "BoundedGaps"
+# Large interpreter stack: the k=200 matchings-witness capstone (`Mk_200_gt_4`) runs
+# `native_decide`/`decide` over 215! factorials and ~100-digit coefficients, whose setup
+# recurses deep in the interpreter. weakLeanArgs ⇒ not in the trace hash, no full rebuild.
+weakLeanArgs = ["--tstack=2000000"]
