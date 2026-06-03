@@ -1,4 +1,5 @@
 import BoundedGaps.SymmetricReductionOrbitFree
+import BoundedGaps.Targets
 
 /-!
 # `M_200 > 4` — the first kernel-checked `M_k > 4` in the project
@@ -84,6 +85,22 @@ theorem Mk_200_gt_4 : (4 : ℝ) < Sieve.Mk 200 := by
     (disjoint_of_histogram _ (by native_decide)) 4 (by native_decide)
   exact_mod_cast h
 
+/-- **Unconditional bounded gaps from `M_200 > 4`.** Feeding the kernel-checked `Mk_200_gt_4`
+into the Maynard–Bombieri–Vinogradov bridge `Targets.H1_le_of_Mk_witness`: there is an admissible
+200-tuple `H` whose diameter bounds `liminfGap 1` (a finite bound on the prime gap that recurs
+infinitely often). Unlike `Targets.H1_le_246` — which is *conditional* on the unproven
+`Mk 50 > 4` — this rests only on the two numerically-validated bridge axioms plus the standard
+analytic-NT inputs (`BombieriVinogradov` etc.). The diameter here is the cheap factorial-spaced
+tuple's (`exists_admissible_of_length`), so it is finite but not numerically optimal; the content
+is that `Mk 200 > 4` *unconditionally* forces bounded gaps. -/
+theorem bounded_gap_of_Mk_200 :
+    ∃ H : List ℕ, BoundedGaps.Admissible H ∧ H.length = 200 ∧
+      BoundedGaps.liminfGap 1 ≤ (BoundedGaps.diameter H : ℕ∞) := by
+  obtain ⟨H, hAdm, hLen⟩ := BoundedGaps.exists_admissible_of_length 200
+  exact ⟨H, hAdm, hLen,
+    BoundedGaps.Targets.H1_le_of_Mk_witness 200 H hAdm hLen Mk_200_gt_4⟩
+
 end BoundedGaps.OrbitFree
 
 #print axioms BoundedGaps.OrbitFree.Mk_200_gt_4
+#print axioms BoundedGaps.OrbitFree.bounded_gap_of_Mk_200
