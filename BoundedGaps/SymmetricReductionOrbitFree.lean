@@ -2159,6 +2159,97 @@ theorem autParts_mul_orbit_card {k : ℕ} (L : List ℕ) (hL : L.length ≤ k)
     rw [hfd]; rw [← hspec]; ring
   exact Nat.eq_of_mul_eq_mul_left hpos' key
 
+/-- **Orbit-stabilizer sum lemma.** Summing any `R`-valued `G` over the whole symmetric group,
+precomposed into `A` (`σ ↦ G (i ↦ A (σ i))`), equals the stabilizer card times the sum of `G` over
+the orbit. Foundation of the **permanent route** (PENDING_WORK §A P3) to `denom_bridge`/`num_bridge`:
+it converts the orbit double-sum into a sum over all of `S_k`, where the rook/matching expansion
+lives. Proof: fiber-decompose `∑_σ` over `monoOrbit A` (`sum_fiberwise_of_maps_to'`); each fiber has
+the same card as the stabilizer (a `card_bij'` via `ρ ↦ ρ·σ₀`, `σ ↦ σ·σ₀⁻¹` for a fixed
+`σ₀` realizing the orbit point); pull the constant card out. -/
+theorem monoOrbit_perm_sum {k : ℕ} {R : Type*} [AddCommMonoid R]
+    (A : MultiIndex k) (G : MultiIndex k → R) :
+    (∑ σ : Equiv.Perm (Fin k), G (fun i => A (σ i)))
+      = (univ.filter (fun σ : Equiv.Perm (Fin k) => (fun i => A (σ i)) = A)).card
+          • ∑ p ∈ monoOrbit A, G p := by
+  classical
+  set Φ : Equiv.Perm (Fin k) → MultiIndex k := fun σ => (fun i => A (σ i)) with hΦ
+  have hmaps : ∀ σ ∈ (univ : Finset (Equiv.Perm (Fin k))), Φ σ ∈ monoOrbit A :=
+    fun σ _ => Finset.mem_image_of_mem _ (Finset.mem_univ σ)
+  have hfib : ∀ p ∈ monoOrbit A,
+      (univ.filter (fun σ : Equiv.Perm (Fin k) => Φ σ = p)).card
+        = (univ.filter (fun σ : Equiv.Perm (Fin k) => Φ σ = A)).card := by
+    intro p hp
+    rw [monoOrbit, Finset.mem_image] at hp
+    obtain ⟨σ₀, -, hσ₀⟩ := hp
+    have hσ₀' : Φ σ₀ = p := hσ₀
+    refine Finset.card_bij'
+      (i := fun σ _ => σ * σ₀⁻¹)
+      (j := fun ρ _ => ρ * σ₀) ?_ ?_ ?_ ?_
+    · intro σ hσ
+      rw [Finset.mem_filter] at hσ ⊢
+      refine ⟨Finset.mem_univ _, ?_⟩
+      have hσp : Φ σ = p := hσ.2
+      funext j
+      show A ((σ * σ₀⁻¹) j) = A j
+      rw [Equiv.Perm.mul_apply]
+      have : A (σ (σ₀⁻¹ j)) = p (σ₀⁻¹ j) := congrFun hσp (σ₀⁻¹ j)
+      rw [this, ← hσ₀']
+      show A (σ₀ (σ₀⁻¹ j)) = A j
+      rw [← Equiv.Perm.mul_apply, mul_inv_cancel]
+      rfl
+    · intro ρ hρ
+      rw [Finset.mem_filter] at hρ ⊢
+      refine ⟨Finset.mem_univ _, ?_⟩
+      have hρA : Φ ρ = A := hρ.2
+      funext j
+      show A ((ρ * σ₀) j) = p j
+      rw [Equiv.Perm.mul_apply]
+      have : A (ρ (σ₀ j)) = A (σ₀ j) := congrFun hρA (σ₀ j)
+      rw [this]
+      exact congrFun hσ₀' j
+    · intro σ _; group
+    · intro ρ _; group
+  rw [← Finset.sum_fiberwise_of_maps_to' (s := (univ : Finset (Equiv.Perm (Fin k))))
+        (t := monoOrbit A) (g := Φ) (f := G) hmaps]
+  rw [Finset.smul_sum]
+  apply Finset.sum_congr rfl
+  intro p hp
+  rw [Finset.sum_const, hfib p hp]
+
+/-- **Stabilizer card of `ofParts L`.** The number of permutations fixing `ofParts L` (under
+precomposition) is `(k - |L|)! · autParts L` — the Young-subgroup order, the 0-fiber contributing
+`(k-|L|)!` and the positive-value fibers `autParts L`. Derived without proving the Young-subgroup
+formula directly: instantiate `monoOrbit_perm_sum` at `G ≡ 1` to get `stab · |orbit| = k!`, combine
+with `autParts_mul_orbit_card` and `factorial_mul_descFactorial`, and cancel `|orbit| > 0`. -/
+theorem ofParts_stab_card {k : ℕ} (L : List ℕ) (hL : L.length ≤ k) (hpos : ∀ x ∈ L, 0 < x) :
+    (univ.filter (fun σ : Equiv.Perm (Fin k) =>
+        (fun i => (ofParts L : MultiIndex k) (σ i)) = ofParts L)).card
+      = (k - L.length)! * autParts L := by
+  classical
+  set A : MultiIndex k := ofParts L with hA
+  set stab := (univ.filter (fun σ : Equiv.Perm (Fin k) => (fun i => A (σ i)) = A)).card with hstab
+  have hone := monoOrbit_perm_sum A (fun _ => (1:ℕ))
+  simp only [Finset.sum_const, smul_eq_mul, mul_one, Finset.card_univ, Fintype.card_perm,
+    Fintype.card_fin] at hone
+  have hac := autParts_mul_orbit_card L hL hpos
+  have hfd := Nat.factorial_mul_descFactorial hL
+  have hpos_orb : 0 < (monoOrbit A).card := by
+    rw [Finset.card_pos]
+    exact ⟨A, by rw [monoOrbit, Finset.mem_image]; exact ⟨1, Finset.mem_univ _, by funext i; simp⟩⟩
+  have key : stab * (monoOrbit A).card = ((k - L.length)! * autParts L) * (monoOrbit A).card := by
+    rw [← hone, ← hfd, ← hac]; ring
+  exact Nat.eq_of_mul_eq_mul_right hpos_orb key
+
+/-- **Bridge convenience (single axis).** Pulls the orbit-sum of `G` (scaled by `autParts L`) back
+to a sum over the full symmetric group, scaled by `(k - |L|)!` — no division, ℕ-smul throughout.
+The atom of the permanent route (P3) to `denom_bridge`/`num_bridge`: applied on each orbit axis it
+converts the orbit double-sum into the `S_k × S_k` sum where the rook/matching expansion lives. -/
+theorem ofParts_autParts_orbit_sum {k : ℕ} {R : Type*} [AddCommMonoid R]
+    (L : List ℕ) (hL : L.length ≤ k) (hpos : ∀ x ∈ L, 0 < x) (G : MultiIndex k → R) :
+    (∑ σ : Equiv.Perm (Fin k), G (fun i => (ofParts L : MultiIndex k) (σ i)))
+      = (k - L.length)! • (autParts L • ∑ p ∈ monoOrbit (ofParts L : MultiIndex k), G p) := by
+  rw [monoOrbit_perm_sum (ofParts L) G, ofParts_stab_card L hL hpos, mul_smul]
+
 /-- Sum of `L.getD · 0` over `Fin k` (for `k ≥ |L|`) is `L.sum`: the padding slots are zero.
 Mirrors `card_filter_ofParts`'s `Fin (k+1)`/`cons` recursion. -/
 lemma sum_getD_fin (k : ℕ) (L : List ℕ) (hL : L.length ≤ k) :
