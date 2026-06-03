@@ -112,30 +112,17 @@ k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks).
      was cracked via: swap↦succAbove perm bridge (`Fin.exists_succAbove_eq`), `permSum_perm_invariant`,
      and the EXACT identity `ofParts Lb ∘ Fin.succAbove j = ofParts (eraseIdx j)` (`ofParts_comp_succAbove`).
      Also `descFactorial_succ_eq'` (UNCONDITIONAL) makes `matchDenSum_cons_eq'` unconditional.
-   - **`num_bridge` — PROVEN, reduced to one elementary axiom.** Same permanent route, ℚ-valued, with
-     the extra `∑ᵢ gWeight(pᵢ,qᵢ)` factor. New: `permNumSum`, `permNumSum_cons` (`Fintype.sum_prod_type`),
-     `permSum_gw_invariant`, `inner_num_eq`/`inner_den_eq` (gWeight-weighted column collapse),
-     `permNumSum_laplace` (the j-row gWeight term splits into permDenSum + permNumSum), `lhs_num`,
-     `rhs_num` (induction: IH for num + the proven `rhs_eq_perm` for den), `num_bridge`. The ONLY
-     remaining axiom is **`matchNumSum_cons_eq'`** (the `matchDataN` recursion; numerically validated by
-     `native_decide`; analog of the PROVEN `matchDenSum_cons_eq'`).
-   - **`Mk_200_gt_4` now rests on `[propext, Classical.choice, Quot.sound, matchNumSum_cons_eq',
-     native_decide]`** — both deep bridges gone; only the elementary list-recursion axiom remains.
-
-   **`matchNumSum_cons_eq'` — finish it (the LAST in-scope axiom). Recipe is fully worked out:**
-   - **(P1) Aristotle.** Job `d314bdc2` (`aristotle-numrec-job/NumRec.lean`) grinding it (mechanical,
-     analog of what Aristotle did for matchDenSum). When it lands: verify in-kernel, replace the
-     `axiom matchNumSum_cons_eq'` in `SymmetricReductionOrbitFree.lean` with the proof → ZERO math
-     axioms on the Mk chain (just std + native_decide).
-   - **(P2) Hand proof — ALL helpers proven in `scratch_mns.lean`** (kernel-clean): `matchDenSum_dataN`
-     (matchDenSum via matchDataN), `list_sum_flatMap`, `sum_range_eq_list` (List.range↔Finset.range),
-     `zip_range_eq_map`. The main proof: `unfold matchNumSum; rw [matchDataN, List.map_append,
-     List.sum_append]` → sumU + sumM. **sumU**: `List.map_map`; per-element via `matchDataN_fst_le`
-     (t.1≤|La|) + `descFactorial_succ_eq'` rewrite the weight to `↑k·↑a!·(numSummand t + gWeight a 0·
-     denSummand t)`; `List.sum_map_mul_left`, `List.sum_map_add`, `List.sum_map_mul_left`; fold via
-     matchNumSum/`matchDenSum_dataN`. **sumM**: `zip_range_eq_map` + `List.flatMap_map`/`List.map_flatMap`
-     + `list_sum_flatMap` reduce to `((List.range|Lb|).map G).sum`; same per-element analysis per j
-     (with eraseIdx, |Lb|≥1); `sum_range_eq_list` → `∑ j ∈ Finset.range|Lb|`. Combine: `ring`.
+   - **`num_bridge` — FULLY PROVEN (axiom gone), incl. `matchNumSum_cons_eq'` (commit `6d8e23f`).**
+     Same permanent route, ℚ-valued, with the extra `∑ᵢ gWeight(pᵢ,qᵢ)` factor. `permNumSum`,
+     `permNumSum_cons` (`Fintype.sum_prod_type`), `permSum_gw_invariant`, `inner_num_eq`/`inner_den_eq`,
+     `permNumSum_laplace` (j-row gWeight term splits into permDenSum + permNumSum), `lhs_num`,
+     `rhs_num` (induction: IH for num + the proven `rhs_eq_perm` for den), `num_bridge`. The
+     `matchNumSum_cons_eq'` recursion proved via unmatched/matched branch split + per-entry `weight_elt`
+     + `matchDenSum_dataN` (helpers: `list_sum_flatMap`, `sum_range_eq_list`, `zip_range_eq_map`).
+   - **`Mk_200_gt_4` is AXIOM-CLEAN: `[propext, Classical.choice, Quot.sound, native_decide]`** — NO
+     mathematical axioms remain. The entire symmetric-reduction → Gram-quotient → matchings chain is
+     kernel-proven (native_decide only for the concrete k=200 witness computation). NOTHING left to do
+     here; the broader `bounded_gap_of_Mk_200` rests on cited analytic NT (§B) owned by another thread.
 2. **Re-keying DONE** (`ef2b071`): `Mk_gt_of_symWeight_witness_match_parts (LCs : List (List ℕ × ℚ))`
    — the Gram quotient is the DIRECT list-form double sum `(LCs.map (fun la => (LCs.map (fun lb =>
    la.2·lb.2·matchForm la.1 lb.1 (n+1))).sum)).sum`; no 45-way `MultiIndex` match. Reduces to
@@ -160,9 +147,9 @@ k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks).
 `BoundedGaps/MkWitness200.lean` (built by the default target, full build 8271 jobs). It instantiates
 `Mk_gt_of_symWeight_witness_match_parts` with the exact k=200 D=7 witness `witnessLCs200` (45 orbits,
 exact-LDL coeffs, rational Rayleigh quotient 4.002898). **First kernel-checked `M_k > 4`.**
-`#print axioms Mk_200_gt_4 = [3 std, matchNumSum_cons_eq', native_decide]` (2026-06-03: both
-`denom_bridge` and `num_bridge` are now PROVEN theorems; only the elementary `matchNumSum_cons_eq'`
-list-recursion axiom remains — see §A.1 for the finish recipe).
+`#print axioms Mk_200_gt_4 = [propext, Classical.choice, Quot.sound, native_decide]` (2026-06-03,
+commit `6d8e23f`: both `denom_bridge` and `num_bridge` are now FULLY PROVEN theorems — NO
+mathematical axioms remain; native_decide only for the concrete k=200 witness).
 
 The companion **`bounded_gap_of_Mk_200`** feeds it into `Targets.H1_le_of_Mk_witness` →
 `∃ H, Admissible H ∧ H.length = 200 ∧ liminfGap 1 ≤ diameter H` — the first **unconditional**
