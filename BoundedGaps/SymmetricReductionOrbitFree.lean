@@ -1944,6 +1944,42 @@ Foundation for the A.1 filter-card hoist (`PENDING_WORK.md`): the value-histogra
 is read off `L` (count of `v` in `L`, or `k - L.length` at `v = 0`) with no `Fin k` scan. -/
 def ofParts {k : ℕ} (L : List ℕ) : MultiIndex k := fun i => L.getD i.val 0
 
+/-- **Value-histogram of `ofParts L`, closed form** (Aristotle-proved, job `656d6b54`). Among the
+`k` slots, value `v` occurs `L.count v` times within the list, plus — only at `v = 0` — once per
+`k - L.length` padding slot. This is the key to a *fully `k`-independent* margin: no `Fin k` scan. -/
+theorem card_filter_ofParts (k : ℕ) (L : List ℕ) (hL : L.length ≤ k) (v : ℕ) :
+    (univ.filter (fun i : Fin k => L.getD i.val 0 = v)).card
+      = L.count v + (if v = 0 then k - L.length else 0) := by
+  induction k generalizing L with
+  | zero => simp_all [Nat.le_zero, List.length_eq_zero_iff]
+  | succ k ih =>
+    cases L with
+    | nil =>
+      simp only [List.getD_nil, List.count_nil, List.length_nil, Nat.sub_zero, Finset.card_filter]
+      by_cases hv : v = 0 <;> simp [hv, eq_comm]
+    | cons x L =>
+      rw [Finset.card_filter, Fin.sum_univ_succ]
+      have hL' : L.length ≤ k := by simpa using hL
+      have key : (∑ j : Fin k, if (x :: L).getD (Fin.succ j).val 0 = v then 1 else 0)
+               = (univ.filter (fun j : Fin k => L.getD j.val 0 = v)).card := by
+        rw [Finset.card_filter]
+        exact Finset.sum_congr rfl (fun j _ => by simp [List.getD_cons_succ])
+      rw [key, ih L hL']
+      simp only [Fin.val_zero, List.getD_cons_zero, List.count_cons, List.length_cons, beq_iff_eq]
+      split_ifs <;> omega
+
+/-- The `k`-independent value-histogram of `ofParts L`: `L.count v` plus `k - L.length` padding
+zeros at `v = 0`. Computed from `L` alone (`O(|L|)`, no `Fin k` scan) — the materialized margin
+the box-feasible witness threads into `gram*EntryWH`. Agrees with the true fiber size
+(`partsHist_eq`, via `card_filter_ofParts`). -/
+def partsHist (k : ℕ) (L : List ℕ) : ℕ → ℕ :=
+  fun v => L.count v + (if v = 0 then k - L.length else 0)
+
+@[simp] lemma partsHist_eq {k : ℕ} (L : List ℕ) (hL : L.length ≤ k) (v : ℕ) :
+    partsHist k L v = (univ.filter (fun i : Fin k => (ofParts L) i = v)).card := by
+  show partsHist k L v = (univ.filter (fun i : Fin k => L.getD i.val 0 = v)).card
+  rw [card_filter_ofParts k L hL v]; rfl
+
 /-! ## End-to-end validation (regression guard)
 
 A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
