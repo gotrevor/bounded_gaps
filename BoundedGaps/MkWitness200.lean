@@ -13,10 +13,11 @@ quotient) and two `decide`s all run on-box — this needed only a larger interpr
 (`weakLeanArgs = ["--tstack=2000000"]` in `lakefile.toml`), NOT a networked host as earlier
 handoffs assumed.
 
-`#print axioms Mk_200_gt_4` ⇒ `[propext, Classical.choice, Quot.sound, denom_bridge, num_bridge,
-ofReduceBool (native_decide)]`. The two `*_bridge` axioms are the numerically-validated
-permanent/rook identities (on Aristotle, jobs `0b5bf5be` / `9d05dbaa`); when they land this
-becomes a fully kernel-clean (modulo `native_decide`) `M_200 > 4`.
+`#print axioms Mk_200_gt_4` ⇒ `[propext, Classical.choice, Quot.sound, ofReduceBool
+(native_decide)]` — **no mathematical axioms**. The two permanent/rook identities `denom_bridge`
+and `num_bridge` (formerly axioms) are now fully kernel-proven theorems (the permanent-route proof
+in `SymmetricReductionOrbitFree.lean`); the only non-standard residue is `native_decide` on the
+concrete `k = 200` witness computation.
 -/
 
 set_option linter.style.longLine false
@@ -85,20 +86,91 @@ theorem Mk_200_gt_4 : (4 : ℝ) < Sieve.Mk 200 := by
     (disjoint_of_histogram _ (by native_decide)) 4 (by native_decide)
   exact_mod_cast h
 
+/-! ## A concrete narrow admissible 200-tuple (for a numeric bounded-gap diameter)
+
+`bounded_gap_of_Mk_200` only needs *some* admissible 200-tuple. The cheap existence proof
+(`exists_admissible_of_length`) supplies the factorial-spaced tuple of diameter `199·200!` — a
+~375-digit number. Here we replace it with an explicit admissible 200-tuple of diameter **1304**
+(an upper bound on the narrowness `H(200)`), found by a greedy residue-class sieve over `[0, M)`
+removing one minimal-occupancy class per prime `p ≤ 200`, then taking the narrowest 200-survivor
+window and normalising to start at `0` (admissibility re-verified after the shift). This turns the
+bounded-gap conclusion into a *concrete* numeric bound `liminfGap 1 ≤ 1304`. -/
+
+/-- An explicit admissible 200-tuple of diameter 1304. See the section docstring for provenance. -/
+def tuple200 : List ℕ :=
+  [0, 8, 12, 24, 30, 32, 38, 44, 54, 60, 68, 72, 78, 80, 84, 92, 102, 110, 120, 122, 128, 134, 144, 150, 158, 164, 168, 180, 182, 192, 194, 198, 200, 210, 212, 222, 224, 228, 242, 248, 252, 254, 260, 264, 270, 278, 288, 290, 294, 302, 312, 318, 320, 332, 338, 344, 348, 354, 368, 374, 378, 380, 390, 392, 402, 404, 408, 414, 420, 422, 428, 434, 450, 452, 462, 470, 480, 492, 494, 498, 500, 518, 522, 530, 540, 554, 558, 560, 564, 578, 582, 584, 590, 600, 612, 618, 624, 630, 632, 638, 642, 644, 654, 660, 662, 674, 684, 704, 708, 710, 714, 722, 728, 732, 738, 744, 752, 758, 764, 770, 774, 782, 788, 798, 800, 810, 822, 824, 830, 840, 848, 864, 870, 872, 882, 884, 890, 908, 914, 918, 938, 942, 948, 950, 960, 962, 974, 978, 980, 990, 992, 998, 1002, 1004, 1008, 1020, 1034, 1038, 1052, 1058, 1064, 1068, 1074, 1080, 1092, 1094, 1100, 1104, 1110, 1118, 1122, 1128, 1130, 1134, 1148, 1152, 1160, 1172, 1178, 1184, 1188, 1190, 1194, 1202, 1212, 1214, 1220, 1232, 1242, 1248, 1250, 1254, 1262, 1268, 1278, 1284, 1290, 1298, 1302, 1304]
+
+theorem tuple200_length : tuple200.length = 200 := by native_decide
+
+theorem tuple200_sorted : tuple200.Pairwise (· < ·) := by native_decide
+
+theorem tuple200_diameter : BoundedGaps.diameter tuple200 = 1304 := by native_decide
+
+/-- Bool-level admissibility checker (mirrors `Engelsma.checkAdm`): `true` iff some residue
+`r ∈ {0,…,p-1}` is missed by every element of `tuple200` mod `p`. -/
+private def checkAdm200 (p : ℕ) : Bool :=
+  (List.range p).any fun r => tuple200.all fun h => !(h % p == r)
+
+/-- Every prime `≤ 200` passes the admissibility check, by one bundled `native_decide` (46 primes). -/
+private lemma admCheck200_true :
+    ((List.range 201).filter Nat.Prime).all (fun p => checkAdm200 p) = true := by native_decide
+
+/-- Extract a concrete `Nat`-level missed residue `r < p` from the Bool check passing at `p`. -/
+private lemma admCheck200_implies (p : ℕ) (hp : p.Prime) (hle : p ≤ 200) :
+    ∃ r : ℕ, r < p ∧ ∀ h ∈ tuple200, h % p ≠ r := by
+  have hmem : p ∈ (List.range 201).filter Nat.Prime := by
+    rw [List.mem_filter]; exact ⟨List.mem_range.mpr (by omega), by simp [hp]⟩
+  have hpass := List.all_eq_true.mp admCheck200_true p hmem
+  obtain ⟨r, hr_mem, hr_all⟩ := List.any_eq_true.mp hpass
+  refine ⟨r, List.mem_range.mp hr_mem, fun h hh habs => ?_⟩
+  have := List.all_eq_true.mp hr_all h hh
+  simp [beq_eq_false_iff_ne] at this
+  exact this habs
+
+/-- The finite-prime admissibility check for `tuple200`, in `ZMod p` form — the obligation
+`admissible_of_check_small_primes` consumes. -/
+theorem tuple200_check :
+    ∀ p : ℕ, p.Prime → p ≤ 200 → ∃ r : ZMod p, ∀ h ∈ tuple200, (h : ZMod p) ≠ r := by
+  intro p hp hle
+  obtain ⟨r, hr_lt, hr_mod⟩ := admCheck200_implies p hp hle
+  refine ⟨(r : ZMod p), fun h hh habs => ?_⟩
+  have hne := hr_mod h hh
+  rw [ZMod.natCast_eq_natCast_iff'] at habs
+  rw [Nat.mod_eq_of_lt hr_lt] at habs
+  exact hne habs
+
+/-- `tuple200` is admissible: strictly sorted (`native_decide`), and for every prime `p ≤ 200` it
+misses a residue class (bundled `native_decide`); primes `p > 200` are closed by pigeonhole
+(`admissible_of_check_small_primes`, since `|tuple200| = 200 < p`). -/
+theorem tuple200_admissible : BoundedGaps.Admissible tuple200 :=
+  BoundedGaps.admissible_of_check_small_primes tuple200_sorted
+    (fun p hp hple => tuple200_check p hp (tuple200_length ▸ hple))
+
 /-- **Unconditional bounded gaps from `M_200 > 4`.** Feeding the kernel-checked `Mk_200_gt_4`
 into the Maynard–Bombieri–Vinogradov bridge `Targets.H1_le_of_Mk_witness`: there is an admissible
 200-tuple `H` whose diameter bounds `liminfGap 1` (a finite bound on the prime gap that recurs
 infinitely often). Unlike `Targets.H1_le_246` — which is *conditional* on the unproven
-`Mk 50 > 4` — this rests only on the two numerically-validated bridge axioms plus the standard
-analytic-NT inputs (`BombieriVinogradov` etc.). The diameter here is the cheap factorial-spaced
-tuple's (`exists_admissible_of_length`), so it is finite but not numerically optimal; the content
-is that `Mk 200 > 4` *unconditionally* forces bounded gaps. -/
+`Mk 50 > 4` — this rests only on the standard analytic-NT inputs (`BombieriVinogradov` etc.); the
+`Mk 200 > 4` input itself is now axiom-clean. The witness tuple is the explicit narrow `tuple200`
+(diameter 1304), so the conclusion is a *concrete* numeric bound (see `liminfGap_one_le_1304`), not
+merely the astronomical factorial-spaced tuple's; the content is that `Mk 200 > 4`
+*unconditionally* forces bounded gaps. -/
 theorem bounded_gap_of_Mk_200 :
     ∃ H : List ℕ, BoundedGaps.Admissible H ∧ H.length = 200 ∧
-      BoundedGaps.liminfGap 1 ≤ (BoundedGaps.diameter H : ℕ∞) := by
-  obtain ⟨H, hAdm, hLen⟩ := BoundedGaps.exists_admissible_of_length 200
-  exact ⟨H, hAdm, hLen,
-    BoundedGaps.Targets.H1_le_of_Mk_witness 200 H hAdm hLen Mk_200_gt_4⟩
+      BoundedGaps.liminfGap 1 ≤ (BoundedGaps.diameter H : ℕ∞) :=
+  ⟨tuple200, tuple200_admissible, tuple200_length,
+    BoundedGaps.Targets.H1_le_of_Mk_witness 200 tuple200 tuple200_admissible tuple200_length
+      Mk_200_gt_4⟩
+
+/-- **The concrete numeric bounded-gap bound.** The smallest prime gap that recurs infinitely
+often, `liminfGap 1 = H_1`, is at most **1304** — the diameter of the explicit admissible 200-tuple
+`tuple200`. This is the numeric payoff of `bounded_gap_of_Mk_200`: `Mk 200 > 4` (axiom-clean) plus
+the standard analytic-NT inputs force infinitely many prime pairs within a window of length 1304. -/
+theorem liminfGap_one_le_1304 : BoundedGaps.liminfGap 1 ≤ (1304 : ℕ∞) := by
+  have h := BoundedGaps.Targets.H1_le_of_Mk_witness 200 tuple200 tuple200_admissible
+    tuple200_length Mk_200_gt_4
+  rw [tuple200_diameter] at h
+  exact_mod_cast h
 
 /-- **Bounded gaps between primes exist (unconditionally, mod the disclosed axioms).** The sharpest
 qualitative form: `H_1 = liminf_n (p_{n+1} - p_n)` is *finite*. Immediate from `bounded_gap_of_Mk_200`
@@ -111,3 +183,4 @@ end BoundedGaps.OrbitFree
 
 #print axioms BoundedGaps.OrbitFree.Mk_200_gt_4
 #print axioms BoundedGaps.OrbitFree.bounded_gap_of_Mk_200
+#print axioms BoundedGaps.OrbitFree.liminfGap_one_le_1304
