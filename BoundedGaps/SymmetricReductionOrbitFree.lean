@@ -1716,6 +1716,13 @@ theorem mk_witness_under_EH_of_symWeight_W {n m : ℕ} (hm : 0 < m)
   exists_theta_of_Mk_gt (2 * (m : ℝ)) (by positivity)
     (by exact_mod_cast Mk_gt_of_symWeight_witness_W R c hR (2 * m) hwit)
 
+/-- **Canonical witness encoding.** A descending parts list `L` as a padded `MultiIndex k`
+(zeros beyond `L`). The orbit representatives of an `Mk k > 4` witness are `ofParts` of the
+degree-≤`D` partitions; `Mk_gt_of_symWeight_witness_W {ofParts Lᵢ} c …` is the discharge shape.
+Foundation for the A.1 filter-card hoist (`PENDING_WORK.md`): the value-histogram of `ofParts L`
+is read off `L` (count of `v` in `L`, or `k - L.length` at `v = 0`) with no `Fin k` scan. -/
+def ofParts {k : ℕ} (L : List ℕ) : MultiIndex k := fun i => L.getD i.val 0
+
 /-! ## End-to-end validation (regression guard)
 
 A non-vacuous use of the whole pipeline at `k = 3`: the symmetric weight on
