@@ -100,6 +100,13 @@ theorem bounded_gap_of_Mk_200 :
   exact ⟨H, hAdm, hLen,
     BoundedGaps.Targets.H1_le_of_Mk_witness 200 H hAdm hLen Mk_200_gt_4⟩
 
+/-- **Bounded gaps between primes exist (unconditionally, mod the disclosed axioms).** The sharpest
+qualitative form: `H_1 = liminf_n (p_{n+1} - p_n)` is *finite*. Immediate from `bounded_gap_of_Mk_200`
+(`liminfGap 1` is bounded by a concrete finite diameter). -/
+theorem liminfGap_one_lt_top : BoundedGaps.liminfGap 1 < ⊤ := by
+  obtain ⟨H, _, _, hle⟩ := bounded_gap_of_Mk_200
+  exact lt_of_le_of_lt hle (ENat.coe_lt_top _)
+
 end BoundedGaps.OrbitFree
 
 #print axioms BoundedGaps.OrbitFree.Mk_200_gt_4

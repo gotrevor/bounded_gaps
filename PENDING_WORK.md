@@ -128,15 +128,30 @@ k=300 img-4; numerically validated (`11/3360`, `7/2160` = the Lean spot-checks).
    ofParts).toFinset` (dedup + `ofParts` injectivity + orbit-disjointness from distinct parts-lists).
    This also subsumes the old "margin materialization" fix (margins `partsHist (n+1) Lᵢ`, Lᵢ in hand).
 
-### After both: the capstone payoff
-With (1)+(2): `Mk_gt_of_symWeight_witness_match_parts witLs witCs … (by native_decide)` for the k=200
-D=7 data (45 orbits, ratio 4.002898 — Python-confirmed, `/tmp/gen_witness_lean.py`) → `(4:ℝ) < Mk 200`
-resting ONLY on the 2 (then-proven) bridge identities → `Targets.H1_le_of_Mk_witness 200 H hAdm hLen`
-(PROVEN, unconditional, via Bombieri-Vinogradov) → `liminfGap 1 ≤ diameter H` for an admissible
-200-tuple `H`. **First kernel-checked `M_k > 4`** in the project. (`Engelsma` has 48–54 + 5511, not
-200 — harvest a 200-tuple or use `exists_admissible_of_length` for a valid-but-weak diameter first.)
-NOTE: the heavy `native_decide` (2025 matchForm terms, ~100-digit coeffs, 214! factorials) may be
-HOST-only (box hit intermittent OOM/SIGABRT this lap even on mathlib olean loads).
+### The capstone payoff — ✅ DONE ON-BOX 2026-06-03 (commits 72f80c3, fff0e29)
+**`BoundedGaps.OrbitFree.Mk_200_gt_4 : (4:ℝ) < Sieve.Mk 200`** is LANDED in
+`BoundedGaps/MkWitness200.lean` (built by the default target, full build 8271 jobs). It instantiates
+`Mk_gt_of_symWeight_witness_match_parts` with the exact k=200 D=7 witness `witnessLCs200` (45 orbits,
+exact-LDL coeffs, rational Rayleigh quotient 4.002898). **First kernel-checked `M_k > 4`.**
+`#print axioms Mk_200_gt_4 = [3 std, denom_bridge, num_bridge, native_decide]`.
+
+The companion **`bounded_gap_of_Mk_200`** feeds it into `Targets.H1_le_of_Mk_witness` →
+`∃ H, Admissible H ∧ H.length = 200 ∧ liminfGap 1 ≤ diameter H` — the first **unconditional**
+bounded-gap result in the repo (vs `Targets.H1_le_246`, which is conditional on the unproven
+`Mk 50 > 4`). It rests on `[3 std, denom_bridge, num_bridge, BombieriVinogradov,
+exists_separable_F_of_Mk_gt, s1/s2_holds_*, native_decide]` — the bridges + cited analytic NT only.
+
+**❗ The "HOST-only / box OOMs" claim in every prior handoff was WRONG.** The failure was
+`deep recursion at 'interpreter'` (interpreter stack used in native_decide/decide setup), NOT OOM.
+Fix: `weakLeanArgs = ["--tstack=2000000"]` on `[[lean_lib]]` in `lakefile.toml` (weak ⇒ no full
+rebuild). The matchings closed form is genuinely cheap; all three native_decides + two decides run
+on-box in ~50s. **Do not re-assume host-only for heavy native_decide — bump tstack first.** When the
+two bridge axioms land (Aristotle `0b5bf5be`/`9d05dbaa`), this is a fully kernel-clean (mod
+native_decide) `M_200 > 4` → unconditional bounded gaps.
+
+The numeric diameter in `bounded_gap_of_Mk_200` is the cheap factorial tuple's (`199·200!`) — finite
+but huge. A narrow admissible 200-tuple (H(200) ≈ 1500) via `admissible_of_check_small_primes` would
+make it a concrete (still weaker-than-246) numeric bound; gilding, not gating.
 
 Witness data IN HAND (`tools/mk/_ldl.py`, exact LDL): k=200 D=7 ratio 4.002898, k=300 ratio 4.006944,
 45 orbits each, ~100-digit integer orbit coeffs (regenerate via `PYTHONPATH=. python3` over
