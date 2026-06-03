@@ -27,3 +27,4 @@ import BoundedGaps.EpsBridge
 import BoundedGaps.SymmetricReductionEps
 import BoundedGaps.SymmetricReductionOrbitFree
 import BoundedGaps.SymmetricReductionEpsOrbitFree
+import BoundedGaps.MultinomialFast
