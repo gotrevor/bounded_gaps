@@ -1944,6 +1944,33 @@ Foundation for the A.1 filter-card hoist (`PENDING_WORK.md`): the value-histogra
 is read off `L` (count of `v` in `L`, or `k - L.length` at `v = 0`) with no `Fin k` scan. -/
 def ofParts {k : ℕ} (L : List ℕ) : MultiIndex k := fun i => L.getD i.val 0
 
+/-- **`ofParts` is injective on positive-parts lists** (length ≤ k). Distinct partition-lists give
+distinct multi-indices — so the witness reps `Ls.map ofParts` are `Nodup` when `Ls` is, the
+foundation for re-keying the witness on parts-lists (`PENDING_WORK.md §A`). -/
+lemma ofParts_inj {k : ℕ} {La Lb : List ℕ} (hA : La.length ≤ k) (hB : Lb.length ≤ k)
+    (hposA : ∀ x ∈ La, 0 < x) (hposB : ∀ x ∈ Lb, 0 < x)
+    (h : (ofParts La : MultiIndex k) = ofParts Lb) : La = Lb := by
+  have hpt : ∀ i : ℕ, i < k → La.getD i 0 = Lb.getD i 0 := fun i hi => congrFun h ⟨i, hi⟩
+  have hlen : La.length = Lb.length := by
+    rcases lt_trichotomy La.length Lb.length with hlt | heq | hgt
+    · exfalso
+      have hk : La.length < k := lt_of_lt_of_le hlt hB
+      have hpos : 0 < Lb.getD La.length 0 := by
+        rw [List.getD_eq_getElem Lb 0 hlt]; exact hposB _ (List.getElem_mem _)
+      rw [← hpt La.length hk, List.getD_eq_default La 0 (le_refl _)] at hpos
+      exact absurd hpos (lt_irrefl 0)
+    · exact heq
+    · exfalso
+      have hk : Lb.length < k := lt_of_lt_of_le hgt hA
+      have hpos : 0 < La.getD Lb.length 0 := by
+        rw [List.getD_eq_getElem La 0 hgt]; exact hposA _ (List.getElem_mem _)
+      rw [hpt Lb.length hk, List.getD_eq_default Lb 0 (le_refl _)] at hpos
+      exact absurd hpos (lt_irrefl 0)
+  apply List.ext_getElem hlen
+  intro i h1 h2
+  have := hpt i (lt_of_lt_of_le h1 hA)
+  rwa [List.getD_eq_getElem La 0 h1, List.getD_eq_getElem Lb 0 h2] at this
+
 /-- **Value-histogram of `ofParts L`, closed form** (Aristotle-proved, job `656d6b54`). Among the
 `k` slots, value `v` occurs `L.count v` times within the list, plus — only at `v = 0` — once per
 `k - L.length` padding slot. This is the key to a *fully `k`-independent* margin: no `Fin k` scan. -/
