@@ -1141,4 +1141,28 @@ theorem sieveThetaSum_selberg_nu_eq_heuristic_add_correction (k J : ℕ) (c : Fi
   refine Finset.sum_congr rfl (fun P _ => ?_)
   ring
 
+/-- **Correction split: diagonal error + off-diagonal main.** The correction
+sum `∑_P wₚ·(valₚ − mainₚ)` (the obligation isolated by the `*_heuristic_add_correction`
+reductions, with `val = count`, `main = M/∏[Pᵢ]`) splits, *given* that `val`
+vanishes off the diagonal (the W-trick fact `lattice_count_pair_offdiag_vanish`
+⟹ off-diagonal lattice counts are `0`), into
+`(∑_{diag} wₚ(valₚ−mainₚ)) + (∑_{¬diag} wₚ(−mainₚ))`: the first is the diagonal
+`O(1)` error (bounded by `∑_{diag}|wₚ|` via `lattice_count_main_term`), the
+second the **off-diagonal heuristic main** (the "singular series" discrepancy).
+This is the organizational step routing the correction to its two analytic
+sub-obligations. Pure algebra (`Finset.sum_filter_add_sum_filter_not` + `val=0`
+off-diagonal). -/
+theorem correction_split_offdiag {ι : Type*} (s : Finset ι) (w val main : ι → ℝ)
+    (diag : ι → Prop) [DecidablePred diag]
+    (hvanish : ∀ P ∈ s, ¬ diag P → val P = 0) :
+    ∑ P ∈ s, w P * (val P - main P)
+      = (∑ P ∈ s.filter diag, w P * (val P - main P))
+        + (∑ P ∈ s.filter (fun P => ¬ diag P), w P * (- main P)) := by
+  rw [← Finset.sum_filter_add_sum_filter_not s diag (fun P => w P * (val P - main P))]
+  congr 1
+  refine Finset.sum_congr rfl (fun P hP => ?_)
+  rw [Finset.mem_filter] at hP
+  rw [hvanish P hP.1 hP.2]
+  ring
+
 end BoundedGaps.Sieve
