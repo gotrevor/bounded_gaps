@@ -217,4 +217,76 @@ theorem weighted_riemann_cons_of_inner (g : ℝ → ℝ) (gs : List (ℝ → ℝ
   exact perturbed_riemann g (nestedPhi gs)
     (fun R n => nestedLogSum R gs (R / n) / (Real.log R) ^ gs.length) hg hΦcont huni
 
+/-- **Reparametrisation:** at `t = 1 - log n/log R`, `PsiK` is the tail term of the factor lemma
+(`nestedLogSum R gs (R/n)/(log R)^k`). Via `floor_rpow_one_sub` (`⌊R^t⌋ = R/n`). -/
+lemma psiK_reparam (R : ℕ) (gs : List (ℝ → ℝ)) (n : ℕ) (hR2 : 2 ≤ R) (hn1 : 1 ≤ n) :
+    PsiK R gs (1 - Real.log n / Real.log R)
+      = nestedLogSum R gs (R / n) / (Real.log R) ^ gs.length := by
+  unfold PsiK
+  rw [BoundedGaps.InnerUniformReduction.floor_rpow_one_sub R n hR2 hn1]
+
+/-- **Generic inner-uniform from the pointwise scale-change** (the `inner_uniform_3d_of_pointwise`
+analog). GIVEN the pointwise limit `PsiK R gs t → nestedPhi gs (1-t)` for every `t ∈ [0,1]`, the
+term `nestedLogSum R gs (R/n)/(log R)^k` converges to `nestedPhi gs (log n/log R)` UNIFORMLY in
+`n ∈ [2,R]` — exactly the `huni` of `weighted_riemann_cons_of_inner`. Pólya (`psiK_monotoneOn`
+monotone + `nestedPhi_continuous` limit) + the `t = 1-log n/log R` reparametrisation. -/
+theorem inner_uniform_kd_of_pointwise (gs : List (ℝ → ℝ))
+    (hnn : ∀ g ∈ gs, ∀ x, 0 ≤ g x) (hcont : ∀ g ∈ gs, Continuous g)
+    (hptw : ∀ t ∈ Set.Icc (0 : ℝ) 1,
+        Tendsto (fun R : ℕ => PsiK R gs t) atTop (nhds (nestedPhi gs (1 - t)))) :
+    ∀ ε > 0, ∀ᶠ R : ℕ in atTop, ∀ n ∈ Finset.Icc 2 R,
+      |nestedLogSum R gs (R / n) / (Real.log R) ^ gs.length
+        - nestedPhi gs (Real.log n / Real.log R)| ≤ ε := by
+  have hΦcont : ContinuousOn (fun t => nestedPhi gs (1 - t)) (Set.Icc (0 : ℝ) 1) :=
+    ((nestedPhi_continuous gs hcont).comp (continuous_const.sub continuous_id)).continuousOn
+  have hpoly := BoundedGaps.PolyaUniform.polya_uniform
+    (fun t => nestedPhi gs (1 - t)) (fun R => PsiK R gs) hΦcont
+    (fun R => psiK_monotoneOn R gs hnn) hptw
+  intro ε hε
+  filter_upwards [hpoly ε hε, eventually_ge_atTop 2] with R hR hR2 n hn
+  obtain ⟨hn2, hnR⟩ := Finset.mem_Icc.mp hn
+  have hn1 : 1 ≤ n := by omega
+  have hlogRpos : 0 < Real.log (R : ℝ) := Real.log_pos (by exact_mod_cast hR2)
+  have hlogn_nonneg : 0 ≤ Real.log (n : ℝ) := Real.log_nonneg (by exact_mod_cast hn1)
+  have hlogn_le : Real.log (n : ℝ) ≤ Real.log (R : ℝ) :=
+    Real.log_le_log (by exact_mod_cast (by omega : 0 < n)) (by exact_mod_cast hnR)
+  have htn_mem : (1 - Real.log n / Real.log R) ∈ Set.Icc (0 : ℝ) 1 := by
+    have h1 : Real.log n / Real.log R ≤ 1 := by rw [div_le_one hlogRpos]; exact hlogn_le
+    have h0 : 0 ≤ Real.log n / Real.log R := div_nonneg hlogn_nonneg hlogRpos.le
+    exact ⟨by linarith, by linarith⟩
+  have hreparam := psiK_reparam R gs n hR2 hn1
+  have hphi_eq : nestedPhi gs (1 - (1 - Real.log n / Real.log R))
+      = nestedPhi gs (Real.log n / Real.log R) := by congr 1; ring
+  have hb := hR (1 - Real.log n / Real.log R) htn_mem
+  rw [hreparam, hphi_eq] at hb
+  exact hb
+
+/-- **Generic k-D simplex limit — modulo the pointwise heart.** GIVEN the generic pointwise
+scale-change `hpw` (for every nonnegative continuous list `gs`, `PsiK R gs t → nestedPhi gs (1-t)`
+for each `t`), the full `k`-D coupled log-weighted Riemann sum converges to the iterated simplex
+integral, for EVERY nonnegative continuous list `Gs`:
+`nestedLogSum R Gs R / (log R)^|Gs| → nestedPhi Gs 0 = ∫_{simplex} ∏ Gs`. Each list length is one
+application of `weighted_riemann_cons_of_inner ∘ inner_uniform_kd_of_pointwise ∘ hpw` (base `nil`).
+
+This isolates the ENTIRE remaining generic obligation to `hpw` — the generic `psi3_pointwise`, whose
+own proof will be by strong induction feeding this theorem's `gs`-level conclusion back in (the
+recursive heart). Everything else in the generic `k`-D induction is done. -/
+theorem weighted_riemann_kd_of_pointwise
+    (hpw : ∀ (gs : List (ℝ → ℝ)), (∀ g ∈ gs, ∀ x, 0 ≤ g x) → (∀ g ∈ gs, Continuous g) →
+        ∀ t ∈ Set.Icc (0 : ℝ) 1,
+          Tendsto (fun R : ℕ => PsiK R gs t) atTop (nhds (nestedPhi gs (1 - t))))
+    (Gs : List (ℝ → ℝ)) (hnn : ∀ g ∈ Gs, ∀ x, 0 ≤ g x) (hcont : ∀ g ∈ Gs, Continuous g) :
+    Tendsto (fun R : ℕ => nestedLogSum R Gs R / (Real.log R) ^ Gs.length)
+      atTop (nhds (nestedPhi Gs 0)) := by
+  cases Gs with
+  | nil => exact weighted_riemann_kd_nil
+  | cons g gs =>
+      have htail_nn : ∀ f ∈ gs, ∀ x, 0 ≤ f x := fun f hf => hnn f (List.mem_cons.mpr (Or.inr hf))
+      have htail_cont : ∀ f ∈ gs, Continuous f :=
+        fun f hf => hcont f (List.mem_cons.mpr (Or.inr hf))
+      refine weighted_riemann_cons_of_inner g gs
+        (hcont g (List.mem_cons.mpr (Or.inl rfl))).continuousOn
+        (nestedPhi_continuous gs htail_cont).continuousOn ?_
+      exact inner_uniform_kd_of_pointwise gs htail_nn htail_cont (hpw gs htail_nn htail_cont)
+
 end BoundedGaps.WeightedRiemannKD
