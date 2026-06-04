@@ -701,6 +701,74 @@ first hypothesis of `sharp_mertens_tendsto` with no axioms. -/
 theorem summable_norm_bAF : Summable (fun n => ‖bAF n‖) :=
   summable_norm_bAF_of_bound (C := Real.exp 2) sum_norm_bAF_le
 
+/-! ## Analytic crux of the log-weighted bound #2: `∑_p (log p)/(p(p-1)) < ∞`
+
+The log-weighted summability hypothesis of `sharp_mertens_tendsto` reduces (after the
+von-Mangoldt / divisor-sum split) to the convergent prime sum `∑_p (log p)/(p(p-1))`.
+Its convergence is the genuine analytic content; we bound it via the pointwise estimate
+`(log n)/(n(n-1)) ≤ 4·n^{-3/2}` (from `log n ≤ 2√n` and `n(n-1) ≥ n^{3/2}·√n`... i.e.
+`log n · n^{3/2} ≤ 2n² ≤ 4n(n-1)`) and the `p`-series `∑ n^{-3/2} < ∞`. This is the
+brick that ports onto the concrete prime sum when discharging bound #2. -/
+
+/-- Pointwise: `(log n)/(n(n-1)) ≤ 4·n^{-3/2}` for `n ≥ 2`. -/
+lemma term_log_div_le (n : ℕ) (hn : 2 ≤ n) :
+    Real.log n / ((n : ℝ) * ((n : ℝ) - 1)) ≤ 4 / (n : ℝ) ^ ((3 : ℝ) / 2) := by
+  have hr : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have hr0 : (0 : ℝ) < (n : ℝ) := by linarith
+  have hr1 : (0 : ℝ) < (n : ℝ) - 1 := by linarith
+  have hs : (0 : ℝ) < (n : ℝ) ^ ((1 : ℝ) / 2) := Real.rpow_pos_of_pos hr0 _
+  have hlog : Real.log n ≤ 2 * (n : ℝ) ^ ((1 : ℝ) / 2) := by
+    have h := Real.log_le_rpow_div (le_of_lt hr0) (show (0 : ℝ) < (1 : ℝ) / 2 by norm_num)
+    have h2 : (n : ℝ) ^ ((1 : ℝ) / 2) / (1 / 2) = 2 * (n : ℝ) ^ ((1 : ℝ) / 2) := by
+      rw [div_eq_mul_inv, show ((1 : ℝ) / 2)⁻¹ = 2 by norm_num]; ring
+    rw [h2] at h; exact h
+  have hsq : (n : ℝ) ^ ((1 : ℝ) / 2) * (n : ℝ) ^ ((1 : ℝ) / 2) = (n : ℝ) := by
+    rw [← Real.rpow_add hr0, show (1 : ℝ) / 2 + (1 : ℝ) / 2 = 1 by norm_num, Real.rpow_one]
+  have h32 : (n : ℝ) ^ ((3 : ℝ) / 2) = (n : ℝ) ^ ((1 : ℝ) / 2) * (n : ℝ) := by
+    rw [show (3 : ℝ) / 2 = (1 : ℝ) / 2 + 1 by norm_num, Real.rpow_add hr0, Real.rpow_one]
+  rw [h32, div_le_div_iff₀ (by positivity) (by positivity)]
+  calc Real.log n * ((n : ℝ) ^ ((1 : ℝ) / 2) * (n : ℝ))
+      ≤ (2 * (n : ℝ) ^ ((1 : ℝ) / 2)) * ((n : ℝ) ^ ((1 : ℝ) / 2) * (n : ℝ)) := by
+        apply mul_le_mul_of_nonneg_right hlog; positivity
+    _ = 2 * (n : ℝ) * (n : ℝ) := by
+        rw [show (2 * (n : ℝ) ^ ((1 : ℝ) / 2)) * ((n : ℝ) ^ ((1 : ℝ) / 2) * (n : ℝ))
+              = 2 * ((n : ℝ) ^ ((1 : ℝ) / 2) * (n : ℝ) ^ ((1 : ℝ) / 2)) * (n : ℝ) by ring, hsq]
+    _ ≤ 4 * ((n : ℝ) * ((n : ℝ) - 1)) := by nlinarith [hr, hr0]
+
+/-- The majorant `∑ 4·n^{-3/2}` is summable (`p`-series with `p = 3/2 > 1`). -/
+lemma summable_four_div_rpow : Summable (fun n : ℕ => (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2)) := by
+  have := (Real.summable_one_div_nat_rpow.mpr (show (1 : ℝ) < 3 / 2 by norm_num)).mul_left 4
+  simpa [mul_one_div] using this
+
+/-- **Analytic crux**: the partial sums `∑_{2≤n≤N} (log n)/(n(n-1))` are uniformly bounded
+by the convergent `∑' 4·n^{-3/2}`. -/
+theorem sum_log_div_consecutive_le (N : ℕ) :
+    ∑ n ∈ Finset.Icc 2 N, Real.log n / ((n : ℝ) * ((n : ℝ) - 1))
+      ≤ ∑' n : ℕ, (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2) := by
+  calc ∑ n ∈ Finset.Icc 2 N, Real.log n / ((n : ℝ) * ((n : ℝ) - 1))
+      ≤ ∑ n ∈ Finset.Icc 2 N, (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2) := by
+        apply Finset.sum_le_sum
+        intro n hn
+        exact term_log_div_le n (Finset.mem_Icc.mp hn).1
+    _ ≤ ∑' n : ℕ, (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2) :=
+        summable_four_div_rpow.sum_le_tsum _ (fun i _ => by positivity)
+
+/-- **The convergent prime sum** `∑_{p≤N} (log p)/(p(p-1)) ≤ ∑' 4·n^{-3/2}` — the brick the
+log-weighted bound #2 needs once its von-Mangoldt/divisor reduction lands. -/
+theorem sum_log_div_primes_le (N : ℕ) :
+    ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime, Real.log p / ((p : ℝ) * ((p : ℝ) - 1))
+      ≤ ∑' n : ℕ, (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2) := by
+  refine le_trans ?_ (sum_log_div_consecutive_le N)
+  apply Finset.sum_le_sum_of_subset_of_nonneg
+  · intro p hp
+    rw [Finset.mem_filter, Finset.mem_range] at hp
+    rw [Finset.mem_Icc]
+    exact ⟨hp.2.two_le, by omega⟩
+  · intro n hn _
+    rw [Finset.mem_Icc] at hn
+    have h2 : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn.1
+    exact div_nonneg (Real.log_nonneg (by linarith)) (by nlinarith)
+
 /-- **Sharp Mertens from the two partial-sum bounds (one-shot).** Packages the full
 reduction: given the unweighted and `log`-weighted Euler-product bounds (the two
 Aristotle leaves), `(∑_{n≤N} μ²/φ)/log N → 1`. Porting `830e5129` (and its
