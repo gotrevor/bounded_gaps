@@ -1183,4 +1183,24 @@ theorem diag_error_bound {ι : Type*} (s : Finset ι) (w val main : ι → ℝ)
             mul_le_mul_of_nonneg_left (h P hP) (abs_nonneg _))
     _ = ∑ P ∈ s, |w P| := by simp
 
+/-- **Full correction bound.** Combining `correction_split_offdiag` (split on the
+diagonal, off-diagonal count `= 0`), `diag_error_bound` (diagonal `O(1)` error),
+and the triangle inequality: the whole correction is bounded by the diagonal
+total weight plus the off-diagonal heuristic main term,
+`|∑_P wₚ(valₚ−mainₚ)| ≤ (∑_{diag}|wₚ|) + |∑_{¬diag} wₚ(−mainₚ)|`.
+So `s1`'s analytic obligation `correction = o(main)` reduces to the two clean
+estimates `∑_{diag}|coeff| = o(main)` (divisor-sum size) and
+`∑_{¬diag} coeff·main = o(main)` (singular-series discrepancy). -/
+theorem correction_abs_bound {ι : Type*} (s : Finset ι) (w val main : ι → ℝ)
+    (diag : ι → Prop) [DecidablePred diag]
+    (hvanish : ∀ P ∈ s, ¬ diag P → val P = 0)
+    (herr : ∀ P ∈ s.filter diag, |val P - main P| ≤ 1) :
+    |∑ P ∈ s, w P * (val P - main P)|
+      ≤ (∑ P ∈ s.filter diag, |w P|)
+        + |∑ P ∈ s.filter (fun P => ¬ diag P), w P * (- main P)| := by
+  rw [correction_split_offdiag s w val main diag hvanish]
+  refine (abs_add_le _ _).trans ?_
+  gcongr
+  exact diag_error_bound (s.filter diag) w val main herr
+
 end BoundedGaps.Sieve
