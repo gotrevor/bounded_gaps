@@ -677,6 +677,32 @@ theorem lattice_count_offdiag_vanish_of_lt {ι : Type*} (l : List ι) (q h : ι 
   rw [Nat.ModEq, Nat.mod_eq_of_lt hip, Nat.mod_eq_of_lt hjp] at hcon
   exact hcon
 
+/-- **Off-diagonal vanishing under the W-trick (the real discharge).** With
+`W` divisible by every prime `≤ D₀` (the GPY sieve modulus), the `i`-th sieve
+modulus `q i` coprime to `W`, and the shifts bounded `h i, h j ≤ D₀` and distinct,
+*non-coprimality* of two moduli `q i, q j` forces the lattice count to `0`. Reason:
+a shared prime `p ∣ q i, q j` cannot divide `W` (it would divide `gcd(q i, W) = 1`),
+so `p > D₀ ≥ h i, h j`; then `lattice_count_offdiag_vanish_of_lt` applies. So under
+the W-trick only *pairwise-coprime* moduli survive — `sum_restrict_offdiag_vanish`
+restricts the expansion to the coprime diagonal. -/
+theorem lattice_count_offdiag_vanish_Wtrick {ι : Type*} (l : List ι) (q h : ι → ℕ)
+    (S : Finset ℕ) {i j : ι} (hi : i ∈ l) (hj : j ∈ l) (D₀ W : ℕ)
+    (hWdvd : ∀ p, p.Prime → p ≤ D₀ → p ∣ W)
+    (hcopi : Nat.Coprime (q i) W) (hncop : ¬ Nat.Coprime (q i) (q j))
+    (hbi : h i ≤ D₀) (hbj : h j ≤ D₀) (hij : h i ≠ h j) :
+    (S.filter (fun m => ∀ k ∈ l, q k ∣ (m + h k))).card = 0 := by
+  obtain ⟨p, hp, hpdvd⟩ := Nat.exists_prime_and_dvd hncop
+  have hpi : p ∣ q i := hpdvd.trans (Nat.gcd_dvd_left _ _)
+  have hpj : p ∣ q j := hpdvd.trans (Nat.gcd_dvd_right _ _)
+  have hpD : D₀ < p := by
+    by_contra hle
+    have hpW : p ∣ W := hWdvd p hp (not_lt.mp hle)
+    have hcontra : p ∣ Nat.gcd (q i) W := Nat.dvd_gcd hpi hpW
+    rw [hcopi] at hcontra
+    exact hp.ne_one (Nat.dvd_one.mp hcontra)
+  exact lattice_count_offdiag_vanish_of_lt l q h S hi hj hpi hpj hij
+    (lt_of_le_of_lt hbi hpD) (lt_of_le_of_lt hbj hpD)
+
 /-- **Off-diagonal vanishing in the expansion form.** The exact lattice count
 appearing in `sieveSum_selberg_nu_separable_expand` (and the theta sister) is
 `#{m ∈ S : ∀i, (P i).1 ∣ (m+hᵢ) ∧ (P i).2 ∣ (m+hᵢ)}`. If some value `p` divides
