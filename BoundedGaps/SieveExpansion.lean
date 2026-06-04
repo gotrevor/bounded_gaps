@@ -93,4 +93,36 @@ theorem lambdaTransform_pair_block (S : Finset ℕ) (hS : 0 ∉ S)
       (fun d => (moebius d : ℝ) * f (Real.log d / Real.log R))
       (fun e => (moebius e : ℝ) * g (Real.log e / Real.log R))
 
+/-- **Sub-step (a), multidimensional, pointwise.**
+The separable Selberg weight `ν_sep(n) = (∏ᵢ λ_{Fᵢ}(n+hᵢ))²` opens
+coordinate-by-coordinate into a **divisor-tuple double sum**: each pair
+`(dᵢ, eᵢ)` of divisors of `n+hᵢ` contributes
+`μ(dᵢ)μ(eᵢ) Fᵢ(log dᵢ/log R) Fᵢ(log eᵢ/log R)`. The tuple `P i = (dᵢ, eᵢ)`
+ranges over `∏ᵢ ((n+hᵢ).divisors ×ˢ (n+hᵢ).divisors)` (`Fintype.piFinset`).
+This is the Polymath8b §3 (sfg-1) opening, *before* summing over the block and
+swapping (which produces the lattice-point counts — see
+`ANALYTIC_AXIOM_BURNDOWN.md` sub-step (a)). -/
+theorem selberg_nu_separable_expand_pointwise (k : ℕ) (Fs : Fin k → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (n : ℕ) :
+    selberg_nu_separable k Fs H R n
+      = ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            (n + H.getD i.val 0).divisors ×ˢ (n + H.getD i.val 0).divisors),
+          ∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Fs i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Fs i (Real.log (P i).2 / Real.log R)) := by
+  classical
+  unfold selberg_nu_separable
+  rw [sq, ← Finset.prod_mul_distrib]
+  have hsq : ∀ i : Fin k,
+      lambdaTransform (Fs i) R (n + H.getD i.val 0)
+          * lambdaTransform (Fs i) R (n + H.getD i.val 0)
+        = ∑ de ∈ (n + H.getD i.val 0).divisors ×ˢ (n + H.getD i.val 0).divisors,
+            ((moebius de.1 : ℝ) * Fs i (Real.log de.1 / Real.log R))
+              * ((moebius de.2 : ℝ) * Fs i (Real.log de.2 / Real.log R)) := by
+    intro i
+    unfold lambdaTransform
+    rw [Finset.sum_mul_sum, Finset.sum_product]
+  simp_rw [hsq]
+  rw [Finset.prod_univ_sum]
+
 end BoundedGaps.Sieve
