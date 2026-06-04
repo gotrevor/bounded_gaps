@@ -1292,6 +1292,118 @@ theorem mertens2_lower_of (N : ℕ) (hN : 3 ≤ N) (C : ℝ) (hC : 0 ≤ C)
     rw [← mul_one_div]; exact mul_le_mul_of_nonneg_left htel hC
   linarith [hbig, hlead, hCtel, hterm1]
 
+/-! ## A convergent-series brick `∑_{n≤N} (log n)/n² = O(1)`
+
+A reusable analytic estimate (uniform in `N`), via the same `∫ ↔ ∑` comparison machinery
+(`AntitoneOn.sum_le_integral_Ico`) used for the Mertens-2nd core. Antiderivative
+`∫ (log x)/x² dx = −(log x + 1)/x`. This is the central convergent prime-power-tail
+ingredient: the proper-prime-power tail `∑_{p^k≤N, k≥2}(log p)/p^k`, after the
+`Chebyshev.sum_PrimePow_eq_sum_sum` regrouping and a geometric `∑_{k≥2}n^{-k} ≤ 1/(n(n-1)) ≤ 2/n²`
+bound, reduces to `∑_n (log n)/n² = O(1)` — the analytic heart of `prime_power_tail_le`. -/
+
+/-- antiderivative: `d/dx[−(log x + 1)/x] = (log x)/x²` for `x ≠ 0`. -/
+theorem hasDerivAt_neg_log_succ_div {x : ℝ} (hx : x ≠ 0) :
+    HasDerivAt (fun t => -(Real.log t + 1) / t) (Real.log x / x ^ 2) x := by
+  have hlog : HasDerivAt Real.log x⁻¹ x := Real.hasDerivAt_log hx
+  have hnum : HasDerivAt (fun t => -(Real.log t + 1)) (-(x⁻¹)) x :=
+    (hlog.add_const (1 : ℝ)).neg
+  have hid : HasDerivAt (fun t : ℝ => t) 1 x := hasDerivAt_id x
+  have hquot := hnum.div hid hx
+  convert hquot using 1
+  field_simp
+  ring
+
+/-- `d/dx[(log x)/x²] = (1 − 2 log x)/x³`. -/
+theorem hasDerivAt_log_div_sq {x : ℝ} (hx : x ≠ 0) :
+    HasDerivAt (fun t => Real.log t / t ^ 2) ((1 - 2 * Real.log x) / x ^ 3) x := by
+  have hlog : HasDerivAt Real.log x⁻¹ x := Real.hasDerivAt_log hx
+  have hsq : HasDerivAt (fun t : ℝ => t ^ 2) (2 * x) x := by simpa using hasDerivAt_pow 2 x
+  have hquot := hlog.div hsq (pow_ne_zero 2 hx)
+  convert hquot using 1
+  field_simp
+
+/-- `(log x)/x²` is continuous on `[2, N]`. -/
+theorem continuousOn_log_div_sq {N : ℕ} :
+    ContinuousOn (fun x : ℝ => Real.log x / x ^ 2) (Set.Icc 2 (N : ℝ)) := by
+  apply ContinuousOn.div
+  · exact (Real.continuousOn_log.mono (by
+      intro x hx; simp only [Set.mem_Icc] at hx
+      simp only [Set.mem_compl_iff, Set.mem_singleton_iff]; intro h; rw [h] at hx; linarith [hx.1]))
+  · exact (continuousOn_id.pow 2)
+  · intro x hx
+    simp only [Set.mem_Icc] at hx
+    have : (0 : ℝ) < x := by linarith [hx.1]
+    positivity
+
+/-- `(log x)/x²` is antitone on `[2, N]` (derivative `(1 − 2 log x)/x³ ≤ 0` as `log x ≥ log 2 > ½`). -/
+theorem antitoneOn_log_div_sq {N : ℕ} :
+    AntitoneOn (fun x : ℝ => Real.log x / x ^ 2) (Set.Icc 2 (N : ℝ)) := by
+  apply antitoneOn_of_deriv_nonpos (convex_Icc _ _) continuousOn_log_div_sq
+  · intro x hx
+    rw [interior_Icc, Set.mem_Ioo] at hx
+    exact (hasDerivAt_log_div_sq (by linarith [hx.1] : x ≠ 0)).differentiableAt.differentiableWithinAt
+  · intro x hx
+    rw [interior_Icc, Set.mem_Ioo] at hx
+    have hx2 : (2 : ℝ) ≤ x := le_of_lt hx.1
+    rw [(hasDerivAt_log_div_sq (by linarith : x ≠ 0)).deriv]
+    have hlog : Real.log 2 ≤ Real.log x := Real.log_le_log (by norm_num) hx2
+    have hlog2 : (0.5 : ℝ) < Real.log 2 := by have := Real.log_two_gt_d9; linarith
+    have hx3 : (0 : ℝ) < x ^ 3 := by positivity
+    apply div_nonpos_of_nonpos_of_nonneg _ (le_of_lt hx3)
+    linarith
+
+/-- `∫_2^N (log x)/x² dx = −(log N + 1)/N + (log 2 + 1)/2`. -/
+theorem integral_log_div_sq {N : ℕ} (hN : 2 ≤ N) :
+    ∫ x in (2 : ℝ)..(N : ℝ), Real.log x / x ^ 2
+      = -(Real.log N + 1) / N + (Real.log 2 + 1) / 2 := by
+  have h2N : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  have hderiv : ∀ x ∈ Set.uIcc (2 : ℝ) (N : ℝ),
+      HasDerivAt (fun t => -(Real.log t + 1) / t) (Real.log x / x ^ 2) x := by
+    intro x hx
+    rw [Set.uIcc_of_le h2N, Set.mem_Icc] at hx
+    exact hasDerivAt_neg_log_succ_div (by linarith [hx.1])
+  have hint : IntervalIntegrable (fun x : ℝ => Real.log x / x ^ 2) MeasureTheory.volume 2 N := by
+    apply ContinuousOn.intervalIntegrable
+    rw [Set.uIcc_of_le h2N]; exact continuousOn_log_div_sq
+  rw [intervalIntegral.integral_eq_sub_of_hasDerivAt hderiv hint]
+  have hN0 : (N : ℝ) ≠ 0 := by positivity
+  field_simp
+  ring
+
+/-- reindex: `∑_{m∈Icc 3 N}(log m)/m² = ∑_{i∈Ico 2 N}(log(i+1))/(i+1)²`. -/
+theorem reindex_log_sq (N : ℕ) :
+    ∑ m ∈ Finset.Icc 3 N, Real.log (m : ℝ) / (m : ℝ) ^ 2
+      = ∑ i ∈ Finset.Ico 2 N, Real.log ((i : ℝ) + 1) / ((i : ℝ) + 1) ^ 2 := by
+  induction N with
+  | zero => simp
+  | succ N ih =>
+    rcases Nat.lt_or_ge N 2 with h | h
+    · interval_cases N <;> simp
+    · rw [Finset.sum_Icc_succ_top (by omega : 3 ≤ N + 1),
+          Finset.sum_Ico_succ_top (by omega : 2 ≤ N), ih]
+      push_cast; ring_nf
+
+/-- **convergent-series bound**: `∑_{n=2}^N (log n)/n² ≤ (log 2)/4 + (log 2 + 1)/2`,
+uniform in `N` (`≈ 1.02`). The analytic heart of the prime-power tail bound. -/
+theorem sum_log_div_sq_le {N : ℕ} (hN : 2 ≤ N) :
+    ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) / (n : ℝ) ^ 2
+      ≤ Real.log 2 / 4 + (Real.log 2 + 1) / 2 := by
+  have hcomp := AntitoneOn.sum_le_integral_Ico (a := 2) (b := N) hN antitoneOn_log_div_sq
+  simp only [Nat.cast_ofNat] at hcomp
+  rw [integral_log_div_sq hN] at hcomp
+  push_cast at hcomp
+  rw [← reindex_log_sq N, neg_div] at hcomp
+  have hset : Finset.Icc 2 N = insert 2 (Finset.Icc 3 N) := by
+    ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
+  have hnotmem : (2 : ℕ) ∉ Finset.Icc 3 N := by simp [Finset.mem_Icc]
+  rw [hset, Finset.sum_insert hnotmem]
+  have hN0 : (0 : ℝ) ≤ (Real.log N + 1) / N := by
+    have : (0 : ℝ) ≤ Real.log N := Real.log_nonneg (by exact_mod_cast (by omega : 1 ≤ N))
+    positivity
+  have h2 : ((2 : ℕ) : ℝ) = 2 := by norm_num
+  rw [h2, show (Real.log 2) / (2 : ℝ) ^ 2 = Real.log 2 / 4 from by norm_num]
+  linarith [hcomp]
+
 /-! ## The headline upper bound `∑_{n≤N} μ²(n)/φ(n) = O(log N)` (conditional)
 
 Final assembly of the upper half. `mertens_prod_upper` dominates `∑ μ²/φ` by the finite
