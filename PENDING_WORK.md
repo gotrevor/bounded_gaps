@@ -424,3 +424,16 @@ two of them:
    `correction_abs_bound` already routes the correction to exactly (leaf 2 diag weight) + (this
    off-diag main). Attack: singular-series discrepancy + W-trick prime gain; needs `W=∏_{p≤D₀}p`,
    `M=(B−A)/W`, `R=x^{θ/2}` parameter plumbing. NOT a clean isolated lemma — coupled to 𝔖(H).
+
+### Witness-axiom thread — feasibility probe result (2026-06-04 lap N+2)
+Probed discharging `mk_54_witness_under_EH` (needs `Mk 54 > 4`) via the `Mk_gt_of_symWeight_witness_match_parts`
++ explicit symmetric witness route (as `Mk_200_gt_4` does). **Riskiest assumption FAILS:**
+`tools/mk/gen_witness7.py` (degree D=7) sweeps K≥160 and prints "no positive pivot (M_K≤4)" for
+small K — i.e. a degree-7 symmetric witness does NOT reach 4 at k=54 (the achievable Rayleigh bound
+grows with k; k=200 is near the deg-7 threshold). To get `Mk 54 > 4` (true value 4.00238, Polymath8b)
+needs a HIGHER-degree witness (D≥8 ⟹ much larger Gram `native_decide`) AND still rests on the
+`denom_bridge`/`num_bridge` realizability axioms (the central gap, on Aristotle). So this thread is a
+heavy multi-lap lift, not a clean lap win. Same applies a fortiori to `mk_5511`(>6)/`mk_41588`(>8)/etc.
+(higher thresholds). Conclusion: the `mk_*_witness` axioms are gated on the bridge axioms + a
+higher-degree witness pipeline; defer until the bridge axioms land. Monotonicity of `Mk` does NOT help
+(k<200 witnesses need k-specific constructions; k>200 ones need thresholds >4).
