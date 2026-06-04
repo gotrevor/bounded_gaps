@@ -753,4 +753,27 @@ theorem le_sum_log {N : ℕ} (hN : 1 ≤ N) :
     rw [Finset.mem_Icc] at hm
     exact Real.log_nonneg (by exact_mod_cast hm.1)
 
+/-! ### Floor decomposition `⌊N/n⌋ = N/n − frac`
+
+To pass from `∑_n Λ(n)·⌊N/n⌋` (the hyperbola identity) to `N·∑_n Λ(n)/n`, one uses
+`(N:ℝ)/n − 1 ≤ ⌊N/n⌋ ≤ (N:ℝ)/n`; the `O(1)·n` slack is controlled by the Chebyshev
+`ψ(N) = ∑_{n≤N} Λ(n) = O(N)` bound (next sharp-route brick). -/
+
+/-- `⌊N/n⌋ ≤ N/n` over `ℝ`. -/
+theorem cast_div_le_self (N n : ℕ) : ((N / n : ℕ) : ℝ) ≤ (N : ℝ) / (n : ℝ) :=
+  Nat.cast_div_le
+
+/-- `N/n − 1 ≤ ⌊N/n⌋` over `ℝ` (for `1 ≤ n`). -/
+theorem sub_one_le_cast_div (N n : ℕ) (hn : 1 ≤ n) :
+    (N : ℝ) / (n : ℝ) - 1 ≤ ((N / n : ℕ) : ℝ) := by
+  have hn0 : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
+  have hdm : n * (N / n) + N % n = N := Nat.div_add_mod N n
+  have hmod : N % n < n := Nat.mod_lt N hn
+  have hlt : (N : ℝ) < (n : ℝ) * ((N / n : ℕ) : ℝ) + (n : ℝ) := by
+    have h1 : (N : ℝ) = (n : ℝ) * ((N / n : ℕ) : ℝ) + ((N % n : ℕ) : ℝ) := by exact_mod_cast hdm.symm
+    have h2 : ((N % n : ℕ) : ℝ) < (n : ℝ) := by exact_mod_cast hmod
+    linarith
+  rw [div_sub_one (ne_of_gt hn0), div_le_iff₀ hn0]
+  nlinarith [hlt]
+
 end BoundedGaps.Mertens
