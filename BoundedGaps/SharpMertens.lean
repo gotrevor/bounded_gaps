@@ -449,3 +449,58 @@ theorem sharp_mertens_tendsto
   have hlog0 : Real.log N ≠ 0 := ne_of_gt (lt_of_lt_of_le one_pos hlogN)
   rw [sum_g_decomp N hN1]
   field_simp
+
+/-! ## Discharging summability from a uniform bound
+
+The two summability hypotheses of `sharp_mertens_tendsto` reduce to *uniform
+partial-sum bounds* (Euler-product estimates of the kind Aristotle handles). Once
+the bound `∑_{e≤N}|b(e)| ≤ C` (Aristotle `830e5129`) ports, `summable_norm_bAF_of_bound`
+turns it into `Summable ‖b‖`, discharging the first hypothesis; the `log`-weighted
+companion is identical. -/
+
+/-- General Icc→range bridge for a function vanishing at `0`:
+`∑_{e=1}^N g(e) = ∑_{n<N+1} g(n)`. -/
+lemma sum_Icc_eq_sum_range_succ {g : ℕ → ℝ} (hg0 : g 0 = 0) (N : ℕ) :
+    ∑ e ∈ Finset.Icc 1 N, g e = ∑ n ∈ Finset.range (N + 1), g n := by
+  rw [Finset.sum_range_succ', hg0, add_zero]
+  refine Finset.sum_nbij' (fun e => e - 1) (fun i => i + 1) ?_ ?_ ?_ ?_ ?_
+  · intro e he; simp only [Finset.mem_Icc, Finset.mem_range] at *; omega
+  · intro i hi; simp only [Finset.mem_Icc, Finset.mem_range] at *; omega
+  · intro e he; simp only [Finset.mem_Icc] at he; show e - 1 + 1 = e; omega
+  · intro i _; show i + 1 - 1 = i; omega
+  · intro e he; simp only [Finset.mem_Icc] at he
+    show g e = g (e - 1 + 1)
+    rw [show e - 1 + 1 = e from by omega]
+
+/-- `‖b(0)‖ = 0`. -/
+lemma norm_bAF_zero : ‖bAF 0‖ = 0 := by
+  rw [show bAF 0 = (0 : ℝ) from ArithmeticFunction.map_zero, norm_zero]
+
+/-- **Summability of `‖b‖` from a uniform partial-sum bound.** If `∑_{e≤N}‖b(e)‖ ≤ C`
+for all `N`, then `‖b‖` is summable. -/
+theorem summable_norm_bAF_of_bound {C : ℝ}
+    (hC : ∀ N, ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ ≤ C) : Summable (fun n => ‖bAF n‖) := by
+  apply summable_of_sum_range_le (fun n => norm_nonneg _)
+  intro n
+  cases n with
+  | zero => simpa using hC 0
+  | succ m =>
+    rw [← sum_Icc_eq_sum_range_succ (g := fun i => ‖bAF i‖) norm_bAF_zero m]
+    exact hC m
+
+/-- **Companion: summability of the `log`-weighted series from its bound.** -/
+theorem summable_norm_bAF_log_of_bound {C : ℝ}
+    (hC : ∀ N, ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ * |Real.log (e : ℝ)| ≤ C) :
+    Summable (fun n => ‖bAF n‖ * |Real.log (n : ℝ)|) := by
+  apply summable_of_sum_range_le (fun n => by positivity)
+  intro n
+  cases n with
+  | zero => simpa using hC 0
+  | succ m =>
+    calc ∑ i ∈ Finset.range (m + 1), ‖bAF i‖ * |Real.log (i : ℝ)|
+        = ∑ e ∈ Finset.Icc 1 m, ‖bAF e‖ * |Real.log (e : ℝ)| :=
+          (sum_Icc_eq_sum_range_succ (g := fun i => ‖bAF i‖ * |Real.log (i : ℝ)|)
+            (by simp [norm_bAF_zero]) m).symm
+      _ ≤ C := hC m
+
+end BoundedGaps.SharpMertens
