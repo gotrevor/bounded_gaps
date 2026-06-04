@@ -1443,4 +1443,75 @@ theorem gpy_diagonal_asymptotic_form_bilinear (T R : Finset ℕ) (g₁ g₂ : �
     ring
   rw [hexp, hmu, one_mul]
 
+/-- **Cross heuristic main term in canonical (squarefree-`z`) form.** The
+canonical-form analogue of `heuristic_main_term_diagonalized_bilinear`, using
+`gpy_diagonal_asymptotic_form_bilinear` for the per-coordinate factor: one
+`(j, j')` cross block of the heuristic GPY main term equals
+`M · ∏ᵢ ∑_{r sf} (φ(r)/r²) z₁ᵢᵣ z₂ᵢᵣ` with `z` the coprime-restricted Möbius
+sums of `Gs₁ᵢ, Gs₂ᵢ`. This is the fully asymptotic-ready object the `R→∞`
+limit consumes per coordinate. -/
+theorem heuristic_main_term_diagonalized_bilinear_canonical {k : ℕ}
+    (D Rset : Fin k → Finset ℕ) (Gs₁ Gs₂ : Fin k → ℝ → ℝ) (R M : ℝ)
+    (hD : ∀ i, ∀ d ∈ D i, 1 ≤ d)
+    (hR : ∀ i, ∀ d ∈ D i, ∀ r, r ∣ d → r ∈ Rset i) :
+    ∑ P ∈ Fintype.piFinset (fun i => D i ×ˢ D i),
+        (∏ i : Fin k,
+          ((moebius (P i).1 : ℝ) * Gs₁ i (Real.log (P i).1 / Real.log R))
+            * ((moebius (P i).2 : ℝ) * Gs₂ i (Real.log (P i).2 / Real.log R)))
+        * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))
+      = M * ∏ i : Fin k, ∑ r ∈ (Rset i).filter (fun r => Squarefree r),
+          ((Nat.totient r : ℝ) / (r : ℝ) ^ 2)
+          * ((∑ s ∈ (((D i).filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s),
+              (moebius s : ℝ) * Gs₁ i (Real.log ((r * s : ℕ) : ℝ) / Real.log R) / (s : ℝ))
+             * (∑ s ∈ (((D i).filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s),
+              (moebius s : ℝ) * Gs₂ i (Real.log ((r * s : ℕ) : ℝ) / Real.log R) / (s : ℝ))) := by
+  classical
+  rw [piFinset_lattice_main_factor (fun i => D i ×ˢ D i)
+      (fun i de => ((moebius de.1 : ℝ) * Gs₁ i (Real.log de.1 / Real.log R))
+        * ((moebius de.2 : ℝ) * Gs₂ i (Real.log de.2 / Real.log R))) M]
+  congr 1
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  rw [Finset.sum_product]
+  exact gpy_diagonal_asymptotic_form_bilinear (D i) (Rset i)
+    (fun d => Gs₁ i (Real.log d / Real.log R))
+    (fun e => Gs₂ i (Real.log e / Real.log R)) (hD i) (hR i)
+
+/-- **Full `selberg_nu` heuristic main term in canonical form.** The capstone of
+the algebraic diagonalization: combining `heuristic_main_term_diagonalized_bilinear_canonical`
+over the `∑_{j,j'} cⱼcⱼ'` basis combination (at the concrete sieve lattice
+`D = Rset = sieveDivisors`), the heuristic GPY main term of the general `J`-basis
+Selberg sieve equals
+`∑_{j,j'} cⱼcⱼ' · M · ∏ᵢ ∑_{r sf} (φ(r)/r²) z₁ᵢᵣ z₂ᵢᵣ`,
+each per-coordinate factor a sum over squarefree `r` of `(φ(r)/r²)` times a
+product of coprime-restricted Möbius sums of `Fⱼᵢ, Fⱼ'ᵢ`. This is the exact
+object whose `R→∞` asymptotic (sub-step (c)) yields the `Mₖ(F)` GPY constant —
+the entire algebraic reduction of the (non-separable, general) main term is now
+machine-checked. -/
+theorem heuristic_main_selberg_nu_canonical (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (M : ℝ) :
+    (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+        ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+          * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      = ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          (M * ∏ i : Fin k, ∑ r ∈ (sieveDivisors H i.val b W x).filter (fun r => Squarefree r),
+            ((Nat.totient r : ℝ) / (r : ℝ) ^ 2)
+            * ((∑ s ∈ (((sieveDivisors H i.val b W x).filter (fun d => r ∣ d)).image
+                  (fun d => d / r)).filter (fun s => Nat.Coprime r s),
+                (moebius s : ℝ) * Fs j i (Real.log ((r * s : ℕ) : ℝ) / Real.log R) / (s : ℝ))
+               * (∑ s ∈ (((sieveDivisors H i.val b W x).filter (fun d => r ∣ d)).image
+                  (fun d => d / r)).filter (fun s => Nat.Coprime r s),
+                (moebius s : ℝ) * Fs j' i (Real.log ((r * s : ℕ) : ℝ) / Real.log R) / (s : ℝ)))) := by
+  refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
+  rw [heuristic_main_term_diagonalized_bilinear_canonical
+    (fun i => sieveDivisors H i.val b W x) (fun i => sieveDivisors H i.val b W x)
+    (fun i => Fs j i) (fun i => Fs j' i) R M
+    (fun _ _ hd => sieveDivisors_pos hd)
+    (fun _ _ hd r hr => sieveDivisors_dvd_closed hd hr)]
+
 end BoundedGaps.Sieve
