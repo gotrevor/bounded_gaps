@@ -186,6 +186,47 @@ Large Sieve, because:
 s1 (unconditional) sieve asymptotic** *before* the Large Sieve. Same depth of
 nut, but EH-free payoff and a cleaner mathlib-shaped prerequisite.
 
+## Sub-step (a) DONE, (b) advancing (2026-06-04, `BoundedGaps/SieveExpansion.lean`)
+
+The `s1` decomposition is being executed. New file `SieveExpansion.lean`, all
+theorems `#print axioms = [propext, Classical.choice, Quot.sound]`:
+
+- **Sub-step (a) — DONE.** `sieveSum_selberg_nu_separable_expand` is the full
+  algebraic opening (Polymath8b §3 eqn (sfg-1)): for `0 < x`,
+  `sieveSum ν_sep b W x = ∑_{P∈∏ᵢ(sieveDivisors)²} (∏ᵢ μ(dᵢ)Fᵢ μ(eᵢ)Fᵢ) ·
+  #{m∈block : ∀i, dᵢ∣(m+hᵢ) ∧ eᵢ∣(m+hᵢ)}` with `P i = (dᵢ,eᵢ)`. Supporting
+  bricks: `divisor_pair_expand` (single-coord), `prod_sum_active_expand` (the
+  **`Fintype`-indexed swap workhorse**, the real engine), `selberg_nu_separable_
+  expand_pointwise`, `lambdaTransform_pair_block`. Key mathlib unlocks:
+  `Finset.prod_univ_sum` (product-of-sums → piFinset sum), `Fintype.prod_ite_zero`
+  (collapse the indicator product to a single `∀`-condition), `Finset.filter_product`.
+- **Sub-step (b) — partly built, partly on mathlib, partly Aristotle.**
+  - `lattice_count_lcm`: collapses each coordinate's `dᵢ∣ ∧ eᵢ∣` to the single
+    GPY modulus `[dᵢ,eᵢ] = lcm(dᵢ,eᵢ)`.
+  - `crt_combine`: for coprime `W,Q`, the joint `m≡b(W) ∧ Q∣(m+h)` is one class
+    mod `W·Q` (via `Nat.chineseRemainder` + `Nat.modEq_and_modEq_iff_modEq_mul`).
+  - **mathlib HAS the interval AP-count** (`Nat.Ioc_filter_modEq_card` /
+    `Nat.Ico_filter_modEq_card`, `Mathlib/Data/Int/CardIntervalMod.lean`): the
+    count of an AP mod `M` in an interval is `⌊·⌋−⌊·⌋`, exact. So the
+    single-modulus count + O(1) error is mathlib-immediate. The **end-to-end**
+    bound `|#{m∈Icc A B : m≡b(W) ∧ Q∣(m+h)} − (B+1−A)/(WQ)| ≤ 1` is on Aristotle
+    (`6515817c`, `aristotle-crtcount/`).
+  - **Remaining (b) content** = the *multi-coordinate* CRT: combine `m≡b(W)` with
+    `∀i, qᵢ∣(m+hᵢ)` (`qᵢ=[dᵢ,eᵢ]`) into one modulus. Clean only on the **coprime
+    diagonal** (`W, q₁,…,q_k` pairwise coprime — squarefree + W-trick); the
+    off-diagonal (`gcd(qᵢ,qⱼ)>1`) is the genuine error term and the bridge to (c).
+    Next: iterated CRT over `Fin k` under pairwise coprimality (mathlib
+    `ZMod.chineseRemainder` / iterate `crt_combine`).
+- **Sub-step (c)** — its 1-D core `∑μ²/φ = Θ(log N)` is **already done &
+  unconditional** (`BoundedGaps.Mertens.mertens_theta_log`, commit `e8b00d7`).
+  The remaining (c) content is the *weighted* convergence
+  `∑_{d≤R} (μ²(d)/φ(d))·F(log d/log R) ~ (∫₀¹F)·log R` (Abel summation against
+  the Mertens asymptotic) and its multidimensional/singular-series lift.
+
+**Net:** (a) is closed; (b) is reduced to the diagonal/off-diagonal CRT split
+with mathlib supplying the interval count; (c)'s 1-D keystone is in hand. The
+remaining nut is the off-diagonal error control + the multidim singular series.
+
 ## Next-level probe (2026-06-03): the 1D Mertens lemma is a weeks-scale on-ramp
 
 Took the test one level deeper — actually attempted the entry lemma in Lean
