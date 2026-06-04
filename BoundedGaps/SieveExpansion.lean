@@ -1640,4 +1640,55 @@ theorem gpy_bilinear_cauchy_schwarz (T R : Finset ℕ) (g₁ g₂ : ℕ → ℝ)
   rw [c0, c1, c2] at key
   exact key
 
+/-- **Diagonal coefficient reassembles the joint `F²`.** On the diagonal tuple
+(`Pᵢ.1 = Pᵢ.2 = dᵢ`, with `mᵢ = μ(dᵢ)`, `aᵢ = log dᵢ/log R`), summing the
+`selberg_nu` correction coefficient `∑_{j,j'} cⱼcⱼ' ∏ᵢ (mᵢFⱼᵢ(aᵢ))(mᵢFⱼ'ᵢ(aᵢ))`
+over the basis indices collapses to `(∏ᵢ mᵢ²)·F(a)²`, where `F = ∑ⱼ cⱼ∏ᵢFⱼᵢ` is
+the *joint* test function (`hFdecomp`).
+
+**Why this matters for analytic obligation #3** (`∑_{diag}|coeff| = o(main)`): the
+naive per-`(j,j')`-block factorization (`correction_weight_factor_split`) is loose
+because the simplex support lives on the joint `F`, not the individual `Fⱼᵢ`. This
+identity shows the `j`-sum *reassembles* `F(a)²`, which **is** simplex-supported
+(vanishes off `∑ᵢaᵢ ≤ 1`). So the diagonal size bound is really
+`∑_{d on simplex, sf} (∏ᵢμ(dᵢ)²)·F(log d/log R)²`, a single simplex-restricted
+sum — the correct (non-loose) substrate for the `o(main)` estimate. The square
+form also re-exposes positivity (`F(a)² ≥ 0`), consistent with the PSD diagonal. -/
+theorem selberg_nu_basis_diagonal_reassemble {k J : ℕ} (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (F : (Fin k → ℝ) → ℝ)
+    (hFdecomp : ∀ t : Fin k → ℝ, F t = ∑ j : Fin J, c j * ∏ i : Fin k, Fs j i (t i))
+    (m : Fin k → ℝ) (a : Fin k → ℝ) :
+    ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+        ∏ i : Fin k, (m i * Fs j i (a i)) * (m i * Fs j' i (a i))
+      = (∏ i : Fin k, (m i) ^ 2) * (F a) ^ 2 := by
+  classical
+  have hprod : ∀ (j j' : Fin J),
+      ∏ i : Fin k, (m i * Fs j i (a i)) * (m i * Fs j' i (a i))
+        = (∏ i : Fin k, (m i) ^ 2)
+          * ((∏ i : Fin k, Fs j i (a i)) * (∏ i : Fin k, Fs j' i (a i))) := by
+    intro j j'
+    rw [Finset.prod_congr rfl (fun i (_ : i ∈ Finset.univ) =>
+        (by ring : (m i * Fs j i (a i)) * (m i * Fs j' i (a i))
+          = (m i) ^ 2 * (Fs j i (a i) * Fs j' i (a i)))),
+      Finset.prod_mul_distrib, Finset.prod_mul_distrib]
+  calc ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∏ i : Fin k, (m i * Fs j i (a i)) * (m i * Fs j' i (a i))
+      = ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ((∏ i : Fin k, (m i) ^ 2)
+            * ((∏ i : Fin k, Fs j i (a i)) * (∏ i : Fin k, Fs j' i (a i)))) := by
+        refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
+        rw [hprod j j']
+    _ = (∏ i : Fin k, (m i) ^ 2) * ∑ j : Fin J, ∑ j' : Fin J,
+          c j * c j' * ((∏ i : Fin k, Fs j i (a i)) * (∏ i : Fin k, Fs j' i (a i))) := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl (fun j _ => ?_)
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl (fun j' _ => ?_)
+        ring
+    _ = (∏ i : Fin k, (m i) ^ 2) * (F a) ^ 2 := by
+        congr 1
+        rw [hFdecomp a, pow_two, Finset.sum_mul_sum]
+        refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
+        ring
+
 end BoundedGaps.Sieve
