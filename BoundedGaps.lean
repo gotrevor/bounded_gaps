@@ -12,6 +12,7 @@ for the math background.
 import BoundedGaps.Basic
 import BoundedGaps.Prerequisites
 import BoundedGaps.Sieve
+import BoundedGaps.SieveExpansion
 import BoundedGaps.Maynard
 import BoundedGaps.Zhang
 import BoundedGaps.Polymath8b
