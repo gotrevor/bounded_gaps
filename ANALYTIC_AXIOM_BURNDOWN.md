@@ -469,3 +469,13 @@ were used. The genuine multi-month nut is the **multidimensional / singular-seri
 (k-dim weighted Mertens → `α = I(F) = ∫_{R_k} F²`), then sub-step (d) IsLittleO assembly into
 `alphaBound`/`s1_holds_from_nonprime_asym`. Next-lap targets: (a) port/verify the Riemann axiom
 when `930e468a` returns (→ front #4 fully axiom-free); (b) state the k-dimensional weighted Mertens.
+
+### UPDATE (2026-06-04, later): front #4 FULLY AXIOM-CLEAN — axiom DISCHARGED
+Aristotle `930e468a` proved `riemann_sum_log_weight`; verified `#print axioms` clean in our
+v4.29.1 kernel and ported to `BoundedGaps/RiemannSumLogWeight.lean`. `weighted_mertens` /
+`weighted_mertens_of_contDiff` now `#print axioms` = `[propext, Classical.choice, Quot.sound]` —
+NO cited axioms. The 1-D weighted Mertens keystone is a complete machine-checked theorem.
+Next Aristotle job IN FLIGHT: `3e2b6a8d` (`aristotle-wmertens2d/`) = the 2-D simplex-coupled
+weighted Riemann model `∑_{mn≤R} F·G/(mn)/(log R)² → ∫₀¹F(x)∫₀^{1-x}G` (the analytic core of the
+k-dim lift). When it returns: verify + port, then build the arithmetic (coprimality + singular
+series) layer on top toward `s1_holds_from_nonprime_asym`.
