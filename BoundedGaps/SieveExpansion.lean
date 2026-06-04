@@ -165,6 +165,64 @@ noncomputable def sieveDivisors (H : List ℕ) (i b W : ℕ) (x : ℝ) : Finset 
   ((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).biUnion
     (fun n => (n + H.getD i 0).divisors)
 
+/-- **Two-family coordinate-product expansion** (the general (sfg-1) opening).
+For two test-function families `Gs, Hs`, the block-sum of the `k`-fold product
+`∏ᵢ λ_{Gsᵢ}(n+hᵢ)·λ_{Hsᵢ}(n+hᵢ)` opens into the divisor-lattice form, each
+tuple `P i = (dᵢ,eᵢ)` weighted by `μ(dᵢ)Gsᵢ·μ(eᵢ)Hsᵢ` times the lattice count.
+The separable headline is `Gs = Hs`; the general `selberg_nu` weight
+(`sieveSum_selberg_nu_expand`) is a finite `(j,j')`-combination of these
+(`Gs = Fs j`, `Hs = Fs j'`). -/
+theorem sieveSum_lambdaProd_expand (k : ℕ) (Gs Hs : Fin k → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (hx : 0 < x) :
+    (∑ n ∈ (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W),
+        ∏ i : Fin k, lambdaTransform (Gs i) R (n + H.getD i.val 0)
+          * lambdaTransform (Hs i) R (n + H.getD i.val 0))
+      = ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Gs i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Hs i (Real.log (P i).2 / Real.log R)))
+          * (((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+              (fun m => ∀ i : Fin k,
+                (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card := by
+  classical
+  set block := (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W) with hblock
+  have hpos : ∀ m ∈ block, ∀ i : Fin k, 0 < m + H.getD i.val 0 := by
+    intro m hm i
+    have hm' : m ∈ Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊ := (Finset.mem_filter.mp hm).1
+    have hceil : 1 ≤ ⌈x⌉₊ := Nat.one_le_ceil_iff.mpr hx
+    have : ⌈x⌉₊ ≤ m := (Finset.mem_Icc.mp hm').1
+    omega
+  have stepA : ∀ m ∈ block,
+      (∏ i : Fin k, lambdaTransform (Gs i) R (m + H.getD i.val 0)
+          * lambdaTransform (Hs i) R (m + H.getD i.val 0))
+        = ∏ i : Fin k, ∑ x' ∈ (sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x).filter
+              (fun de => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0)),
+            ((moebius x'.1 : ℝ) * Gs i (Real.log x'.1 / Real.log R))
+              * ((moebius x'.2 : ℝ) * Hs i (Real.log x'.2 / Real.log R)) := by
+    intro m hm
+    refine Finset.prod_congr rfl (fun i _ => ?_)
+    have hsub : (m + H.getD i.val 0).divisors ⊆ sieveDivisors H i.val b W x :=
+      Finset.subset_biUnion_of_mem (fun n => (n + H.getD i.val 0).divisors) hm
+    have hm0 : m + H.getD i.val 0 ≠ 0 := (hpos m hm i).ne'
+    have hset : (sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x).filter
+          (fun de => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
+        = (m + H.getD i.val 0).divisors ×ˢ (m + H.getD i.val 0).divisors := by
+      ext de
+      simp only [Finset.mem_filter, Finset.mem_product, Nat.mem_divisors]
+      refine ⟨fun ⟨_, hd1, hd2⟩ => ⟨⟨hd1, hm0⟩, hd2, hm0⟩, fun ⟨⟨hd1, _⟩, hd2, _⟩ => ?_⟩
+      exact ⟨⟨hsub (Nat.mem_divisors.mpr ⟨hd1, hm0⟩),
+              hsub (Nat.mem_divisors.mpr ⟨hd2, hm0⟩)⟩, hd1, hd2⟩
+    rw [hset]
+    simp only [lambdaTransform]
+    rw [Finset.sum_mul_sum, Finset.sum_product]
+  rw [Finset.sum_congr rfl stepA]
+  convert prod_sum_active_expand block
+    (fun i => sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x)
+    (fun i de m => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
+    (fun i de => ((moebius de.1 : ℝ) * Gs i (Real.log de.1 / Real.log R))
+              * ((moebius de.2 : ℝ) * Hs i (Real.log de.2 / Real.log R)))
+
 /-- **Sub-step (a) headline (separable weight).**
 The full Selberg sieve sum `∑_{n∈block} ν_sep(n)` opens into a divisor-lattice
 sum over tuples `P i = (dᵢ, eᵢ)` (each `dᵢ, eᵢ` ranging over the candidate set
@@ -228,6 +286,51 @@ theorem sieveSum_selberg_nu_separable_expand (k : ℕ) (Fs : Fin k → ℝ → �
     (fun i de m => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
     (fun i de => ((moebius de.1 : ℝ) * Fs i (Real.log de.1 / Real.log R))
               * ((moebius de.2 : ℝ) * Fs i (Real.log de.2 / Real.log R)))
+
+/-- **Sub-step (a) headline, GENERAL basis weight** (the actual `s1` weight).
+The Selberg sieve sum for the full `selberg_nu` (a squared finite linear
+combination `(∑ⱼ cⱼ ∏ᵢ λ_{Fⱼᵢ})²`) opens into a `(j,j')`-indexed combination of
+divisor-lattice sums: each pair of basis indices contributes
+`cⱼ·cⱼ'·∑_P (∏ᵢ μ(dᵢ)F_{j,i}·μ(eᵢ)F_{j',i})·#{lattice count}`. This is Polymath8b
+§3 eqn (sfg-1) for the genuine multidimensional weight — exactly the object
+`s1_holds_from_nonprime_asym` (`Sieve.lean`) must asymptotically estimate.
+Reduces to `sieveSum_lambdaProd_expand` per `(j,j')` after opening the square. -/
+theorem sieveSum_selberg_nu_expand (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (hx : 0 < x) :
+    sieveSum (selberg_nu k J c Fs H R) b W x
+      = ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+              sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+            (∏ i : Fin k,
+              ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+                * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+            * (((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+                (fun m => ∀ i : Fin k,
+                  (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card := by
+  classical
+  -- per-`n`: open the square into a `(j,j')` sum of coordinate products.
+  have hbasis : ∀ n, selberg_nu k J c Fs H R n
+      = ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∏ i : Fin k, lambdaTransform (Fs j i) R (n + H.getD i.val 0)
+            * lambdaTransform (Fs j' i) R (n + H.getD i.val 0) := by
+    intro n
+    unfold selberg_nu selberg_nu_basis
+    rw [sq, Finset.sum_mul_sum]
+    refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
+    rw [show (c j * ∏ i, lambdaTransform (Fs j i) R (n + H.getD i.val 0))
+          * (c j' * ∏ i, lambdaTransform (Fs j' i) R (n + H.getD i.val 0))
+        = c j * c j' * ((∏ i, lambdaTransform (Fs j i) R (n + H.getD i.val 0))
+            * (∏ i, lambdaTransform (Fs j' i) R (n + H.getD i.val 0))) from by ring,
+        ← Finset.prod_mul_distrib]
+  rw [sieveSum, Finset.sum_congr rfl (fun n _ => hbasis n)]
+  -- pull the finite `(j,j')` sums outside the `n`-sum, then apply the two-family lemma.
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun j _ => ?_)
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun j' _ => ?_)
+  rw [← Finset.mul_sum]
+  congr 1
+  exact sieveSum_lambdaProd_expand k (Fs j) (Fs j') H R b W x hx
 
 /-- `Nat.lcm a b ∣ c ↔ a ∣ c ∧ b ∣ c`. -/
 private theorem nat_lcm_dvd_iff (a b c : ℕ) : Nat.lcm a b ∣ c ↔ a ∣ c ∧ b ∣ c :=
