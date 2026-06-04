@@ -931,4 +931,225 @@ theorem mertens_prime_log_two_sided_of (N : ℕ) (hN : 1 ≤ N)
   rw [abs_le] at htwo ⊢
   constructor <;> linarith [htwo.1, htwo.2]
 
+/-! ## Sharp Mertens' second theorem `∑_{p≤N} 1/p = log log N + O(1)` (coefficient 1)
+
+The **second** Abel-summation step (weight `1/log n`) turns the sharp coefficient-1
+estimate `A n := ∑_{p≤n}(log p)/p = log n + O(1)` into the prime harmonic asymptotic
+`∑_{p≤N} 1/p = log log N + O(1)`, again with the *correct* coefficient `1` on
+`log log N` (the crude `mertens_second_term_bound` route loses it to `1 + 1/log 2`).
+This is exactly what makes the Euler product `∏_{p≤N}(1 + 1/(p−1)) = O(log N)`
+(hence `∑ μ²/φ = O(log N)`), since `exp(log log N + O(1)) = O(log N)` to the first
+power. The bound is stated conditionally on the sharp prime-log upper half
+(`A n ≤ log n + C`), which `mertens_prime_log_two_sided_of` supplies once the
+prime-power tail bound lands. -/
+
+/-- log-telescope identity: `∑_{2 ≤ n ≤ M}(1/log n − 1/log(n+1)) = 1/log 2 − 1/log(M+1)`. -/
+theorem log_telescope_eq : ∀ M : ℕ, 1 ≤ M →
+    ∑ n ∈ Finset.Icc 2 M, (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      = 1 / Real.log 2 - 1 / Real.log ((M : ℝ) + 1) := by
+  intro M hM
+  induction M, hM using Nat.le_induction with
+  | base => norm_num
+  | succ m hm ih =>
+    rw [Finset.sum_Icc_succ_top (by omega : 2 ≤ m + 1), ih]
+    have : ((m : ℝ) + 1) = ((m + 1 : ℕ) : ℝ) := by push_cast; ring
+    rw [this]; ring
+
+/-- log-telescope bound: `∑_{2 ≤ n ≤ N}(1/log n − 1/log(n+1)) ≤ 1/log 2`. -/
+theorem log_telescope_le (N : ℕ) :
+    ∑ n ∈ Finset.Icc 2 N, (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      ≤ 1 / Real.log 2 := by
+  rcases Nat.lt_or_ge N 1 with h | h
+  · have hN0 : N = 0 := by omega
+    subst hN0; simp only [show Finset.Icc 2 0 = ∅ from rfl, Finset.sum_empty]; positivity
+  · rw [log_telescope_eq N h]
+    have hN1 : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast h
+    have hlogpos : (0 : ℝ) < Real.log ((N : ℝ) + 1) := Real.log_pos (by linarith)
+    have : (0 : ℝ) ≤ 1 / Real.log ((N : ℝ) + 1) := by positivity
+    linarith
+
+/-- per-term leading bound: for `n ≥ 2`, `log n·(1/log n − 1/log(n+1)) ≤ 1/(n log n)`. -/
+theorem leading_term_bound (n : ℕ) (hn : 2 ≤ n) :
+    Real.log (n : ℝ) * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      ≤ 1 / ((n : ℝ) * Real.log (n : ℝ)) := by
+  have hn2 : (2 : ℝ) ≤ n := by exact_mod_cast hn
+  have hn0 : (0 : ℝ) < n := by linarith
+  have hL : 0 < Real.log (n : ℝ) := Real.log_pos (by linarith)
+  have hL' : 0 < Real.log ((n : ℝ) + 1) := Real.log_pos (by linarith)
+  have hLL : Real.log (n : ℝ) ≤ Real.log ((n : ℝ) + 1) := Real.log_le_log hn0 (by linarith)
+  have hdiff : Real.log ((n : ℝ) + 1) - Real.log (n : ℝ) ≤ 1 / (n : ℝ) := by
+    rw [← Real.log_div (by linarith) (by linarith)]
+    have heq : ((n : ℝ) + 1) / (n : ℝ) = 1 + 1 / (n : ℝ) := by field_simp
+    rw [heq]
+    have := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 1 + 1 / (n : ℝ) by positivity)
+    linarith
+  have hlhs : Real.log (n : ℝ) * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      = (Real.log ((n : ℝ) + 1) - Real.log (n : ℝ)) / Real.log ((n : ℝ) + 1) := by field_simp
+  rw [hlhs]
+  calc (Real.log ((n : ℝ) + 1) - Real.log (n : ℝ)) / Real.log ((n : ℝ) + 1)
+      ≤ (1 / (n : ℝ)) / Real.log ((n : ℝ) + 1) := by gcongr
+    _ = 1 / ((n : ℝ) * Real.log ((n : ℝ) + 1)) := by rw [div_div]
+    _ ≤ 1 / ((n : ℝ) * Real.log (n : ℝ)) :=
+        one_div_le_one_div_of_le (by positivity) (by nlinarith)
+
+/-- reindex: `∑_{m∈Icc 3 N} 1/(m log m) = ∑_{i∈Ico 2 N} 1/((i+1)log(i+1))`. -/
+theorem reindex_inv_log (N : ℕ) :
+    ∑ m ∈ Finset.Icc 3 N, 1 / ((m : ℝ) * Real.log (m : ℝ))
+      = ∑ i ∈ Finset.Ico 2 N, 1 / (((i : ℝ) + 1) * Real.log ((i : ℝ) + 1)) := by
+  induction N with
+  | zero => simp
+  | succ N ih =>
+    rcases Nat.lt_or_ge N 2 with h | h
+    · interval_cases N <;> simp
+    · rw [Finset.sum_Icc_succ_top (by omega : 3 ≤ N + 1),
+          Finset.sum_Ico_succ_top (by omega : 2 ≤ N), ih]
+      push_cast; ring_nf
+
+/-- leading sum: `∑_{n∈Icc 2 M} 1/(n log n) ≤ 1/(2 log2) + (loglog M − loglog 2)`, `M ≥ 2`.
+Folds `sum_one_div_n_log_n_le` (the `∫ dt/(t log t)` comparison) through `reindex_inv_log`,
+peeling the `n = 2` term. -/
+theorem leading_sum_bound (M : ℕ) (hM : 2 ≤ M) :
+    ∑ n ∈ Finset.Icc 2 M, 1 / ((n : ℝ) * Real.log (n : ℝ))
+      ≤ 1 / ((2 : ℝ) * Real.log 2) + (Real.log (Real.log M) - Real.log (Real.log 2)) := by
+  have hset : Finset.Icc 2 M = insert 2 (Finset.Icc 3 M) := by
+    ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
+  have hnotmem : (2 : ℕ) ∉ Finset.Icc 3 M := by simp [Finset.mem_Icc]
+  rw [hset, Finset.sum_insert hnotmem, reindex_inv_log M]
+  have hmain := sum_one_div_n_log_n_le (N := M) hM
+  push_cast; linarith [hmain]
+
+/-- **Second Abel-summation identity** (weight `1/log n`) for the prime-reciprocal sum:
+`∑_{p≤N} 1/p = (∑_{p≤N}(log p)/p)/log N + ∑_{1≤n≤N-1}(∑_{p≤n}(log p)/p)·(1/log n − 1/log(n+1))`.
+Pure rearrangement of `abel_summation_identity` with `aₙ = [n prime](log n)/n`,
+`wₙ = 1/log n` (the `n=1` weight `1/log 1 = 0` is harmless since `A₁ = 0`). -/
+theorem mertens2_abel (N : ℕ) :
+    ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, (1 : ℝ) / (p : ℝ)
+      = (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)) / Real.log (N : ℝ)
+        + ∑ n ∈ Finset.Icc 1 (N - 1),
+            (∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ))
+              * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1)) := by
+  have key : ∀ m : ℕ, (if m.Prime then Real.log (m : ℝ) / (m : ℝ) else 0) * (1 / Real.log (m : ℝ))
+      = if m.Prime then (1 : ℝ) / (m : ℝ) else 0 := by
+    intro m
+    by_cases hp : m.Prime
+    · simp only [hp, if_true]
+      have hm1 : (1 : ℝ) < m := by exact_mod_cast hp.one_lt
+      have hlog : Real.log (m : ℝ) ≠ 0 := ne_of_gt (Real.log_pos hm1)
+      have hm0 : (m : ℝ) ≠ 0 := by positivity
+      field_simp
+    · simp [hp]
+  have hfilter : ∀ M : ℕ, ∑ k ∈ Finset.Icc 1 M, (if k.Prime then Real.log (k : ℝ) / (k : ℝ) else 0)
+      = ∑ p ∈ (Finset.Icc 1 M).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ) := by
+    intro M; rw [Finset.sum_filter]
+  have habel := abel_summation_identity N
+      (fun n => if n.Prime then Real.log (n : ℝ) / (n : ℝ) else 0)
+      (fun n => 1 / Real.log (n : ℝ))
+  simp only [] at habel
+  push_cast at habel
+  have hLHS : ∑ n ∈ Finset.Icc 1 N,
+        (if n.Prime then Real.log (n : ℝ) / (n : ℝ) else 0) * (1 / Real.log (n : ℝ))
+      = ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, (1 : ℝ) / (p : ℝ) := by
+    rw [Finset.sum_congr rfl (fun n _ => key n), Finset.sum_filter]
+  rw [hLHS] at habel
+  rw [habel, hfilter N, mul_one_div]
+  have hsum : ∑ n ∈ Finset.Icc 1 (N - 1),
+        (∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ))
+          * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      = - ∑ n ∈ Finset.Icc 1 (N - 1),
+        (∑ k ∈ Finset.Icc 1 n, if k.Prime then Real.log (k : ℝ) / (k : ℝ) else 0)
+          * (1 / Real.log ((n : ℝ) + 1) - 1 / Real.log (n : ℝ)) := by
+    rw [← Finset.sum_neg_distrib]
+    refine Finset.sum_congr rfl (fun n _ => ?_)
+    rw [hfilter n]; ring
+  rw [hsum]; ring
+
+/-- **Sharp Mertens' second theorem (upper bound, coefficient 1), conditional on the sharp
+prime-log upper half.** Given `A n := ∑_{p≤n}(log p)/p ≤ log n + C` for all `n ≥ 1`
+(supplied by `mertens_prime_log_two_sided_of` with `C = log 4 + 5` once the prime-power
+tail bound lands), the second Abel step yields `∑_{p≤N} 1/p ≤ log log N + O(1)` with the
+*correct* leading coefficient `1` on `log log N`. -/
+theorem mertens2_upper_of (N : ℕ) (hN : 3 ≤ N) (C : ℝ) (hC : 0 ≤ C)
+    (hAupper : ∀ n, 1 ≤ n →
+        (∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)) ≤ Real.log n + C) :
+    ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, (1 : ℝ) / (p : ℝ)
+      ≤ Real.log (Real.log N)
+        + (1 + 2 * (C / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2) - Real.log (Real.log 2)) := by
+  rw [mertens2_abel N]
+  set A : ℕ → ℝ := fun n => ∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)
+    with hAdef
+  have hA0 : ∀ n, 0 ≤ A n := by
+    intro n; apply Finset.sum_nonneg; intro p hp
+    rw [Finset.mem_filter] at hp
+    exact div_nonneg (Real.log_nonneg (by exact_mod_cast hp.2.one_lt.le)) (Nat.cast_nonneg _)
+  have hlog2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  have hlogN : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast (by omega : 1 < N))
+  have hlogN2 : Real.log 2 ≤ Real.log N :=
+    Real.log_le_log (by norm_num) (by exact_mod_cast (by omega : (2 : ℕ) ≤ N))
+  have hterm1 : A N / Real.log N ≤ 1 + C / Real.log 2 := by
+    have h1 : A N / Real.log N ≤ (Real.log N + C) / Real.log N := by
+      gcongr; exact hAupper N (by omega)
+    rw [add_div, div_self (ne_of_gt hlogN)] at h1
+    have h3 : C / Real.log N ≤ C / Real.log 2 := div_le_div_of_nonneg_left hC hlog2 hlogN2
+    linarith
+  have hA1 : A 1 = 0 := by
+    rw [hAdef]; simp only
+    rw [show (Finset.Icc 1 1).filter Nat.Prime = ∅ from by decide, Finset.sum_empty]
+  have hsplit2 : ∑ n ∈ Finset.Icc 1 (N - 1),
+        A n * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      = ∑ n ∈ Finset.Icc 2 (N - 1),
+        A n * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1)) := by
+    refine (Finset.sum_subset ?_ ?_).symm
+    · intro x hx; rw [Finset.mem_Icc] at hx ⊢; omega
+    · intro x hx hxni
+      rw [Finset.mem_Icc] at hx hxni
+      have hx1 : x = 1 := by omega
+      subst hx1; rw [hA1]; ring
+  rw [hsplit2]
+  have hterm2 : ∑ n ∈ Finset.Icc 2 (N - 1),
+        A n * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      ≤ ∑ n ∈ Finset.Icc 2 (N - 1),
+        (1 / ((n : ℝ) * Real.log (n : ℝ))
+          + C * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))) := by
+    apply Finset.sum_le_sum
+    intro n hn
+    rw [Finset.mem_Icc] at hn
+    have hn2 : 2 ≤ n := hn.1
+    have hnR : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn2
+    have hln : 0 < Real.log (n : ℝ) := Real.log_pos (by linarith)
+    have hln1 : 0 < Real.log ((n : ℝ) + 1) := Real.log_pos (by linarith)
+    have hle : Real.log (n : ℝ) ≤ Real.log ((n : ℝ) + 1) :=
+      Real.log_le_log (by linarith) (by linarith)
+    have hbn : 0 ≤ 1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1) := by
+      rw [sub_nonneg]; exact one_div_le_one_div_of_le hln hle
+    have hAn := hAupper n (by omega)
+    calc A n * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+        ≤ (Real.log n + C) * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1)) :=
+          mul_le_mul_of_nonneg_right hAn hbn
+      _ = Real.log n * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+            + C * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1)) := by ring
+      _ ≤ 1 / ((n : ℝ) * Real.log (n : ℝ))
+            + C * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1)) := by
+          linarith [leading_term_bound n hn2]
+  have hbig : ∑ n ∈ Finset.Icc 2 (N - 1),
+        A n * (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1))
+      ≤ (∑ n ∈ Finset.Icc 2 (N - 1), 1 / ((n : ℝ) * Real.log (n : ℝ)))
+        + C * ∑ n ∈ Finset.Icc 2 (N - 1), (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1)) := by
+    refine le_trans hterm2 (le_of_eq ?_)
+    rw [Finset.sum_add_distrib, ← Finset.mul_sum]
+  have hlead := leading_sum_bound (N - 1) (by omega)
+  have htel := log_telescope_le (N - 1)
+  have hCtel : C * ∑ n ∈ Finset.Icc 2 (N - 1),
+      (1 / Real.log (n : ℝ) - 1 / Real.log ((n : ℝ) + 1)) ≤ C / Real.log 2 := by
+    rw [← mul_one_div]; exact mul_le_mul_of_nonneg_left htel hC
+  have hloglogmono : Real.log (Real.log ((N - 1 : ℕ) : ℝ)) ≤ Real.log (Real.log N) := by
+    have h2 : (2 : ℝ) ≤ ((N - 1 : ℕ) : ℝ) := by
+      have : (2 : ℕ) ≤ N - 1 := by omega
+      exact_mod_cast this
+    have hle1 : ((N - 1 : ℕ) : ℝ) ≤ (N : ℝ) := by
+      have : (N - 1 : ℕ) ≤ N := by omega
+      exact_mod_cast this
+    have hloglt : 0 < Real.log ((N - 1 : ℕ) : ℝ) := Real.log_pos (by linarith)
+    exact Real.log_le_log hloglt (Real.log_le_log (by linarith) hle1)
+  linarith [hbig, hlead, hCtel, hloglogmono, hterm1]
+
 end BoundedGaps.Mertens
