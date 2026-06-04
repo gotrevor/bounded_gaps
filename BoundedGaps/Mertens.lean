@@ -1778,4 +1778,27 @@ theorem mertens2_two_sided (N : ℕ) (hN : 3 ≤ N) :
   exact ⟨mertens2_lower_of N hN (Real.log 4 + 7) hC (fun n hn => mertens_prime_log_lower n hn),
     mertens2_upper_of N hN (Real.log 4 + 7) hC (fun n hn => mertens_prime_log_upper n hn)⟩
 
+/-- **`∑_{n≤N} μ²(n)/φ(n) = Θ(log N)`** in mathlib's idiomatic `IsTheta` form — the textbook
+statement of the headline, packaged for downstream consumers. Both `=O` directions come from
+the explicit two-sided `mertens_theta_log`. Unconditional, axiom-clean. -/
+theorem mertens_isTheta_log :
+    Asymptotics.IsTheta Filter.atTop
+      (fun N : ℕ => ∑ n ∈ Finset.Icc 1 N, mertensSummand n) (fun N : ℕ => Real.log N) := by
+  have hsum_nonneg : ∀ N : ℕ, 0 ≤ ∑ n ∈ Finset.Icc 1 N, mertensSummand n :=
+    fun N => Finset.sum_nonneg (fun n _ => mertensSummand_nonneg n)
+  constructor
+  · rw [Asymptotics.isBigO_iff]
+    refine ⟨Real.exp (1 + (1 + 2 * ((Real.log 4 + 7) / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2)
+              - Real.log (Real.log 2))), ?_⟩
+    filter_upwards [Filter.eventually_ge_atTop 3] with N hN
+    have hlogN : (0 : ℝ) ≤ Real.log N := Real.log_nonneg (by exact_mod_cast (by omega : 1 ≤ N))
+    rw [Real.norm_of_nonneg (hsum_nonneg N), Real.norm_of_nonneg hlogN]
+    exact (mertens_theta_log N hN).2
+  · rw [Asymptotics.isBigO_iff]
+    refine ⟨1, ?_⟩
+    filter_upwards [Filter.eventually_ge_atTop 3] with N hN
+    have hlogN : (0 : ℝ) ≤ Real.log N := Real.log_nonneg (by exact_mod_cast (by omega : 1 ≤ N))
+    rw [Real.norm_of_nonneg (hsum_nonneg N), Real.norm_of_nonneg hlogN, one_mul]
+    exact (mertens_theta_log N hN).1
+
 end BoundedGaps.Mertens
