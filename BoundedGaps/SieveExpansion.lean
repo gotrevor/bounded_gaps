@@ -311,4 +311,26 @@ theorem crt_divisibility_iff {ι : Type*} (l : List ι) (q h : ι → ℕ)
   exact ((Nat.modEq_list_map_prod_iff co).mp hmod i hi).trans
     ((Nat.chineseRemainderOfList c q l co).prop i hi)
 
+/-- **Sub-step (b) diagonal capstone.** On the coprime diagonal (moduli
+`q i = [dᵢ,eᵢ]` pairwise coprime and coprime to `W`), the *entire* sieve
+membership condition `m ≡ b [MOD W] ∧ ∀ i ∈ l, q i ∣ (m + h i)` is a single
+residue class mod `W · (l.map q).prod`. Hence the GPY lattice-point count is the
+count of one arithmetic progression, evaluated exactly by
+`Nat.Ioc_filter_modEq_card` (interval length over `W·∏q`, plus an `O(1)`
+boundary term). Combines `crt_divisibility_iff` with `crt_combine`'s CRT step. -/
+theorem sieve_condition_single_class {ι : Type*} (l : List ι) (q h : ι → ℕ)
+    (W b : ℕ) (co : l.Pairwise (fun i j => Nat.Coprime (q i) (q j)))
+    (hq : ∀ i ∈ l, 0 < q i) (hWcop : Nat.Coprime W (l.map q).prod) :
+    ∃ r, ∀ m : ℕ, (m ≡ b [MOD W] ∧ ∀ i ∈ l, q i ∣ (m + h i))
+        ↔ m ≡ r [MOD (W * (l.map q).prod)] := by
+  obtain ⟨r₀, hr₀⟩ := crt_divisibility_iff l q h co hq
+  obtain ⟨r, hr1, hr2⟩ := Nat.chineseRemainder hWcop b r₀
+  refine ⟨r, fun m => ?_⟩
+  rw [hr₀ m,
+      show (m ≡ b [MOD W]) ↔ (m ≡ r [MOD W]) from
+        ⟨fun hh => hh.trans hr1.symm, fun hh => hh.trans hr1⟩,
+      show (m ≡ r₀ [MOD (l.map q).prod]) ↔ (m ≡ r [MOD (l.map q).prod]) from
+        ⟨fun hh => hh.trans hr2.symm, fun hh => hh.trans hr2⟩]
+  exact Nat.modEq_and_modEq_iff_modEq_mul hWcop
+
 end BoundedGaps.Sieve
