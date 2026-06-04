@@ -1,5 +1,35 @@
 # PENDING WORK — open axioms, attack paths, and the numerical-endgame diagnosis
 
+Last updated: 2026-06-04. Branch `path-a-selberg-nu`.
+
+## ⚠️ CORRECTNESS RISK (recorded 2026-06-04, from `ON-LINE-FINDINGS-2026-06-04-gpy-diagonal-asymptotic.md`)
+
+**`s1_holds_from_nonprime_asym` (Sieve.lean:3024) is very likely OFF BY A DERIVATIVE — false as
+stated — and any attempt to DISCHARGE it will hit this wall.** It currently builds only because it
+is a *cited* `axiom` (not proven). The bug:
+- `selberg_nu` is built from `lambdaTransform g R n = ∑_{d|n} μ(d) g(log d/log R)` — this is exactly
+  Polymath8b's `d`-space `λ_F` (eqn `lambdaf-def`), fed the variational functions `Fs`.
+- The axiom claims constant `α = mkF_denominator = ∫_{simplex} F²` (**no derivative**).
+- But the `d`-space `λ_F` asymptotic constant is `∫ (∂F)²` (**with a derivative**): Polymath8b
+  `c-def` says `c = ∏ ∫ F'_i G'_i` ("F' denotes the derivative of F"); Soundararajan eqn (9) has
+  `P^{(k)}`; Maynard §6 final remark: *the variational `F` (∫F²) = the sieve weight `f`
+  differentiated in each coordinate.* So feeding the SAME symbol `Fs` to both `λ` and `∫F²` is the
+  bug. Off by a derivative.
+
+**Fix = Path Y (recommended, contour-free):** re-target s1 to Maynard's **`y_r`-space** statement,
+where the constant genuinely IS `∫F²` and the sums are positive (`μ²/φ`):
+`∑_{r≤R,(r,W)=1} (μ²(r)/φ(r)) F(log r/log R)² ~ (φ(W)/W) log R · ∫₀¹ F²` (Maynard Lemma
+`PartialSummation` = GGPY Lemma 4). The repo already has the `y_r` substitution machinery
+(`SieveExpansion`, ~line 501) and `SharpMertens.sharp_mertens_unconditional` (`∑μ²/φ /log→1`, the
+𝔖=1 core) + `WeightedMertens.riemann_sum_log_weight` + the k-D Riemann ladder
+(`WeightedRiemann{2,3,K}D`) — exactly the Path-Y composition. **DO NOT** evaluate the signed `z_r`
+directly (its `∫F'²` is PNT-strength: `1/ζ(1+w)~w-1`; Polymath8b's proof is a contour). The k-D
+Riemann thread below is the Path-Y machinery — NOT wasted, regardless of how the convention is
+resolved. Distilled in reference corpus `gpy-sieve-dspace-vs-yspace-convention.md`. Architectural
+call (re-target vs restate-as-`∫(∂F)²`) is Trevor's; meanwhile keep building the y_r-space machinery.
+
+---
+
 Last updated: 2026-06-03. Branch `path-a-selberg-nu`.
 
 This file is the actionable inventory. The headline finding this lap **corrects two rounds of
