@@ -7,6 +7,15 @@ delete the answered item here, and remove this file once nothing is left open.
 
 ## 2026-06-04 — Sharp Mertens-type asymptotic `∑_{n≤x} μ²(n)/φ(n) = log x + O(1)`
 
+> **RESOLVED LOCALLY (2026-06-04, lap on `path-a-selberg-nu`).** Reconstructed the
+> proof myself (the `ζ(s+1)`-factorization route: `g = u ⋆ B`, `B = μ ⋆ (id·g)`) and
+> FORMALIZED it: `BoundedGaps.SharpMertens.sharp_mertens_tendsto` proves
+> `(∑_{n≤N} μ²/φ)/log N → 1`, axiom-clean, conditional only on two elementary
+> Euler-product partial-sum bounds (one on Aristotle). See
+> `SHARP_MERTENS_RECONSTRUCTION.md`. **No longer blocking** — a textbook cross-check
+> (Montgomery–Vaughan §2 / Tenenbaum) of the constant `C` would be a nice confirmation
+> but is optional. Lower priority.
+
 **What I need.** A clean elementary proof (textbook/paper, with the exact
 identity/decomposition used) of the *sharp coefficient-1* asymptotic
 

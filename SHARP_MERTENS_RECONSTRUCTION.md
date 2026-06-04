@@ -63,14 +63,36 @@ what GPY/Maynard sub-step (c) needs (`∑μ²/φ ∼ log x`, hence `α = I(F)`).
 `log x + C + o(1)` would follow from `H(M)=log M+γ+O(1/M)` + full tail control, but the
 two-sided `+O(1)` already pins the coefficient.
 
-## Formalization plan (status: algebraic core being formalized this lap)
+## Formalization status (2026-06-04, `BoundedGaps/SharpMertens.lean`) — DONE except 2 leaves
 
-- **Algebraic core (★)** — `BoundedGaps/SharpMertens.lean`:
-  `idG := pmul id g`, `BSharp := μ * idG`, `zeta_mul_BSharp : ζ * BSharp = idG`
-  (pure Dirichlet algebra via `coe_zeta_mul_coe_moebius`), and `sum_divisors_BSharp`
-  giving (★). Prime-power values + multiplicativity of `BSharp`. ← THIS LAP.
-- **Reindex** `S(x) = ∑_{e≤x}(B(e)/e)H(⌊x/e⌋)` — divisor-pair swap (n=em), a
-  `dirichlet_hyperbola`-style interchange.
-- **Three tail estimates** (1)(2)(3) — multiplicative-function convergence; each a
-  good self-contained Aristotle target.
-- **Assembly** — combine with mathlib harmonic bounds → `log x + O(1)`.
+**The full reduction is formalized and axiom-clean.** `sharp_mertens_tendsto`:
+`(∑_{n≤N} μ²(n)/φ(n)) / log N → 1` (leading coefficient EXACTLY 1) — conditional ONLY
+on two summability facts. Chain (all `#print axioms` = `[propext, Classical.choice,
+Quot.sound]`):
+
+- ✅ **Algebraic core (★)** — `idG := pmul idR g`, `BSharp := μ * idG`,
+  `zeta_mul_BSharp`, `sum_divisors_BSharp` (★), `BSharp` multiplicativity + explicit
+  prime-power values (`BSharp_prime/_sq/_pow_high`).
+- ✅ **Reindex** — `sum_divisorpairs` (generalized Dirichlet swap) +
+  `sum_g_eq_weighted_harmonic`: `S(N) = ∑_{e≤N}(B(e)/e)·H(⌊N/e⌋)`.
+- ✅ **Harmonic remainder** — `harmonic_remainder_mem`: `r_e = H(⌊N/e⌋)−log(N/e) ∈ [0,1]`.
+- ✅ **Decomposition** — `sum_g_decomp`: `S(N) = P(N)·log N − Q(N) + R(N)`.
+- ✅ **Main coefficient `P(N) → 1`** — `bAF := B/e`, local Euler factor `∑'_e b(p^e)=1`
+  (`tsum_bAF_primePow`), mathlib `eulerProduct_tprod` ⇒ `∑'_n b(n)=1`
+  (`tsum_bAF_eq_one`), partial sums `P(N) → 1` (`P_tendsto_one`).
+- ✅ **`Q/log, R/log → 0`** — `abs_remainder_term_le`, `abs_logweighted_term_le` +
+  squeeze, all inside `sharp_mertens_tendsto`.
+- ✅ **Summability discharge** — `summable_norm_bAF_of_bound` /
+  `summable_norm_bAF_log_of_bound`: reduce the two hypotheses to uniform partial-sum
+  bounds `∑_{e≤N}|b(e)| ≤ C`, `∑_{e≤N}|b(e)||log e| ≤ C`.
+
+**The two open leaves** (both elementary Euler-product bounds, Aristotle-shaped):
+1. `∑_{e≤N} |b(e)| ≤ 8` — Aristotle job `830e5129` (in flight). `b(e)≠0 ⟺` all
+   prime exponents `≤2`; `|b|=∏_{p|·}1/(p(p-1))`; bounded by `(∑_{sqfree}∏1/(p(p-1)))²
+   ≤ (exp 1)² < 8`.
+2. `∑_{e≤N} |b(e)|·|log e| ≤ C` — the `log`-weighted companion (same shape; `log e`
+   spreads over prime factors via `log(ab)=log a+log b`, each prime contributes
+   `log p · |b|`-weight, still `≪ p^{-2}log p` summable).
+
+Porting either bound (replay on the concrete `bAF` using `bAF_prime/_sq/_pow_high`)
+→ feed `summable_norm_bAF_…_of_bound` → makes `sharp_mertens_tendsto` unconditional.
