@@ -11,30 +11,33 @@ citations (Brun-Titchmarsh, EH, paper §3 numerical), others were "small
 proofs we haven't gotten to" (`Mk_le_one_of_k_le_one`,
 `MkSet_nonempty`/`bddAbove` sisters).
 
-The reframe:
+The reframe (per the 🟢/🟡/🔴 axiom-discharge doctrine):
 
-- **Axiom-by-citation is the contract, not the debt.** Citing
-  Bombieri-Vinogradov, paper-§ numerical bounds, MIT exhaustive
-  enumerations, or another formalization project's eventual results is
-  normal mathematical practice. These stay axioms by design.
-- **Axiom-as-"I owe you a proof" is `sorry`'s job, not `axiom`'s.** Using
-  `axiom` for these inflates the trust base and lies to the metric.
-- **Depth into the sieve is the real metric.** The actual mathematical
-  content of Polymath8b is in §3 (sieve asymptotics). Discharging
-  *those* axioms is the only thing that turns the project from a
-  blueprint-with-citations into a verified result. Everything else is
-  bookkeeping.
+- **🟢 finite/computational citations stay axioms** — a numerical witness
+  Lean is the wrong tool to recompute (paper-§ numerical bounds, MIT
+  exhaustive enumerations) is a genuine leaf, cited and fine indefinitely.
+- **🟡 proven-but-deep theorems are debt, not destinations** —
+  Bombieri-Vinogradov and the §3 sieve estimates are real theorems behind
+  a wall. They stay axioms *for now*, each with a build-plan; importing or
+  proving them is the goal, never "by design."
+- **Axiom-as-"I owe you a small proof" is `sorry`'s job, not `axiom`'s** —
+  using `axiom` for a proof we could do inflates the trust base and lies
+  to the metric.
+- **Depth into the sieve is the real metric.** The mathematical content of
+  Polymath8b is in §3 (sieve asymptotics). Discharging *those* axioms is
+  what turns the project from a blueprint-with-citations into a verified
+  result.
 
 This file is a **falsifiable commitment**: tier-by-tier estimates of work,
 with a measurement checkpoint in one month (2026-06-26) to compare
 estimate vs actual.
 
-> **Companion: `ANALYTIC_AXIOM_BURNDOWN.md`** takes the *opposite* stance for
-> the deep cited axioms (Bombieri-Vinogradov, GBV, MPZ, the s1/s2 sieve
-> estimates). Where this file brackets them as "the contract, not the debt,"
-> the burn-down doc treats them as eventual proof targets and maps the
-> literature path: a verified mathlib v4.29.1 inventory, the BV dependency
-> tree, and the call that the Large Sieve Inequality is the multi-month nut
+> **Companion: `ANALYTIC_AXIOM_BURNDOWN.md`** goes deepest on the deep cited
+> axioms (Bombieri-Vinogradov, GBV, MPZ, the s1/s2 sieve estimates). This
+> file and the burn-down doc agree they are 🟡 debt-with-a-plan; the burn-
+> down doc maps the literature path: a verified mathlib v4.29.1 inventory,
+> the BV dependency tree, and the call that the Large Sieve Inequality is
+> the multi-month nut
 > worth cracking. (Trevor's directive, 2026-06-03.)
 
 ## Current axiom inventory
@@ -64,10 +67,13 @@ Honest-debt sum (axioms + sorries + opaques): 63 → 57.
 
 Classified into four buckets:
 
-### Bucket A — Forever-axiom by design (31 axioms)
+### Bucket A — Citation axioms (31 axioms)
 
-Citations to external truths. Discharging them is **not a goal**; they
-stay axioms unless an upstream project lands a mathlib-importable version.
+Two kinds, per the doctrine. **🟢 finite/computational** — numerical Mk
+witnesses, MIT enumerations, admissibility bounds — are genuine leaves,
+fine indefinitely. **🟡 proven-but-deep** — `BombieriVinogradov`, `GBV`,
+`MPZ` — are debt: they stay axioms only until an upstream project lands a
+mathlib-importable version, and contributing to that is in scope.
 
 | Group | Count | Citation |
 |---|---|---|
@@ -83,8 +89,9 @@ stay axioms unless an upstream project lands a mathlib-importable version.
 | `parity_barrier` | 1 | Polymath8b §7 |
 | `SieveTheoreticArgument` (Prop → Prop wrapper) | 1 | Design-quirky; revisit |
 
-**These should never count against the project's debt.** They're what
-makes the proof a citation chain, like any normal math paper.
+**The 🟢 group never counts against the project's debt** — those are the
+citation chain any normal math paper has. The 🟡 group (BV/GBV/MPZ) does
+count, as debt-with-a-plan.
 
 ### Bucket B — Mis-classified: should be sorries (7 axioms) ✅ Reclassified 2026-05-26
 
@@ -197,16 +204,17 @@ pace).
 - Paper §6 numerical witnesses: re-derive in Lean or absorb from a
   different formalization project.
 
-**This tier is explicitly not a goal of this project.** It's what
-"verification of bounded gaps to the very foundations of mathematics"
-would require, and that's a different project (probably several
-different projects).
+**This tier is the longest-horizon, lowest-priority work** — not off the
+table (the off-roadmap Mk>4 thread already cracked several §6 numerical
+witnesses), but the BV-class 🟡 axioms wait on upstream mathlib. Full
+"bounded gaps to the foundations" is a multi-project arc.
 
-## Out-of-scope citation axioms (forever-axiom by design)
+## Long-horizon citation axioms
 
-For clarity: items below stay `axiom` for the lifetime of this project
-unless upstream projects (BKLNW, PrimeNumberTheoremAnd, mathlib's
-analytic NT push) land discharges we can `import`.
+Items below stay `axiom` for now. The 🟢 numerical/enumeration leaves are
+fine indefinitely; the 🟡 deep theorems (BV-class) clear when upstream
+projects (BKLNW, PrimeNumberTheoremAnd, mathlib's analytic NT push) land
+discharges we can `import`, or when we contribute them.
 
 - All `Prerequisites.*` (EH, GEH, MPZ, BV, GBV, MPZ_polymath8a)
 - `Engelsma.tuple_5511_admissible`

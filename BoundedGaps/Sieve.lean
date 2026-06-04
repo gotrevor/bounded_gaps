@@ -2311,21 +2311,180 @@ theorem exists_uniform_modulus (k : ℕ) (F : (Fin k → ℝ) → ℝ)
   rw [Real.dist_eq] at hlt
   exact hlt.le
 
-/-- **Separable sup-norm density** (the irreducible analytic core of
-`exists_separable_F_of_Mk_gt`, with the continuity half discharged by
-`mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly
-approximable on the simplex, to within any `δ > 0`, by a *finite-separable*
-smooth simplex-supported `G`. Pure approximation theory, **no number theory**:
-finite sums of products of 1-D smooth bumps on small boxes inside the open
-simplex are sup-dense among smooth simplex-supported functions (box-tensor
-refinement; cf. the product-of-bumps witness in `MkSet_nonempty`). The positive
-denominator and the `MkF`-closeness are then automatic via `mkF_sub_lt_of_sup_le`. -/
-axiom separable_dense_sup (k : ℕ) (F : (Fin k → ℝ) → ℝ)
-    (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex k)
-    (_hden : mkF_denominator k F > 0) (δ : ℝ) (_hδ : 0 < δ) :
+open MeasureTheory in
+/-- **Separable sup-norm density — in-kernel construction** (the full box-tensor
+proof of what was the axiom `separable_dense_sup`). Strategy:
+1. **Inward expansion.** Let `b = (1/(k+1))ᵢ` be the simplex centroid and
+   `E t = b + r·(t − b)` the expansion by `r = 1 + h_F > 1`, where `h_F` is the
+   modulus mesh of `F` at level `δ/2`. Then `F₁ := F ∘ E` is smooth, has its
+   support in the `r⁻¹`-shrunk simplex (margin `≥ (1−r⁻¹)/(k+1)` from every face),
+   and `|F t − F₁ t| ≤ δ/2` for `t` in the simplex (since `‖E t − t‖_∞ ≤ r − 1 = h_F`).
+2. **Box tensor.** With mesh `h ≤ min(h₁, (1−r⁻¹)/(k+1)²)` (`h₁` the modulus mesh
+   of `F₁`) and `N = ⌈1/h⌉`, set `G = ∑_φ F₁(c_φ)·∏ᵢ meshBump h (φ i)(t_i)`, grid
+   `c_φ = (φ i·h)ᵢ`. `box_tensor_approx` gives `|F₁ t − G t| ≤ δ/2` on the simplex.
+3. **Support.** A nonzero term forces `c_φ ∈ support F₁` (so `E c_φ ∈ simplex`,
+   giving the margin) and `|t_i − c_{φ,i}| < h`; the margin `> h` keeps `t` in the
+   simplex.  `G` is separable/smooth by `isFiniteSeparable_tensor_sum`/`contDiff_tensor_sum`.
+Triangle inequality: `|F t − G t| ≤ δ/2 + δ/2 = δ`. **Fully axiom-clean** (only
+`propext`/`Classical.choice`/`Quot.sound`); this discharges what was the cited
+density axiom. -/
+theorem separable_dense_sup (k : ℕ) (F : (Fin k → ℝ) → ℝ)
+    (hF : ContDiff ℝ ∞ F) (hsupp : Function.support F ⊆ simplex k)
+    (_hden : mkF_denominator k F > 0) (δ : ℝ) (hδ : 0 < δ) :
     ∃ G : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex k ∧
-      (∀ t ∈ simplex k, |F t - G t| ≤ δ)
+      (∀ t ∈ simplex k, |F t - G t| ≤ δ) := by
+  classical
+  have hFcont : Continuous F := hF.continuous
+  have hFcs : HasCompactSupport F :=
+    HasCompactSupport.of_support_subset_isCompact (isCompact_simplex k) hsupp
+  -- (1) modulus of `F` at level `δ/2` and the expansion factor `r = 1 + h_F`
+  obtain ⟨hFm, hFm_pos, hF_mod⟩ := exists_uniform_modulus k F hFcont hFcs (δ / 2) (by linarith)
+  set r : ℝ := 1 + hFm with hr_def
+  have hr1 : 1 < r := by rw [hr_def]; linarith
+  have hr0 : 0 < r := by linarith
+  have hrne : r ≠ 0 := hr0.ne'
+  have hrinv0 : 0 < r⁻¹ := inv_pos.mpr hr0
+  have hrinv1 : r⁻¹ < 1 := by
+    rw [inv_lt_one_iff₀]; right; exact hr1
+  -- centroid `b`, expansion `E`, and `F₁ = F ∘ E`
+  set b : Fin k → ℝ := fun _ => (1 : ℝ) / ((k : ℝ) + 1) with hb_def
+  have hkpos : (0 : ℝ) < (k : ℝ) + 1 := by positivity
+  have hbval : ∀ i, b i = 1 / ((k : ℝ) + 1) := fun i => rfl
+  have hb_pos : 0 < 1 / ((k : ℝ) + 1) := by positivity
+  have hb_le_one : 1 / ((k : ℝ) + 1) ≤ 1 := by
+    rw [div_le_one hkpos]; linarith [(Nat.cast_nonneg k : (0 : ℝ) ≤ (k : ℝ))]
+  set E : (Fin k → ℝ) → (Fin k → ℝ) := fun t => b + r • (t - b) with hE_def
+  have hEval : ∀ (p : Fin k → ℝ) (i : Fin k), (E p) i = b i + r * (p i - b i) := by
+    intro p i; simp only [hE_def, Pi.add_apply, Pi.smul_apply, Pi.sub_apply, smul_eq_mul]
+  set F₁ : (Fin k → ℝ) → ℝ := fun t => F (E t) with hF1_def
+  -- `E` and `F₁` are smooth
+  have hE_cd : ContDiff ℝ ∞ E := by
+    have hEeq : E = fun t => r • t + (b - r • b) := by
+      funext t; ext i
+      simp only [hE_def, Pi.add_apply, Pi.smul_apply, Pi.sub_apply, smul_eq_mul]; ring
+    rw [hEeq]; exact (contDiff_const_smul r).add contDiff_const
+  have hF1_cd : ContDiff ℝ ∞ F₁ := hF.comp hE_cd
+  -- modulus of `F₁` at level `δ/2`, with mesh `hFm / r` (derived directly from `hF_mod`)
+  have hF1_mod : ∀ t s : Fin k → ℝ, (∀ i, |t i - s i| ≤ hFm / r) → |F₁ t - F₁ s| ≤ δ / 2 := by
+    intro t s hts
+    refine hF_mod (E t) (E s) (fun i => ?_)
+    have hdiff : (E t) i - (E s) i = r * (t i - s i) := by rw [hEval, hEval]; ring
+    rw [hdiff, abs_mul, abs_of_pos hr0]
+    calc r * |t i - s i| ≤ r * (hFm / r) := mul_le_mul_of_nonneg_left (hts i) hr0.le
+      _ = hFm := by field_simp
+  -- (2) mesh `h` and grid count `N`
+  set m₀ : ℝ := (1 - r⁻¹) / ((k : ℝ) + 1) with hm0_def
+  have hkne : ((k : ℝ) + 1) ≠ 0 := hkpos.ne'
+  have hm0_pos : 0 < m₀ := by rw [hm0_def]; exact div_pos (by linarith) hkpos
+  set h : ℝ := min (hFm / r) (m₀ / ((k : ℝ) + 1)) with hh_def
+  have hh : 0 < h := lt_min (div_pos hFm_pos hr0) (div_pos hm0_pos hkpos)
+  have hh_le_mod : h ≤ hFm / r := min_le_left _ _
+  have hk1h : h * ((k : ℝ) + 1) ≤ m₀ := (le_div_iff₀ hkpos).mp (min_le_right _ _)
+  have hhm : h ≤ m₀ := by nlinarith [hk1h, hh.le, (Nat.cast_nonneg k : (0 : ℝ) ≤ (k : ℝ))]
+  have hkhm : (k : ℝ) * h ≤ m₀ := by nlinarith [hk1h, hh.le]
+  set N : ℕ := ⌈1 / h⌉₊ with hN_def
+  have hNh : (1 : ℝ) ≤ (N : ℝ) * h := by
+    have hle : 1 / h ≤ (N : ℝ) := Nat.le_ceil _
+    calc (1 : ℝ) = (1 / h) * h := by field_simp
+      _ ≤ (N : ℝ) * h := mul_le_mul_of_nonneg_right hle hh.le
+  -- (3) the separable approximant `G`
+  set G : (Fin k → ℝ) → ℝ :=
+    fun t => ∑ φ : Fin k → Fin (N + 1),
+      F₁ (fun i => ((φ i : ℕ) : ℝ) * h) * ∏ i, meshBump h ((φ i : ℕ)) (t i) with hG_def
+  refine ⟨G, ?_, ?_, ?_, ?_⟩
+  · -- separable
+    rw [hG_def]
+    exact @isFiniteSeparable_tensor_sum k (Fin (N + 1)) _
+      (fun φ => F₁ (fun i => ((φ i : ℕ) : ℝ) * h))
+      (fun m x => meshBump h ((m : ℕ)) x)
+  · -- smooth
+    rw [hG_def]
+    exact @contDiff_tensor_sum k (Fin (N + 1)) _
+      (fun φ => F₁ (fun i => ((φ i : ℕ) : ℝ) * h))
+      (fun m x => meshBump h ((m : ℕ)) x) (fun m => meshBump_contDiff h ((m : ℕ)))
+  · -- support ⊆ simplex
+    intro t ht
+    have htne : G t ≠ 0 := ht
+    rw [hG_def] at htne
+    obtain ⟨φ, _, hφne⟩ := Finset.exists_ne_zero_of_sum_ne_zero htne
+    rw [mul_ne_zero_iff] at hφne
+    obtain ⟨haφ, hprodφ⟩ := hφne
+    set cφ : Fin k → ℝ := fun i => ((φ i : ℕ) : ℝ) * h with hcφ_def
+    have hcφi : ∀ i, cφ i = ((φ i : ℕ) : ℝ) * h := fun i => rfl
+    -- locality of each bump factor
+    have hloc : ∀ i, (((φ i : ℕ) : ℝ) - 1) * h < t i ∧ t i < (((φ i : ℕ) : ℝ) + 1) * h := by
+      intro i
+      exact meshBump_support h ((φ i : ℕ)) (t i) hh
+        ((Finset.prod_ne_zero_iff.mp hprodφ) i (Finset.mem_univ i))
+    -- `E cφ ∈ simplex`
+    have hEcmem : E cφ ∈ simplex k := hsupp (Function.mem_support.mpr haφ)
+    obtain ⟨hEc_nn, hEc_sum⟩ := hEcmem
+    -- invert `E`: `cφ i − b i = (E cφ i − b i)·r⁻¹`
+    have hcinv : ∀ i, cφ i - b i = ((E cφ) i - b i) * r⁻¹ := by
+      intro i; rw [hEval cφ i]; field_simp; ring
+    -- per-coordinate margin: `cφ i ≥ m₀`
+    have hcφ_margin : ∀ i, m₀ ≤ cφ i := by
+      intro i
+      have h1 : cφ i - b i = ((E cφ) i - b i) * r⁻¹ := hcinv i
+      have h2 : 0 ≤ (E cφ) i * r⁻¹ := mul_nonneg (hEc_nn i) hrinv0.le
+      have hkey : b i * (1 - r⁻¹) ≤ cφ i := by nlinarith [h1, h2]
+      have hm0eq : m₀ = b i * (1 - r⁻¹) := by rw [hm0_def, hbval i]; ring
+      rw [hm0eq]; exact hkey
+    -- diagonal margin: `∑ cφ ≤ 1 − m₀`
+    have hsumcφ : ∑ i, cφ i ≤ 1 - m₀ := by
+      have hsb : ∑ i : Fin k, b i = (k : ℝ) / ((k : ℝ) + 1) := by
+        simp only [hbval, Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+        field_simp
+      have hsum_eq : ∑ i, cφ i
+          = (∑ i, b i) + r⁻¹ * ((∑ i, (E cφ) i) - ∑ i, b i) := by
+        have hpt : ∀ i, cφ i = b i + ((E cφ) i - b i) * r⁻¹ := fun i => by linarith [hcinv i]
+        rw [Finset.sum_congr rfl (fun i _ => hpt i), Finset.sum_add_distrib,
+          ← Finset.sum_mul, Finset.sum_sub_distrib]
+        ring
+      have hprod : r⁻¹ * ((∑ i, (E cφ) i) - ∑ i, b i) ≤ r⁻¹ * (1 - ∑ i, b i) :=
+        mul_le_mul_of_nonneg_left (by linarith [hEc_sum]) hrinv0.le
+      rw [hsb] at hsum_eq hprod
+      have hgoal : (k : ℝ) / ((k : ℝ) + 1) + r⁻¹ * (1 - (k : ℝ) / ((k : ℝ) + 1))
+          = 1 - (1 - r⁻¹) / ((k : ℝ) + 1) := by field_simp; ring
+      rw [hsum_eq, hm0_def]
+      linarith [hprod, hgoal]
+    -- assemble `t ∈ simplex`
+    refine ⟨fun i => ?_, ?_⟩
+    · nlinarith [(hloc i).1, hcφ_margin i, hhm, hcφi i]
+    · calc ∑ i, t i ≤ ∑ i, (cφ i + h) :=
+            Finset.sum_le_sum (fun i _ => by nlinarith [(hloc i).2, hcφi i])
+        _ = (∑ i, cφ i) + (k : ℝ) * h := by
+            rw [Finset.sum_add_distrib]
+            simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+        _ ≤ (1 - m₀) + (k : ℝ) * h := by linarith [hsumcφ]
+        _ ≤ 1 := by linarith [hkhm]
+  · -- `|F t − G t| ≤ δ` on the simplex
+    intro t ht
+    obtain ⟨ht_nn, ht_sum⟩ := ht
+    -- closeness `F` vs `F₁`
+    have hclose1 : |F t - F₁ t| ≤ δ / 2 := by
+      refine hF_mod t (E t) (fun i => ?_)
+      have heq : t i - (E t) i = (1 - r) * (t i - b i) := by rw [hEval]; ring
+      rw [heq, abs_mul, abs_of_nonpos (by linarith : (1 : ℝ) - r ≤ 0)]
+      have hti1 : t i ≤ 1 :=
+        le_trans (Finset.single_le_sum (fun j _ => ht_nn j) (Finset.mem_univ i)) ht_sum
+      have hb01 : |t i - b i| ≤ 1 := by
+        rw [hbval i, abs_le]
+        exact ⟨by linarith [hb_le_one, ht_nn i], by linarith [hti1, hb_pos]⟩
+      calc -(1 - r) * |t i - b i| ≤ -(1 - r) * 1 :=
+            mul_le_mul_of_nonneg_left hb01 (by linarith)
+        _ = hFm := by rw [hr_def]; ring
+    -- closeness `F₁` vs `G`
+    have hclose2 : |F₁ t - G t| ≤ δ / 2 := by
+      rw [hG_def]
+      refine box_tensor_approx k F₁ h N (δ / 2) hh (fun u s hus => ?_) t ht_nn (fun i => ?_)
+      · exact hF1_mod u s (fun i => le_trans (hus i) hh_le_mod)
+      · exact le_trans (le_trans
+          (Finset.single_le_sum (fun j _ => ht_nn j) (Finset.mem_univ i)) ht_sum) hNh
+    calc |F t - G t| ≤ |F t - F₁ t| + |F₁ t - G t| := abs_sub_le _ _ _
+      _ ≤ δ / 2 + δ / 2 := add_le_add hclose1 hclose2
+      _ = δ := by ring
 
 /-- **Separable approximation of the Maynard ratio** (the *narrowed analytic core*
 of the cited `exists_separable_F_of_Mk_gt`). Any admissible smooth `F` on the
