@@ -1003,4 +1003,38 @@ theorem sieveSum_separable_eq_heuristic_add_correction (k : ℕ) (Fs : Fin k →
   refine Finset.sum_congr rfl (fun P _ => ?_)
   ring
 
+/-- **The GPY variable `y_r` vanishes off the squarefree locus.** If `r` is not
+squarefree then `∑_{d∈T, r∣d} μ(d)g(d)/d = 0`: every `d` divisible by a
+non-squarefree `r` is itself non-squarefree, so `μ(d) = 0`. -/
+theorem gpy_yvar_eq_zero_of_not_squarefree (T : Finset ℕ) (g : ℕ → ℝ) (r : ℕ)
+    (hr : ¬ Squarefree r) :
+    ∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g d / (d : ℝ) = 0 := by
+  classical
+  refine Finset.sum_eq_zero (fun d hd => ?_)
+  obtain ⟨_, hrd⟩ := Finset.mem_filter.mp hd
+  have hdnsf : ¬ Squarefree d := fun hsf => hr (hsf.squarefree_of_dvd hrd)
+  rw [ArithmeticFunction.moebius_eq_zero_of_not_squarefree hdnsf]
+  simp
+
+/-- **The diagonalized Selberg form is supported on squarefree `r`.** Combining
+`gpy_diagonalize_moebius` with `gpy_yvar_eq_zero_of_not_squarefree`, the diagonal
+sum restricts to squarefree `r`:
+`∑_{d,e}μ(d)μ(e)g(d)g(e)/[d,e] = ∑_{r∈R, Squarefree r} φ(r)(∑_{r∣d}μ(d)g(d)/d)²`.
+This is the reduction to the clean multiplicative locus (where `φ(r)/r² =
+∏_{p∣r}(p−1)/p²`) on which the sub-step (c) asymptotic is computed. -/
+theorem gpy_diagonalize_moebius_squarefree (T R : Finset ℕ) (g : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g d * ((moebius e : ℝ) * g e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R.filter (fun r => Squarefree r), (Nat.totient r : ℝ)
+          * (∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g d / (d : ℝ)) ^ 2 := by
+  classical
+  rw [gpy_diagonalize_moebius T R g hT hR, Finset.sum_filter]
+  refine Finset.sum_congr rfl (fun r _ => ?_)
+  by_cases h : Squarefree r
+  · rw [if_pos h]
+  · rw [if_neg h, gpy_yvar_eq_zero_of_not_squarefree T g r h]
+    ring
+
 end BoundedGaps.Sieve
