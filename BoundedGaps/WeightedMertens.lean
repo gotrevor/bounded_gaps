@@ -551,6 +551,30 @@ axiom riemann_sum_log_weight (F : ℝ → ℝ) (hF : ContinuousOn F (Set.Icc (0 
       (fun N : ℕ => (∑ n ∈ Finset.Icc 2 N, F (Real.log n / Real.log N) / (n : ℝ)) / Real.log N)
       atTop (nhds (∫ u in (0 : ℝ)..1, F u))
 
+/-- **Consistency check for `riemann_sum_log_weight` (the `F ≡ 1` case), proved axiom-free.**
+`(∑_{2≤n≤N} 1/n) / log N → 1 = ∫₀¹ 1`. Since `∑_{2≤n≤N} 1/n = harmonic N − 1`, this is
+`harmonic_div_log_tendsto_one` minus `1/log N → 0`. Validates that the disclosed axiom's statement
+is not vacuous / mis-stated at its simplest instance. -/
+theorem riemann_sum_const_one :
+    Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 2 N, (1 : ℝ) / (n : ℝ)) / Real.log N) atTop (nhds 1) := by
+  have hlog : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have heq : ∀ N : ℕ, 1 ≤ N →
+      (∑ n ∈ Finset.Icc 2 N, (1 : ℝ) / (n : ℝ)) = (harmonic N : ℝ) - 1 := by
+    intro N hN
+    have hins : Finset.Icc 1 N = insert 1 (Finset.Icc 2 N) := by
+      ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
+    have hH : (harmonic N : ℝ) = ∑ k ∈ Finset.Icc 1 N, 1 / (k : ℝ) := by
+      rw [harmonic_eq_sum_Icc]; push_cast; simp [one_div]
+    rw [hH, hins, Finset.sum_insert (by simp)]; simp
+  have hbase : Tendsto (fun N : ℕ => (harmonic N : ℝ) / Real.log N - 1 / Real.log N)
+      atTop (nhds 1) := by
+    have h := harmonic_div_log_tendsto_one.sub ((tendsto_const_nhds (x := (1 : ℝ))).div_atTop hlog)
+    simpa using h
+  refine hbase.congr' ?_
+  filter_upwards [eventually_ge_atTop 1] with N hN
+  rw [← sub_div, ← heq N hN]
+
 /-- **Weighted Mertens asymptotic** (GPY/Maynard sieve main term, 1-D, sub-step (c)).
 For `F` Lipschitz and continuous on `[0,1]` (in particular any `ContDiff` `F`),
 `(∑_{1≤n≤N} (μ²(n)/φ(n))·F(log n/log N)) / log N → ∫₀¹ F`.
