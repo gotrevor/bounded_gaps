@@ -139,4 +139,50 @@ theorem sum_self_div_totient_eq_weighted (N : ℕ) :
     (fun d => (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ))]
   exact Finset.sum_congr rfl (fun n _ => self_div_totient_eq_sum_moebiusSq_div_totient n)
 
+/-- `|⌊N/d⌋ − N/d| ≤ 1` for `d ≥ 1` (the boundary error). -/
+lemma abs_floorDiv_sub_div_le_one (N d : ℕ) (hd : 1 ≤ d) :
+    |(((N / d : ℕ) : ℝ)) - (N : ℝ) / d| ≤ 1 := by
+  have hd0 : (0 : ℝ) < d := by exact_mod_cast hd
+  have hdm : (d : ℝ) * ((N / d : ℕ) : ℝ) + ((N % d : ℕ) : ℝ) = (N : ℝ) := by
+    exact_mod_cast Nat.div_add_mod N d
+  have hmod : ((N % d : ℕ) : ℝ) < (d : ℝ) := by exact_mod_cast Nat.mod_lt N (by omega)
+  have hkey : (N : ℝ) / d - ((N / d : ℕ) : ℝ) = ((N % d : ℕ) : ℝ) / d := by
+    field_simp; linarith [hdm]
+  have hfrac0 : (0 : ℝ) ≤ ((N % d : ℕ) : ℝ) / d := by positivity
+  have hfrac1 : ((N % d : ℕ) : ℝ) / d < 1 := (div_lt_one hd0).mpr hmod
+  rw [abs_le]; constructor <;> linarith
+
+/-- **Main-term split for `∑ n/φ(n)`.** Replacing `⌊N/d⌋` by `N/d` in the
+hyperbola form costs at most `∑_{d≤N} μ²(d)/φ(d)`:
+`|∑_{n≤N} n/φ(n) − N·∑_{d≤N} μ²(d)/(φ(d)·d)| ≤ ∑_{d≤N} μ²(d)/φ(d)`.
+With `mertens_theta_log` (`∑μ²/φ = O(log N)`, `BoundedGaps.Mertens`) this gives the
+`O(log N)` error of `∑ n/φ(n) = (singular sum)·N + O(log N)`. -/
+theorem sum_self_div_totient_main_split (N : ℕ) :
+    |∑ n ∈ Finset.Icc 1 N, (n : ℝ) / (Nat.totient n : ℝ)
+        - (N : ℝ) * ∑ d ∈ Finset.Icc 1 N,
+            (ArithmeticFunction.moebius d : ℝ) ^ 2 / ((Nat.totient d : ℝ) * (d : ℝ))|
+      ≤ ∑ d ∈ Finset.Icc 1 N, (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ) := by
+  rw [sum_self_div_totient_eq_weighted, Finset.mul_sum, ← Finset.sum_sub_distrib]
+  have hreg : ∀ d ∈ Finset.Icc 1 N,
+      (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ) * ((N / d : ℕ) : ℝ)
+        - (N : ℝ) * ((ArithmeticFunction.moebius d : ℝ) ^ 2 / ((Nat.totient d : ℝ) * (d : ℝ)))
+      = (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ)
+          * (((N / d : ℕ) : ℝ) - (N : ℝ) / d) := by
+    intro d hd
+    have hd1 : 1 ≤ d := (Finset.mem_Icc.mp hd).1
+    have hd0 : (d : ℝ) ≠ 0 := by exact_mod_cast (by omega : d ≠ 0)
+    field_simp
+  rw [Finset.sum_congr rfl hreg]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  apply Finset.sum_le_sum
+  intro d hd
+  have hd1 : 1 ≤ d := (Finset.mem_Icc.mp hd).1
+  have hnn : (0 : ℝ) ≤ (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ) := by positivity
+  rw [abs_mul, abs_of_nonneg hnn]
+  calc (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ)
+          * |((N / d : ℕ) : ℝ) - (N : ℝ) / d|
+      ≤ (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ) * 1 :=
+        mul_le_mul_of_nonneg_left (abs_floorDiv_sub_div_le_one N d hd1) hnn
+    _ = (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ) := by ring
+
 end BoundedGaps.SingularSeries
