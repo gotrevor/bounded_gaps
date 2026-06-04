@@ -2141,6 +2141,35 @@ theorem smoothTransition_finite_partition (N : ℕ) {x : ℝ}
     Real.smoothTransition.zero_of_nonpos (show x - ((N : ℝ) + 1) ≤ 0 by linarith)]
   ring
 
+/-- **Convex-combination sup bound** (the analytic heart of the box-tensor
+approximation error). If the weights `w_φ ≥ 0` sum to `1`, and wherever a weight
+is nonzero the value `v_φ` is within `δ` of the target `a`, then the weighted
+average `∑_φ v_φ·w_φ` is within `δ` of `a`. This is exactly the step that turns
+`tensor_partition_of_unity` (`∑_φ ∏_i ρ_{φ i}(t_i) = 1`) plus the modulus of
+continuity (`|F t − F c_φ| ≤ δ` on every box with nonzero weight) into the
+approximation bound `|F t − G t| ≤ δ` for the box-tensor approximant
+`G(t) = ∑_φ F(c_φ)·∏_i ρ_{φ i}(t_i)`. Pure `Finset` algebra. -/
+theorem abs_sub_weighted_average_le {ι : Type*} [Fintype ι]
+    (a : ℝ) (v w : ι → ℝ) (δ : ℝ)
+    (hw : ∀ i, 0 ≤ w i) (hsum : ∑ i, w i = 1)
+    (hclose : ∀ i, w i ≠ 0 → |a - v i| ≤ δ) :
+    |a - ∑ i, v i * w i| ≤ δ := by
+  have key : a - ∑ i, v i * w i = ∑ i, (a - v i) * w i := by
+    have hcongr : ∑ i, (a - v i) * w i = ∑ i, (a * w i - v i * w i) :=
+      Finset.sum_congr rfl fun i _ => by ring
+    rw [hcongr, Finset.sum_sub_distrib, ← Finset.mul_sum, hsum, mul_one]
+  rw [key]
+  calc |∑ i, (a - v i) * w i|
+      ≤ ∑ i, |(a - v i) * w i| := Finset.abs_sum_le_sum_abs _ _
+    _ ≤ ∑ i, δ * w i := by
+        apply Finset.sum_le_sum
+        intro i _
+        rw [abs_mul, abs_of_nonneg (hw i)]
+        rcases eq_or_ne (w i) 0 with h0 | h0
+        · simp [h0]
+        · exact mul_le_mul_of_nonneg_right (hclose i h0) (hw i)
+    _ = δ := by rw [← Finset.mul_sum, hsum, mul_one]
+
 /-- **Separable sup-norm density** (the irreducible analytic core of
 `exists_separable_F_of_Mk_gt`, with the continuity half discharged by
 `mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly
