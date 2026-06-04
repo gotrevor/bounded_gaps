@@ -1333,4 +1333,58 @@ theorem heuristic_main_term_diagonalized_bilinear {k : ℕ} (D Rset : Fin k → 
     (fun d => Gs₁ i (Real.log d / Real.log R))
     (fun e => Gs₂ i (Real.log e / Real.log R)) (hD i) (hR i)
 
+/-- Every divisor in a `sieveDivisors` family is a positive integer (`divisors`
+of a nonzero `n + hᵢ` are all `≥ 1`). Supplies the `1 ≤ d` hypothesis of the
+GPY diagonalization lemmas at the concrete sieve lattice. -/
+theorem sieveDivisors_pos {H : List ℕ} {i b W : ℕ} {x : ℝ} {d : ℕ}
+    (hd : d ∈ sieveDivisors H i b W x) : 1 ≤ d := by
+  rw [sieveDivisors, Finset.mem_biUnion] at hd
+  obtain ⟨n, _, hdn⟩ := hd
+  exact Nat.pos_of_mem_divisors hdn
+
+/-- `sieveDivisors` is divisor-closed: if `d` lies in the family and `r ∣ d`,
+then `r` also lies in the family (same `n`, since `r ∣ d ∣ (n + hᵢ)`). Supplies
+the divisor-closure hypothesis (`Rset = sieveDivisors`) of the GPY
+diagonalization lemmas at the concrete sieve lattice. -/
+theorem sieveDivisors_dvd_closed {H : List ℕ} {i b W : ℕ} {x : ℝ} {d : ℕ}
+    (hd : d ∈ sieveDivisors H i b W x) {r : ℕ} (hr : r ∣ d) :
+    r ∈ sieveDivisors H i b W x := by
+  rw [sieveDivisors, Finset.mem_biUnion] at hd ⊢
+  obtain ⟨n, hn, hdn⟩ := hd
+  rw [Nat.mem_divisors] at hdn
+  exact ⟨n, hn, Nat.mem_divisors.mpr ⟨hr.trans hdn.1, hdn.2⟩⟩
+
+/-- **Full `selberg_nu` heuristic GPY main term, fully diagonalized.** Applying
+`heuristic_main_term_diagonalized_bilinear` to every `(j, j')` cross block of the
+heuristic main term produced by `sieveSum_selberg_nu_eq_heuristic_add_correction`
+(at the concrete sieve lattice `D = Rset = sieveDivisors`, closure supplied by
+`sieveDivisors_pos`/`sieveDivisors_dvd_closed`): the heuristic GPY main term of
+the general `J`-basis Selberg sieve equals
+`∑_{j,j'} cⱼcⱼ' · M · ∏ᵢ ∑_r φ(r) (∑_{r∣d} μ(d)Fⱼᵢ/d)(∑_{r∣e} μ(e)Fⱼ'ᵢ/e)`,
+a `J²`-fold combination of products of `k` diagonalized 1-D bilinear Selberg
+forms. This is the complete algebraic diagonalization of the (non-separable,
+general) GPY main term at the concrete lattice — the exact object whose `R→∞`
+asymptotic (sub-step (c)) yields the `Mₖ(F)` constant. -/
+theorem heuristic_main_selberg_nu_diagonalized (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (M : ℝ) :
+    (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+        ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+          * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      = ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          (M * ∏ i : Fin k, ∑ r ∈ sieveDivisors H i.val b W x, (Nat.totient r : ℝ)
+            * ((∑ d ∈ (sieveDivisors H i.val b W x).filter (fun d => r ∣ d),
+                  (moebius d : ℝ) * Fs j i (Real.log d / Real.log R) / (d : ℝ))
+               * (∑ e ∈ (sieveDivisors H i.val b W x).filter (fun e => r ∣ e),
+                  (moebius e : ℝ) * Fs j' i (Real.log e / Real.log R) / (e : ℝ)))) := by
+  refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
+  rw [heuristic_main_term_diagonalized_bilinear
+    (fun i => sieveDivisors H i.val b W x) (fun i => sieveDivisors H i.val b W x)
+    (fun i => Fs j i) (fun i => Fs j' i) R M
+    (fun _ _ hd => sieveDivisors_pos hd)
+    (fun _ _ hd r hr => sieveDivisors_dvd_closed hd hr)]
+
 end BoundedGaps.Sieve
