@@ -397,3 +397,30 @@ only the SINGLE diagonal limit `∑_{r sf}(φ/r²)z_r²→I(F)` (Aristotle `weig
 flight) + off-diag-main `o(main)` + `∑_{diag}|coeff|` size bound + `IsLittleO` glue.** Diagonal
 `O(1)` error already wired via `lattice_count_main_term` → `diag_error_bound`. Full map in
 `ANALYTIC_AXIOM_BURNDOWN.md` tail.
+
+### UPDATE 2026-06-04 lap N+2 (commits `691a239`,`3a3dbef`,`e7dc3ae`,`8f55d07`; build green 8277)
+**Leaves (2) and (4) of `s1_holds_from_nonprime_asym` are now DONE in-kernel.** Cauchy–Schwarz
+(prior lap) had collapsed the main term to the diagonal, leaving 4 analytic leaves. This lap closed
+two of them:
+- **Leaf (2) `∑_{diag}|coeff|=o(main)` — DONE.** `SieveExpansion.hyperbola_count_le` proves the
+  k-dim Dirichlet count `#{d∈[1,N]^k:∏dᵢ≤N} ≤ N(1+log N)^{k-1}` fully in-kernel (was queued for
+  Aristotle; no longer needed there). Induction on k + `Fin.cons`/`Fin.tail` `card_bij'` fiber
+  bijection + `harmonic_le_one_add_log`. Bridge `lattice_count_le_hyperbola` + capstone
+  `diagonal_weight_le_hyperbola` give `∑_{diag}|coeff| ≤ C²⌊R⌋₊(1+log⌊R⌋₊)^{k-1}`. Residual: the
+  parameter tail `R=o(M log R)` (GPY plumbing, not analysis).
+- **Leaf (4) `IsLittleO` glue — DONE (modular chain).** `Sieve.alphaBound_of_sub_littleO`/
+  `betaBound_of_sub_littleO` (positive-part `max(f,0)=O f` ⟹ two-sided diff o(main) suffices) +
+  `alphaBound_of_heuristic_correction`/`betaBound_of_heuristic_correction` (split `sieveSum=Aheur+Bcorr`;
+  heuristic limit + correction bound ⟹ alphaBound). Machine-checks `leaf 1 ∧ leaf 3 ⟹ s1`.
+
+**Only TWO genuine analytic nuts remain for s1 (both multi-lap deep):**
+1. **Leaf (1) diagonal asymptotic** `∑_{r sf}(φ(r)/r²)z_r² → I(F)·const`. Smooth core = Aristotle
+   `weighted_riemann_2d` (`3e2b6a8d`, in flight, slow). 1-D factor `weighted_mertens` proven.
+   Attack: (a) harvest Aristotle 2D when done → port → build the multidim limit on
+   `gpy_diagonal_asymptotic_form`; (b) singular-series Euler product `𝔖(H)` (reuse `SharpMertens`
+   `eulerProduct_tprod`) for the constant; (c) rank-1 separable (J=1, F=∏Fᵢ) case first.
+2. **Leaf (3) off-diagonal heuristic main = o(main)** = `M·∑_{¬diag}w_P/∏[Pᵢ] = o(M(log R)^k)` (the
+   phantom main over W-trick-incompatible tuples whose actual count is 0). Infra:
+   `correction_abs_bound` already routes the correction to exactly (leaf 2 diag weight) + (this
+   off-diag main). Attack: singular-series discrepancy + W-trick prime gain; needs `W=∏_{p≤D₀}p`,
+   `M=(B−A)/W`, `R=x^{θ/2}` parameter plumbing. NOT a clean isolated lemma — coupled to 𝔖(H).
