@@ -719,4 +719,24 @@ theorem sieveTheta_pair_offdiag_vanish {k : ℕ} (H : List ℕ) (S : Finset ℕ)
     Finset.card_eq_zero.mp (lattice_count_pair_offdiag_vanish H S P hpi hpj hne)
   rw [hempty, Finset.sum_empty]
 
+/-- **Sub-step (b) diagonal restriction.** In the divisor-lattice expansion
+`∑_P (weight P)·(value P)` (the output of `sieveSum_selberg_nu_separable_expand`
+and its theta sister, with `value P` the lattice count resp. the theta-weighted
+count), every off-diagonal tuple `P` contributes `0` because its `value P = 0`
+(`lattice_count_pair_offdiag_vanish` / `sieveTheta_pair_offdiag_vanish`). Hence the
+whole sum restricts to the *coprime-diagonal* tuples — exactly those on which
+`lattice_count_main_term` evaluates the count. This is the assembly step turning
+the full expansion into the diagonal main term, abstracted over the diagonal
+predicate `diag` (discharged by the W-trick: a shared prime of two coordinate
+moduli `> D₀ ≥ H` forces incompatible shifts). -/
+theorem sum_restrict_offdiag_vanish {ι : Type*} (s : Finset ι) (weight val : ι → ℝ)
+    (diag : ι → Prop) [DecidablePred diag]
+    (hvanish : ∀ P ∈ s, ¬ diag P → val P = 0) :
+    ∑ P ∈ s, weight P * val P = ∑ P ∈ s.filter diag, weight P * val P := by
+  rw [Finset.sum_filter]
+  refine Finset.sum_congr rfl (fun P hP => ?_)
+  by_cases h : diag P
+  · rw [if_pos h]
+  · rw [if_neg h, hvanish P hP h, mul_zero]
+
 end BoundedGaps.Sieve
