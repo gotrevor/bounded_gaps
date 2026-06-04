@@ -430,4 +430,55 @@ theorem chebyshev_theta_le' (n : ℕ) :
         rw [Finset.sum_filter]; exact hexpand.symm
     _ ≤ (n : ℝ) * Real.log 4 := chebyshev_theta_le n
 
+/-! ## Telescoping tail (for `∑ 1/(p-1) = ∑ 1/p + O(1)`)
+
+The Euler-product upper bound is controlled by `∑_{p≤N} 1/(p-1)`, which differs
+from the prime harmonic sum `∑_{p≤N} 1/p` by the convergent tail `∑ 1/(p(p-1))`.
+This is bounded by the telescoping sum `∑_{2≤n≤N} (1/(n-1) − 1/n) = 1 − 1/N ≤ 1`. -/
+
+/-- Telescoping identity: `∑_{2 ≤ n ≤ N} (1/(n-1) − 1/n) = 1 − 1/N` (for `N ≥ 1`). -/
+theorem telescope_tail_eq : ∀ N : ℕ, 1 ≤ N →
+    ∑ n ∈ Finset.Icc 2 N, ((1 : ℝ) / ((n : ℝ) - 1) - 1 / (n : ℝ)) = 1 - 1 / (N : ℝ) := by
+  intro N hN
+  induction N, hN using Nat.le_induction with
+  | base => simp
+  | succ n hn ih =>
+    rw [Finset.sum_Icc_succ_top (by omega : 2 ≤ n + 1), ih]
+    have hn0 : (n : ℝ) ≠ 0 := by
+      have : (0 : ℝ) < n := by exact_mod_cast hn
+      positivity
+    have hn1 : (n : ℝ) + 1 ≠ 0 := by positivity
+    push_cast
+    simp only [add_sub_cancel_right]
+    field_simp
+    ring
+
+/-- Telescoping bound: `∑_{2 ≤ n ≤ N} (1/(n-1) − 1/n) ≤ 1`. -/
+theorem telescope_tail_le (N : ℕ) :
+    ∑ n ∈ Finset.Icc 2 N, ((1 : ℝ) / ((n : ℝ) - 1) - 1 / (n : ℝ)) ≤ 1 := by
+  rcases Nat.eq_zero_or_pos N with h | h
+  · subst h; simp
+  · rw [telescope_tail_eq N h]
+    have : (0 : ℝ) ≤ 1 / (N : ℝ) := by positivity
+    linarith
+
+/-- The prime-restricted tail: `∑_{p ≤ N} (1/(p-1) − 1/p) ≤ 1`. Hence
+`∑_{p≤N} 1/(p-1) ≤ ∑_{p≤N} 1/p + 1`: the gap between the Euler-product exponent
+and the prime harmonic sum is `O(1)`. -/
+theorem prime_tail_le (N : ℕ) :
+    ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime,
+        ((1 : ℝ) / ((p : ℝ) - 1) - 1 / (p : ℝ)) ≤ 1 := by
+  refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_) (telescope_tail_le N)
+  · intro p hp
+    rw [Finset.mem_filter, Finset.mem_range] at hp
+    rw [Finset.mem_Icc]
+    exact ⟨hp.2.two_le, by omega⟩
+  · intro p hp _
+    rw [Finset.mem_Icc] at hp
+    have hp2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.1
+    have h1 : (0 : ℝ) < (p : ℝ) - 1 := by linarith
+    have h2 : (p : ℝ) - 1 ≤ (p : ℝ) := by linarith
+    have : 1 / (p : ℝ) ≤ 1 / ((p : ℝ) - 1) := one_div_le_one_div_of_le h1 h2
+    linarith
+
 end BoundedGaps.Mertens
