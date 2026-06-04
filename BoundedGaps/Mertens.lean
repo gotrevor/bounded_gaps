@@ -269,4 +269,12 @@ theorem log_le_sum_inv_totient (N : ℕ) :
   (mertens_lower N).trans
     (Finset.sum_le_sum fun n _ => mertensSummand_le_inv_totient n)
 
+/-- **Corollary** (divergence): the partial sums of `∑ μ²(n)/φ(n)` tend to `+∞`
+(they dominate `log N → ∞`). -/
+theorem tendsto_sum_mertensSummand_atTop :
+    Filter.Tendsto (fun N => ∑ n ∈ Finset.Icc 1 N, mertensSummand n)
+      Filter.atTop Filter.atTop :=
+  Filter.tendsto_atTop_mono mertens_lower
+    (Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop)
+
 end BoundedGaps.Mertens
