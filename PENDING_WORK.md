@@ -208,14 +208,31 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 ---
 
-## C. Aristotle (status 2026-06-04, lap ~02:50Z)
-- **IN FLIGHT — `cc0dfbaf-e386-4f5c-aee4-0f99cbf0bbf5`** (`aristotle-vmhyp/VMHyp.lean`):
-  the **von Mangoldt hyperbola identity** `vonMangoldt_hyperbola`:
-  `∑_{1≤n≤N} Λ(n)·⌊N/n⌋ = ∑_{1≤m≤N} log m  (= log N!)`. Entry point to the **SHARP** Mertens 1st
-  (coefficient-1) route — see the sharp/crude note below. On return: download, verify in-kernel +
-  `#print axioms` clean, fix any v4.28→v4.29 regressions, port into `BoundedGaps/Mertens.lean`.
-- **LANDED THIS LAP (12 commits `a2e4c60`…`8295e10` on `path-a-selberg-nu`, all axiom-clean,
+## C. Aristotle (status 2026-06-04, lap ~03:40Z)
+- **IN FLIGHT — `3f137191-9973-4f15-baff-f3302d5a9539`** (`aristotle-pptail/PPTail.lean`):
+  the **prime-power tail** `∑_{n≤N, IsPrimePow ∧ ¬Prime} Λ(n)/n ≤ 1` — the convergent tail
+  separating `∑Λ(n)/n` from `∑_{p≤N}(log p)/p`. On return: verify + `#print axioms` clean + port.
+- **🎉 SHARP MERTENS 1st LANDED this lap** (`7412132`): `mertens_vonMangoldt_two_sided`
+  `|∑_{n≤N} Λ(n)/n − log N| ≤ log 4 + 4` — the **coefficient-1** estimate. Built from
+  `vonMangoldt_hyperbola` (Aristotle `cc0dfbaf`), `sum_log_le`/`le_sum_log` (Stirling via mathlib
+  `integral_log`), `cast_div_le_self`/`sub_one_le_cast_div` (floor), and **mathlib's
+  `Chebyshev.psi_le_const_mul_self`** (`ψ(N) ≤ (log4+4)N` — the hard ψ≤CN bound is ALREADY in
+  mathlib's `Mathlib/NumberTheory/Chebyshev.lean`!). `mertens_vonMangoldt_lower`/`_upper` are the halves.
+- **REMAINING sharp chain → headline `∑μ²/φ = Θ(log N)`:**
+  1. prime-power tail (in flight `3f137191`) ⇒ **sharp** `∑_{p≤N}(log p)/p = log N + O(1)`.
+  2. **sharp Mertens 2nd** `∑_{p≤N} 1/p = log log N + O(1)` (coefficient 1): 2nd Abel step on the
+     SHARP `∑(log p)/p` via `abel_summation_identity`. ⚠️ NOTE: `mertens_second_term_bound` is for the
+     CRUDE route (bounds `(1+log n)(…)` wholesale → coeff `1+1/log2`). For coeff-1, SPLIT
+     `A_n(1/log n − 1/log(n+1)) = log n·(…) + (A_n − log n)·(…)`: leading `log n·(1/log n−1/log(n+1))`
+     sums to `log log N + O(1)` (coeff 1, via `sum_one_div_n_log_n_le`), remainder `(A_n−log n)·(…)`
+     is `O(1)·∑(1/log n − 1/log(n+1))` which TELESCOPES to `O(1)`. Needs sharp `A_n = log n + O(1)`.
+  3. `∑_{p≤N} 1/(p−1) ≤ ∑1/p + 1` (`prime_tail_le`, landed) + `1+x≤eˣ` ⇒ `∏(1+1/(p−1)) = O(log N)`
+     (now coeff-1 ⇒ genuine `O(log N)`, NOT the crude `(log N)^3.4`) ⇒ `∑μ²/φ = O(log N)` ⇒
+     two-sided `Θ(log N)` with `mertens_lower`.
+- **LANDED THIS LAP (17 commits `a2e4c60`…`7412132` on `path-a-selberg-nu`, all axiom-clean,
   full build green 8272 jobs):** the complete 1D-analytic toolkit in `BoundedGaps/Mertens.lean`:
+  - sharp Mertens 1st: `vonMangoldt_hyperbola`, `sum_log_le`, `le_sum_log`, `cast_div_le_self`,
+    `sub_one_le_cast_div`, `mertens_vonMangoldt_lower/_upper/_two_sided`.
   - `mertens_prod_upper`/`mertensSummand_eq_prod` (`∑μ²/φ ≤ ∏(1+1/(p-1))`), proved locally.
   - `chebyshev_theta_le`/`chebyshev_theta_le'` (`θ(N) ≤ N·log 4`, plain + indicator form).
   - `abel_div_le` (Aristotle `32baa99f`, weight `1/n` summation-by-parts) + `mertens_first_le`
