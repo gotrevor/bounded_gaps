@@ -1698,23 +1698,80 @@ theorem exists_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
-/-- **Separable realisation of $M_k$** (cited, Polymath8b §6): if $c < M_k$
+/-- **Separable $L^2$-approximation of the Maynard ratio** (pure real analysis —
+the *narrowed analytic core* of the cited `exists_separable_F_of_Mk_gt`).
+
+Any admissible smooth test function `F` on the `k`-simplex can be approximated,
+in the value of the Maynard ratio `MkF`, by a *finite-separable* (still smooth,
+simplex-supported, positive-denominator) test function `G`, to within any
+`ε > 0`.
+
+This isolates the genuine analytic content of separability, with **no number
+theory**:
+* **(continuity)** the functionals `mkF_numerator`/`mkF_denominator` are
+  continuous in `F` w.r.t. the `L²(simplex)` distance — both are integrals of
+  quadratics in `F` over the simplex, so `∫(G²−F²)=∫(G−F)(G+F)` is
+  Cauchy–Schwarz-controlled by `‖G−F‖_{L²}`, and `J_i` likewise after the inner
+  `t_i`-integral (a bounded operator on `L²`);
+* **(density)** finite sums of products of 1-D smooth bumps supported on small
+  boxes inside the *open* simplex are `L²(simplex)`-dense among smooth
+  simplex-supported `F` (box-tensor refinement; cf. the product-of-bumps witness
+  in `MkSet_nonempty`, which is already `IsFiniteSeparable`).
+
+`MkF k G` depends only on `G`'s values on the simplex, so the
+`support G ⊆ simplex k` clause is decoupled from the ratio and met by keeping
+each bump-box inside the simplex.
+
+Attack paths:
+1. Split into `mkF_continuous_L2` (concrete Cauchy–Schwarz bound on
+   `|MkF G − MkF F|` by the `L²` distance — `mkF_denominator` half is immediate;
+   `mkF_numerator`/`J_i` half via the fibration lemma `integral_fin_succ_eq`
+   used in `MkSet_bddAbove`) and `separable_dense_L2` (box-bump density). The
+   continuity half is in-kernel provable; density is then the lone residue.
+2. Box-tiling: cover `closure(support F) ⊆ open simplex` by small cubes inside
+   the simplex; take a smooth tensor-bump partition of unity; each piece is a
+   product of 1-D bumps (separable). Bound the `L²` error by uniform continuity
+   of `F` on the compact simplex.
+3. Stone–Weierstrass: coordinate functions generate a dense subalgebra of
+   `C(simplex)`; multiply the polynomial approximant by a separable bump equal to
+   `1` on `support F` (which sits in a box inside the simplex once slightly
+   shrunk) to restore `support ⊆ simplex`. -/
+axiom sep_approx (k : ℕ) (F : (Fin k → ℝ) → ℝ)
+    (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex k)
+    (_hden : mkF_denominator k F > 0) (ε : ℝ) (_hε : 0 < ε) :
+    ∃ G : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex k ∧
+      mkF_denominator k G > 0 ∧ |MkF k G - MkF k F| < ε
+
+/-- **Separable realisation of $M_k$** (Polymath8b §6): if $c < M_k$
 then a witness $F$ realising $\mathrm{MkF}(k, F) > c$ may be taken to be a
 *finite-separable* test function (`IsFiniteSeparable F`).
 
-Strengthens `exists_F_of_Mk_gt` with the `IsFiniteSeparable` conjunct. This is the
-honest source of separability for the sieve: Polymath8b §6 optimises $M_k$
-over a polynomial (symmetric-polynomial) basis, and a polynomial's monomial
-expansion is exactly a finite sum of products of 1D powers — i.e. separable.
-Finite sums of products of 1D bump functions are dense among smooth test
-functions on the simplex and $\mathrm{MkF}$ is continuous in $F$, so the sup
-over separable $F$ equals $M_k$. Cited because it rests on that density +
-the §6 polynomial-optimisation construction (the provable special case is
-`SievePolynomial.polynomialSieveWeight_isSeparable`). -/
-axiom exists_separable_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
+**Now a theorem** (was a cited axiom): the deep "separability out of the
+$M_k$-extraction" claim is reduced to the elementary `sSup` extraction
+`exists_F_of_Mk_gt` together with the pure-analysis approximation lemma
+`sep_approx`. Pick `c < c' < M_k`; `exists_F_of_Mk_gt` gives a smooth witness
+`F` with `MkF F > c'`; `sep_approx … (c' − c)` gives a finite-separable `G`
+with `|MkF G − MkF F| < c' − c`, hence `MkF G > c' − (c' − c) = c`. The only
+remaining axiomatic content is the pure-analysis `sep_approx` (density +
+continuity), no longer the number-theoretic §6 polynomial-optimisation. -/
+theorem exists_separable_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
     ∃ F : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable F ∧ ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex k ∧
-      mkF_denominator k F > 0 ∧ c < MkF k F
+      mkF_denominator k F > 0 ∧ c < MkF k F := by
+  -- choose an intermediate threshold c < c' < M_k
+  set c' : ℝ := (c + Mk k) / 2 with hc'def
+  have hcc' : c < c' := by rw [hc'def]; linarith
+  have hc'Mk : c' < Mk k := by rw [hc'def]; linarith
+  -- a smooth witness beating c'
+  obtain ⟨F, hSmooth, hSupp, hDen, hcF⟩ := exists_F_of_Mk_gt k hk c' hc'Mk
+  -- a separable approximant within (c' - c) of it
+  obtain ⟨G, hGsep, hGsm, hGsupp, hGden, hGclose⟩ :=
+    sep_approx k F hSmooth hSupp hDen (c' - c) (by linarith)
+  refine ⟨G, hGsep, hGsm, hGsupp, hGden, ?_⟩
+  -- |MkF G - MkF F| < c' - c and MkF F > c' ⟹ MkF G > c
+  have hlow := (abs_lt.mp hGclose).1
+  linarith
 
 /-- **sSup extraction for $M_k^{[\alpha]}$** (truncated variant): if
 $c < M_k^{[\alpha]}$ then there is a specific admissible $F$ supported on
