@@ -686,3 +686,43 @@ for `m` near `R` (small `R'=⌊R/m⌋`), saved by `1-s` small ⟹ both sum and i
 - Leaf (2) `∑_{diag}|coeff|=o(main)`: **DONE in-kernel** (`hyperbola_count_le` + bridge + capstone).
 - Leaf (3) off-diagonal heuristic main = o(main): OPEN (singular-series discrepancy, multi-lap).
 - Leaf (4) `IsLittleO` glue: **DONE** (`alphaBound_of_sub_littleO` + `_of_heuristic_correction`).
+
+## Leaf (1) FURTHER REDUCED: uniform ⟹ pointwise via Pólya (2026-06-04, lap N+3)
+
+The prior lap reduced leaf (1) to the *inner uniform* convergence (`inner_uniform`). This lap
+reduces THAT, in-kernel and axiom-clean, to a single **1-D pointwise** scale-change limit — a
+strictly easier and self-contained Aristotle target. Three new modules, all
+`#print axioms = [propext, Classical.choice, Quot.sound]`, full build green (8280 jobs).
+
+- **`BoundedGaps/PolyaUniform.lean`** — `polya_uniform`: **Pólya's theorem** (NEW to the project,
+  not in mathlib; mathlib only has Dini, monotone-in-*index*). If `Φn R` is monotone *in the
+  argument* on `[0,1]`, `Φ` is continuous, and `Φn R t → Φ t` pointwise, then the convergence is
+  UNIFORM on `[0,1]`. Finite-grid bracket + monotone sandwich + uniform continuity of `Φ`. No
+  continuity of the `Φn R` required (they are step functions here).
+
+- **`BoundedGaps/InnerUniformReduction.lean`** — the reduction chain (`Ψ G R t =
+  (∑_{n≤⌊R^t⌋} G(log n/log R)/n)/log R`):
+  - `floor_rpow_one_sub`: the exact reparametrisation `⌊R^{1-log m/log R}⌋₊ = R/m` (since
+    `m = R^{log m/log R}`), so the inner sum IS `Ψ G R t` at `t = 1 - log m/log R`.
+  - `psi_monotoneOn`: for `G ≥ 0`, `Ψ G R ·` is monotone on `[0,1]` (`⌊R^t⌋` grows, nonneg terms;
+    `/log R ≥ 0`; `R ≤ 1` gives the constant-0 map).
+  - `inner_uniform_of_pointwise_nonneg` (`G ≥ 0`) and `inner_uniform_of_pointwise` (arbitrary
+    continuous `G`, via the `G = G⁺ − G⁻` split): the inner-uniform `huni` follows from the
+    pointwise limit `Ψ H R t → ∫₀^t H` alone.
+  - **`weighted_riemann_2d_of_psi_pointwise`** — composes with `weighted_riemann_2d_of_inner` to
+    produce the FULL 2-D simplex limit (verbatim the deep axiom / Aristotle target
+    `weighted_riemann_2d`) from just the pointwise limit.
+
+**Net for leaf (1):** the entire 2-D nut is now reduced — axiom-clean, in our kernel — to the single
+1-D pointwise limit `psi_tendsto : Ψ G R t → ∫₀^t G` (fixed `t`, continuous `G`). Submitted as
+Aristotle job `1f84c4d6` (`aristotle-psi-pointwise/Problem.lean`), strictly easier than the
+monolithic uniform target. The classical "fixed-`m` scale change": `N = ⌊R^t⌋`, `c_R = log N/log R
+→ t`, rewrite `G(log n/log R) = G(c_R·(log n/log N))`, drift-bound by uniform continuity, apply
+`riemann_sum_log_weight` to `G(t·)`, multiply by `c_R` and substitute `y = t·u`.
+
+### s1 leaf scoreboard (after lap N+3)
+- Leaf (1) diagonal asymptotic: **REDUCED to 1-D pointwise `psi_tendsto`** (Aristotle `1f84c4d6`);
+  `weighted_riemann_2d_of_psi_pointwise` closes the 2-D limit modulo it, in-kernel.
+- Leaf (2) `∑_{diag}|coeff|=o(main)`: **DONE in-kernel**.
+- Leaf (3) off-diagonal heuristic main = o(main): OPEN (singular-series discrepancy, multi-lap).
+- Leaf (4) `IsLittleO` glue: **DONE**.
