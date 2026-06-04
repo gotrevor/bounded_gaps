@@ -191,6 +191,55 @@ coefficient of `∑ n/φ(n)`). -/
 noncomputable def singularSumPartial (N : ℕ) : ℝ :=
   ∑ d ∈ Finset.Icc 1 N, (ArithmeticFunction.moebius d : ℝ) ^ 2 / ((Nat.totient d : ℝ) * (d : ℝ))
 
+/-- **Uniform bound on the singular sum**: `∑_{d≤N} μ²(d)/(φ(d)·d) ≤ 3` for all `N`.
+Euler-product route: only squarefree `d` contribute, the term factors as
+`∏_{p∣d} 1/(p(p−1))`, the squarefree-divisor sum is sub-dominated by
+`∏_{p≤N}(1+1/(p(p−1))) ≤ exp(∑_p 1/(p(p−1))) ≤ exp 1 < 3` (telescoping `1/(k(k−1))`).
+Proved on Aristotle job `36bb3493` (`singular_sum_bounded`); verified `#print axioms`
+clean `[propext, Classical.choice, Quot.sound]` in our v4.29.1 kernel before porting. -/
+theorem singular_sum_bounded (N : ℕ) :
+    ∑ d ∈ Finset.Icc 1 N,
+        (ArithmeticFunction.moebius d : ℝ) ^ 2 / ((Nat.totient d : ℝ) * (d : ℝ)) ≤ 3 := by
+  suffices h2 : (∑ d ∈ Finset.Icc 1 N,
+      (if Squarefree d then (1 : ℝ) / (d.totient * d) else 0)) ≤ Real.exp 1 by
+    refine le_trans ?_ ( h2.trans ?_ );
+    · gcongr;
+      split_ifs <;> simp_all +decide [ ArithmeticFunction.moebius ];
+      norm_num [ ← pow_mul, mul_comm ];
+    · exact Real.exp_one_lt_d9.le.trans <| by norm_num;
+  have h_prod : (∑ d ∈ Finset.Icc 1 N, if Squarefree d then (1 : ℝ) / (d.totient * d) else 0) ≤ (∏ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 + 1 / ((p : ℝ) * (p - 1)))) := by
+    have h_squarefree_prod : ∑ d ∈ Finset.Icc 1 N, (if Squarefree d then (1 : ℝ) / ((d.totient) * d) else 0) ≤ ∑ d ∈ Finset.filter Squarefree (Finset.Icc 1 N), (∏ p ∈ Nat.primeFactors d, (1 : ℝ) / ((p * (p - 1)) : ℝ)) := by
+      have h_squarefree_prod : ∀ d ∈ Finset.filter Squarefree (Finset.Icc 1 N), (1 : ℝ) / ((d.totient) * d) = ∏ p ∈ Nat.primeFactors d, (1 : ℝ) / ((p * (p - 1)) : ℝ) := by
+        intro d hd; rw [ Nat.totient_eq_div_primeFactors_mul ] ; simp +decide [ Finset.prod_mul_distrib, mul_comm ] ;
+        rw [ Nat.prod_primeFactors_of_squarefree ( Finset.mem_filter.mp hd |>.2 ) ] ; ring;
+        rw [ Nat.div_self ( Finset.mem_Icc.mp ( Finset.mem_filter.mp hd |>.1 ) |>.1 ) ] ; norm_num [ neg_add_eq_sub, Finset.prod_congr rfl fun x hx => Nat.cast_pred <| Nat.pos_of_mem_primeFactors hx ] ; ring;
+        exact Or.inl <| by rw [ ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree <| Finset.mem_filter.mp hd |>.2 ] ;
+      rw [ Finset.sum_filter ] ; exact Finset.sum_le_sum fun x hx => by aesop;
+    have h_subset_prod : ∑ d ∈ Finset.filter Squarefree (Finset.Icc 1 N), (∏ p ∈ Nat.primeFactors d, (1 : ℝ) / ((p * (p - 1)) : ℝ)) ≤ ∑ s ∈ Finset.powerset (Finset.filter Nat.Prime (Finset.Icc 2 N)), (∏ p ∈ s, (1 : ℝ) / ((p * (p - 1)) : ℝ)) := by
+      have h_subset_prod : Finset.image (fun d => Nat.primeFactors d) (Finset.filter Squarefree (Finset.Icc 1 N)) ⊆ Finset.powerset (Finset.filter Nat.Prime (Finset.Icc 2 N)) := by
+        simp +decide [ Finset.subset_iff ];
+        rintro _ x hx₁ hx₂ hx₃ rfl y hy; exact ⟨ ⟨ Nat.Prime.two_le ( Nat.prime_of_mem_primeFactors hy ), Nat.le_trans ( Nat.le_of_mem_primeFactors hy ) hx₂ ⟩, Nat.prime_of_mem_primeFactors hy ⟩ ;
+      refine' le_trans _ ( Finset.sum_le_sum_of_subset_of_nonneg h_subset_prod _ );
+      · rw [ Finset.sum_image ];
+        intro x hx y hy; simp_all +decide [ Nat.primeFactors_mul ] ;
+        intro h; have := Nat.prod_primeFactors_of_squarefree hx.2; have := Nat.prod_primeFactors_of_squarefree hy.2; aesop;
+      · exact fun _ _ _ => Finset.prod_nonneg fun p hp => one_div_nonneg.2 <| mul_nonneg ( Nat.cast_nonneg _ ) <| sub_nonneg.2 <| Nat.one_le_cast.2 <| Nat.Prime.pos <| Finset.mem_filter.1 ( Finset.mem_powerset.1 ‹_› hp ) |>.2;
+    convert h_squarefree_prod.trans h_subset_prod using 1;
+    simp +decide [ add_comm ( 1 : ℝ ), Finset.prod_add ];
+  have h_exp : (∏ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 + 1 / ((p : ℝ) * (p - 1)))) ≤ Real.exp (∑ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 / ((p : ℝ) * (p - 1)))) := by
+    rw [ Real.exp_sum ] ; exact Finset.prod_le_prod ( fun _ _ => by exact add_nonneg zero_le_one <| one_div_nonneg.mpr <| mul_nonneg ( Nat.cast_nonneg _ ) <| sub_nonneg.mpr <| Nat.one_le_cast.mpr <| Nat.Prime.pos <| by aesop ) fun _ _ => by rw [ add_comm ] ; exact Real.add_one_le_exp _;
+  have h_sum : (∑ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 / ((p : ℝ) * (p - 1)))) ≤ 1 := by
+    have h_sum_le : (∑ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 / ((p : ℝ) * (p - 1)))) ≤ (∑ k ∈ Finset.Icc 2 N, (1 / ((k : ℝ) * (k - 1)))) := by
+      exact Finset.sum_le_sum_of_subset_of_nonneg ( Finset.filter_subset _ _ ) fun _ _ _ => one_div_nonneg.2 <| mul_nonneg ( Nat.cast_nonneg _ ) <| sub_nonneg.2 <| Nat.one_le_cast.2 <| by linarith [ Finset.mem_Icc.1 ‹_› ] ;
+    have h_telescope : ∀ N : ℕ, N ≥ 2 → (∑ k ∈ Finset.Icc 2 N, (1 / ((k : ℝ) * (k - 1)))) = 1 - 1 / (N : ℝ) := by
+      intro N hN; induction hN <;> norm_num [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] at *;
+      rw [ Finset.sum_Ioc_succ_top ( by linarith ), ‹∑ x ∈ Finset.Ioc 1 _, _ = _› ] ; norm_num;
+      field_simp
+      ring;
+    exact h_sum_le.trans ( if hN : N ≥ 2 then h_telescope N hN ▸ sub_le_self _ ( by positivity ) else by interval_cases N <;> norm_num );
+  exact (h_prod.trans h_exp).trans (Real.exp_le_exp.mpr h_sum)
+
+
 /-- **The singular sum converges.** Being monotone (nonnegative terms) and bounded
 above, the partial sums `∑_{d≤N} μ²(d)/(φ(d)·d)` converge to their supremum `A`
 (which then dominates every partial sum). The boundedness hypothesis is supplied by
@@ -253,5 +302,24 @@ theorem sum_self_div_totient_asymptotic {C : ℝ} (hbound : ∀ N, singularSumPa
     funext N; ring
   rw [hcongr, add_zero] at hsum
   exact hsum
+
+/-- **The singular sum converges (unconditional).** Instantiating
+`singularSum_tendsto_of_bounded` with the now-proven uniform bound
+`singular_sum_bounded` (`≤ 3`): the partial sums `∑_{d≤N} μ²(d)/(φ(d)·d)` converge to
+their supremum `A = ζ(2)ζ(3)/ζ(6)`. -/
+theorem singularSum_converges :
+    ∃ A : ℝ, Filter.Tendsto singularSumPartial Filter.atTop (nhds A)
+        ∧ ∀ N, singularSumPartial N ≤ A :=
+  singularSum_tendsto_of_bounded (fun N => singular_sum_bounded N)
+
+/-- **Average order of `n/φ(n)` (unconditional): `∑_{n≤N} n/φ(n) ∼ A·N`.**
+The classical average order of Euler's totient, now fully machine-checked with no
+remaining hypotheses (the `≤ 3` singular-sum bound is `singular_sum_bounded`).
+`A = ∑_d μ²(d)/(φ(d)·d) = ζ(2)ζ(3)/ζ(6)`. -/
+theorem sum_self_div_totient_asymptotic_uncond :
+    ∃ A : ℝ, Filter.Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, (n : ℝ) / (Nat.totient n : ℝ)) / (N : ℝ))
+      Filter.atTop (nhds A) :=
+  sum_self_div_totient_asymptotic (fun N => singular_sum_bounded N)
 
 end BoundedGaps.SingularSeries
