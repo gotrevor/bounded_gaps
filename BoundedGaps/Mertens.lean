@@ -876,4 +876,59 @@ theorem mertens_vonMangoldt_two_sided (N : ℕ) (hN : 1 ≤ N) :
   rw [abs_le]
   constructor <;> linarith
 
+/-- **von Mangoldt → prime split.** The full `∑_{n≤N} Λ(n)/n` decomposes as the prime
+contribution `∑_{p≤N} (log p)/p` plus the proper-prime-power tail
+`∑_{n≤N, IsPrimePow n ∧ ¬Prime n} Λ(n)/n`. Non-prime-powers contribute nothing
+(`Λ = 0`), and on primes `Λ(p) = log p`. -/
+theorem vonMangoldt_split_prime (N : ℕ) :
+    ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ)
+      = (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ))
+        + ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n),
+            ArithmeticFunction.vonMangoldt n / (n : ℝ) := by
+  have hprime : ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+        ArithmeticFunction.vonMangoldt p / (p : ℝ)
+      = ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ) := by
+    refine Finset.sum_congr rfl (fun p hp => ?_)
+    rw [Finset.mem_filter] at hp
+    rw [ArithmeticFunction.vonMangoldt_apply_prime hp.2]
+  have htail : ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n),
+        ArithmeticFunction.vonMangoldt n / (n : ℝ)
+      = ∑ n ∈ (Finset.Icc 1 N).filter (fun n => ¬ Nat.Prime n),
+        ArithmeticFunction.vonMangoldt n / (n : ℝ) := by
+    apply Finset.sum_subset
+    · intro x hx
+      rw [Finset.mem_filter] at hx ⊢
+      exact ⟨hx.1, hx.2.2⟩
+    · intro x hx hxni
+      rw [Finset.mem_filter] at hx hxni
+      have hnotPP : ¬ IsPrimePow x := fun hpp => hxni ⟨hx.1, hpp, hx.2⟩
+      rw [ArithmeticFunction.vonMangoldt_eq_zero_iff.mpr hnotPP, zero_div]
+  calc ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ)
+      = (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+            ArithmeticFunction.vonMangoldt p / (p : ℝ))
+          + ∑ n ∈ (Finset.Icc 1 N).filter (fun n => ¬ Nat.Prime n),
+            ArithmeticFunction.vonMangoldt n / (n : ℝ) :=
+        (Finset.sum_filter_add_sum_filter_not (Finset.Icc 1 N) Nat.Prime _).symm
+    _ = _ := by rw [hprime, ← htail]
+
+/-- **Sharp `∑_{p≤N}(log p)/p = log N + O(1)`, conditional on the prime-power tail bound.**
+Given the convergent proper-prime-power tail bound (the in-flight `prime_power_tail_le`,
+`∑_{n≤N, IsPrimePow ∧ ¬Prime} Λ(n)/n ≤ 1`), the sharp coefficient-1 estimate
+`|∑_{p≤N}(log p)/p − log N| ≤ log 4 + 5` follows from `mertens_vonMangoldt_two_sided`
+and `vonMangoldt_split_prime`. This is the COEFFICIENT-1 prime-sum estimate (unlike the
+crude `mertens_first_le` with its lossy `log 4` constant). -/
+theorem mertens_prime_log_two_sided_of (N : ℕ) (hN : 1 ≤ N)
+    (htail : ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n),
+        ArithmeticFunction.vonMangoldt n / (n : ℝ) ≤ 1) :
+    |(∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)) - Real.log N|
+      ≤ Real.log 4 + 5 := by
+  have hsplit := vonMangoldt_split_prime N
+  have htwo := mertens_vonMangoldt_two_sided N hN
+  have htail0 : 0 ≤ ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n),
+      ArithmeticFunction.vonMangoldt n / (n : ℝ) := by
+    refine Finset.sum_nonneg (fun n _ => ?_)
+    exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (Nat.cast_nonneg _)
+  rw [abs_le] at htwo ⊢
+  constructor <;> linarith [htwo.1, htwo.2]
+
 end BoundedGaps.Mertens
