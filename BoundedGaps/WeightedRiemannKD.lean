@@ -69,6 +69,23 @@ lemma nestedPhi_pair (g h : ℝ → ℝ) : nestedPhi [g, h] = Phi2 g h := by
   rw [nestedPhi_cons, nestedPhi_singleton]
   rfl
 
+/-- **`nestedPhi Gs` is continuous** when every function in `Gs` is continuous — the generic
+`phi2_continuous`, by induction on the list. Base: `nestedPhi [] = const 1`. Step: the integrand
+`(s,y) ↦ g(y)·nestedPhi gs (s+y)` is jointly continuous (IH), so the parametric primitive composed
+with `s ↦ (s, 1-s)` is continuous. -/
+lemma nestedPhi_continuous : ∀ (Gs : List (ℝ → ℝ)), (∀ g ∈ Gs, Continuous g) →
+    Continuous (nestedPhi Gs)
+  | [], _ => continuous_const
+  | g :: gs, h => by
+      have hg : Continuous g := h g (List.mem_cons.mpr (Or.inl rfl))
+      have hgs : Continuous (nestedPhi gs) :=
+        nestedPhi_continuous gs (fun f hf => h f (List.mem_cons.mpr (Or.inr hf)))
+      have huncurry : Continuous (Function.uncurry (fun s y => g y * nestedPhi gs (s + y))) :=
+        (hg.comp continuous_snd).mul (hgs.comp (continuous_fst.add continuous_snd))
+      have hpar := intervalIntegral.continuous_parametric_primitive_of_continuous
+        (μ := volume) (a₀ := (0 : ℝ)) huncurry
+      exact hpar.comp (continuous_id.prodMk (continuous_const.sub continuous_id))
+
 /-- **Base case of the generic limit.** For the empty list, `nestedLogSum R [] R / (log R)^0 = 1`
 converges to `nestedPhi [] 0 = 1`. -/
 theorem weighted_riemann_kd_nil :
