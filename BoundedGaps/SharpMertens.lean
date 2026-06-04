@@ -386,3 +386,66 @@ theorem P_tendsto_one (hsum : Summable (fun n => ‖bAF n‖)) :
       show BSharp e / (e : ℝ) = bAF (e - 1 + 1)
       rw [bAF_apply, hee]
   simpa only [hbridge] using hshift
+
+/-! ## The capstone: sharp Mertens `∑_{n≤N} μ²(n)/φ(n) ∼ log N`
+
+Combining `sum_g_decomp` (`S = P·log − Q + R`) with `P → 1` and `Q, R = O(1)`
+(both `Q/log, R/log → 0`), the Cesàro ratio `S(N)/log N → 1`, i.e. leading
+coefficient exactly `1` — precisely GPY/Maynard sub-step (c). Conditional on two
+absolute-summability facts (the b-series and its `log`-weighted version), both
+Euler-product estimates: `∑|b(e)| ≤ 8` is Aristotle `830e5129`, and
+`∑|b(e)||log e| < ∞` is the near-identical companion. -/
+
+/-- **Sharp Mertens (`∑μ²/φ ∼ log x`).** Given absolute summability of the b-series
+and its `log`-weighted version, `(∑_{n≤N} μ²(n)/φ(n)) / log N → 1`. -/
+theorem sharp_mertens_tendsto
+    (hsum : Summable (fun n => ‖bAF n‖))
+    (hsumlog : Summable (fun n => ‖bAF n‖ * |Real.log (n : ℝ)|)) :
+    Filter.Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) / Real.log N)
+      Filter.atTop (nhds 1) := by
+  have hlogtop : Filter.Tendsto (fun N : ℕ => Real.log N) Filter.atTop Filter.atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  -- The `Q/log → 0` error term.
+  have hQ0 : Filter.Tendsto
+      (fun N : ℕ => (∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) * Real.log e) / Real.log N)
+      Filter.atTop (nhds 0) := by
+    have hg : Filter.Tendsto
+        (fun N : ℕ => (∑' n, ‖bAF n‖ * |Real.log (n : ℝ)|) / Real.log N) Filter.atTop (nhds 0) :=
+      tendsto_const_nhds.div_atTop hlogtop
+    refine squeeze_zero_norm' ?_ hg
+    filter_upwards [hlogtop.eventually_ge_atTop 1] with N hlogN
+    have hpos : 0 < Real.log N := lt_of_lt_of_le one_pos hlogN
+    rw [Real.norm_eq_abs, abs_div, abs_of_pos hpos]
+    gcongr
+    refine (abs_logweighted_term_le N).trans ?_
+    rw [show (∑ e ∈ Finset.Icc 1 N, |BSharp e / (e : ℝ)| * |Real.log e|)
+          = ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ * |Real.log (e : ℝ)| from
+        Finset.sum_congr rfl (fun e _ => by rw [bAF_apply, Real.norm_eq_abs])]
+    exact hsumlog.sum_le_tsum _ (fun i _ => by positivity)
+  -- The `R/log → 0` error term.
+  have hR0 : Filter.Tendsto
+      (fun N : ℕ => (∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) *
+        ((∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ)))) / Real.log N)
+      Filter.atTop (nhds 0) := by
+    have hg : Filter.Tendsto
+        (fun N : ℕ => (∑' n, ‖bAF n‖) / Real.log N) Filter.atTop (nhds 0) :=
+      tendsto_const_nhds.div_atTop hlogtop
+    refine squeeze_zero_norm' ?_ hg
+    filter_upwards [hlogtop.eventually_ge_atTop 1] with N hlogN
+    have hpos : 0 < Real.log N := lt_of_lt_of_le one_pos hlogN
+    rw [Real.norm_eq_abs, abs_div, abs_of_pos hpos]
+    gcongr
+    refine (abs_remainder_term_le N).trans ?_
+    rw [show (∑ e ∈ Finset.Icc 1 N, |BSharp e / (e : ℝ)|)
+          = ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ from
+        Finset.sum_congr rfl (fun e _ => by rw [bAF_apply, Real.norm_eq_abs])]
+    exact hsum.sum_le_tsum _ (fun i _ => by positivity)
+  -- Assemble: S/log = P − Q/log + R/log → 1 − 0 + 0.
+  have htarget := ((P_tendsto_one hsum).sub hQ0).add hR0
+  rw [sub_zero, add_zero] at htarget
+  refine htarget.congr' ?_
+  filter_upwards [hlogtop.eventually_ge_atTop 1, Filter.eventually_ge_atTop 1] with N hlogN hN1
+  have hlog0 : Real.log N ≠ 0 := ne_of_gt (lt_of_lt_of_le one_pos hlogN)
+  rw [sum_g_decomp N hN1]
+  field_simp
