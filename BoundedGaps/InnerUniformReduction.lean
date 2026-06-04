@@ -24,6 +24,8 @@ open scoped BigOperators
 
 namespace BoundedGaps.InnerUniformReduction
 
+open BoundedGaps.WeightedRiemann2D (Phi)
+
 /-- The inner Riemann partial sum truncated at `⌊R^t⌋`, normalized by `log R`. -/
 noncomputable def Psi (G : ℝ → ℝ) (R : ℕ) (t : ℝ) : ℝ :=
   (∑ n ∈ Finset.Icc 2 ⌊(R : ℝ) ^ t⌋₊, G (Real.log n / Real.log R) / (n : ℝ)) / Real.log R
@@ -81,7 +83,7 @@ theorem inner_uniform_of_pointwise_nonneg (G : ℝ → ℝ)
         Tendsto (fun R : ℕ => Psi G R t) atTop (𝓝 (∫ y in (0 : ℝ)..t, G y))) :
     ∀ ε > 0, ∀ᶠ R : ℕ in atTop, ∀ m ∈ Finset.Icc 2 R,
       |(∑ n ∈ Finset.Icc 2 (R / m), G (Real.log n / Real.log R) / (n : ℝ)) / Real.log R
-        - BoundedGaps.WeightedRiemann2D.Phi G (Real.log m / Real.log R)| ≤ ε := by
+        - Phi G (Real.log m / Real.log R)| ≤ ε := by
   -- The limit `Φ t = ∫₀^t G` is continuous on the compact `[0,1]`.
   have hΦcont : ContinuousOn (fun t => ∫ y in (0 : ℝ)..t, G y) (Set.Icc (0 : ℝ) 1) := by
     have hint : IntegrableOn G (Set.uIcc (0 : ℝ) 1) := by
@@ -110,8 +112,95 @@ theorem inner_uniform_of_pointwise_nonneg (G : ℝ → ℝ)
       = (∑ n ∈ Finset.Icc 2 (R / m), G (Real.log n / Real.log R) / (n : ℝ)) / Real.log R := by
     unfold Psi; rw [floor_rpow_one_sub R m hR2 hm1]
   have hphi_eq : (∫ y in (0 : ℝ)..(1 - Real.log m / Real.log R), G y)
-      = BoundedGaps.WeightedRiemann2D.Phi G (Real.log m / Real.log R) := rfl
+      = Phi G (Real.log m / Real.log R) := rfl
   rw [← hpsi_eq, ← hphi_eq]
   exact hR (1 - Real.log m / Real.log R) htm_mem
+
+/-- **Inner-uniform convergence for arbitrary continuous `G`.** Dropping the `G ≥ 0` restriction of
+`inner_uniform_of_pointwise_nonneg` via the positive/negative-part split `G = G⁺ - G⁻` (both
+continuous and `≥ 0`). Assumes the pointwise scale-change limit `Ψ H R t → ∫₀^t H` for every
+continuous `H` on `[0,1]` (the single remaining analytic input — supplied to `G⁺` and `G⁻`). The
+inner sum and `Phi` are linear in the integrand, so the two part-bounds (each `≤ ε/2`) combine by
+the triangle inequality. This is exactly `weighted_riemann_2d_of_inner`'s `huni` for general `G`. -/
+theorem inner_uniform_of_pointwise (G : ℝ → ℝ) (hGcont : ContinuousOn G (Set.Icc (0 : ℝ) 1))
+    (hptw : ∀ H : ℝ → ℝ, ContinuousOn H (Set.Icc (0 : ℝ) 1) → ∀ t ∈ Set.Icc (0 : ℝ) 1,
+        Tendsto (fun R : ℕ => Psi H R t) atTop (𝓝 (∫ y in (0 : ℝ)..t, H y))) :
+    ∀ ε > 0, ∀ᶠ R : ℕ in atTop, ∀ m ∈ Finset.Icc 2 R,
+      |(∑ n ∈ Finset.Icc 2 (R / m), G (Real.log n / Real.log R) / (n : ℝ)) / Real.log R
+        - Phi G (Real.log m / Real.log R)| ≤ ε := by
+  have htri : ∀ a b : ℝ, |a - b| ≤ |a| + |b| := fun a b => by
+    rw [abs_le]
+    refine ⟨?_, ?_⟩
+    · have h1 : -|a| ≤ a := neg_abs_le a
+      have h2 : b ≤ |b| := le_abs_self b
+      linarith
+    · have h1 : a ≤ |a| := le_abs_self a
+      have h2 : -|b| ≤ b := neg_abs_le b
+      linarith
+  have hGp_cont : ContinuousOn (fun x => max (G x) 0) (Set.Icc (0 : ℝ) 1) :=
+    hGcont.sup continuousOn_const
+  have hGm_cont : ContinuousOn (fun x => max (-(G x)) 0) (Set.Icc (0 : ℝ) 1) :=
+    hGcont.neg.sup continuousOn_const
+  have hp := inner_uniform_of_pointwise_nonneg (fun x => max (G x) 0)
+    (fun _ => le_max_right _ _) hGp_cont (hptw _ hGp_cont)
+  have hm := inner_uniform_of_pointwise_nonneg (fun x => max (-(G x)) 0)
+    (fun _ => le_max_right _ _) hGm_cont (hptw _ hGm_cont)
+  intro ε hε
+  filter_upwards [hp (ε/2) (by linarith), hm (ε/2) (by linarith), eventually_ge_atTop 2]
+    with R hRp hRm hR2 m hmem
+  obtain ⟨hm2, hmR⟩ := Finset.mem_Icc.mp hmem
+  have hboundp := hRp m hmem
+  have hboundm := hRm m hmem
+  -- `x₀ = 1 - log m/log R ∈ [0,1]`
+  have hlogRpos : 0 < Real.log (R : ℝ) := Real.log_pos (by exact_mod_cast (show 1 < R by omega))
+  have hlogm_nn : 0 ≤ Real.log (m : ℝ) := Real.log_nonneg (by exact_mod_cast (show 1 ≤ m by omega))
+  have hlogm_le : Real.log (m : ℝ) ≤ Real.log (R : ℝ) :=
+    Real.log_le_log (by exact_mod_cast (show 0 < m by omega)) (by exact_mod_cast hmR)
+  have hx0_nn : 0 ≤ 1 - Real.log m / Real.log R := by
+    have : Real.log m / Real.log R ≤ 1 := by rw [div_le_one hlogRpos]; exact hlogm_le
+    linarith
+  have hx0_le1 : 1 - Real.log m / Real.log R ≤ 1 := by
+    have : 0 ≤ Real.log m / Real.log R := div_nonneg hlogm_nn (le_of_lt hlogRpos)
+    linarith
+  -- inner sum splits `S = Sp - Sm`
+  have hS_split : (∑ n ∈ Finset.Icc 2 (R / m), G (Real.log n / Real.log R) / (n : ℝ))
+      = (∑ n ∈ Finset.Icc 2 (R / m), max (G (Real.log n / Real.log R)) 0 / (n : ℝ))
+        - (∑ n ∈ Finset.Icc 2 (R / m), max (-(G (Real.log n / Real.log R))) 0 / (n : ℝ)) := by
+    rw [← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl (fun n _ => ?_)
+    rw [← sub_div]
+    congr 1
+    rcases le_total 0 (G (Real.log n / Real.log R)) with h | h
+    · rw [max_eq_left h, max_eq_right (neg_nonpos.mpr h)]; ring
+    · rw [max_eq_right h, max_eq_left (neg_nonneg.mpr h)]; ring
+  -- `Phi` splits `Phi G = Phi G⁺ - Phi G⁻`
+  have hsub : Set.uIcc (0 : ℝ) (1 - Real.log m / Real.log R) ⊆ Set.Icc (0 : ℝ) 1 := by
+    rw [Set.uIcc_of_le hx0_nn]; exact Set.Icc_subset_Icc_right hx0_le1
+  have hGp_ii : IntervalIntegrable (fun x => max (G x) 0) MeasureTheory.volume 0
+      (1 - Real.log m / Real.log R) := (hGp_cont.mono hsub).intervalIntegrable
+  have hGm_ii : IntervalIntegrable (fun x => max (-(G x)) 0) MeasureTheory.volume 0
+      (1 - Real.log m / Real.log R) := (hGm_cont.mono hsub).intervalIntegrable
+  have hPhi_split : Phi G (Real.log m / Real.log R)
+      = Phi (fun x => max (G x) 0) (Real.log m / Real.log R)
+        - Phi (fun x => max (-(G x)) 0) (Real.log m / Real.log R) := by
+    unfold Phi
+    rw [← intervalIntegral.integral_sub hGp_ii hGm_ii]
+    apply intervalIntegral.integral_congr
+    intro y _
+    show G y = max (G y) 0 - max (-G y) 0
+    rcases le_total 0 (G y) with h | h
+    · rw [max_eq_left h, max_eq_right (neg_nonpos.mpr h)]; ring
+    · rw [max_eq_right h, max_eq_left (neg_nonneg.mpr h)]; ring
+  -- combine via the triangle inequality (abbreviate the four atomic pieces)
+  rw [hS_split, hPhi_split, sub_div]
+  set Sp :=
+    (∑ n ∈ Finset.Icc 2 (R / m), max (G (Real.log n / Real.log R)) 0 / (n : ℝ)) / Real.log R
+  set Sm :=
+    (∑ n ∈ Finset.Icc 2 (R / m), max (-(G (Real.log n / Real.log R))) 0 / (n : ℝ)) / Real.log R
+  set Pp := Phi (fun x => max (G x) 0) (Real.log m / Real.log R)
+  set Pm := Phi (fun x => max (-(G x)) 0) (Real.log m / Real.log R)
+  have hre : Sp - Sm - (Pp - Pm) = (Sp - Pp) - (Sm - Pm) := by ring
+  rw [hre]
+  exact (htri _ _).trans (by linarith [hboundp, hboundm])
 
 end BoundedGaps.InnerUniformReduction
