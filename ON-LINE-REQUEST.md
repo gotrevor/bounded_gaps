@@ -7,14 +7,15 @@ delete the answered item here, and remove this file once nothing is left open.
 
 ## 2026-06-04 — Sharp Mertens-type asymptotic `∑_{n≤x} μ²(n)/φ(n) = log x + O(1)`
 
-> **RESOLVED LOCALLY (2026-06-04, lap on `path-a-selberg-nu`).** Reconstructed the
-> proof myself (the `ζ(s+1)`-factorization route: `g = u ⋆ B`, `B = μ ⋆ (id·g)`) and
-> FORMALIZED it: `BoundedGaps.SharpMertens.sharp_mertens_tendsto` proves
-> `(∑_{n≤N} μ²/φ)/log N → 1`, axiom-clean, conditional only on two elementary
-> Euler-product partial-sum bounds (one on Aristotle). See
-> `SHARP_MERTENS_RECONSTRUCTION.md`. **No longer blocking** — a textbook cross-check
-> (Montgomery–Vaughan §2 / Tenenbaum) of the constant `C` would be a nice confirmation
-> but is optional. Lower priority.
+> **FULLY RESOLVED — NO ONLINE HELP NEEDED (2026-06-04 PM, `path-a-selberg-nu`).**
+> `BoundedGaps.SharpMertens.sharp_mertens_unconditional` proves `(∑_{n≤N} μ²/φ)/log N → 1`
+> **fully unconditionally**, `#print axioms = [propext, Classical.choice, Quot.sound]`. Both
+> Euler-product partial-sum bounds (`sum_norm_bAF_le`, `sum_norm_bAF_log_le`) are proved directly
+> on `bAF` — the `ζ(s+1)`-factorization route plus the trick that the support of `bAF` in `[1,N]`
+> divides the primorial-squared `(N#)²` (so the DIVISOR-sum Euler product applies, sidestepping the
+> partial-sum one mathlib lacks). **This item can be deleted** — no remaining online dependency.
+> (A textbook cross-check of the additive constant `C` would be a nice curiosity but is not needed
+> for the formalization, which establishes the leading-coefficient-1 asymptotic.)
 
 **What I need.** A clean elementary proof (textbook/paper, with the exact
 identity/decomposition used) of the *sharp coefficient-1* asymptotic
