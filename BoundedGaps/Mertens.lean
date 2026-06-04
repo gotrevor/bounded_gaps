@@ -1404,6 +1404,32 @@ theorem sum_log_div_sq_le {N : ℕ} (hN : 2 ≤ N) :
   rw [h2, show (Real.log 2) / (2 : ℝ) ^ 2 = Real.log 2 / 4 from by norm_num]
   linarith [hcomp]
 
+/-- finite geometric tail: for `n ≥ 2` and any `K`, `∑_{k=2}^K (1/n)^k ≤ 1/(n(n-1))`.
+The per-prime geometric factor in the prime-power tail: `∑_{k≥2} p^{-k} ≤ 1/(p(p-1))`. -/
+theorem geom_tail_le (n : ℕ) (hn : 2 ≤ n) (K : ℕ) :
+    ∑ k ∈ Finset.Icc 2 K, (1 / (n : ℝ)) ^ k ≤ 1 / ((n : ℝ) * ((n : ℝ) - 1)) := by
+  have hnR : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  set r : ℝ := 1 / (n : ℝ) with hr
+  have hr0 : 0 ≤ r := by rw [hr]; positivity
+  have hr1 : r < 1 := by rw [hr, div_lt_one (by linarith)]; linarith
+  have hsummable : Summable (fun k : ℕ => r ^ k) := summable_geometric_of_lt_one hr0 hr1
+  have hsummable2 : Summable (fun j : ℕ => r ^ (j + 2)) := (summable_nat_add_iff 2).mpr hsummable
+  have hn0 : (n : ℝ) ≠ 0 := by positivity
+  have hn1 : (n : ℝ) - 1 ≠ 0 := by intro h; linarith
+  have hicc : ∑ k ∈ Finset.Icc 2 K, r ^ k = ∑ j ∈ Finset.range (K - 1), r ^ (j + 2) := by
+    rw [show Finset.Icc 2 K = Finset.Ico 2 (K + 1) from by
+          ext x; simp only [Finset.mem_Icc, Finset.mem_Ico]; omega,
+        Finset.sum_Ico_eq_sum_range]
+    refine Finset.sum_congr (by congr 1) (fun j _ => by rw [Nat.add_comm])
+  calc ∑ k ∈ Finset.Icc 2 K, r ^ k
+      = ∑ j ∈ Finset.range (K - 1), r ^ (j + 2) := hicc
+    _ ≤ ∑' j : ℕ, r ^ (j + 2) := Summable.sum_le_tsum _ (fun j _ => by positivity) hsummable2
+    _ = r ^ 2 / (1 - r) := by
+        have hfun : (fun j : ℕ => r ^ (j + 2)) = (fun j : ℕ => r ^ 2 * r ^ j) := by
+          ext j; rw [pow_add]; ring
+        rw [hfun, tsum_mul_left, tsum_geometric_of_lt_one hr0 hr1, ← div_eq_mul_inv]
+    _ = 1 / ((n : ℝ) * ((n : ℝ) - 1)) := by rw [hr]; field_simp
+
 /-! ## The headline upper bound `∑_{n≤N} μ²(n)/φ(n) = O(log N)` (conditional)
 
 Final assembly of the upper half. `mertens_prod_upper` dominates `∑ μ²/φ` by the finite
