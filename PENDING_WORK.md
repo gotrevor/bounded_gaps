@@ -364,8 +364,15 @@ only structural diff is the `ϑ/2` (resp `1/4+ϖ`) normalization (Polymath8b §3
 near-optimal separable witness from the `MkSet_bddAbove` sup definition.
 
 ### Next-lap pointer
-item 1/P1 (port Aristotle `930e468a` → front #4 axiom-free), then item 2/P3 (separable rank-1
-multidimensional lift). Reusable bricks already in `WeightedMertens.lean`:
-`weighted_cesaro_tendsto_zero`, `weighted_avg_majorant_tendsto_zero`, `harmonic_div_log_tendsto_one`,
-`sum_log_mul_log_diff_le_sq`, `Bdisc`/`discrepancy_*`, `abel_tail_*`, `weighted_mertens_of_riemann`,
-`weighted_mertens_of_contDiff`.
+item 1/P1 DONE (`riemann_sum_log_weight` ported, front #4 axiom-free). Sub-step (c) **algebra**
+now also DONE — `SieveExpansion.lean` has the GPY diagonalization ladder (all axiom-clean,
+2026-06-04 continuation): `gpy_diagonalize` (`∑_{d,e}w(d)w(e)/[d,e]=∑_r φ(r)(∑_{r∣d}w(d)/d)²`),
+`gpy_diagonalize_moebius` (the `w=μ·g` sieve form = per-coordinate quadratic form in the expansion),
+`gpy_yvar_substitution` (`y_r=(μ(r)/r)·∑_{(r,s)=1}μ(s)g(rs)/s`), `gpy_quadform_nonneg` (PSD).
+**Next genuine nut:** the diagonal-sum *asymptotic* `∑_r φ(r)(μ(r)/r)²(∑_{(r,s)=1}μ(s)F(log rs/logR)/s)²
+→ (integral const)` as `R→∞` — the GPY main-term computation; its multidimensional smooth-Riemann
+core is the in-flight Aristotle job `3e2b6a8d` (`weighted_riemann_2d`). Then the off-diagonal-main-
+term discrepancy (singular series) + sub-step (d) `IsLittleO` glue. Reusable analytic bricks in
+`WeightedMertens.lean`: `weighted_cesaro_tendsto_zero`, `weighted_avg_majorant_tendsto_zero`,
+`harmonic_div_log_tendsto_one`, `sum_log_mul_log_diff_le_sq`, `Bdisc`/`discrepancy_*`, `abel_tail_*`,
+`weighted_mertens_of_riemann`, `weighted_mertens_of_contDiff`.

@@ -479,3 +479,36 @@ Next Aristotle job IN FLIGHT: `3e2b6a8d` (`aristotle-wmertens2d/`) = the 2-D sim
 weighted Riemann model `∑_{mn≤R} F·G/(mn)/(log R)² → ∫₀¹F(x)∫₀^{1-x}G` (the analytic core of the
 k-dim lift). When it returns: verify + port, then build the arithmetic (coprimality + singular
 series) layer on top toward `s1_holds_from_nonprime_asym`.
+
+## Sub-step (c) DIAGONALIZATION landed — GPY quadratic form bricks (2026-06-04, continuation)
+
+Continuation lap. 3 commits, all axiom-clean (`[propext, Classical.choice, Quot.sound]`), full
+build green (8277 jobs). All in `BoundedGaps/SieveExpansion.lean`. These open sub-step (c) on the
+**algebra side** — turning the divisor-lattice quadratic form (the diagonal main term of sub-step
+(b)) into the diagonal sum whose Mertens/Riemann asymptotic gives `α = I(F)`.
+
+- **`gpy_diagonalize`** — the GPY 1-D diagonalization identity:
+  `∑_{d,e∈T} w(d)w(e)/[d,e] = ∑_{r∈R} φ(r)·(∑_{d∈T, r∣d} w(d)/d)²`
+  for any finset `R ⊇` all divisors of all `d∈T`. Proof: `1/[d,e]=gcd(d,e)/(de)`
+  (`Nat.gcd_mul_lcm`) + `gcd(d,e)=∑_{r∣gcd}φ(r)` (`Nat.sum_totient`) + reindex `r` outermost
+  (`Finset.sum_comm`) + factor the `if r∣d∧r∣e` into a product of per-variable indicators.
+- **`gpy_diagonalize_moebius`** — the sieve specialization `w(d)=μ(d)·g(d)` (the `lambdaTransform`
+  summand): `∑μ(d)μ(e)g(d)g(e)/[d,e] = ∑_r φ(r)(∑_{r∣d}μ(d)g(d)/d)²`. This is *exactly* the
+  per-coordinate quadratic form appearing in `sieveSum_selberg_nu_separable_expand`'s diagonal main
+  term once `lattice_count_main_term` substitutes the count `(B−A)/(W·∏[dᵢ,eᵢ])` (the `g(d) =
+  F(log d/log R)` instance), so the bricks are on the critical path, not orphaned.
+- **`gpy_yvar_substitution`** — the GPY change of variable `d=r·s` exposing the multiplicative
+  structure of `y_r := ∑_{d∈T,r∣d} μ(d)g(d)/d`:
+  `y_r = (μ(r)/r)·∑_{s,(r,s)=1} μ(s)g(r·s)/s`, via `μ(rs)=μ(r)μ(s)·[gcd=1]` (Möbius vanishes off
+  squarefree). The diagonal sum is thus `∑_r φ(r)·(μ(r)/r)²·(coprime sum)²`.
+- **`gpy_quadform_nonneg`** — `0 ≤ ∑_{d,e}w(d)w(e)/[d,e]` for any `w` (the form is PSD), immediate
+  from the diagonalization (sum of `φ(r)·square ≥ 0`). The matrix-positivity `(1/[d,e]) ⪰ 0`
+  underlying every Selberg majorant.
+
+**Remaining (c) content** (the genuine analytic nut, still open): evaluate the diagonal sum
+`∑_r φ(r)·(μ(r)/r)²·(∑_{(r,s)=1}μ(s)F(log rs/logR)/s)²` asymptotically as `R→∞`. With `g(d)=
+F(log d/log R)` this is the GPY/Selberg main-term computation → the integral constant. The
+multidimensional (simplex-coupled) version of the underlying smooth Riemann limit is the in-flight
+Aristotle job `3e2b6a8d` (`weighted_riemann_2d`). After that: the off-diagonal-main-term
+discrepancy (the heuristic count vs the genuine count — where the singular series lives) and the
+sub-step (d) `IsLittleO` assembly into `alphaBound`.
