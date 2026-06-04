@@ -192,7 +192,23 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 - **`Prerequisites.geh_implies_eh`** (`sorry`): needs a faithful `GEH` body (still opaque `axiom`)
   + Vaughan's identity to rebuild `Λ` from Type I/II convolutions. Multi-session; deferred.
-- **`exists_separable_F_of_Mk_gt` — NARROWED 2026-06-04 to a single pure-density axiom.** Was a
+- **`exists_separable_F_of_Mk_gt` — FULLY DISCHARGED 2026-06-04 (commits `153505b`, `d9b4632`).**
+  Was a cited deep Polymath8b §6 polynomial-optimisation axiom (one of the 4 gating the UNCONDITIONAL
+  `bounded_gap_of_Mk_200`). Now a **fully axiom-clean THEOREM** (`[propext, Classical.choice,
+  Quot.sound]`), as is the pure-density `separable_dense_sup` it rested on — discharged in-kernel by
+  the **box-tensor construction**: inward centroid expansion `E t = b + r(t−b)` (`b=(1/(k+1))ᵢ`,
+  `r=1+modulus mesh`) gives `F₁=F∘E` with support strictly interior (margin `≥(1−r⁻¹)/(k+1)` per
+  face) and `|F−F₁|≤δ/2`; box-tensor `G=∑_φ F₁(c_φ)·∏ meshBump h (φ i)` is separable+smooth with
+  `|F₁−G|≤δ/2`; margin > mesh keeps support(G)⊆simplex. **`bounded_gap_of_Mk_200` axiom set: 4→3**
+  (now `[BombieriVinogradov, s1_holds_from_nonprime_asym, s2_holds_from_prime_asym_under_EH] +
+  native_decide`). The ε family (`separable_dense_sup_eps`, `epsilon_trick`) AND the truncated family
+  (`separable_dense_sup_truncated`, `exists_separable_F_truncated_of_Mk_truncated_gt`) are ALL now
+  axiom-clean too — the entire `separable_dense_*` family is machine-checked. Reusable in-kernel cores
+  landed: `abs_sub_weighted_average_le`, `meshBump`/`_nonneg`/`_contDiff`/`_partition`/`_support`,
+  `box_tensor_approx`, `exists_uniform_modulus`. **Aristotle sepdense `c46a7778` was a DEAD END**
+  (submitted with `ContDiff ℝ ⊤` = C^ω analytic ⟹ vacuous; our axiom is `ContDiff ℝ ∞` = C^∞; see
+  memory `sepdense-aristotle-deadend`). ▼ OLD narrowing notes (superseded, kept for history): ▼
+- ~~**`exists_separable_F_of_Mk_gt` — NARROWED 2026-06-04 to a single pure-density axiom.**~~ Was a
   cited deep Polymath8b §6 polynomial-optimisation axiom (one of the 4 gating the UNCONDITIONAL
   `bounded_gap_of_Mk_200`). Now a THEOREM resting only on **`separable_dense_sup`** (sup-norm
   density of finite-separable smooth simplex-supported functions — pure approximation theory, NO
