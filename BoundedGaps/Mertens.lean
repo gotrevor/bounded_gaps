@@ -663,4 +663,47 @@ theorem abel_summation_identity (N : ℕ) (a w : ℕ → ℝ) :
   induction' N with N ih <;> simp_all +decide [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] ; ring!;
   cases N <;> norm_num [ add_comm, Finset.sum_Ioc_succ_top ] at * ; linarith!;
 
+/-- **Mertens-2nd term bound.** For `n ≥ 2`,
+`(1 + log n)·(1/log n − 1/log (n+1)) ≤ (1 + 1/log 2)/(n · log n)`. Bounds each
+summand of the difference-sum in the second Abel step toward `∑_{p≤N} 1/p`:
+`log(n+1)−log n = log(1+1/n) ≤ 1/n`, `1 + log n ≤ (1+1/log 2)·log n` for `n ≥ 2`. -/
+theorem mertens_second_term_bound (n : ℕ) (hn : 2 ≤ n) :
+    (1 + Real.log n) * (1 / Real.log n - 1 / Real.log (n + 1))
+      ≤ (1 + 1 / Real.log 2) / ((n : ℝ) * Real.log n) := by
+  have hn2 : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have hn1 : (1 : ℝ) < (n : ℝ) := by linarith
+  have hn0 : (0 : ℝ) < (n : ℝ) := by linarith
+  have hlogn : (0 : ℝ) < Real.log n := Real.log_pos hn1
+  have hlogn1 : (0 : ℝ) < Real.log (n + 1) := Real.log_pos (by linarith)
+  have hle : Real.log n ≤ Real.log (n + 1) := Real.log_le_log hn0 (by linarith)
+  have hlog2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  have hlog2le : Real.log 2 ≤ Real.log n := Real.log_le_log (by norm_num) hn2
+  have hdiff : Real.log (n + 1) - Real.log n ≤ 1 / (n : ℝ) := by
+    rw [← Real.log_div (by linarith) (by linarith)]
+    have heq : ((n : ℝ) + 1) / (n : ℝ) = 1 + 1 / (n : ℝ) := by field_simp
+    rw [heq]
+    have := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 1 + 1 / (n : ℝ) by positivity)
+    linarith
+  have hfac2 : 1 / Real.log n - 1 / Real.log (n + 1) ≤ (1 / (n : ℝ)) / (Real.log n) ^ 2 := by
+    rw [div_sub_div _ _ (ne_of_gt hlogn) (ne_of_gt hlogn1)]
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]
+    have hh : (Real.log (n + 1) - Real.log n) * Real.log n ≤ (1 / (n : ℝ)) * Real.log (n + 1) := by
+      calc (Real.log (n + 1) - Real.log n) * Real.log n
+          ≤ (1 / (n : ℝ)) * Real.log n := by nlinarith [hdiff, hlogn]
+        _ ≤ (1 / (n : ℝ)) * Real.log (n + 1) := by nlinarith [hle, hn0]
+    nlinarith [hh, hlogn, hlogn1, mul_pos hlogn hlogn1]
+  have hfac1 : 1 + Real.log n ≤ (1 + 1 / Real.log 2) * Real.log n := by
+    have h1 : 1 ≤ (1 / Real.log 2) * Real.log n := by
+      rw [div_mul_eq_mul_div, one_mul, le_div_iff₀ hlog2]; linarith
+    nlinarith [h1]
+  have hfac2pos : (0 : ℝ) ≤ 1 / Real.log n - 1 / Real.log (n + 1) := by
+    rw [sub_nonneg]; exact one_div_le_one_div_of_le hlogn hle
+  have hcoef : (0 : ℝ) ≤ (1 + 1 / Real.log 2) * Real.log n :=
+    mul_nonneg (by positivity) (le_of_lt hlogn)
+  calc (1 + Real.log n) * (1 / Real.log n - 1 / Real.log (n + 1))
+      ≤ ((1 + 1 / Real.log 2) * Real.log n) * ((1 / (n : ℝ)) / (Real.log n) ^ 2) :=
+        mul_le_mul hfac1 hfac2 hfac2pos hcoef
+    _ = (1 + 1 / Real.log 2) / ((n : ℝ) * Real.log n) := by
+        field_simp
+
 end BoundedGaps.Mertens
