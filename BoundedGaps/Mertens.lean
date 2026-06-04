@@ -1406,4 +1406,30 @@ theorem mertens_theta_log_of_tail (N : ℕ) (hN : 3 ≤ N)
   · intro n hn
     exact mertens_prime_log_upper_of_tail n hn (htail n hn)
 
+/-- **Mertens' second theorem `∑_{p≤N} 1/p = log log N + O(1)` (coefficient 1), conditional
+on the prime-power tail bound.** Two-sided, bundling `mertens2_lower_of` and
+`mertens2_upper_of` at `C = log 4 + 5` (both halves of the sharp prime-log estimate from
+`mertens_prime_log_two_sided_of`). The remaining hypothesis `htail` is the in-flight
+`prime_power_tail_le`; discharging it makes this the unconditional textbook estimate. -/
+theorem mertens2_two_sided_of_tail (N : ℕ) (hN : 3 ≤ N)
+    (htail : ∀ n, 1 ≤ n →
+        ∑ m ∈ (Finset.Icc 1 n).filter (fun m => IsPrimePow m ∧ ¬ Nat.Prime m),
+          ArithmeticFunction.vonMangoldt m / (m : ℝ) ≤ 1) :
+    Real.log (Real.log N)
+        - (Real.log (Real.log 2) + 1 / ((2 : ℝ) * Real.log 2) + (Real.log 4 + 5) / Real.log 2)
+        ≤ ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, (1 : ℝ) / (p : ℝ)
+      ∧ ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, (1 : ℝ) / (p : ℝ)
+        ≤ Real.log (Real.log N)
+          + (1 + 2 * ((Real.log 4 + 5) / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2)
+              - Real.log (Real.log 2)) := by
+  have hC : (0 : ℝ) ≤ Real.log 4 + 5 := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    linarith
+  refine ⟨?_, ?_⟩
+  · refine mertens2_lower_of N hN (Real.log 4 + 5) hC (fun n hn => ?_)
+    have h := mertens_prime_log_two_sided_of n hn (htail n hn)
+    rw [abs_le] at h; linarith [h.1]
+  · exact mertens2_upper_of N hN (Real.log 4 + 5) hC
+      (fun n hn => mertens_prime_log_upper_of_tail n hn (htail n hn))
+
 end BoundedGaps.Mertens
