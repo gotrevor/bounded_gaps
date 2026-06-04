@@ -606,3 +606,52 @@ Dirichlet divisor count `Dₖ(R) = #{d : ∏dᵢ ≤ R} ≍ R(log R)^{k-1}` bein
 which holds since `R = x^{θ/2} ≪ x ≈ M·W`. The repo already has the 1-D interchange
 `SingularSeries.dirichlet_hyperbola` (`∑_{n≤N}∑_{d∣n}g = ∑_{d≤N}g·⌊N/d⌋`); the `k`-dim count is
 its iterate — a good next Aristotle target. **This nearly closes #2 modulo that one count bound.**
+
+## Leaf (2) DISCHARGED in-kernel + Leaf (4) glue COMPLETE (2026-06-04, lap N+2)
+
+Three axiom-clean commits (`691a239`, `3a3dbef`, `e7dc3ae`), full build green (8277), every
+new decl `#print axioms = [propext, Classical.choice, Quot.sound]`.
+
+**★ Leaf (2) — the k-dim Dirichlet hyperbola count — is now PROVEN IN-KERNEL** (was queued for
+Aristotle; done locally instead, no Aristotle needed). New in `SieveExpansion.lean`:
+- `hyperbola_count_le (k) (hk:1≤k) (N) (hN:1≤N) : #{d∈[1,N]^k : ∏dᵢ≤N} ≤ N·(1+log N)^{k-1}`.
+  Proof: induction on `k`; partition `(k+1)`-tuples by first coordinate `m∈[1,N]`; the fiber
+  bijects (via `Fin.cons`/`Fin.tail`, `Finset.card_bij'`) with the `k`-tuple count at bound
+  `⌊N/m⌋`; the harmonic sum `∑_{m≤N}1/m ≤ 1+log N` (`harmonic_le_one_add_log`,
+  `harmonic_eq_sum_Icc`) closes the inductive step. ~140 lines, no `sorry`, no new axiom.
+- `lattice_count_le_hyperbola (hk) (D) (hD) (R) (hR:1<R)` — bridges the GENERAL diagonal count
+  `#{d∈piFinset D : ∏(dᵢ:ℝ)≤R}` (real `R`, arbitrary positive lattice `D`) down to the box
+  count at `N=⌊R⌋₊` (the filtered set is a subset; `Finset.card_le_card`), then applies
+  `hyperbola_count_le`. RHS `⌊R⌋₊·(1+log⌊R⌋₊)^{k-1}`.
+- `diagonal_weight_le_hyperbola` — CAPSTONE: chaining `diagonal_weight_le_count` (weight ≤ C²·count)
+  with the bridge gives the diagonal sieve weight an explicit closed-form bound
+  `∑_{diag}|coeff| ≤ C²·⌊R⌋₊·(1+log⌊R⌋₊)^{k-1}`. Since `R=x^{θ/2}≪x≈MW`, this is `o(M(log R)^k)`
+  — the diagonal half of analytic obligation #2, now reduced to an explicit `≍R(log R)^{k-1}`
+  estimate (only the parameter relation `R = o(M log R)` remains, which is GPY plumbing, not analysis).
+
+**Leaf (4) — the `IsLittleO` glue into `alphaBound`/`betaBound` — is now a MACHINE-CHECKED CHAIN.**
+New in `Sieve.lean` (right after the `betaBound` def):
+- `alphaBound_of_sub_littleO` / `betaBound_of_sub_littleO` — the STRUCTURAL CORE: `alphaBound` is
+  `IsLittleO` of the *positive part* `max(sieveSum−α·main,0)`; since `max(f,0) =O f` (pointwise
+  `|max(f,0)|≤|f|`, via `IsBigO.trans_isLittleO`+`isBigO_of_le`), the cleaner two-sided difference
+  `sieveSum−α·alphaMainTerm = o(alphaMainTerm)` already implies the one-sided obligation.
+- `alphaBound_of_heuristic_correction` / `betaBound_of_heuristic_correction` — the MODULAR ASSEMBLY:
+  given the exact split `sieveSum = Aheur + Bcorr` (the heuristic main + correction, e.g.
+  `sieveSum_separable_eq_heuristic_add_correction`), the heuristic-main limit
+  `Aheur−α·main = o(main)` (leaf 1) AND the correction bound `Bcorr = o(main)` (leaves 2,3)
+  together yield `alphaBound` (via `IsLittleO.add`/`.sub`). This machine-checks the dependency
+  **`leaf 1 ∧ leaves 2,3 ⟹ s1`** — leaf (4) is no longer an open analytic obligation, just the
+  composition of the other three.
+
+### Net state — `s1_holds_from_nonprime_asym` now bottoms out in exactly TWO genuine analytic nuts:
+1. **Diagonal asymptotic (leaf 1)** — the scalar limit `B(F,F)=∑_{r sf}(φ(r)/r²)z_r² → I(F)·const`
+   as `R→∞`. THE deep GPY nut; smooth core = Aristotle `weighted_riemann_2d` (`3e2b6a8d`, in flight,
+   slow ~27%). Cauchy–Schwarz (`gpy_bilinear_cauchy_schwarz`) already collapsed all cross terms to
+   this single diagonal limit; the 1-D factor `weighted_mertens` is proven & axiom-clean.
+2. **Off-diagonal heuristic main = o(main) (leaf 3)** — `∑_{¬diag}coeffₚ·mainₚ`. The W-trick
+   vanishing infra is largely built (`lattice_count_offdiag_vanish_Wtrick`,
+   `lattice_count_pair_offdiag_vanish`, `sum_restrict_offdiag_vanish`, `correction_abs_bound`); what
+   remains is the singular-series discrepancy/prime-gain bound + the GPY parameter plumbing
+   (`W=∏_{p≤D₀}p`, `M=(B−A)/W`, `R=x^{θ/2}`) that closes both the off-diag main and the leaf-2
+   `R = o(M log R)` tail.
+Leaves (2) and (4) are DONE (in-kernel). Everything algebraic + the glue is machine-checked.
