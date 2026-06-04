@@ -1,6 +1,7 @@
 import BoundedGaps.WeightedRiemann2D
 import BoundedGaps.PolyaUniform
 import BoundedGaps.Mertens
+import BoundedGaps.RiemannSumLogWeight
 import Mathlib.NumberTheory.Harmonic.EulerMascheroni
 
 /-!
@@ -313,5 +314,163 @@ theorem weighted_riemann_2d_of_psi_pointwise (F G : ℝ → ℝ)
       atTop (nhds (∫ x in (0 : ℝ)..1, F x * ∫ y in (0 : ℝ)..(1 - x), G y)) :=
   BoundedGaps.WeightedRiemann2D.weighted_riemann_2d_of_inner F G hF hG
     (inner_uniform_of_pointwise G hG hptw)
+
+/-- **The pointwise scale-change limit.** For `G` continuous on `[0,1]` and fixed `t ∈ [0,1]`, the
+truncated log-weighted sum `Ψ G R t → ∫₀^t G` as `R → ∞`. This is the classical "fixed-`m` scale
+change", proven here in-kernel from the 1-D limit `riemann_sum_log_weight`. With `N = ⌊R^t⌋` and
+`c_R = log N/log R`: `Ψ G R t = c_R · B R`, where `B R → ∫₀¹ G(t·u)du` (the `c_R`-drifted Riemann
+sum, equal to the `t`-scaled one up to an error `→ 0` by uniform continuity of `G` plus the bounded
+harmonic ratio), and `c_R → t`; finally `t·∫₀¹ G(t·u)du = ∫₀^t G`. Assembles
+`tendsto_logFloor_rpow_div` (`c_R → t`) + `tendsto_harmonic_icc2_div_log` + the drift bound. -/
+theorem psi_tendsto (G : ℝ → ℝ) (hG : ContinuousOn G (Set.Icc (0 : ℝ) 1)) (t : ℝ)
+    (ht : t ∈ Set.Icc (0 : ℝ) 1) :
+    Tendsto (fun R : ℕ => Psi G R t) atTop (𝓝 (∫ y in (0 : ℝ)..t, G y)) := by
+  obtain ⟨ht0, ht1⟩ := ht
+  rcases eq_or_lt_of_le ht0 with hteq | htpos
+  · subst hteq
+    simp only [Psi]
+    have : (fun R : ℕ => (∑ n ∈ Finset.Icc 2 ⌊(R : ℝ) ^ (0:ℝ)⌋₊,
+        G (Real.log n / Real.log R) / (n : ℝ)) / Real.log R) = fun _ => 0 := by
+      funext R; rw [Real.rpow_zero]; simp
+    rw [this]; simpa using tendsto_const_nhds
+  · set Ft : ℝ → ℝ := fun u => G (t * u) with hFt
+    have hmaps : MapsTo (fun u => t * u) (Icc (0:ℝ) 1) (Icc (0:ℝ) 1) := by
+      intro u hu; obtain ⟨hu0, hu1⟩ := hu
+      exact ⟨by positivity, by nlinarith⟩
+    have hFt_cont : ContinuousOn Ft (Icc (0:ℝ) 1) :=
+      hG.comp ((continuous_const.mul continuous_id).continuousOn) hmaps
+    set N : ℕ → ℕ := fun R => ⌊(R : ℝ) ^ t⌋₊ with hN
+    have hNtop : Tendsto N atTop atTop := by
+      have : Tendsto (fun R : ℕ => (R : ℝ) ^ t) atTop atTop :=
+        (tendsto_rpow_atTop htpos).comp tendsto_natCast_atTop_atTop
+      exact tendsto_nat_floor_atTop.comp this
+    have hcR : Tendsto (fun R : ℕ => Real.log (N R : ℝ) / Real.log (R : ℝ)) atTop (𝓝 t) :=
+      tendsto_logFloor_rpow_div t htpos
+    have hriem : Tendsto (fun R : ℕ =>
+        (∑ n ∈ Finset.Icc 2 (N R), Ft (Real.log n / Real.log (N R : ℝ)) / (n : ℝ))
+          / Real.log (N R : ℝ)) atTop (𝓝 (∫ u in (0:ℝ)..1, Ft u)) :=
+      (BoundedGaps.WeightedMertens.Riemann.riemann_sum_log_weight Ft hFt_cont).comp hNtop
+    have hdrift : Tendsto (fun R : ℕ =>
+        (∑ n ∈ Finset.Icc 2 (N R),
+            (G (Real.log n / Real.log R) - Ft (Real.log n / Real.log (N R : ℝ))) / (n : ℝ))
+          / Real.log (N R : ℝ)) atTop (𝓝 0) := by
+      rw [NormedAddGroup.tendsto_nhds_zero]
+      intro ε hε
+      have huc : UniformContinuousOn G (Icc (0:ℝ) 1) :=
+        isCompact_Icc.uniformContinuousOn_of_continuous hG
+      obtain ⟨δ, hδ0, hδ⟩ := Metric.uniformContinuousOn_iff_le.1 huc (ε/4) (by linarith)
+      have hcR' : ∀ᶠ R : ℕ in atTop, |Real.log (N R : ℝ) / Real.log (R : ℝ) - t| ≤ δ := by
+        have := (Metric.tendsto_nhds.1 hcR δ hδ0)
+        filter_upwards [this] with R hR; rw [Real.dist_eq] at hR; linarith
+      have hharm : ∀ᶠ R : ℕ in atTop,
+          (∑ n ∈ Finset.Icc 2 (N R), (1:ℝ)/n) / Real.log (N R : ℝ) ≤ 2 := by
+        have h2 := Metric.tendsto_nhds.1 (tendsto_harmonic_icc2_div_log.comp hNtop) 1 (by norm_num)
+        filter_upwards [h2] with R hR
+        simp only [Function.comp, Real.dist_eq] at hR
+        have := abs_lt.1 hR; linarith [this.2]
+      filter_upwards [hcR', hharm, hNtop.eventually_ge_atTop 2,
+        eventually_ge_atTop 2] with R hcRδ hharmR hNR2 hR2
+      have hNR1 : (1:ℝ) < (N R : ℝ) := by exact_mod_cast (by omega : 1 < N R)
+      have hlogNRpos : 0 < Real.log (N R : ℝ) := Real.log_pos hNR1
+      have hR1 : (1:ℝ) < (R:ℝ) := by exact_mod_cast (by omega : 1 < R)
+      have hlogRpos : 0 < Real.log (R:ℝ) := Real.log_pos hR1
+      have hNRleR : (N R : ℝ) ≤ (R:ℝ) := by
+        have h1 : (N R : ℝ) ≤ (R:ℝ)^t := Nat.floor_le (by positivity)
+        have h2 : (R:ℝ)^t ≤ (R:ℝ)^(1:ℝ) := Real.rpow_le_rpow_of_exponent_le (le_of_lt hR1) ht1
+        rw [Real.rpow_one] at h2; linarith
+      have hterm : ∀ n ∈ Finset.Icc 2 (N R),
+          |G (Real.log n / Real.log R) - Ft (Real.log n / Real.log (N R:ℝ))| ≤ ε/4 := by
+        intro n hn
+        rw [Finset.mem_Icc] at hn; obtain ⟨hn2, hnNR⟩ := hn
+        have hn1 : (1:ℝ) < (n:ℝ) := by exact_mod_cast (by omega : 1 < n)
+        have hvn0 : 0 ≤ Real.log n / Real.log (N R:ℝ) := by positivity
+        have hvn1 : Real.log n / Real.log (N R:ℝ) ≤ 1 := by
+          rw [div_le_one hlogNRpos]
+          exact Real.log_le_log (by positivity) (by exact_mod_cast hnNR)
+        have hcR1 : Real.log (N R:ℝ)/Real.log (R:ℝ) ≤ 1 := by
+          rw [div_le_one hlogRpos]; exact Real.log_le_log (by positivity) hNRleR
+        have hcR0 : 0 ≤ Real.log (N R:ℝ)/Real.log (R:ℝ) := by positivity
+        have hrw : Real.log (n:ℝ)/Real.log (R:ℝ)
+            = (Real.log (N R:ℝ)/Real.log (R:ℝ)) * (Real.log n/Real.log (N R:ℝ)) := by
+          field_simp
+        set cR := Real.log (N R:ℝ)/Real.log (R:ℝ)
+        set vn := Real.log (n:ℝ)/Real.log (N R:ℝ)
+        have hmemx : cR * vn ∈ Icc (0:ℝ) 1 :=
+          ⟨by positivity, by nlinarith [mul_le_mul hcR1 hvn1 hvn0 (by norm_num : (0:ℝ) ≤ 1)]⟩
+        have hmemy : t * vn ∈ Icc (0:ℝ) 1 :=
+          ⟨by positivity, by nlinarith [mul_le_mul ht1 hvn1 hvn0 (by norm_num : (0:ℝ) ≤ 1)]⟩
+        have hdist : dist (cR * vn) (t * vn) ≤ δ := by
+          rw [Real.dist_eq, ← sub_mul, abs_mul, abs_of_nonneg hvn0]
+          calc |cR - t| * vn ≤ δ * 1 :=
+                mul_le_mul hcRδ hvn1 hvn0 (le_of_lt hδ0)
+            _ = δ := by ring
+        have hgg := hδ _ hmemx _ hmemy hdist
+        rw [Real.dist_eq] at hgg
+        rw [hrw]; exact hgg
+      rw [Real.norm_eq_abs, abs_div, abs_of_pos hlogNRpos, div_lt_iff₀ hlogNRpos]
+      have hsum_abs :
+          |∑ n ∈ Finset.Icc 2 (N R),
+              (G (Real.log n/Real.log R) - Ft (Real.log n/Real.log (N R:ℝ)))/(n:ℝ)|
+            ≤ (ε/4) * (∑ n ∈ Finset.Icc 2 (N R), (1:ℝ)/n) := by
+        rw [Finset.mul_sum]
+        refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum ?_)
+        intro n hn
+        rw [abs_div, Nat.abs_cast]
+        rw [show (ε/4)*((1:ℝ)/n) = (ε/4)/n by ring]
+        exact div_le_div_of_nonneg_right (hterm n hn) (by positivity)
+      have hharm' : (∑ n ∈ Finset.Icc 2 (N R), (1:ℝ)/n) ≤ 2 * Real.log (N R:ℝ) := by
+        rw [← div_le_iff₀ hlogNRpos]; exact hharmR
+      calc |∑ n ∈ Finset.Icc 2 (N R),
+              (G (Real.log n/Real.log R) - Ft (Real.log n/Real.log (N R:ℝ)))/(n:ℝ)|
+            ≤ (ε/4) * (∑ n ∈ Finset.Icc 2 (N R), (1:ℝ)/n) := hsum_abs
+        _ ≤ (ε/4) * (2 * Real.log (N R:ℝ)) :=
+            mul_le_mul_of_nonneg_left hharm' (by linarith)
+        _ = (ε/2) * Real.log (N R:ℝ) := by ring
+        _ < ε * Real.log (N R:ℝ) := by
+            apply mul_lt_mul_of_pos_right (by linarith) hlogNRpos
+    have hBlim : Tendsto (fun R : ℕ =>
+        (∑ n ∈ Finset.Icc 2 (N R), G (Real.log n / Real.log R) / (n:ℝ)) / Real.log (N R:ℝ))
+        atTop (𝓝 (∫ u in (0:ℝ)..1, Ft u)) := by
+      have hsplit : (fun R : ℕ =>
+          (∑ n ∈ Finset.Icc 2 (N R), G (Real.log n / Real.log R) / (n:ℝ)) / Real.log (N R:ℝ))
+          = (fun R : ℕ =>
+              (∑ n ∈ Finset.Icc 2 (N R), Ft (Real.log n / Real.log (N R:ℝ)) / (n:ℝ))
+                / Real.log (N R:ℝ)
+              + (∑ n ∈ Finset.Icc 2 (N R),
+                  (G (Real.log n / Real.log R) - Ft (Real.log n / Real.log (N R:ℝ))) / (n:ℝ))
+                / Real.log (N R:ℝ)) := by
+        funext R; rw [← add_div, ← Finset.sum_add_distrib]
+        congr 1; apply Finset.sum_congr rfl; intro n _; ring
+      rw [hsplit]; simpa using hriem.add hdrift
+    have hPsiEq : (fun R : ℕ => Psi G R t) =ᶠ[atTop]
+        (fun R : ℕ => (Real.log (N R:ℝ) / Real.log (R:ℝ)) *
+          ((∑ n ∈ Finset.Icc 2 (N R), G (Real.log n / Real.log R) / (n:ℝ))
+            / Real.log (N R:ℝ))) := by
+      filter_upwards [hNtop.eventually_ge_atTop 2, eventually_ge_atTop 2] with R hNR2 hR2
+      have hlogNRne : Real.log (N R:ℝ) ≠ 0 :=
+        ne_of_gt (Real.log_pos (by exact_mod_cast (by omega : 1 < N R)))
+      show (∑ n ∈ Finset.Icc 2 (N R), G (Real.log n / Real.log R) / (n:ℝ)) / Real.log (R:ℝ) = _
+      field_simp
+    rw [tendsto_congr' hPsiEq]
+    have hsubst : ∫ y in (0:ℝ)..t, G y = t * ∫ u in (0:ℝ)..1, Ft u := by
+      have h := intervalIntegral.mul_integral_comp_mul_left (f := G) (c := t) (a := 0) (b := 1)
+      simp only [mul_zero, mul_one] at h
+      rw [hFt]; exact h.symm
+    rw [hsubst]
+    exact hcR.mul hBlim
+
+/-- **GPY/Maynard 2-D simplex limit — UNCONDITIONAL.** The coupled double log-weighted Riemann sum
+converges to the iterated simplex integral `∫₀¹ F·(∫₀^{1-x} G)`. This is the deep axiom
+`WeightedRiemann2D.weighted_riemann_2d` (the Aristotle target `3e2b6a8d`), now PROVEN in-kernel and
+axiom-clean — obtained by feeding the fully-proven 1-D `psi_tendsto` into
+`weighted_riemann_2d_of_psi_pointwise`. Closes leaf 1's smooth core. -/
+theorem weighted_riemann_2d (F G : ℝ → ℝ)
+    (hF : ContinuousOn F (Set.Icc (0 : ℝ) 1)) (hG : ContinuousOn G (Set.Icc (0 : ℝ) 1)) :
+    Tendsto (fun R : ℕ =>
+        (∑ m ∈ Finset.Icc 2 R, ∑ n ∈ Finset.Icc 2 (R / m),
+            F (Real.log m / Real.log R) * G (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ)))
+          / (Real.log R) ^ 2)
+      atTop (nhds (∫ x in (0 : ℝ)..1, F x * ∫ y in (0 : ℝ)..(1 - x), G y)) :=
+  weighted_riemann_2d_of_psi_pointwise F G hF hG (fun H hH t ht => psi_tendsto H hH t ht)
 
 end BoundedGaps.InnerUniformReduction
