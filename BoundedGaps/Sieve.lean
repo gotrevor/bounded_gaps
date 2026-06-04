@@ -3087,18 +3087,97 @@ theorem mkF_eps_sub_lt_of_sup_le (k : ℕ) (ε : ℝ) (hε : 0 ≤ ε) (F : (Fin
     _ < etarget * den ^ 2 / 2 := hSlt
     _ ≤ etarget * (mkF_eps_denominator k ε G * den) := by nlinarith [hbden, hetarget]
 
-/-- **Separable sup-norm density, ε variant** (the irreducible density core;
-ε-sister of `separable_dense_sup` for the enlarged simplex
-$\{t : (\forall i, 0 \le t_i) \land \sum_i t_i \le 1+\varepsilon\}$). Pure
-approximation theory, no number theory: finite sums of products of 1-D smooth
-bumps on small boxes inside the open enlarged simplex are sup-dense among smooth
-simplex_eps-supported functions. -/
-axiom separable_dense_sup_eps (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ)
-    (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex_eps k ε)
-    (_hden : mkF_eps_denominator k ε F > 0) (δ : ℝ) (_hδ : 0 < δ) :
+open MeasureTheory Set in
+open scoped Pointwise in
+/-- **Separable sup-norm density, ε variant — now a THEOREM** (was a cited
+density axiom). The enlarged simplex is a *dilation* of the standard one,
+`simplex_eps k ε = (1+ε) • simplex k`, so the ε-density REDUCES to the base
+axiom `separable_dense_sup` by the change of variables `t = (1+ε) • s`:
+
+* `F̂(s) := F((1+ε)•s)` is smooth (`ContDiff.comp` with the scaling map),
+  simplex-supported (`smul_mem_smul_set_iff₀`), and has positive denominator
+  (Haar change-of-variables `setIntegral_comp_smul_of_pos`, Jacobian
+  `(1+ε)^{-k}` on `Fin k → ℝ`, `finrank = k`).
+* `separable_dense_sup` yields a separable `Ĝ` on `simplex k` within `δ` of `F̂`.
+* `G(t) := Ĝ((1+ε)⁻¹•t)` is separable (compose each 1-D factor with the scalar),
+  smooth, supported on `simplex_eps k ε`, and `δ`-close to `F` there.
+
+So the ε-density carries no separate axiomatic content; it consolidates onto the
+single base density axiom `separable_dense_sup`. Requires `0 ≤ ε` (callers have
+`0 < ε`). -/
+theorem separable_dense_sup_eps (k : ℕ) (ε : ℝ) (hε : 0 ≤ ε) (F : (Fin k → ℝ) → ℝ)
+    (hF : ContDiff ℝ ∞ F) (hsupp : Function.support F ⊆ simplex_eps k ε)
+    (hden : mkF_eps_denominator k ε F > 0) (δ : ℝ) (hδ : 0 < δ) :
     ∃ G : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex_eps k ε ∧
-      (∀ t ∈ simplex_eps k ε, |F t - G t| ≤ δ)
+      (∀ t ∈ simplex_eps k ε, |F t - G t| ≤ δ) := by
+  have hr : (0 : ℝ) < 1 + ε := by linarith
+  have hrne : (1 + ε) ≠ 0 := hr.ne'
+  -- the dilation identity `(1+ε) • simplex k = simplex_eps k ε`
+  have hsmul : (1 + ε) • simplex k = simplex_eps k ε := by
+    ext u
+    rw [mem_smul_set_iff_inv_smul_mem₀ hrne]
+    simp only [simplex, simplex_eps, Set.mem_setOf_eq, Pi.smul_apply, smul_eq_mul]
+    constructor
+    · rintro ⟨hnn, hsum⟩
+      refine ⟨fun i => ?_, ?_⟩
+      · have := mul_nonneg hr.le (hnn i)
+        rwa [← mul_assoc, mul_inv_cancel₀ hrne, one_mul] at this
+      · rw [← Finset.mul_sum] at hsum
+        have := mul_le_mul_of_nonneg_left hsum hr.le
+        rwa [← mul_assoc, mul_inv_cancel₀ hrne, one_mul, mul_one] at this
+    · rintro ⟨hnn, hsum⟩
+      refine ⟨fun i => mul_nonneg (inv_pos.mpr hr).le (hnn i), ?_⟩
+      rw [← Finset.mul_sum]
+      have hle : (1 + ε)⁻¹ * ∑ i, u i ≤ (1 + ε)⁻¹ * (1 + ε) :=
+        mul_le_mul_of_nonneg_left hsum (inv_pos.mpr hr).le
+      rwa [inv_mul_cancel₀ hrne] at hle
+  -- the scaling map is smooth
+  have hscale : ContDiff ℝ ∞ (fun s : Fin k → ℝ => (1 + ε) • s) :=
+    contDiff_const_smul (1 + ε)
+  have hscaleinv : ContDiff ℝ ∞ (fun t : Fin k → ℝ => (1 + ε)⁻¹ • t) :=
+    contDiff_const_smul (1 + ε)⁻¹
+  -- `F̂` smooth, simplex-supported, positive denominator
+  have hFhat_cd : ContDiff ℝ ∞ (fun s => F ((1 + ε) • s)) := hF.comp hscale
+  have hFhat_supp : Function.support (fun s => F ((1 + ε) • s)) ⊆ simplex k := by
+    intro s hs
+    have hFne : F ((1 + ε) • s) ≠ 0 := hs
+    have hmem : (1 + ε) • s ∈ simplex_eps k ε := hsupp hFne
+    rw [← hsmul] at hmem
+    rwa [smul_mem_smul_set_iff₀ hrne] at hmem
+  have hden_hat : 0 < mkF_denominator k (fun s => F ((1 + ε) • s)) := by
+    have hcov := Measure.setIntegral_comp_smul_of_pos (E := Fin k → ℝ) (μ := volume)
+      (fun x => F x ^ 2) (simplex k) hr
+    rw [hsmul, Module.finrank_fin_fun, smul_eq_mul] at hcov
+    have hdeneq : mkF_denominator k (fun s => F ((1 + ε) • s))
+        = ((1 + ε) ^ k)⁻¹ * mkF_eps_denominator k ε F := by
+      unfold mkF_denominator mkF_eps_denominator
+      exact hcov
+    rw [hdeneq]
+    exact mul_pos (by positivity) hden
+  -- base density on `simplex k`
+  obtain ⟨Ghat, hGsep, hGcd, hGsupp, hGclose⟩ :=
+    separable_dense_sup k (fun s => F ((1 + ε) • s)) hFhat_cd hFhat_supp hden_hat δ hδ
+  refine ⟨fun t => Ghat ((1 + ε)⁻¹ • t), ?_, ?_, ?_, ?_⟩
+  · -- finite-separable: compose each 1-D factor with `(1+ε)⁻¹ • ·`
+    obtain ⟨J, c, Fs, R, hdecomp⟩ := hGsep
+    exact ⟨J, c, fun j i x => Fs j i ((1 + ε)⁻¹ * x), R, fun t => by
+      simp only [hdecomp, Pi.smul_apply, smul_eq_mul]⟩
+  · exact hGcd.comp hscaleinv
+  · -- support ⊆ simplex_eps
+    intro t ht
+    have hne : Ghat ((1 + ε)⁻¹ • t) ≠ 0 := ht
+    have hmem : (1 + ε)⁻¹ • t ∈ simplex k := hGsupp hne
+    have h2 : (1 + ε) • ((1 + ε)⁻¹ • t) ∈ (1 + ε) • simplex k := smul_mem_smul_set hmem
+    rwa [smul_smul, mul_inv_cancel₀ hrne, one_smul, hsmul] at h2
+  · -- δ-closeness on simplex_eps
+    intro t ht
+    have hs : (1 + ε)⁻¹ • t ∈ simplex k := by
+      rw [← hsmul] at ht
+      rwa [mem_smul_set_iff_inv_smul_mem₀ hrne] at ht
+    have hclose := hGclose ((1 + ε)⁻¹ • t) hs
+    simp only [smul_smul, mul_inv_cancel₀ hrne, one_smul] at hclose
+    exact hclose
 
 /-- **Separable $L^2$-approximation, ε variant** (the narrowed core of
 `exists_separable_F_eps_of_Mk_eps_gt`). **Now a theorem** (was a cited axiom):
@@ -3112,7 +3191,7 @@ theorem sep_approx_eps (k : ℕ) (ε : ℝ) (hε : 0 ≤ ε) (F : (Fin k → ℝ
       IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex_eps k ε ∧
       mkF_eps_denominator k ε G > 0 ∧ |MkF_eps k ε G - MkF_eps k ε F| < η := by
   obtain ⟨δ, hδpos, hcont⟩ := mkF_eps_sub_lt_of_sup_le k ε hε F hF.continuous hsupp hden η hη
-  obtain ⟨G, hGsep, hGsm, hGsupp, hGclose⟩ := separable_dense_sup_eps k ε F hF hsupp hden δ hδpos
+  obtain ⟨G, hGsep, hGsm, hGsupp, hGclose⟩ := separable_dense_sup_eps k ε hε F hF hsupp hden δ hδpos
   obtain ⟨hGden, hGlt⟩ := hcont G hGsm.continuous hGsupp hGclose
   exact ⟨G, hGsep, hGsm, hGsupp, hGden, hGlt⟩
 
