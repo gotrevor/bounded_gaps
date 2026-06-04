@@ -776,4 +776,26 @@ theorem sub_one_le_cast_div (N n : ℕ) (hn : 1 ≤ n) :
   rw [div_sub_one (ne_of_gt hn0), div_le_iff₀ hn0]
   nlinarith [hlt]
 
+/-! ### Von Mangoldt hyperbola identity (sharp Mertens 1st)
+
+`∑_{1≤n≤N} Λ(n)·⌊N/n⌋ = ∑_{1≤m≤N} log m  (= log N!)`, via `⌊N/n⌋ = #{m≤N : n∣m}`,
+interchange of summation, and `ArithmeticFunction.vonMangoldt_sum` (`∑_{i∣m} Λ i = log m`).
+Proved by Aristotle (`cc0dfbaf`); verified kernel-clean under v4.29.1. This is the entry
+point to the SHARP `∑_{p≤N}(log p)/p = log N + O(1)` (coefficient 1) — see
+`PENDING_WORK.md §C` for the sharp/crude split. -/
+theorem vonMangoldt_hyperbola (N : ℕ) :
+    ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n * ((N / n : ℕ) : ℝ)
+      = ∑ m ∈ Finset.Icc 1 N, Real.log (m : ℝ) := by
+  have h_interchange : ∑ n ∈ Finset.Icc 1 N, (ArithmeticFunction.vonMangoldt n) * (Finset.card (Finset.filter (fun m => n ∣ m) (Finset.Icc 1 N))) = ∑ m ∈ Finset.Icc 1 N, (∑ n ∈ Finset.filter (fun n => n ∣ m) (Finset.Icc 1 N), (ArithmeticFunction.vonMangoldt n)) := by
+    simp +decide only [card_filter, sum_filter];
+    rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; intros ; rw [ Nat.cast_sum ] ; rw [ Finset.mul_sum ] ; congr ; ext ; aesop;
+  have h_filter : ∀ m ∈ Finset.Icc 1 N, (Finset.filter (fun n => n ∣ m) (Finset.Icc 1 N)) = (Nat.divisors m) := by
+    simp +contextual [ Finset.ext_iff, Nat.mem_divisors ];
+    exact fun m hm₁ hm₂ a => ⟨ fun h => ⟨ h.2, by linarith ⟩, fun h => ⟨ ⟨ Nat.pos_of_dvd_of_pos h.1 hm₁, Nat.le_trans ( Nat.le_of_dvd hm₁ h.1 ) hm₂ ⟩, h.1 ⟩ ⟩;
+  convert h_interchange using 1;
+  · convert rfl;
+    convert Nat.Ioc_filter_dvd_card_eq_div N ‹_› using 1;
+  · rw [ Finset.sum_congr rfl ];
+    intro m hm; rw [ ← ArithmeticFunction.vonMangoldt_sum ] ; aesop;
+
 end BoundedGaps.Mertens
