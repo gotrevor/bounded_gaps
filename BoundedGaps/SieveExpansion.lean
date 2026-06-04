@@ -1591,4 +1591,53 @@ theorem correction_weight_factor_split {k : ℕ} (D : Fin k → Finset ℕ)
     (fun d => (moebius d : ℝ) * Gs₁ i (Real.log d / Real.log R))
     (fun e => (moebius e : ℝ) * Gs₂ i (Real.log e / Real.log R))
 
+/-- **Cauchy–Schwarz for the GPY/Selberg bilinear form.** The cross Selberg form
+`B(g₁,g₂) = ∑_{d,e} μ(d)g₁(d)·μ(e)g₂(e)/[d,e]` satisfies
+`B(g₁,g₂)² ≤ B(g₁,g₁)·B(g₂,g₂)`.
+Proof: diagonalize all three forms (`gpy_diagonalize_moebius` /
+`gpy_diagonalize_moebius_bilinear`) to the common `φ`-weighted inner product
+`⟨y₁,y₂⟩ = ∑_r φ(r) y₁ᵣ y₂ᵣ`, then apply the discrete Cauchy–Schwarz inequality
+(`Finset.sum_mul_sq_le_sq_mul_sq` with `f = √φ·y₁`, `g = √φ·y₂`).
+
+**Why this matters analytically:** it controls every *cross* (`j ≠ j'`)
+main-term block by the geometric mean of the *diagonal* (`j = j'`) blocks. So once
+the diagonal asymptotic `B(Fⱼᵢ,Fⱼᵢ) ~ cⱼᵢ·(main)` is established (sub-step (c)),
+the cross terms `∑_{j≠j'} cⱼcⱼ'·B(Fⱼᵢ,Fⱼ'ᵢ)` are *automatically* bounded — the
+`IsLittleO` glue (sub-step (d)) needs only the diagonal limit. -/
+theorem gpy_bilinear_cauchy_schwarz (T R : Finset ℕ) (g₁ g₂ : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d) (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    (∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g₁ d * ((moebius e : ℝ) * g₂ e) / (Nat.lcm d e : ℝ)) ^ 2
+      ≤ (∑ d ∈ T, ∑ e ∈ T,
+          (moebius d : ℝ) * g₁ d * ((moebius e : ℝ) * g₁ e) / (Nat.lcm d e : ℝ))
+        * (∑ d ∈ T, ∑ e ∈ T,
+          (moebius d : ℝ) * g₂ d * ((moebius e : ℝ) * g₂ e) / (Nat.lcm d e : ℝ)) := by
+  classical
+  rw [gpy_diagonalize_moebius_bilinear T R g₁ g₂ hT hR,
+      gpy_diagonalize_moebius T R g₁ hT hR,
+      gpy_diagonalize_moebius T R g₂ hT hR]
+  set y₁ : ℕ → ℝ := fun r => ∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g₁ d / (d : ℝ)
+    with hy₁
+  set y₂ : ℕ → ℝ := fun r => ∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g₂ d / (d : ℝ)
+    with hy₂
+  have hφ : ∀ r : ℕ, (0:ℝ) ≤ (Nat.totient r : ℝ) := fun r => Nat.cast_nonneg _
+  have key := Finset.sum_mul_sq_le_sq_mul_sq R
+    (fun r => Real.sqrt (Nat.totient r) * y₁ r) (fun r => Real.sqrt (Nat.totient r) * y₂ r)
+  have c0 : ∑ r ∈ R, Real.sqrt (Nat.totient r) * y₁ r * (Real.sqrt (Nat.totient r) * y₂ r)
+      = ∑ r ∈ R, (Nat.totient r : ℝ) * (y₁ r * y₂ r) := by
+    refine Finset.sum_congr rfl (fun r _ => ?_)
+    rw [show Real.sqrt (Nat.totient r) * y₁ r * (Real.sqrt (Nat.totient r) * y₂ r)
+        = (Real.sqrt (Nat.totient r) * Real.sqrt (Nat.totient r)) * (y₁ r * y₂ r) by ring,
+      Real.mul_self_sqrt (hφ r)]
+  have c1 : ∑ r ∈ R, (Real.sqrt (Nat.totient r) * y₁ r) ^ 2
+      = ∑ r ∈ R, (Nat.totient r : ℝ) * y₁ r ^ 2 := by
+    refine Finset.sum_congr rfl (fun r _ => ?_)
+    rw [mul_pow, Real.sq_sqrt (hφ r)]
+  have c2 : ∑ r ∈ R, (Real.sqrt (Nat.totient r) * y₂ r) ^ 2
+      = ∑ r ∈ R, (Nat.totient r : ℝ) * y₂ r ^ 2 := by
+    refine Finset.sum_congr rfl (fun r _ => ?_)
+    rw [mul_pow, Real.sq_sqrt (hφ r)]
+  rw [c0, c1, c2] at key
+  exact key
+
 end BoundedGaps.Sieve
