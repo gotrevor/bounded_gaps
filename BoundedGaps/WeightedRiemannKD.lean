@@ -113,6 +113,44 @@ lemma nestedLogSum_pair (R : ℕ) (g h : ℝ → ℝ) :
   refine Finset.sum_congr rfl (fun n₂ _ => ?_)
   ring
 
+/-- **`nestedLogSum` is nonnegative** for nonnegative function lists (induction on the list; each
+summand is `(g/n)·(tail ≥ 0)`). A Pólya prerequisite. -/
+lemma nestedLogSum_nonneg (R : ℕ) : ∀ (gs : List (ℝ → ℝ)), (∀ g ∈ gs, ∀ x, 0 ≤ g x) →
+    ∀ Q, 0 ≤ nestedLogSum R gs Q
+  | [], _, _ => by rw [nestedLogSum_nil]; norm_num
+  | g :: gs, h, Q => by
+      rw [nestedLogSum_cons]
+      refine Finset.sum_nonneg (fun n _ => ?_)
+      have hg : ∀ x, 0 ≤ g x := h g (List.mem_cons.mpr (Or.inl rfl))
+      have hgs : 0 ≤ nestedLogSum R gs (Q / n) :=
+        nestedLogSum_nonneg R gs (fun f hf => h f (List.mem_cons.mpr (Or.inr hf))) (Q / n)
+      exact mul_nonneg (div_nonneg (hg _) (by positivity)) hgs
+
+/-- **`nestedLogSum R gs` is monotone in the budget `Q`** for nonnegative lists (induction on the
+list; mirrors `psi3_monotoneOn`: as `Q` grows both the outer index set and each inner budget `Q/n`
+grow, all summands `≥ 0`). The Pólya monotonicity for the generic inner-uniform. -/
+lemma nestedLogSum_mono (R : ℕ) : ∀ (gs : List (ℝ → ℝ)), (∀ g ∈ gs, ∀ x, 0 ≤ g x) →
+    Monotone (nestedLogSum R gs)
+  | [], _ => by rw [show nestedLogSum R [] = fun _ => (1 : ℝ) from rfl]; exact monotone_const
+  | g :: gs, h => by
+      intro Q Q' hQ
+      have hg : ∀ x, 0 ≤ g x := h g (List.mem_cons.mpr (Or.inl rfl))
+      have htail := fun f hf => h f (List.mem_cons.mpr (Or.inr hf))
+      have hgs_nn : ∀ Q, 0 ≤ nestedLogSum R gs Q := nestedLogSum_nonneg R gs htail
+      have hgs_mono : Monotone (nestedLogSum R gs) := nestedLogSum_mono R gs htail
+      rw [nestedLogSum_cons, nestedLogSum_cons]
+      calc ∑ n ∈ Finset.Icc 2 Q,
+              g (Real.log n / Real.log R) / (n : ℝ) * nestedLogSum R gs (Q / n)
+          ≤ ∑ n ∈ Finset.Icc 2 Q,
+              g (Real.log n / Real.log R) / (n : ℝ) * nestedLogSum R gs (Q' / n) :=
+            Finset.sum_le_sum (fun n _ =>
+              mul_le_mul_of_nonneg_left (hgs_mono (Nat.div_le_div_right hQ))
+                (div_nonneg (hg _) (by positivity)))
+        _ ≤ ∑ n ∈ Finset.Icc 2 Q',
+              g (Real.log n / Real.log R) / (n : ℝ) * nestedLogSum R gs (Q' / n) :=
+            Finset.sum_le_sum_of_subset_of_nonneg (Finset.Icc_subset_Icc_right hQ)
+              (fun n _ _ => mul_nonneg (div_nonneg (hg _) (by positivity)) (hgs_nn _))
+
 open BoundedGaps.WeightedRiemann2D (perturbed_riemann)
 
 /-- **Generic factor step** (the `three_d_factor` analog, any list length). The level-`k+1` nested
