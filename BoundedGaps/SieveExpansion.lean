@@ -280,4 +280,35 @@ theorem crt_combine {W Q : ℕ} (hcop : Nat.Coprime W Q) (hQ : 0 < Q) (b h : ℕ
         ⟨fun h => h.trans hr2.symm, fun h => h.trans hr2⟩]
   exact Nat.modEq_and_modEq_iff_modEq_mul hcop
 
+/-- Per-coordinate: `q ∣ (m + h) ↔ m ≡ (q-1)*h [MOD q]` (for `0 < q`). -/
+private theorem dvd_iff_modEq {q : ℕ} (hq : 0 < q) (h m : ℕ) :
+    q ∣ (m + h) ↔ m ≡ (q - 1) * h [MOD q] := by
+  have hch : (q - 1) * h + h = q * h := by
+    rw [Nat.sub_one_mul, Nat.sub_add_cancel (Nat.le_mul_of_pos_left h hq)]
+  have hc0 : ((q - 1) * h + h) ≡ 0 [MOD q] := Nat.modEq_zero_iff_dvd.mpr ⟨h, hch⟩
+  rw [← Nat.modEq_zero_iff_dvd]
+  exact ⟨fun hm => Nat.ModEq.add_right_cancel' h (hm.trans hc0.symm),
+         fun hm => (hm.add_right h).trans hc0⟩
+
+/-- **Sub-step (b) multi-coordinate divisibility CRT.** For a coordinate list
+`l` with pairwise-coprime positive moduli `q` and shifts `h`, the full
+simultaneous condition `∀ i ∈ l, q i ∣ (m + h i)` is a single residue class mod
+`(l.map q).prod`. This is the engine for the GPY lattice-point count: after
+`lattice_count_lcm` (`q i = [dᵢ,eᵢ]`), on the coprime diagonal the entire
+`∀i`-condition collapses to one modulus, whose interval count is then exactly
+`Nat.Ioc_filter_modEq_card`. (Folding in the residue `m ≡ b [MOD W]` is one more
+`crt_combine` step, `W` coprime to the product.) The off-diagonal
+(`gcd(qᵢ,qⱼ) > 1`) is the genuine error term and the bridge to sub-step (c). -/
+theorem crt_divisibility_iff {ι : Type*} (l : List ι) (q h : ι → ℕ)
+    (co : l.Pairwise (fun i j => Nat.Coprime (q i) (q j))) (hq : ∀ i ∈ l, 0 < q i) :
+    ∃ r, ∀ m : ℕ, (∀ i ∈ l, q i ∣ (m + h i)) ↔ m ≡ r [MOD (l.map q).prod] := by
+  set c : ι → ℕ := fun i => (q i - 1) * h i with hc
+  refine ⟨Nat.chineseRemainderOfList c q l co, fun m => ?_⟩
+  have hrw : (∀ i ∈ l, q i ∣ (m + h i)) ↔ (∀ i ∈ l, m ≡ c i [MOD q i]) :=
+    forall_congr' (fun i => imp_congr_right (fun hi => dvd_iff_modEq (hq i hi) (h i) m))
+  rw [hrw]
+  refine ⟨fun hall => Nat.chineseRemainderOfList_modEq_unique c q l co hall, fun hmod i hi => ?_⟩
+  exact ((Nat.modEq_list_map_prod_iff co).mp hmod i hi).trans
+    ((Nat.chineseRemainderOfList c q l co).prop i hi)
+
 end BoundedGaps.Sieve
