@@ -17,9 +17,10 @@ core) and to `ANALYTIC_AXIOM_BURNDOWN.md` sub-step (c). Kept in a separate modul
 so the heavy `Mertens.lean` need not recompile while it grows.
 -/
 import Mathlib
+import BoundedGaps.Mertens
 
 open scoped BigOperators
-open ArithmeticFunction
+open ArithmeticFunction Filter Asymptotics
 open scoped ArithmeticFunction.zeta
 
 namespace BoundedGaps.SingularSeries
@@ -205,5 +206,52 @@ theorem singularSum_tendsto_of_bounded {C : ℝ} (hC : ∀ N, singularSumPartial
   have hbdd : BddAbove (Set.range singularSumPartial) := ⟨C, by rintro x ⟨N, rfl⟩; exact hC N⟩
   refine ⟨⨆ N, singularSumPartial N, tendsto_atTop_ciSup hmono hbdd, ?_⟩
   intro N; exact le_ciSup hbdd N
+
+/-- **Average order of `n/φ(n)` (`∑_{n≤N} n/φ(n) ∼ A·N`).** Conditional on the
+uniform bound on the singular sum (Aristotle `36bb3493`, `≤ 3`), the Cesàro average
+`(∑_{n≤N} n/φ(n))/N` converges to the singular-series constant
+`A = ∑_d μ²(d)/(φ(d)·d) = ζ(2)ζ(3)/ζ(6)`. Proof: the main-term split gives
+`(∑n/φ(n))/N = T(N) + O((∑μ²/φ)/N)`, and `∑μ²/φ = O(log N) = o(N)`
+(`BoundedGaps.Mertens.mertens_isTheta_log` ∘ `log =o id`), so the error vanishes and
+`T(N) → A`. The classical average order of Euler's totient, fully machine-checked. -/
+theorem sum_self_div_totient_asymptotic {C : ℝ} (hbound : ∀ N, singularSumPartial N ≤ C) :
+    ∃ A : ℝ, Filter.Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, (n : ℝ) / (Nat.totient n : ℝ)) / (N : ℝ))
+      Filter.atTop (nhds A) := by
+  obtain ⟨A, hA, _⟩ := singularSum_tendsto_of_bounded hbound
+  refine ⟨A, ?_⟩
+  set avg : ℕ → ℝ :=
+    fun N => (∑ n ∈ Finset.Icc 1 N, (n : ℝ) / (Nat.totient n : ℝ)) / (N : ℝ) with havg
+  have hlogo : (fun N : ℕ => Real.log (N : ℝ)) =o[atTop] (fun N : ℕ => (N : ℝ)) :=
+    Real.isLittleO_log_id_atTop.comp_tendsto tendsto_natCast_atTop_atTop
+  have hmo : (fun N : ℕ => ∑ d ∈ Finset.Icc 1 N, BoundedGaps.Mertens.mertensSummand d)
+      =o[atTop] (fun N : ℕ => (N : ℝ)) :=
+    (BoundedGaps.Mertens.mertens_isTheta_log.isBigO).trans_isLittleO hlogo
+  have hgtend : Tendsto
+      (fun N : ℕ => (∑ d ∈ Finset.Icc 1 N, BoundedGaps.Mertens.mertensSummand d) / (N : ℝ))
+      atTop (nhds 0) := hmo.tendsto_div_nhds_zero
+  have herr : Tendsto (fun N => avg N - singularSumPartial N) atTop (nhds 0) := by
+    refine squeeze_zero_norm' ?_ hgtend
+    filter_upwards [Filter.eventually_ge_atTop 1] with N hN1
+    have hN0 : (0 : ℝ) < N := by exact_mod_cast hN1
+    have hsplit := sum_self_div_totient_main_split N
+    have hbridge :
+        (∑ d ∈ Finset.Icc 1 N, (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ))
+          = ∑ d ∈ Finset.Icc 1 N, BoundedGaps.Mertens.mertensSummand d := rfl
+    have heq : avg N - singularSumPartial N
+        = (∑ n ∈ Finset.Icc 1 N, (n : ℝ) / (Nat.totient n : ℝ)
+            - N * singularSumPartial N) / N := by
+      rw [havg]; field_simp
+    rw [Real.norm_eq_abs, heq, abs_div, abs_of_pos hN0, div_le_div_iff_of_pos_right hN0]
+    calc |∑ n ∈ Finset.Icc 1 N, (n : ℝ) / (Nat.totient n : ℝ) - N * singularSumPartial N|
+        ≤ ∑ d ∈ Finset.Icc 1 N, (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ) :=
+          hsplit
+      _ = ∑ d ∈ Finset.Icc 1 N, BoundedGaps.Mertens.mertensSummand d := hbridge
+  have hsum : Tendsto (fun N => singularSumPartial N + (avg N - singularSumPartial N))
+      atTop (nhds (A + 0)) := hA.add herr
+  have hcongr : (fun N => singularSumPartial N + (avg N - singularSumPartial N)) = avg := by
+    funext N; ring
+  rw [hcongr, add_zero] at hsum
+  exact hsum
 
 end BoundedGaps.SingularSeries
