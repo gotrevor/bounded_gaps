@@ -576,4 +576,19 @@ theorem weighted_riemann_3d (F G H : ℝ → ℝ)
   intro t ht
   exact psi3_pointwise G H hG.continuousOn hH.continuousOn t ht
 
+/-- **3-D simplex limit, explicit iterated-integral form.** Same as `weighted_riemann_3d` with the
+limit written out as `∫₀¹∫₀^{1-x}∫₀^{1-x-y} F(x)G(y)H(z)`, the integral over the 3-simplex — the
+form that matches the GPY/Maynard main-term integral `∫_{simplex} (separable F)`. -/
+theorem weighted_riemann_3d_simplex (F G H : ℝ → ℝ)
+    (hF : ContinuousOn F (Set.Icc (0 : ℝ) 1)) (hG : Continuous G) (hH : Continuous H)
+    (hG0 : ∀ x, 0 ≤ G x) (hH0 : ∀ x, 0 ≤ H x) :
+    Tendsto (fun R : ℕ =>
+        (∑ l ∈ Finset.Icc 2 R, ∑ m ∈ Finset.Icc 2 (R / l), ∑ n ∈ Finset.Icc 2 (R / (l * m)),
+            F (Real.log l / Real.log R) * G (Real.log m / Real.log R) * H (Real.log n / Real.log R)
+              / ((l : ℝ) * (m : ℝ) * (n : ℝ))) / (Real.log R) ^ 3)
+      atTop (nhds (∫ x in (0 : ℝ)..1, F x
+        * ∫ y in (0 : ℝ)..(1 - x), G y * ∫ z in (0 : ℝ)..(1 - x - y), H z)) := by
+  rw [← integral_F_phi2_eq_simplex F G H]
+  exact weighted_riemann_3d F G H hF hG hH hG0 hH0
+
 end BoundedGaps.WeightedRiemann3D

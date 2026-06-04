@@ -518,40 +518,41 @@ double sum factors), `weighted_riemann_2d_of_inner` (capstone). **Remaining = `i
 Then: connect `weighted_riemann_2d` to the repo's `gpy_diagonal_asymptotic_form` (the Selberg-diagonal
 ↔ double-Riemann GPY manipulation) — the remaining port step for leaf (1).
 
-### Leaf (1) k-D LIFT — 3-D level built; reduced to ONE pointwise nut (lap 2026-06-04 PM, commits this lap)
+### Leaf (1) k-D LIFT — 3-D level FULLY PROVEN, unconditional (lap 2026-06-04 PM, 5 commits)
 `BoundedGaps/WeightedRiemann3D.lean` (axiom-clean, build green 8281). The `k`-D weighted-Mertens lift
 is the remaining analytic core of s1/s2 (`mkF_denominator = ∫_{simplex}F²` is the `k`-D simplex
-integral). The 1-D (`psi_tendsto`) and 2-D (`weighted_riemann_2d`) levels are PROVEN. This lap added
-the **3-D level**, mirroring the 2-D construction one dimension up and REUSING the same
+integral). The 1-D (`psi_tendsto`), 2-D (`weighted_riemann_2d`), and now **3-D** levels are PROVEN
+UNCONDITIONALLY. The 3-D file mirrors the 2-D construction one dimension up, reusing the same
 `perturbed_riemann` + `PolyaUniform.polya_uniform` engines:
-- `Phi2 G H s = ∫₀^{1-s} G(y)·Phi_H(s+y) dy` (the 2-D simplex cross-section), `phi2_continuous`.
+- `Phi2 G H s = ∫₀^{1-s} G(y)·Phi_H(s+y) dy` (the 2-D simplex cross-section), `phi2_continuous`,
+  `phi2_scale` (the t-rescaling change-of-variables), `integral_F_phi2_eq_simplex`.
 - `three_d_factor` — the `l·m·n ≤ R` triple sum factors over the outer variable `l` (pure algebra).
 - `weighted_riemann_3d_of_inner` — 3-D simplex limit GIVEN the inner-uniform 2-D convergence.
 - `Psi3`, `psi3_monotoneOn`, `psi3_reparam`, `inner_uniform_3d_of_pointwise_nonneg` — the Pólya
   monotone-to-continuous upgrade reducing the inner-uniform (for `G,H ≥ 0`) to a POINTWISE limit.
-- `integral_F_phi2_eq_simplex` — confirms the limit is the genuine iterated 3-simplex integral.
+- `psi3_pointwise` — **PROVEN** (the former nut): the `t`-scaled 2-D Riemann sum → `Φ₂(1-t)`, via
+  rescale `Ft=G(t·)`,`Gt=H(t·)`, level `N=⌊R^t⌋`, `c_R=logN/logR→t`; feed `Ft,Gt` into
+  `weighted_riemann_2d` at `N`; absorb the `c_R→t` drift (product split + 2-D harmonic from
+  `weighted_riemann_2d 1 1`); reassemble `Psi3 = c_R²·(realSum/logN²)`. (`set_option maxHeartbeats
+  1000000`; opaque `C` via `obtain` to stop `set`-zeta unfolding the integral.)
+- `weighted_riemann_3d` — **the UNCONDITIONAL capstone** (for `G,H ≥ 0`, `F` continuous):
+  `∑_{lmn≤R} F·G·H/(lmn)/(logR)³ → ∫₀¹ F·Φ₂ = ∫_{x+y+z≤1} F·G·H`.
 
-**THE ONE REMAINING NUT (3-D): `psi3_pointwise`** — `Psi3 G H R t → Phi2 G H (1-t)` for fixed
-`t∈[0,1]`, continuous `G,H`. This is the `t`-scaled 2-D Riemann sum over `{u+v ≤ t}`. Then
-`psi3_pointwise` + `inner_uniform_3d_of_pointwise_nonneg` + `weighted_riemann_3d_of_inner` = the FULL
-unconditional 3-D simplex limit (for `G,H ≥ 0`). Three attack paths:
-1. **Aristotle** — `aristotle-psi3-pointwise/Problem.lean` WRITTEN & SUBMITTED (job
-   `680977a8-11e4-4cf4-b584-bdc10074ef35`, 2026-06-04 PM). It inlines `weighted_riemann_2d` as a
-   usable axiom (so the task is ONLY the rescaling, not the 2-D sum from scratch) + full strategy.
-   Harvest when it returns: VERIFY in-kernel + `#print axioms`, then port (drop the axiom, use the
-   real `InnerUniformReduction.weighted_riemann_2d`).
-2. **In-kernel, MIRROR `psi_tendsto`** (InnerUniformReduction:325, the 1-D template) one dimension up:
-   rescale `F̃(u)=G(t·u)`, `G̃(v)=H(t·v)`, `N(R)=⌊R^t⌋`, `c_R=logN/logR→t`; feed `F̃,G̃` into
-   `weighted_riemann_2d` at level `N`; 2-D drift bound (product split `|G(cu)H(cv)−G(tu)H(tv)| ≤
-   |G|·|H(cv)−H(tv)|+|H|·|G(cu)−G(tu)|`, unif.cont. + 2-D harmonic bound from `weighted_riemann_2d 1
-   1`); `Psi3 = c_R²·(realSum/logN²)`; change-of-vars `t²∫₀¹F̃∫G̃ = Phi2(1-t)` (two nested linear subs
-   `intervalIntegral.mul_integral_comp_mul_left`). ~250 lines — the change-of-vars + 2-D drift are the
-   fiddly parts. This is the robust fallback if Aristotle stalls.
-3. **General (signed) `G,H`** — `inner_uniform_3d_of_pointwise_nonneg` needs `G,H ≥ 0` (Pólya
-   monotonicity). For the signed lift, ±-split each function (4-way for the product) mirroring
-   `inner_uniform_of_pointwise` (the 1-D signed lift). Lower priority — nonneg `G,H` is enough for the
-   GPY application (the box-tensor `F` factors can be taken ≥ 0), so defer.
+Aristotle psi3-pointwise (`680977a8`) is now SUPERSEDED (proven in-kernel); harvest unnecessary.
 
-**General k-D**: the SAME architecture recurses — level `k` reduces (via `perturbed_riemann` + a
-`k-1`-D `Phi_{k-1}` cross-section + Pólya) to a `(k-1)`-D inner-uniform, bottoming out at
-`psi_tendsto`. Each level is one lap of the above pattern. The 3-D file is the reusable blueprint.
+**NEXT (general k-D):** the SAME architecture recurses — level `k` reduces (via `perturbed_riemann` +
+a `(k-1)`-D `Φ_{k-1}` cross-section + Pólya monotonicity + a `t`-rescaling pointwise step that feeds
+`weighted_riemann_{k-1}`) to a `(k-1)`-D inner-uniform, bottoming out at `psi_tendsto`. The 3-D file
+is the fully-worked blueprint. Two routes:
+1. **Concrete 4-D** (`weighted_riemann_4d`) — copy the 3-D file, one dimension up. `Φ₃ G H K s =
+   ∫₀^{1-s} G(y)·Φ₂ H K (s+y) dy`; `psi4_pointwise` rescales to `weighted_riemann_3d` (now available).
+   Lap-sized, low-risk (pure mirror). Good for k=4 (and the pattern hardens).
+2. **Generic k-D induction** over `Fin k → (ℝ→ℝ)` (or a list) — define `Phi_k` recursively, the
+   k-fold sum, `Psi_k` monotone, and `psi_k_pointwise` by induction reducing to
+   `weighted_riemann_{k-1}`. More upfront work (dependent simplex integral + nested truncations
+   stated generically) but discharges ALL k at once — the real target, since s1/s2 need arbitrary k.
+   The 3-D concrete proof is the spec to generalise.
+
+**Signed `G,H`** (still open, low priority): `inner_uniform_3d_of_pointwise_nonneg` needs `G,H ≥ 0`
+(Pólya monotonicity). For signed, ±-split each (4-way for the product) mirroring
+`inner_uniform_of_pointwise`. Defer — nonneg suffices for the GPY box-tensor `F` factors.
