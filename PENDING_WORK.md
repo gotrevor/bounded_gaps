@@ -414,11 +414,21 @@ two of them:
   heuristic limit + correction bound ⟹ alphaBound). Machine-checks `leaf 1 ∧ leaf 3 ⟹ s1`.
 
 **Only TWO genuine analytic nuts remain for s1 (both multi-lap deep):**
-1. **Leaf (1) diagonal asymptotic** `∑_{r sf}(φ(r)/r²)z_r² → I(F)·const`. Smooth core = Aristotle
-   `weighted_riemann_2d` (`3e2b6a8d`, in flight, slow). 1-D factor `weighted_mertens` proven.
-   Attack: (a) harvest Aristotle 2D when done → port → build the multidim limit on
-   `gpy_diagonal_asymptotic_form`; (b) singular-series Euler product `𝔖(H)` (reuse `SharpMertens`
-   `eulerProduct_tprod`) for the constant; (c) rank-1 separable (J=1, F=∏Fᵢ) case first.
+1. **Leaf (1) diagonal asymptotic** `∑_{r sf}(φ(r)/r²)z_r² → I(F)·const`. Smooth core = the 2-D
+   simplex limit `weighted_riemann_2d`. **As of lap N+3 this is REDUCED in-kernel (axiom-clean) to a
+   single 1-D pointwise limit `psi_tendsto`** — see `BoundedGaps/InnerUniformReduction.lean`
+   (`weighted_riemann_2d_of_psi_pointwise`, via Pólya `PolyaUniform.polya_uniform`). The remaining
+   `psi_tendsto : Ψ G R t → ∫₀^t G` (fixed `t∈[0,1]`, continuous `G`) is on Aristotle (`1f84c4d6`,
+   strictly easier than the monolithic `3e2b6a8d`). **RECIPE for a local proof** (if Aristotle fails):
+   `t=0` trivial (empty sum). For `t∈(0,1]`: `Ψ G R t = c_R·[(∑_{n≤N} G(c_R·u_n)/n)/log N]`,
+   `N=⌊R^t⌋`, `u_n=log n/log N`, `c_R=log N/log R`. (i) **`c_R → t` — DONE**
+   (`tendsto_logFloor_rpow_div`, this lap). (ii) drift: `|G(c_R·u_n)−G(t·u_n)| ≤ ε` uniformly (unif.
+   cont. of `G` on `[0,1]`, `c_R→t`, `c_R u_n,t u_n∈[0,1]`); error `≤ ε·(∑_{2≤n≤N}1/n)/log N ≤ 2ε`
+   (harmonic ratio `→1` via mathlib `tendsto_harmonic_sub_log` + repo `harmonic_eq_icc_sum`).
+   (iii) `riemann_sum_log_weight` on `F_t(u)=G(t·u)` ⟹ `(∑ G(t·u_n)/n)/log N → ∫₀¹G(t·u)du`.
+   (iv) `c_R·∫₀¹G(t·u)du = t·∫₀¹G(t·u)du = ∫₀^t G` (substitution `y=t·u`).
+   THEN: build the multidim limit on `gpy_diagonal_asymptotic_form` (the GPY port, still multi-lap)
+   + singular-series Euler product `𝔖(H)` (reuse `SharpMertens` `eulerProduct_tprod`).
 2. **Leaf (3) off-diagonal heuristic main = o(main)** = `M·∑_{¬diag}w_P/∏[Pᵢ] = o(M(log R)^k)` (the
    phantom main over W-trick-incompatible tuples whose actual count is 0). Infra:
    `correction_abs_bound` already routes the correction to exactly (leaf 2 diag weight) + (this
