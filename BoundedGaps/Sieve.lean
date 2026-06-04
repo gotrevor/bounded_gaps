@@ -2559,24 +2559,211 @@ theorem exists_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
-/-- **Separable sup-norm density, truncated variant** (the irreducible density
-core; sister of `separable_dense_sup` for the truncated simplex
-$\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$). The continuity half is shared with
-the untruncated case (`mkF_sub_lt_of_sup_le`, since the truncated simplex sits
-inside the simplex and `MkF` is the same functional). -/
-axiom separable_dense_sup_truncated (k : ℕ) (α : ℝ) (F : (Fin k → ℝ) → ℝ)
-    (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex_truncated k α)
-    (_hden : mkF_denominator k F > 0) (δ : ℝ) (_hδ : 0 < δ) :
+open MeasureTheory in
+/-- **Separable sup-norm density, truncated variant — in-kernel construction**
+(box-tensor proof of what was the axiom `separable_dense_sup_truncated`, for the
+truncated simplex $\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$, `α > 0`). Same
+strategy as `separable_dense_sup` but with the interior point `b = (c,…,c)`,
+`c = min(α, 1/(k+1))/2`, so the inward expansion `E t = b + r(t−b)` creates margin
+from all *three* face families (`t_i = 0`, `t_i = α`, `∑ t_i = 1`): with mesh
+`h ≤ c(1−r⁻¹)` the box-tensor support stays inside the truncated simplex
+(`c ≤ α/2` and `k·c ≤ 1/2` make the single margin `c(1−r⁻¹)` dominate all three).
+Closeness `|F − G| ≤ δ` holds on the full simplex (where `‖t − b‖_∞ ≤ 1`). -/
+theorem separable_dense_sup_truncated (k : ℕ) (α : ℝ) (hα : 0 < α) (F : (Fin k → ℝ) → ℝ)
+    (hF : ContDiff ℝ ∞ F) (hsupp : Function.support F ⊆ simplex_truncated k α)
+    (_hden : mkF_denominator k F > 0) (δ : ℝ) (hδ : 0 < δ) :
     ∃ G : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex_truncated k α ∧
-      (∀ t ∈ simplex k, |F t - G t| ≤ δ)
+      (∀ t ∈ simplex k, |F t - G t| ≤ δ) := by
+  classical
+  have hsub : simplex_truncated k α ⊆ simplex k := fun t ⟨h0, _, hs⟩ => ⟨h0, hs⟩
+  have hFcont : Continuous F := hF.continuous
+  have hFcs : HasCompactSupport F :=
+    HasCompactSupport.of_support_subset_isCompact (isCompact_simplex k) (hsupp.trans hsub)
+  obtain ⟨hFm, hFm_pos, hF_mod⟩ := exists_uniform_modulus k F hFcont hFcs (δ / 2) (by linarith)
+  set r : ℝ := 1 + hFm with hr_def
+  have hr1 : 1 < r := by rw [hr_def]; linarith
+  have hr0 : 0 < r := by linarith
+  have hrne : r ≠ 0 := hr0.ne'
+  have hrinv0 : 0 < r⁻¹ := inv_pos.mpr hr0
+  have hrinv1 : r⁻¹ < 1 := by rw [inv_lt_one_iff₀]; right; exact hr1
+  -- interior point `b = c·𝟙`
+  have hkpos : (0 : ℝ) < (k : ℝ) + 1 := by positivity
+  have hkfrac : (k : ℝ) / ((k : ℝ) + 1) ≤ 1 := by
+    rw [div_le_one hkpos]; linarith [(Nat.cast_nonneg k : (0 : ℝ) ≤ (k : ℝ))]
+  set c : ℝ := min α (1 / ((k : ℝ) + 1)) / 2 with hc_def
+  have hmin_pos : 0 < min α (1 / ((k : ℝ) + 1)) := lt_min hα (by positivity)
+  have hc_pos : 0 < c := by rw [hc_def]; linarith
+  have hc_le_hα : c ≤ α / 2 := by rw [hc_def]; linarith [min_le_left α (1 / ((k : ℝ) + 1))]
+  have hc_le_frac : c ≤ (1 / ((k : ℝ) + 1)) / 2 := by
+    rw [hc_def]; linarith [min_le_right α (1 / ((k : ℝ) + 1))]
+  have hfrac_le1 : 1 / ((k : ℝ) + 1) ≤ 1 := by
+    rw [div_le_one hkpos]; linarith [(Nat.cast_nonneg k : (0 : ℝ) ≤ (k : ℝ))]
+  have hc_le1 : c ≤ 1 := by linarith [hc_le_frac, hfrac_le1]
+  have hkc : (k : ℝ) * c ≤ 1 / 2 := by
+    have hcast : (0 : ℝ) ≤ (k : ℝ) := Nat.cast_nonneg k
+    have h1 : (k : ℝ) * c ≤ (k : ℝ) * ((1 / ((k : ℝ) + 1)) / 2) :=
+      mul_le_mul_of_nonneg_left hc_le_frac hcast
+    have h2 : (k : ℝ) * ((1 / ((k : ℝ) + 1)) / 2) = ((k : ℝ) / ((k : ℝ) + 1)) / 2 := by
+      field_simp
+    rw [h2] at h1; linarith
+  set b : Fin k → ℝ := fun _ => c with hb_def
+  have hbval : ∀ i, b i = c := fun i => rfl
+  set E : (Fin k → ℝ) → (Fin k → ℝ) := fun t => b + r • (t - b) with hE_def
+  have hEval : ∀ (p : Fin k → ℝ) (i : Fin k), (E p) i = b i + r * (p i - b i) := by
+    intro p i; simp only [hE_def, Pi.add_apply, Pi.smul_apply, Pi.sub_apply, smul_eq_mul]
+  set F₁ : (Fin k → ℝ) → ℝ := fun t => F (E t) with hF1_def
+  have hE_cd : ContDiff ℝ ∞ E := by
+    have hEeq : E = fun t => r • t + (b - r • b) := by
+      funext t; ext i
+      simp only [hE_def, Pi.add_apply, Pi.smul_apply, Pi.sub_apply, smul_eq_mul]; ring
+    rw [hEeq]; exact (contDiff_const_smul r).add contDiff_const
+  have hF1_cd : ContDiff ℝ ∞ F₁ := hF.comp hE_cd
+  have hF1_mod : ∀ t s : Fin k → ℝ, (∀ i, |t i - s i| ≤ hFm / r) → |F₁ t - F₁ s| ≤ δ / 2 := by
+    intro t s hts
+    refine hF_mod (E t) (E s) (fun i => ?_)
+    have hdiff : (E t) i - (E s) i = r * (t i - s i) := by rw [hEval, hEval]; ring
+    rw [hdiff, abs_mul, abs_of_pos hr0]
+    calc r * |t i - s i| ≤ r * (hFm / r) := mul_le_mul_of_nonneg_left (hts i) hr0.le
+      _ = hFm := by field_simp
+  -- mesh `h ≤ c(1−r⁻¹)` and grid count
+  set μ₀ : ℝ := c * (1 - r⁻¹) with hμ0_def
+  have hμ0_pos : 0 < μ₀ := by rw [hμ0_def]; exact mul_pos hc_pos (by linarith)
+  set h : ℝ := min (hFm / r) μ₀ with hh_def
+  have hh : 0 < h := lt_min (div_pos hFm_pos hr0) hμ0_pos
+  have hh_le_mod : h ≤ hFm / r := min_le_left _ _
+  have hh_le_μ : h ≤ μ₀ := min_le_right _ _
+  set N : ℕ := ⌈1 / h⌉₊ with hN_def
+  have hNh : (1 : ℝ) ≤ (N : ℝ) * h := by
+    have hle : 1 / h ≤ (N : ℝ) := Nat.le_ceil _
+    calc (1 : ℝ) = (1 / h) * h := by field_simp
+      _ ≤ (N : ℝ) * h := mul_le_mul_of_nonneg_right hle hh.le
+  set G : (Fin k → ℝ) → ℝ :=
+    fun t => ∑ φ : Fin k → Fin (N + 1),
+      F₁ (fun i => ((φ i : ℕ) : ℝ) * h) * ∏ i, meshBump h ((φ i : ℕ)) (t i) with hG_def
+  refine ⟨G, ?_, ?_, ?_, ?_⟩
+  · rw [hG_def]
+    exact @isFiniteSeparable_tensor_sum k (Fin (N + 1)) _
+      (fun φ => F₁ (fun i => ((φ i : ℕ) : ℝ) * h)) (fun m x => meshBump h ((m : ℕ)) x)
+  · rw [hG_def]
+    exact @contDiff_tensor_sum k (Fin (N + 1)) _
+      (fun φ => F₁ (fun i => ((φ i : ℕ) : ℝ) * h))
+      (fun m x => meshBump h ((m : ℕ)) x) (fun m => meshBump_contDiff h ((m : ℕ)))
+  · -- support ⊆ simplex_truncated
+    intro t ht
+    have htne : G t ≠ 0 := ht
+    rw [hG_def] at htne
+    obtain ⟨φ, _, hφne⟩ := Finset.exists_ne_zero_of_sum_ne_zero htne
+    rw [mul_ne_zero_iff] at hφne
+    obtain ⟨haφ, hprodφ⟩ := hφne
+    set cφ : Fin k → ℝ := fun i => ((φ i : ℕ) : ℝ) * h with hcφ_def
+    have hcφi : ∀ i, cφ i = ((φ i : ℕ) : ℝ) * h := fun i => rfl
+    have hloc : ∀ i, (((φ i : ℕ) : ℝ) - 1) * h < t i ∧ t i < (((φ i : ℕ) : ℝ) + 1) * h := by
+      intro i
+      exact meshBump_support h ((φ i : ℕ)) (t i) hh
+        ((Finset.prod_ne_zero_iff.mp hprodφ) i (Finset.mem_univ i))
+    have hEcmem : E cφ ∈ simplex_truncated k α := hsupp (Function.mem_support.mpr haφ)
+    obtain ⟨hEc_nn, hEc_le, hEc_sum⟩ := hEcmem
+    have hcinv : ∀ i, cφ i - b i = ((E cφ) i - b i) * r⁻¹ := by
+      intro i; rw [hEval cφ i]; field_simp; ring
+    -- lower margin `cφ i ≥ c(1−r⁻¹) = μ₀`
+    have hcφ_lower : ∀ i, μ₀ ≤ cφ i := by
+      intro i
+      have h1 : cφ i - b i = ((E cφ) i - b i) * r⁻¹ := hcinv i
+      have h2 : 0 ≤ (E cφ) i * r⁻¹ := mul_nonneg (hEc_nn i) hrinv0.le
+      have hkey : b i * (1 - r⁻¹) ≤ cφ i := by nlinarith [h1, h2]
+      have : μ₀ = b i * (1 - r⁻¹) := by rw [hμ0_def, hbval i]
+      rw [this]; exact hkey
+    -- upper margin `cφ i ≤ c + (α − c)r⁻¹`, hence `cφ i + h ≤ α`
+    have hcφ_upper : ∀ i, cφ i + h ≤ α := by
+      intro i
+      have h1 : cφ i - b i = ((E cφ) i - b i) * r⁻¹ := hcinv i
+      have h2 : ((E cφ) i - b i) * r⁻¹ ≤ (α - b i) * r⁻¹ :=
+        mul_le_mul_of_nonneg_right (by linarith [hEc_le i]) hrinv0.le
+      rw [hbval i] at h1 h2
+      -- cφ i ≤ c + (α−c)r⁻¹; need cφ i + h ≤ α, i.e. h ≤ (α−c)(1−r⁻¹)
+      have hub : c ≤ α - c := by linarith
+      have hhα : h ≤ (α - c) * (1 - r⁻¹) := by
+        have : μ₀ ≤ (α - c) * (1 - r⁻¹) :=
+          mul_le_mul_of_nonneg_right hub (by linarith)
+        rw [hμ0_def] at this; linarith [hh_le_μ]
+      nlinarith [h1, h2, hhα, hrinv0]
+    -- diagonal margin `∑ cφ ≤ kc + r⁻¹(1−kc)`, hence `∑ cφ + kh ≤ 1`
+    have hsumcφ : (∑ i, cφ i) + (k : ℝ) * h ≤ 1 := by
+      have hsb : ∑ i : Fin k, b i = (k : ℝ) * c := by
+        simp only [hbval, Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+      have hsum_eq : ∑ i, cφ i = (∑ i, b i) + r⁻¹ * ((∑ i, (E cφ) i) - ∑ i, b i) := by
+        have hpt : ∀ i, cφ i = b i + ((E cφ) i - b i) * r⁻¹ := fun i => by linarith [hcinv i]
+        rw [Finset.sum_congr rfl (fun i _ => hpt i), Finset.sum_add_distrib,
+          ← Finset.sum_mul, Finset.sum_sub_distrib]
+        ring
+      have hprod : r⁻¹ * ((∑ i, (E cφ) i) - ∑ i, b i) ≤ r⁻¹ * (1 - ∑ i, b i) :=
+        mul_le_mul_of_nonneg_left (by linarith [hEc_sum]) hrinv0.le
+      rw [hsb] at hsum_eq hprod
+      -- ∑ cφ ≤ kc + r⁻¹(1−kc); need + kh ≤ 1, i.e. kh ≤ (1−kc)(1−r⁻¹)
+      have hkhμ : (k : ℝ) * h ≤ (1 - (k : ℝ) * c) * (1 - r⁻¹) := by
+        have hprod1 : (0 : ℝ) ≤ (1 - 2 * ((k : ℝ) * c)) * (1 - r⁻¹) :=
+          mul_nonneg (by linarith [hkc]) (by linarith [hrinv1])
+        have hid : (1 - (k : ℝ) * c) * (1 - r⁻¹) - (k : ℝ) * (c * (1 - r⁻¹))
+            = (1 - 2 * ((k : ℝ) * c)) * (1 - r⁻¹) := by ring
+        have h3 : (k : ℝ) * μ₀ ≤ (1 - (k : ℝ) * c) * (1 - r⁻¹) := by
+          rw [hμ0_def]; linarith [hprod1, hid]
+        have h4 : (k : ℝ) * h ≤ (k : ℝ) * μ₀ :=
+          mul_le_mul_of_nonneg_left hh_le_μ (Nat.cast_nonneg k)
+        linarith [h3, h4]
+      have hBC : r⁻¹ * (1 - (k : ℝ) * c) + (1 - (k : ℝ) * c) * (1 - r⁻¹) = 1 - (k : ℝ) * c := by
+        ring
+      rw [hsum_eq]; linarith [hprod, hkhμ, hBC]
+    -- locality rewritten against the grid point `cφ`
+    have hgtc : ∀ i, cφ i - h < t i := by
+      intro i
+      have hl := (hloc i).1
+      rwa [show (((φ i : ℕ) : ℝ) - 1) * h = cφ i - h from by rw [hcφi i]; ring] at hl
+    have hltc : ∀ i, t i < cφ i + h := by
+      intro i
+      have hl := (hloc i).2
+      rwa [show (((φ i : ℕ) : ℝ) + 1) * h = cφ i + h from by rw [hcφi i]; ring] at hl
+    -- assemble `t ∈ simplex_truncated`
+    refine ⟨fun i => ?_, fun i => ?_, ?_⟩
+    · linarith [hgtc i, hcφ_lower i, hh_le_μ]
+    · linarith [hltc i, hcφ_upper i]
+    · calc ∑ i, t i ≤ ∑ i, (cφ i + h) :=
+            Finset.sum_le_sum (fun i _ => (hltc i).le)
+        _ = (∑ i, cφ i) + (k : ℝ) * h := by
+            rw [Finset.sum_add_distrib]
+            simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+        _ ≤ 1 := hsumcφ
+  · -- `|F t − G t| ≤ δ` on the simplex
+    intro t ht
+    obtain ⟨ht_nn, ht_sum⟩ := ht
+    have hclose1 : |F t - F₁ t| ≤ δ / 2 := by
+      refine hF_mod t (E t) (fun i => ?_)
+      have heq : t i - (E t) i = (1 - r) * (t i - b i) := by rw [hEval]; ring
+      rw [heq, abs_mul, abs_of_nonpos (by linarith : (1 : ℝ) - r ≤ 0)]
+      have hti1 : t i ≤ 1 :=
+        le_trans (Finset.single_le_sum (fun j _ => ht_nn j) (Finset.mem_univ i)) ht_sum
+      have hb01 : |t i - b i| ≤ 1 := by
+        rw [hbval i, abs_le]
+        exact ⟨by linarith [ht_nn i, hc_le1], by linarith [hti1, hc_pos]⟩
+      calc -(1 - r) * |t i - b i| ≤ -(1 - r) * 1 :=
+            mul_le_mul_of_nonneg_left hb01 (by linarith)
+        _ = hFm := by rw [hr_def]; ring
+    have hclose2 : |F₁ t - G t| ≤ δ / 2 := by
+      rw [hG_def]
+      refine box_tensor_approx k F₁ h N (δ / 2) hh (fun u s hus => ?_) t ht_nn (fun i => ?_)
+      · exact hF1_mod u s (fun i => le_trans (hus i) hh_le_mod)
+      · exact le_trans (le_trans
+          (Finset.single_le_sum (fun j _ => ht_nn j) (Finset.mem_univ i)) ht_sum) hNh
+    calc |F t - G t| ≤ |F t - F₁ t| + |F₁ t - G t| := abs_sub_le _ _ _
+      _ ≤ δ / 2 + δ / 2 := add_le_add hclose1 hclose2
+      _ = δ := by ring
 
 /-- **Separable approximation, truncated variant** (the narrowed core of
 `exists_separable_F_truncated_of_Mk_truncated_gt`). **Now a theorem**: the
 continuity half is the proven `mkF_sub_lt_of_sup_le` (the truncated simplex is
 contained in the simplex and `MkF` is the same), so this rests only on the
 pure-density axiom `separable_dense_sup_truncated`. -/
-theorem sep_approx_truncated (k : ℕ) (α : ℝ) (F : (Fin k → ℝ) → ℝ)
+theorem sep_approx_truncated (k : ℕ) (α : ℝ) (hα : 0 < α) (F : (Fin k → ℝ) → ℝ)
     (hF : ContDiff ℝ ∞ F) (hsupp : Function.support F ⊆ simplex_truncated k α)
     (hden : mkF_denominator k F > 0) (ε : ℝ) (hε : 0 < ε) :
     ∃ G : (Fin k → ℝ) → ℝ,
@@ -2586,7 +2773,7 @@ theorem sep_approx_truncated (k : ℕ) (α : ℝ) (F : (Fin k → ℝ) → ℝ)
   obtain ⟨δ, hδpos, hcont⟩ :=
     mkF_sub_lt_of_sup_le k F hF.continuous (hsupp.trans hsub) hden ε hε
   obtain ⟨G, hGsep, hGsm, hGsupp, hGclose⟩ :=
-    separable_dense_sup_truncated k α F hF hsupp hden δ hδpos
+    separable_dense_sup_truncated k α hα F hF hsupp hden δ hδpos
   obtain ⟨hGden, hGlt⟩ := hcont G hGsm.continuous (hGsupp.trans hsub) hGclose
   exact ⟨G, hGsep, hGsm, hGsupp, hGden, hGlt⟩
 
@@ -2603,7 +2790,7 @@ theorem exists_separable_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
   have hc'Mk : c' < Mk_truncated k α := by rw [hc'def]; linarith
   obtain ⟨F, hSmooth, hSupp, hDen, hcF⟩ := exists_F_truncated_of_Mk_truncated_gt k hk α hα c' hc'Mk
   obtain ⟨G, hGsep, hGsm, hGsupp, hGden, hGclose⟩ :=
-    sep_approx_truncated k α F hSmooth hSupp hDen (c' - c) (by linarith)
+    sep_approx_truncated k α hα F hSmooth hSupp hDen (c' - c) (by linarith)
   refine ⟨G, hGsep, hGsm, hGsupp, hGden, ?_⟩
   have hlow := (abs_lt.mp hGclose).1
   linarith
