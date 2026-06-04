@@ -185,4 +185,25 @@ theorem sum_self_div_totient_main_split (N : ℕ) :
         mul_le_mul_of_nonneg_left (abs_floorDiv_sub_div_le_one N d hd1) hnn
     _ = (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ) := by ring
 
+/-- Partial sums of the singular sum `∑_{d≤N} μ²(d)/(φ(d)·d)` (the main-term
+coefficient of `∑ n/φ(n)`). -/
+noncomputable def singularSumPartial (N : ℕ) : ℝ :=
+  ∑ d ∈ Finset.Icc 1 N, (ArithmeticFunction.moebius d : ℝ) ^ 2 / ((Nat.totient d : ℝ) * (d : ℝ))
+
+/-- **The singular sum converges.** Being monotone (nonnegative terms) and bounded
+above, the partial sums `∑_{d≤N} μ²(d)/(φ(d)·d)` converge to their supremum `A`
+(which then dominates every partial sum). The boundedness hypothesis is supplied by
+the Euler-product comparison `∑_{d≤N} μ²(d)/(φ(d)·d) ≤ 3` (Aristotle `36bb3493`);
+the limit `A` is the singular-series constant `ζ(2)ζ(3)/ζ(6)` of `∑ n/φ(n) ∼ A·N`. -/
+theorem singularSum_tendsto_of_bounded {C : ℝ} (hC : ∀ N, singularSumPartial N ≤ C) :
+    ∃ A : ℝ, Filter.Tendsto singularSumPartial Filter.atTop (nhds A)
+        ∧ ∀ N, singularSumPartial N ≤ A := by
+  have hmono : Monotone singularSumPartial := by
+    intro a b hab
+    apply Finset.sum_le_sum_of_subset_of_nonneg (Finset.Icc_subset_Icc_right hab)
+    intro d _ _; positivity
+  have hbdd : BddAbove (Set.range singularSumPartial) := ⟨C, by rintro x ⟨N, rfl⟩; exact hC N⟩
+  refine ⟨⨆ N, singularSumPartial N, tendsto_atTop_ciSup hmono hbdd, ?_⟩
+  intro N; exact le_ciSup hbdd N
+
 end BoundedGaps.SingularSeries
