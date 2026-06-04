@@ -208,10 +208,33 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 ---
 
-## C. Aristotle (status 2026-06-04, lap ~03:40Z)
+## C. Aristotle (status 2026-06-04, lap ~05:00Z)
+
+### 🎉 THIS LAP (~04:30–05:00Z, 7 commits `12e307e`…`ac13ce3`, all axiom-clean, build green 8272):
+**The ENTIRE sharp chain to the headline `∑μ²/φ = Θ(log N)` is now BUILT, reduced to a SINGLE
+remaining gate: `prime_power_tail_le` (in flight `3f137191`).** New in `BoundedGaps/Mertens.lean`:
+- `vonMangoldt_split_prime`: `∑Λ(n)/n = ∑_{p≤N}(log p)/p + (proper-prime-power tail)`.
+- `mertens_prime_log_two_sided_of` (+`_upper_of_tail`): tail≤1 ⇒ `|∑(log p)/p − log N| ≤ log4+5`.
+- **Sharp Mertens 2nd, BOTH halves (coefficient 1):** `mertens2_abel` (2nd Abel identity, weight
+  `1/log n`), helpers `log_telescope_eq/_le`, `leading_term_bound/_ge`, `reindex_inv_log`,
+  `leading_sum_bound/_ge`, `sum_one_div_n_log_n_ge`; `mertens2_upper_of`/`mertens2_lower_of`
+  (`A_n = log n ± C ⇒ ∑1/p = loglog N ± O(1)`); `mertens2_two_sided_of_tail` (bundled textbook
+  `∑1/p = loglog N + O(1)` conditional on tail).
+- **Headline:** `prime_idx_eq`, `prod_euler_le_exp` (`∏(1+1/(p-1)) ≤ exp(∑1/(p-1))`),
+  `euler_exponent_le` (`∑1/(p-1) ≤ ∑1/p+1`), `mertens_upper_of` (`∑μ²/φ ≤ exp(1+D)·log N = O(log N)`),
+  `mertens_theta_log_of_tail` (two-sided `Θ(log N)` ⟸ tail). **All ONE `exact` from unconditional.**
+- **mathlib unlock for the tail:** `Chebyshev.sum_PrimePow_eq_sum_sum` IS the prime-power regrouping
+  `∑_{n≤x, IsPrimePow} f(n) = ∑_{k=1}^{⌊log x/log2⌋} ∑_{p≤x^{1/k}} f(p^k)` — confirms the tail is
+  tractable (k=1 slice = primes; tail = k≥2 slices). Aristotle has the right tool.
+
+### THE ONE REMAINING GATE:
 - **IN FLIGHT — `3f137191-9973-4f15-baff-f3302d5a9539`** (`aristotle-pptail/PPTail.lean`):
-  the **prime-power tail** `∑_{n≤N, IsPrimePow ∧ ¬Prime} Λ(n)/n ≤ 1` — the convergent tail
-  separating `∑Λ(n)/n` from `∑_{p≤N}(log p)/p`. On return: verify + `#print axioms` clean + port.
+  the **prime-power tail** `∑_{n≤N, IsPrimePow ∧ ¬Prime} Λ(n)/n ≤ 1`. On return: verify +
+  `#print axioms` clean + port; then `mertens_theta_log_of_tail`/`mertens2_two_sided_of_tail`
+  become UNCONDITIONAL by feeding `prime_power_tail_le` as `htail`. Route if `≤1` too tight:
+  `sum_PrimePow_eq_sum_sum` (split IsPrimePow into k-slices, subtract k=1 primes) + per-k-slice
+  bound `∑_{p}(log p)/p^k ≤ ∑_{n≥2}(log n)/n^k` via integral comparison. Any explicit constant
+  suffices (the conditional theorems can be re-parametrized from `≤1` to `≤Ctail` cheaply).
 - **🎉 SHARP MERTENS 1st LANDED this lap** (`7412132`): `mertens_vonMangoldt_two_sided`
   `|∑_{n≤N} Λ(n)/n − log N| ≤ log 4 + 4` — the **coefficient-1** estimate. Built from
   `vonMangoldt_hyperbola` (Aristotle `cc0dfbaf`), `sum_log_le`/`le_sum_log` (Stirling via mathlib
