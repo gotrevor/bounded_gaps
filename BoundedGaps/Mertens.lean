@@ -376,4 +376,36 @@ theorem mertens_prod_upper (N : ℕ) :
     rw [hg]
     positivity
 
+/-! ## Chebyshev's first estimate
+
+The foundational prime-density input for turning the Euler-product upper bound
+`mertens_prod_upper` into a genuine `O(log N)` estimate: `θ(N) = ∑_{p≤N} log p ≤
+N · log 4`. This is the first brick of the sub-ladder
+(Chebyshev θ → Mertens `∑ 1/p` → `∏(1+1/(p-1)) = O(log N)` → `∑ μ²/φ = Θ(log N)`)
+recorded in `ANALYTIC_AXIOM_BURNDOWN.md`. It is immediate from mathlib's
+`primorial_le_four_pow` (`primorial N ≤ 4^N`) by taking logarithms. -/
+
+/-- **Chebyshev's first estimate (upper bound)**: the Chebyshev function
+`θ(N) = ∑_{p ≤ N} log p` satisfies `θ(N) ≤ N · log 4`. -/
+theorem chebyshev_theta_le (N : ℕ) :
+    ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime, Real.log (p : ℝ)
+      ≤ (N : ℝ) * Real.log 4 := by
+  have hcast : ((primorial N : ℕ) : ℝ)
+      = ∏ p ∈ (Finset.range (N + 1)).filter Nat.Prime, (p : ℝ) := by
+    rw [primorial, Nat.cast_prod]
+  have hne : ∀ p ∈ (Finset.range (N + 1)).filter Nat.Prime, (p : ℝ) ≠ 0 := by
+    intro p hp
+    have hpp : p.Prime := (Finset.mem_filter.mp hp).2
+    exact_mod_cast hpp.pos.ne'
+  have hlogeq : Real.log (primorial N)
+      = ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime, Real.log (p : ℝ) := by
+    rw [hcast, Real.log_prod hne]
+  have hbound : ((primorial N : ℕ) : ℝ) ≤ (4 : ℝ) ^ N := by
+    exact_mod_cast primorial_le_four_pow N
+  have hpos : (0 : ℝ) < (primorial N : ℝ) := by exact_mod_cast primorial_pos N
+  have hlogle : Real.log (primorial N) ≤ Real.log ((4 : ℝ) ^ N) :=
+    Real.log_le_log hpos hbound
+  rw [hlogeq, Real.log_pow] at hlogle
+  exact hlogle
+
 end BoundedGaps.Mertens
