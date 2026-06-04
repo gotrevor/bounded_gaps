@@ -413,26 +413,19 @@ two of them:
   `alphaBound_of_heuristic_correction`/`betaBound_of_heuristic_correction` (split `sieveSum=Aheur+Bcorr`;
   heuristic limit + correction bound ⟹ alphaBound). Machine-checks `leaf 1 ∧ leaf 3 ⟹ s1`.
 
-**Only TWO genuine analytic nuts remain for s1 (both multi-lap deep):**
-1. **Leaf (1) diagonal asymptotic** `∑_{r sf}(φ(r)/r²)z_r² → I(F)·const`. Smooth core = the 2-D
-   simplex limit `weighted_riemann_2d`. **As of lap N+3 this is REDUCED in-kernel (axiom-clean) to a
-   single 1-D pointwise limit `psi_tendsto`** — see `BoundedGaps/InnerUniformReduction.lean`
-   (`weighted_riemann_2d_of_psi_pointwise`, via Pólya `PolyaUniform.polya_uniform`). The remaining
-   `psi_tendsto : Ψ G R t → ∫₀^t G` (fixed `t∈[0,1]`, continuous `G`) is on Aristotle (`1f84c4d6`,
-   strictly easier than the monolithic `3e2b6a8d`). **RECIPE for a local proof** (if Aristotle fails):
-   `t=0` trivial (empty sum). For `t∈(0,1]`: `Ψ G R t = c_R·[(∑_{n≤N} G(c_R·u_n)/n)/log N]`,
-   `N=⌊R^t⌋`, `u_n=log n/log N`, `c_R=log N/log R`. (i) **`c_R → t` — DONE**
-   (`tendsto_logFloor_rpow_div`). (ii) **harmonic ratio `(∑_{2≤n≤N}1/n)/log N → 1` — DONE**
-   (`tendsto_harmonic_icc2_div_log`). (ii') **drift — REMAINS (the crux)**: `|G(c_R·u_n)−G(t·u_n)| ≤ ε`
-   uniformly (unif. cont. of `G` on `[0,1]`, `c_R→t`, `c_R u_n,t u_n∈[0,1]`); error
-   `≤ ε·(∑_{2≤n≤N}1/n)/log N ≤ 2ε` (uses the harmonic brick). (iii) **REMAINS**:
-   `riemann_sum_log_weight` on `F_t(u)=G(t·u)` composed with `N=⌊R^t⌋→∞` ⟹
-   `(∑ G(t·u_n)/n)/log N → ∫₀¹G(t·u)du`. (iv) **REMAINS**: `c_R·∫₀¹G(t·u)du = t·∫₀¹G(t·u)du = ∫₀^t G`
-   (substitution `y=t·u`; mathlib `intervalIntegral.smul_integral_comp_mul_right`/`_left` or
-   `integral_comp_mul_left`). Net: 2 of 3 ingredients proven in-kernel; only the drift + the
-   riemann-compose + the substitution remain (also on Aristotle `1f84c4d6`).
-   THEN: build the multidim limit on `gpy_diagonal_asymptotic_form` (the GPY port, still multi-lap)
-   + singular-series Euler product `𝔖(H)` (reuse `SharpMertens` `eulerProduct_tprod`).
+**s1 remaining nuts:**
+1. **Leaf (1) diagonal asymptotic** `∑_{r sf}(φ(r)/r²)z_r² → I(F)·const`. **SMOOTH CORE CLOSED
+   (lap N+3, commit `68e9eb0`, axiom-clean):** the 2-D simplex limit
+   `InnerUniformReduction.weighted_riemann_2d` is PROVEN UNCONDITIONALLY in-kernel (all of `psi_tendsto`
+   + the Pólya reduction chain machine-checked; the 3 Aristotle leaf-1 jobs cancelled as redundant).
+   **REMAINING for leaf 1 = the GPY port (multi-lap, the new frontier):** connect
+   `gpy_diagonal_asymptotic_form`'s output `∑_{r sf}(φ(r)/r²) z_r²` (with `z_r=∑_{(s,r)=1}μ(s)g(rs)/s`,
+   `g(d)=F(log d/log R)`) to the `weighted_riemann_2d` double-sum shape. Three attack paths:
+   (a) expand `z_r² = ∑_{s,s'}μ(s)μ(s')g(rs)g(rs')/(ss')`, swap to `∑_{s,s'}(…)∑_{r}(φ(r)/r²)[r∣…]`,
+   recognise the inner `r`-sum as the singular series `𝔖`; (b) rank-1/separable case first (single
+   coordinate, `F=∏Fᵢ`) to validate the shape before the general `J`-basis; (c) reuse `SharpMertens`
+   `eulerProduct_tprod` for the `𝔖(H)=∏_p(1-ν_p/p)(1-1/p)^{-k}` Euler product. NB this port consumes
+   the now-proven `weighted_riemann_2d` as a black box — design carefully (needs the GPY paper).
 2. **Leaf (3) off-diagonal heuristic main = o(main)** = `M·∑_{¬diag}w_P/∏[Pᵢ] = o(M(log R)^k)` (the
    phantom main over W-trick-incompatible tuples whose actual count is 0). Infra:
    `correction_abs_bound` already routes the correction to exactly (leaf 2 diag weight) + (this
