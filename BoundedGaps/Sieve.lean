@@ -2166,22 +2166,41 @@ theorem exists_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
-/-- **Separable $L^2$-approximation, truncated variant** (pure analysis; the
-narrowed core of `exists_separable_F_truncated_of_Mk_truncated_gt`). Sister of
-`sep_approx` for the truncated simplex $\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$;
-same density+continuity content (box-bumps inside the open truncated simplex,
-`L²` continuity of `MkF`). -/
-axiom sep_approx_truncated (k : ℕ) (α : ℝ) (F : (Fin k → ℝ) → ℝ)
+/-- **Separable sup-norm density, truncated variant** (the irreducible density
+core; sister of `separable_dense_sup` for the truncated simplex
+$\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$). The continuity half is shared with
+the untruncated case (`mkF_sub_lt_of_sup_le`, since the truncated simplex sits
+inside the simplex and `MkF` is the same functional). -/
+axiom separable_dense_sup_truncated (k : ℕ) (α : ℝ) (F : (Fin k → ℝ) → ℝ)
     (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex_truncated k α)
-    (_hden : mkF_denominator k F > 0) (ε : ℝ) (_hε : 0 < ε) :
+    (_hden : mkF_denominator k F > 0) (δ : ℝ) (_hδ : 0 < δ) :
     ∃ G : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex_truncated k α ∧
-      mkF_denominator k G > 0 ∧ |MkF k G - MkF k F| < ε
+      (∀ t ∈ simplex k, |F t - G t| ≤ δ)
+
+/-- **Separable approximation, truncated variant** (the narrowed core of
+`exists_separable_F_truncated_of_Mk_truncated_gt`). **Now a theorem**: the
+continuity half is the proven `mkF_sub_lt_of_sup_le` (the truncated simplex is
+contained in the simplex and `MkF` is the same), so this rests only on the
+pure-density axiom `separable_dense_sup_truncated`. -/
+theorem sep_approx_truncated (k : ℕ) (α : ℝ) (F : (Fin k → ℝ) → ℝ)
+    (hF : ContDiff ℝ ∞ F) (hsupp : Function.support F ⊆ simplex_truncated k α)
+    (hden : mkF_denominator k F > 0) (ε : ℝ) (hε : 0 < ε) :
+    ∃ G : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex_truncated k α ∧
+      mkF_denominator k G > 0 ∧ |MkF k G - MkF k F| < ε := by
+  have hsub : simplex_truncated k α ⊆ simplex k := fun t ⟨h0, _, hs⟩ => ⟨h0, hs⟩
+  obtain ⟨δ, hδpos, hcont⟩ :=
+    mkF_sub_lt_of_sup_le k F hF.continuous (hsupp.trans hsub) hden ε hε
+  obtain ⟨G, hGsep, hGsm, hGsupp, hGclose⟩ :=
+    separable_dense_sup_truncated k α F hF hsupp hden δ hδpos
+  obtain ⟨hGden, hGlt⟩ := hcont G hGsm.continuous (hGsupp.trans hsub) hGclose
+  exact ⟨G, hGsep, hGsm, hGsupp, hGden, hGlt⟩
 
 /-- **Separable realisation of $M_k^{[\alpha]}$** (Polymath8b §6, truncated
 variant). **Now a theorem** (was a cited axiom): identical reduction to
 `exists_separable_F_of_Mk_gt`, via `exists_F_truncated_of_Mk_truncated_gt`
-and the pure-analysis `sep_approx_truncated`. -/
+and the pure-density-backed `sep_approx_truncated`. -/
 theorem exists_separable_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
     (α : ℝ) (hα : 0 < α) (c : ℝ) (hc : c < Mk_truncated k α) :
     ∃ F : (Fin k → ℝ) → ℝ,
