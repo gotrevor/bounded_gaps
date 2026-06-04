@@ -727,6 +727,75 @@ lemma gabs_sum_divisors_mul {m n : ℕ} (hmn : Nat.Coprime m n) :
 lemma sum_gabs_divisors_nonneg (n : ℕ) : 0 ≤ ∑ d ∈ n.divisors, gabs d :=
   Finset.sum_nonneg (fun d _ => by rw [gabs_apply]; exact abs_nonneg _)
 
+/-- **(C) The multiples-of-`p` contribution.** For a prime `p ≤ N`, the divisors of `(N#)²`
+divisible by `p` contribute at most `(|bAF p| + |bAF p²|)·exp 2`. Proof: split off the `p`-part,
+`(N#)² = p²·Q²` with `p ⟂ Q`; the divisors not divisible by `p` are exactly the divisors of
+`Q²` (summing to `B`), and the full sum is `(1+|bAF p|+|bAF p²|)·B`, so the multiples sum to
+`(|bAF p|+|bAF p²|)·B ≤ (|bAF p|+|bAF p²|)·exp 2` (since `B ≤ (1+…)·B = full ≤ exp 2`). -/
+theorem sum_gabs_divisors_multiples_le {N p : ℕ} (hp : p.Prime) (hpN : p ≤ N) :
+    ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => p ∣ d)), gabs d
+      ≤ (gabs p + gabs (p ^ 2)) * Real.exp 2 := by
+  classical
+  set S := (Finset.range (N + 1)).filter Nat.Prime with hSdef
+  have hpS : p ∈ S := by rw [hSdef, Finset.mem_filter, Finset.mem_range]; exact ⟨by omega, hp⟩
+  set Q := ∏ q ∈ S.erase p, q with hQdef
+  have hprim : primorial N = p * Q := by
+    rw [hQdef]; exact (Finset.mul_prod_erase S (fun q => q) hpS).symm
+  have hcopQ : Nat.Coprime p Q := by
+    rw [hQdef]
+    apply Nat.Coprime.prod_right
+    intro q hq
+    rw [Finset.mem_erase, hSdef, Finset.mem_filter] at hq
+    exact (Nat.coprime_primes hp hq.2.2).mpr (Ne.symm hq.1)
+  have hnpQ : ¬ p ∣ Q := by
+    intro h
+    have hg : Nat.gcd p Q = 1 := hcopQ
+    have hg2 : Nat.gcd p Q = p := Nat.gcd_eq_left h
+    have := hp.two_le
+    omega
+  have hcopM : Nat.Coprime (p ^ 2) (Q ^ 2) := Nat.Coprime.pow 2 2 hcopQ
+  have hMeq : (primorial N) ^ 2 = p ^ 2 * Q ^ 2 := by rw [hprim]; ring
+  have hMne : (primorial N) ^ 2 ≠ 0 := pow_ne_zero _ (primorial_pos N).ne'
+  set B := ∑ d ∈ (Q ^ 2).divisors, gabs d with hBdef
+  have hBnn : 0 ≤ B := sum_gabs_divisors_nonneg _
+  have hA : ∑ d ∈ (p ^ 2).divisors, gabs d = 1 + gabs p + gabs (p ^ 2) := by
+    rw [Nat.sum_divisors_prime_pow hp, Finset.sum_range_succ, Finset.sum_range_succ,
+        Finset.sum_range_one, pow_zero, pow_one, show gabs 1 = 1 from gabs_isMultiplicative.1]
+  have hfull : ∑ d ∈ ((primorial N) ^ 2).divisors, gabs d
+      = (1 + gabs p + gabs (p ^ 2)) * B := by
+    rw [hMeq, gabs_sum_divisors_mul hcopM, hA, hBdef]
+  have hQ2M : Q ^ 2 ∣ (primorial N) ^ 2 := by rw [hMeq]; exact dvd_mul_left _ _
+  have hcompl : ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => ¬ p ∣ d)), gabs d = B := by
+    have hfilter_eq : ((primorial N) ^ 2).divisors.filter (fun d => ¬ p ∣ d)
+        = ((primorial N) ^ 2).divisors.filter (fun d => d ∣ Q ^ 2) := by
+      apply Finset.filter_congr
+      intro d hd
+      rw [Nat.mem_divisors] at hd
+      constructor
+      · intro hnpd
+        have hcopdp : Nat.Coprime d (p ^ 2) :=
+          Nat.Coprime.pow_right 2 (((Nat.coprime_or_dvd_of_prime hp d).resolve_right hnpd).symm)
+        exact hcopdp.dvd_of_dvd_mul_left (hMeq ▸ hd.1)
+      · intro hdQ2 hpd
+        exact hnpQ (hp.prime.dvd_of_dvd_pow (hpd.trans hdQ2))
+    rw [hfilter_eq, Nat.divisors_filter_dvd_of_dvd hMne hQ2M, hBdef]
+  have hsplit := Finset.sum_filter_add_sum_filter_not
+    (((primorial N) ^ 2).divisors) (fun d => p ∣ d) gabs
+  have hApos : 0 ≤ gabs p + gabs (p ^ 2) := by rw [gabs_apply, gabs_apply]; positivity
+  have hrestricted : ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => p ∣ d)), gabs d
+      = (gabs p + gabs (p ^ 2)) * B := by
+    have heq : ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => p ∣ d)), gabs d
+        = (∑ d ∈ ((primorial N) ^ 2).divisors, gabs d)
+          - ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => ¬ p ∣ d)), gabs d := by
+      rw [← hsplit]; ring
+    rw [heq, hfull, hcompl]; ring
+  rw [hrestricted]
+  have hBle : B ≤ Real.exp 2 :=
+    calc B ≤ (1 + gabs p + gabs (p ^ 2)) * B := by nlinarith [hBnn, hApos]
+      _ = ∑ d ∈ ((primorial N) ^ 2).divisors, gabs d := hfull.symm
+      _ ≤ Real.exp 2 := sum_gabs_divisors_primorial_sq_le N
+  exact mul_le_mul_of_nonneg_left hBle hApos
+
 /-! ## Analytic crux of the log-weighted bound #2: `∑_p (log p)/(p(p-1)) < ∞`
 
 The log-weighted summability hypothesis of `sharp_mertens_tendsto` reduces (after the
