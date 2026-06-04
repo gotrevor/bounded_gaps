@@ -249,6 +249,35 @@ coprime diagonal — to a single mathlib-computable AP count. (c)'s 1-D keystone
    `alphaBound`/`betaBound` `IsLittleO` shape; s1 unconditional, s2 needs EH/BV.
 All in `BoundedGaps/SieveExpansion.lean`; everything axiom-clean.
 
+## Sub-step (b) toolkit COMPLETE + singular-series corner (2026-06-04 late)
+
+Second continuation lap. 12 commits, all axiom-clean, full build green (8274 jobs).
+**Sub-step (b) now has a complete reusable toolkit** in `SieveExpansion.lean`:
+- diagonal main term (`lattice_count_main_term`, `ap_interval_count_bound`) — DONE;
+- off-diagonal vanishing: `lattice_count_offdiag_vanish` (a value `p` dividing two
+  moduli with `hᵢ ≢ hⱼ [MOD p]` ⟹ count 0), `…_of_lt` (W-trick size form),
+  `…_Wtrick` (the **real discharge**: moduli coprime to `W=∏_{p≤D₀}p`, shifts `≤ D₀`
+  distinct ⟹ non-coprime moduli give count 0), `lattice_count_pair_offdiag_vanish`
+  (the exact expansion form `dᵢ∣∧eᵢ∣`), `sieveTheta_pair_offdiag_vanish` (s2 sister);
+- assembly: `sum_restrict_offdiag_vanish` (off-diagonal terms drop, sum restricts to
+  the coprime diagonal — general over the diagonal predicate).
+So sub-step (b) is reduced to: instantiate the diagonal-restriction at the actual
+`sieveSum_selberg_nu_separable_expand` output, discharge `hvanish` via `…_Wtrick`
+with the real `W`/`D₀`/admissible-shift data, and apply `lattice_count_main_term`
+per surviving (coprime) tuple. That final glue is the next assembly step (needs the
+GPY parameter plumbing: `W`, `D₀ ≥ H`, squarefree moduli coprime to `W`).
+
+**Singular-series corner** (`SingularSeries.lean`, new module) — a complete
+classical strand: keystone `n/φ(n)=∑_{d∣n}μ²(d)/φ(d)`, `dirichlet_hyperbola`,
+`sum_self_div_totient_eq_weighted`, `sum_self_div_totient_main_split`
+(`|∑n/φ − N·T(N)| ≤ ∑μ²/φ`), `singularSum_tendsto_of_bounded` (monotone+bounded ⟹
+converges), and the capstone `sum_self_div_totient_asymptotic` (**`∑_{n≤N} n/φ(n) ∼ A·N`**,
+`A=ζ(2)ζ(3)/ζ(6)`), conditional only on the singular-sum bound `≤3` (Aristotle
+`36bb3493`, in flight). NB this corner is *adjacent* infrastructure: GPY's s1/s2 need
+`∑μ²/φ` (the sharp Mertens, literature-gated), not `∑n/φ(n)`; but the machinery
+(multiplicative `IsMultiplicative.eq_iff_eq_on_prime_powers`, hyperbola, Abel/`o(N)`
+error control) is exactly what sub-step (c) reuses.
+
 ## Sub-step (b) diagonal CLOSED + singular-series corner opened (2026-06-04 PM)
 
 Continuation lap. All axiom-clean (`[propext, Classical.choice, Quot.sound]`),
