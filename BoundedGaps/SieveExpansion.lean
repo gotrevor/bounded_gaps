@@ -584,4 +584,63 @@ theorem lattice_count_eq_modEq {ι : Type*} (l : List ι) (q h : ι → ℕ)
   obtain ⟨r, hr⟩ := sieve_condition_single_class l q h W b co hq hWcop
   exact ⟨r, by rw [Finset.filter_congr (fun m _ => hr m)]⟩
 
+/-- **Sub-step (b) interval count, single arithmetic progression, O(1) error.**
+The number of `m ∈ (A, B]` lying in one residue class `m ≡ v [MOD M]` (with
+`0 < M`) is within `1` of the expected `(B - A)/M`. This is the elementary
+boundary estimate that turns the exact AP count of `lattice_count_eq_modEq` into
+the GPY main term `(interval length)/(W·∏q)`. Proof: mathlib's
+`Nat.Ioc_filter_modEq_card` gives the exact count as `⌊(B-v)/M⌋ - ⌊(A-v)/M⌋`;
+each floor is within `1` of its real value, so the difference is within `1` of
+`(B-A)/M`. (Verified independently on Aristotle job `6515817c` as the combined
+`Icc`/CRT statement `crt_interval_count_bound`; this is the cleaner single-AP
+form that composes with our `lattice_count_eq_modEq` chain.) -/
+theorem ap_interval_count_bound {M : ℕ} (hM : 0 < M) (v A B : ℕ) (hAB : A ≤ B) :
+    |(((Finset.Ioc A B).filter (fun m => m ≡ v [MOD M])).card : ℝ)
+      - (B - A : ℝ) / M| ≤ 1 := by
+  have hcard := Nat.Ioc_filter_modEq_card A B hM v
+  set x : ℚ := ((B : ℚ) - v) / M with hx
+  set y : ℚ := ((A : ℚ) - v) / M with hy
+  have hMℚ : (0 : ℚ) < M := by exact_mod_cast hM
+  have hyx : y ≤ x := by rw [hx, hy]; gcongr
+  have hfloor : ⌊y⌋ ≤ ⌊x⌋ := Int.floor_le_floor hyx
+  rw [max_eq_left (sub_nonneg.mpr hfloor)] at hcard
+  have hcardℝ : (((Finset.Ioc A B).filter (fun m => m ≡ v [MOD M])).card : ℝ)
+      = (⌊x⌋ : ℝ) - (⌊y⌋ : ℝ) := by exact_mod_cast hcard
+  rw [hcardℝ]
+  have hxr  : (⌊x⌋ : ℝ) ≤ (x : ℝ) := by exact_mod_cast Int.floor_le x
+  have hxr' : (x : ℝ) - 1 < (⌊x⌋ : ℝ) := by exact_mod_cast Int.sub_one_lt_floor x
+  have hyr  : (⌊y⌋ : ℝ) ≤ (y : ℝ) := by exact_mod_cast Int.floor_le y
+  have hyr' : (y : ℝ) - 1 < (⌊y⌋ : ℝ) := by exact_mod_cast Int.sub_one_lt_floor y
+  have hmain : (x : ℝ) - (y : ℝ) = (B - A : ℝ) / M := by
+    rw [hx, hy]; push_cast; ring
+  rw [abs_le]
+  refine ⟨?_, ?_⟩ <;> nlinarith [hxr, hxr', hyr, hyr', hmain]
+
+/-- **Sub-step (b) capstone — the GPY diagonal main term with O(1) error.**
+On the coprime diagonal (moduli `q i = [dᵢ,eᵢ]` pairwise coprime and coprime to
+`W`, all positive), the GPY lattice-point count over an interval block `(A, B]`
+satisfies
+`#{m ∈ (A,B] : m ≡ b [MOD W] ∧ ∀ i ∈ l, q i ∣ (m + h i)} = (B-A)/(W·∏q) + O(1)`,
+the `O(1)` being a single boundary unit. This closes sub-step (b) on the
+diagonal: `lattice_count_eq_modEq` collapses the multi-coordinate sieve
+condition to one residue class, then `ap_interval_count_bound` evaluates that
+class's interval count. The remaining sieve content is the off-diagonal error
+(`gcd(qᵢ,qⱼ) > 1`) and the sub-step (c) Mertens summation of these main terms. -/
+theorem lattice_count_main_term {ι : Type*} (l : List ι) (q h : ι → ℕ)
+    (W b A B : ℕ) (co : l.Pairwise (fun i j => Nat.Coprime (q i) (q j)))
+    (hq : ∀ i ∈ l, 0 < q i) (hWcop : Nat.Coprime W (l.map q).prod)
+    (hW : 0 < W) (hAB : A ≤ B) :
+    |(((Finset.Ioc A B).filter
+          (fun m => m ≡ b [MOD W] ∧ ∀ i ∈ l, q i ∣ (m + h i))).card : ℝ)
+      - (B - A : ℝ) / ((W * (l.map q).prod : ℕ) : ℝ)| ≤ 1 := by
+  have hQpos : 0 < (l.map q).prod := by
+    apply List.prod_pos
+    intro x hxmem
+    rw [List.mem_map] at hxmem
+    obtain ⟨i, hi, rfl⟩ := hxmem
+    exact hq i hi
+  obtain ⟨r, hr⟩ := lattice_count_eq_modEq l q h W b (Finset.Ioc A B) co hq hWcop
+  rw [hr]
+  exact ap_interval_count_bound (Nat.mul_pos hW hQpos) r A B hAB
+
 end BoundedGaps.Sieve
