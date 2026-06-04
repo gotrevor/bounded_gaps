@@ -212,19 +212,27 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
     (1+ε)•simplex k` (`Measure.setIntegral_comp_smul_of_pos` Jacobian, `Module.finrank_fin_fun`).
     `epsilon_trick` now rests on `separable_dense_sup`, not a separate _eps axiom (Sieve axioms 11→10).
   - **REMAINING NUT — `separable_dense_sup`** (+ `_truncated`: per-coord cap `t i ≤ α`, so does NOT
-    reduce by dilation — shares the same wall). The intended proof is the SEPARABLE box-tensor:
+    reduce by dilation — shares the same wall). Intended proof = SEPARABLE box-tensor:
     `G(t) := ∑_{φ:Fin k→I} F(c_φ)·∏_i ρ_{φ(i)}(t_i)`, `{ρ_m}` a 1-D smooth partition of unity (mesh h).
-    Two reusable in-kernel CORES landed this lap (axiom-clean): **`tensor_partition_of_unity`**
-    (`∑_φ ∏_i ρ_{φ i}(t_i)=1` from a 1-D PoU, via `Fintype.prod_sum`) and **`isFiniteSeparable_tensor_sum`**
-    (any finite tensor sum `∑_φ a(φ)∏g(φ i)(t_i)` IS `IsFiniteSeparable`, via `Fintype.equivFin`
-    reindexing). With these, the separability + the `F−G=∑(F−F(c_φ))∏ρ` decomposition are in hand;
-    the **residual hard piece** is purely analytic: "∃ a 1-D smooth PoU on ℝ, supp(ρ_m) in a width-h
-    window, ∑_m ρ_m=1" + the modulus-of-continuity sup-bound + the support/smoothness assembly. That
-    1-D PoU is a STANDARD, dimension-1, problem-independent fact (more elementary than the bespoke
-    sieve density) — the right residual axiom if not fully closed. Attack paths: (a) build the 1-D PoU
-    from `ContDiffBump` (mathlib `Analysis/Calculus/BumpFunction/`) by normalising a periodic bump sum;
-    (b) **Aristotle** — job `c46a7778` (sepdense) grinding the base case (verify `#print axioms` on return);
-    (c) Stone–Weierstrass + separable cutoff (heavier, support control is the snag).
+    **FOUR reusable in-kernel CORES landed this lap (all axiom-clean), decomposing the wall:**
+    1. `tensor_partition_of_unity` (per-coordinate form): if `∀ i, ∑_m ρ_m(t_i)=1` then
+       `∑_φ ∏_i ρ_{φ i}(t_i)=1` (via `Fintype.prod_sum` + `Finset.prod_congr`). The per-coord
+       hypothesis composes directly with a finite 1-D PoU valid on a range.
+    2. `isFiniteSeparable_tensor_sum`: any finite tensor sum `∑_φ a(φ)∏g(φ i)(t_i)` IS
+       `IsFiniteSeparable` (`Fintype.equivFin` reindexing).
+    3. `smoothTransition_finite_partition`: the 1-D smooth PoU itself —
+       `∑_{m=0}^{N}(σ(x−m)−σ(x−(m+1)))=1` on `[1,N+1]`, `σ=Real.smoothTransition` (telescoping
+       `Finset.sum_range_sub'`). Each bump smooth, supp `⊆[m,m+2]`.
+    4. `contDiff_tensor_sum`: the tensor sum is `C^∞` when each `g_m` is (`ContDiff.sum`+`contDiff_prod`).
+    **So separability ✓, smoothness ✓, PoU-sums-to-1 ✓ are all in-kernel.** RESIDUE = two analytic
+    glue steps only: (i) the **modulus-of-continuity sup-bound** `|F t − G t| ≤ δ` (uniform continuity
+    of `F` on the compact simplex via `IsCompact.uniformContinuousOn`; relate `∏ρ_{φ}(t)≠0` ⟹ `c_φ`
+    within mesh of `t`); (ii) **support(G) ⊆ simplex** via an **inward dilation** `F((1+η)·)` (shrinks
+    supp strictly inside the open simplex, gap `≥` mesh ⟹ active bump-boxes stay in simplex;
+    `F((1+η)·)→F` uniformly — same dilation trick as the eps reduction). Attack paths for the glue:
+    (a) finish the assembly locally (define G with mesh `1/M`, `I=Fin(M+2)`, rescale the 1-D PoU
+    `x↦M·x+1`); (b) **Aristotle** — job `c46a7778` (sepdense) grinding the base case (verify
+    `#print axioms` on return, port onto the 4 cores).
 - **Other Sieve bridges** `s1/s2_holds_from_*` (`Sieve.lean`): the GPY/Maynard asymptotic sieve
   sums. Deep analytic NT (leaf 1 = GPY port, paper-gated for the constant; see §Z).
 - **`BombieriVinogradov`, `GEH`, `GeneralizedBombieriVinogradov`, `MPZ_polymath8a`**

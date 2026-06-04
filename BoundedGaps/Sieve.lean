@@ -2078,18 +2078,20 @@ theorem mkF_sub_lt_of_sup_le (k : ℕ) (F : (Fin k → ℝ) → ℝ)
     _ ≤ etarget * (mkF_denominator k G * den) := by nlinarith [hbden, hetarget]
 
 /-- **Tensor partition-of-unity identity** (the algebraic core of the separable
-box-tensor density construction). If `{ρ_m}_{m∈I}` is a 1-D partition of unity
-(`∑_m ρ_m(x) = 1` for every `x`), then the `k`-fold tensor products
-`∏_i ρ_{φ(i)}(t_i)` over all index-tuples `φ : Fin k → I` also sum to `1`:
+box-tensor density construction). The hypothesis is *per-coordinate at the point
+`t`* — `∑_m ρ_m(t_i) = 1` for each `i` — which is exactly what a 1-D partition of
+unity that sums to `1` only on a bounded range (like `smoothTransition_finite_partition`,
+valid on `[1, N+1]`) delivers once every `t_i` lands in that range. Then the `k`-fold
+tensor products over all index-tuples `φ : Fin k → I` sum to `1`:
 `∑_{φ : Fin k → I} ∏_i ρ_{φ(i)}(t_i) = ∏_i (∑_m ρ_m(t_i)) = ∏_i 1 = 1`.
-This is exactly what makes `G(t) := ∑_φ F(c_φ)·∏_i ρ_{φ(i)}(t_i)` a genuine
-approximation: `F t − G t = ∑_φ (F t − F(c_φ))·∏_i ρ_{φ(i)}(t_i)`, bounded by the
-modulus of continuity of `F`. Pure `Fintype.prod_sum`. -/
+This is what makes `G(t) := ∑_φ F(c_φ)·∏_i ρ_{φ(i)}(t_i)` a genuine approximation:
+`F t − G t = ∑_φ (F t − F(c_φ))·∏_i ρ_{φ(i)}(t_i)`, bounded by `F`'s modulus of
+continuity. Pure `Fintype.prod_sum`. -/
 theorem tensor_partition_of_unity {k : ℕ} {I : Type*} [Fintype I] [DecidableEq I]
-    (ρ : I → ℝ → ℝ) (hρ : ∀ x : ℝ, ∑ m : I, ρ m x = 1) (t : Fin k → ℝ) :
+    (ρ : I → ℝ → ℝ) (t : Fin k → ℝ) (hρ : ∀ i : Fin k, ∑ m : I, ρ m (t i) = 1) :
     ∑ φ : (Fin k → I), ∏ i : Fin k, ρ (φ i) (t i) = 1 := by
   rw [← Fintype.prod_sum (fun (i : Fin k) (m : I) => ρ m (t i))]
-  simp only [hρ, Finset.prod_const_one]
+  rw [Finset.prod_congr rfl (fun i _ => hρ i), Finset.prod_const_one]
 
 /-- **Every finite tensor sum is finite-separable.** A function of the form
 `t ↦ ∑_{φ : Fin k → I} a(φ)·∏_i g(φ i)(t_i)` (a finite linear combination of
