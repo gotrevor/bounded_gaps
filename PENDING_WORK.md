@@ -319,3 +319,53 @@ remaining gate: `prime_power_tail_le` (in flight `3f137191`).** New in `BoundedG
   `log N ≤ harmonic N` already compiles via `log_le_harmonic_floor`). **Full map of why this matters and
   the whole analytic-axiom ladder (BV / Large Sieve / s1/s2 / PNT) is in `ANALYTIC_AXIOM_BURNDOWN.md`.**
   A NEW, EH-free, weeks-scale on-ramp — independent of the `Mk` main thread above.
+
+---
+
+## Z. Analytic-NT burn-down thread (s1/s2 via weighted Mertens) — added 2026-06-04 PM
+
+Separate from the numerical `Mk` endgame above. State after this lap: front #4 (1-D weighted
+Mertens) **reduced to ONE analytic axiom**; 8 axiom-clean lemmas + full Abel reduction in
+`BoundedGaps/WeightedMertens.lean`. Build green (8276 jobs).
+
+### Open items (this sub-thread)
+- **`WeightedMertens.riemann_sum_log_weight`** — the ONLY axiom under `weighted_mertens`. Pure
+  real-analysis Riemann-sum limit `(∑_{2≤n≤N}F(log n/log N)/n)/log N → ∫₀¹F`.
+- **`Sieve.s1_holds_from_nonprime_asym`**, **`s2_*`** — multidimensional generalization of weighted
+  Mertens (the genuine multi-month nut: singular series + simplex integral).
+- **`Sieve.exists_separable_F_*`** — near-optimal separable `F` (Polymath8b §5-6).
+- **`Prerequisites.geh_implies_eh`** (`sorry`) — needs GEH body + Vaughan's identity; deep-deferred.
+
+### Three attack paths each
+
+**`riemann_sum_log_weight` (ONE lap from front #4 being axiom-free):**
+1. PORT Aristotle `930e468a` (`aristotle-wmertens/`); statement is byte-identical → paste body
+   under our axiom name; `#print axioms` to catch v4.28→v4.29 `sorryAx`.
+2. Local monotone special case via `Analysis/SumIntegralComparisons`
+   (`sum_mul_Ico_le_integral_of_monotone_antitone`, weight `1/n` antitone), squeeze; extend to C¹
+   `F` via `F=∫F'` BV decomposition.
+3. Substitution `∫_2^N F(log t/logN)/t dt = log N·∫_{log2/logN}^1 F` (CoV moved in v4.29.1 →
+   `integral_image_eq_integral_abs_deriv_smul`) + sum-vs-integral error killed by
+   `weighted_avg_majorant_tendsto_zero`.
+
+**`s1_holds_from_nonprime_asym` (multidimensional lift):**
+1. STATE the k-dim weighted Mertens (Polymath8b §3 sfg-1/lflg): `sieveSum(selberg_nu)` → k-fold
+   product of 1-D weighted sums × singular series `𝔖`; `weighted_mertens` is the 1-D factor.
+2. Build `𝔖(H)` as a convergent Euler product (reuse `SharpMertens` `eulerProduct_tprod` machinery);
+   finiteness + positivity = the `alphaMainTerm` normalization.
+3. Separable rank-1 (`J=1`, `F=∏F_i`) case first → `sieveSum` factors, each factor is exactly
+   `weighted_mertens`; then `IsLittleO` glue (sub-step (d)); generalize by linearity over `∑_j c_j∏_i`.
+
+**`s2_*`:** mirror s1 with `θ(n+h_i)` on one coordinate (EH/MPZ supplies level of distribution);
+only structural diff is the `ϑ/2` (resp `1/4+ϖ`) normalization (Polymath8b §3 theta-oo). Do s1 first.
+
+**`exists_separable_F_*`:** (a) explicit Bernstein/polynomial witness + numeric Rayleigh
+(`SievePolynomial`); (b) Stone–Weierstrass density of tensor polynomials on the simplex; (c) extract
+near-optimal separable witness from the `MkSet_bddAbove` sup definition.
+
+### Next-lap pointer
+item 1/P1 (port Aristotle `930e468a` → front #4 axiom-free), then item 2/P3 (separable rank-1
+multidimensional lift). Reusable bricks already in `WeightedMertens.lean`:
+`weighted_cesaro_tendsto_zero`, `weighted_avg_majorant_tendsto_zero`, `harmonic_div_log_tendsto_one`,
+`sum_log_mul_log_diff_le_sq`, `Bdisc`/`discrepancy_*`, `abel_tail_*`, `weighted_mertens_of_riemann`,
+`weighted_mertens_of_contDiff`.
