@@ -192,11 +192,28 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 - **`Prerequisites.geh_implies_eh`** (`sorry`): needs a faithful `GEH` body (still opaque `axiom`)
   + Vaughan's identity to rebuild `Λ` from Type I/II convolutions. Multi-session; deferred.
-- **Sieve bridges** `s1/s2_holds_from_*`, `exists_separable_F_of_Mk_gt`, `Mk_truncated`
-  variants (`Sieve.lean`): the GPY/Maynard asymptotic sieve sums and the density realization of
-  `M_k`. Deep analytic NT / functional analysis. `exists_separable_F_of_Mk_gt` is the most
-  tractable (density of separable F + continuity of `MkF` ⟹ sup over separable = `M_k`) but still a
-  big functional-analysis lift.
+- **`exists_separable_F_of_Mk_gt` — NARROWED 2026-06-04 to a single pure-density axiom.** Was a
+  cited deep Polymath8b §6 polynomial-optimisation axiom (one of the 4 gating the UNCONDITIONAL
+  `bounded_gap_of_Mk_200`). Now a THEOREM resting only on **`separable_dense_sup`** (sup-norm
+  density of finite-separable smooth simplex-supported functions — pure approximation theory, NO
+  number theory). The chain (all in `Sieve.lean`, axiom-clean except the lone density axiom):
+  `exists_separable_F_of_Mk_gt` ⟸ `exists_F_of_Mk_gt` (proven `sSup` extraction) + `sep_approx`
+  (now a theorem) ⟸ `mkF_sub_lt_of_sup_le` (the MkF-ratio sup-continuity, **fully kernel-clean**:
+  num/den sup-continuity `mkF_{numerator,denominator}_sub_le_const` via `J_i_sub_le_const` /
+  `Ji_integrand_integrableOn` + quotient rule) + `separable_dense_sup` (the density nut).
+  `#print axioms exists_separable_F_of_Mk_gt = [propext, Classical.choice, Quot.sound,
+  separable_dense_sup]`. **Truncated sister also narrowed** (`separable_dense_sup_truncated`, reuses
+  the same continuity). **ε sister NOT yet** (`MkF_eps` uses `simplex_eps`/`simplex_shrunk` — needs
+  the continuity lemmas replicated over those domains; recipe identical, ~250 lines).
+  - **REMAINING NUT — `separable_dense_sup`** (3 attack paths): (a) **box-tiling** — `support F`
+    has compact closure in the open simplex; cover by small cubes inside the simplex, smooth
+    tensor-bump partition of unity, each piece a product of 1-D bumps (separable); bound sup-error
+    by uniform continuity of `F` on the compact simplex. (b) **Stone–Weierstrass** — coordinate
+    functions generate a dense subalgebra of `C(simplex)`; multiply the polynomial approximant by a
+    *separable* bump `=1` on (a slightly-shrunk) `support F` to restore `support ⊆ simplex`.
+    (c) **Aristotle** — self-contained approximation problem (submit; verify `#print axioms`).
+- **Other Sieve bridges** `s1/s2_holds_from_*` (`Sieve.lean`): the GPY/Maynard asymptotic sieve
+  sums. Deep analytic NT (leaf 1 = GPY port, paper-gated for the constant; see §Z).
 - **`BombieriVinogradov`, `GEH`, `GeneralizedBombieriVinogradov`, `MPZ_polymath8a`**
   (`Prerequisites.lean`): genuine external analytic-NT inputs; cite-only until mathlib/PNT+ ships.
 - **`narrowness_*_ge_*`** (Clark–Jarvis 2001 exhaustive enumeration) and **`narrowness_*_le`** for
