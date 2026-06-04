@@ -249,6 +249,47 @@ coprime diagonal — to a single mathlib-computable AP count. (c)'s 1-D keystone
    `alphaBound`/`betaBound` `IsLittleO` shape; s1 unconditional, s2 needs EH/BV.
 All in `BoundedGaps/SieveExpansion.lean`; everything axiom-clean.
 
+## Sub-step (b) diagonal CLOSED + singular-series corner opened (2026-06-04 PM)
+
+Continuation lap. All axiom-clean (`[propext, Classical.choice, Quot.sound]`),
+full build green (8274 jobs).
+
+- **Sub-step (b) diagonal — DONE (with O(1) error).** Added to
+  `SieveExpansion.lean`:
+  - `ap_interval_count_bound`: single-AP interval count `|#{m∈(A,B]: m≡v[M]} −
+    (B−A)/M| ≤ 1`, from mathlib `Nat.Ioc_filter_modEq_card` (exact `⌊⌋−⌊⌋`) + a
+    floor sandwich. Independently cross-checked by Aristotle `6515817c`
+    (`crt_interval_count_bound`, the `Icc`/CRT combined form — verified
+    kernel-clean, kept as the alt witness).
+  - `lattice_count_main_term`: the capstone. Composes `lattice_count_eq_modEq`
+    (multi-coord sieve condition → one residue class) with the AP bound:
+    `|#{m∈(A,B]: m≡b[W] ∧ ∀i qᵢ∣(m+hᵢ)} − (B−A)/(W·∏q)| ≤ 1` on the coprime
+    diagonal. **This is the GPY diagonal lattice count = main term + O(1).**
+
+- **Singular-series corner — NEW module `BoundedGaps/SingularSeries.lean`.**
+  - `self_div_totient_eq_sum_moebiusSq_div_totient`: the keystone identity
+    `n/φ(n) = ∑_{d∣n} μ²(d)/φ(d)`, proved as the Dirichlet convolution
+    `ζ ⋆ (μ²/φ) = id/φ` of two real arithmetic functions, checked on prime powers
+    via `IsMultiplicative.eq_iff_eq_on_prime_powers`. (KB gotcha logged: `ζ` needs
+    `open scoped ArithmeticFunction.zeta` or it auto-binds as a free variable and
+    the coercion `↑zeta` silently diverges.)
+  - `dirichlet_hyperbola`: general `∑_{n≤N}∑_{d∣n} g d = ∑_{d≤N} g d·⌊N/d⌋`
+    (Aristotle `627d10e3`, verified kernel-clean).
+  - `sum_self_div_totient_eq_weighted`: compose the two →
+    `∑_{n≤N} n/φ(n) = ∑_{d≤N} (μ²(d)/φ(d))·⌊N/d⌋`.
+
+- **Remaining-nuts update.** Nut #1 (off-diagonal) and #3 (`IsLittleO` assembly)
+  unchanged. Nut #2 (sub-step (c) weighted Mertens) has a **sharpened
+  understanding of the real blocker**: the GPY constant `α=I(F)` needs `∑μ²/φ ∼
+  log x` with **leading coefficient exactly 1**, but `mertens_theta_log` gives only
+  the *lossy* `∑μ²/φ ≤ K·log N` (`K≈e^γ` from the `∏(1+1/(p-1))` route). So
+  sub-step (c) is gated on the **sharp** `∑_{n≤x} μ²(n)/φ(n) = log x + O(1)`, whose
+  exact elementary identity is non-obvious (the `n/φ(n)` hyperbola route gives the
+  *different* sum `∑μ²/(φd)`, and the Mobius-inverse route diverges). Requested the
+  textbook proof in `ON-LINE-REQUEST.md` (2026-06-04). In-flight Aristotle
+  `36bb3493`: the bounded singular sum `∑_{d≤N} μ²(d)/(φ(d)d) ≤ 3` (the main-term
+  coefficient is bounded), a brick for the `∑ n/φ(n) ∼ A·N` average.
+
 ## Next-level probe (2026-06-03): the 1D Mertens lemma is a weeks-scale on-ramp
 
 Took the test one level deeper — actually attempted the entry lemma in Lean
