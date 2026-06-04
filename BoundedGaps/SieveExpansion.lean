@@ -1037,4 +1037,33 @@ theorem gpy_diagonalize_moebius_squarefree (T R : Finset ℕ) (g : ℕ → ℝ)
   · rw [if_neg h, gpy_yvar_eq_zero_of_not_squarefree T g r h]
     ring
 
+/-- **Diagonal Selberg form, asymptotic-ready (squarefree `r`, `y_r`
+substituted).** Capstone of the sub-step (c) algebra: combining
+`gpy_diagonalize_moebius_squarefree` (restrict to squarefree `r`),
+`gpy_yvar_substitution` (`y_r = (μ(r)/r)·z_r` with `z_r` the coprime-restricted
+sum), and `μ(r)² = 1` on the squarefree locus, the Selberg quadratic form equals
+`∑_{r∈R squarefree} (φ(r)/r²) · (∑_{s,(r,s)=1} μ(s)g(r·s)/s)²`.
+This is the canonical form the sub-step (c) asymptotic (`R→∞`) consumes: the
+coefficient `φ(r)/r² = ∏_{p∣r}(p−1)/p²` is multiplicative in `r`, and the inner
+`z_r` is a coprime-restricted Möbius sum. -/
+theorem gpy_diagonal_asymptotic_form (T R : Finset ℕ) (g : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g d * ((moebius e : ℝ) * g e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R.filter (fun r => Squarefree r), ((Nat.totient r : ℝ) / (r : ℝ) ^ 2)
+          * (∑ s ∈ ((T.filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s),
+              (moebius s : ℝ) * g (r * s) / (s : ℝ)) ^ 2 := by
+  classical
+  rw [gpy_diagonalize_moebius_squarefree T R g hT hR]
+  refine Finset.sum_congr rfl (fun r hr => ?_)
+  have hsf : Squarefree r := (Finset.mem_filter.mp hr).2
+  have hr1 : 1 ≤ r := Nat.one_le_iff_ne_zero.mpr hsf.ne_zero
+  rw [gpy_yvar_substitution T g r hr1, mul_pow, div_pow]
+  have hmu : ((moebius r : ℝ)) ^ 2 = 1 := by
+    exact_mod_cast ArithmeticFunction.moebius_sq_eq_one_of_squarefree hsf
+  rw [hmu]
+  ring
+
 end BoundedGaps.Sieve
