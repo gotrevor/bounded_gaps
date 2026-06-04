@@ -223,9 +223,31 @@ theorems `#print axioms = [propext, Classical.choice, Quot.sound]`:
   `∑_{d≤R} (μ²(d)/φ(d))·F(log d/log R) ~ (∫₀¹F)·log R` (Abel summation against
   the Mertens asymptotic) and its multidimensional/singular-series lift.
 
-**Net:** (a) is closed; (b) is reduced to the diagonal/off-diagonal CRT split
-with mathlib supplying the interval count; (c)'s 1-D keystone is in hand. The
-remaining nut is the off-diagonal error control + the multidim singular series.
+- **s2 (the prime/EH half) — algebraic opening ALSO DONE (2026-06-04).** The
+  same chain mirrored for the prime-weighted sum `sieveThetaSum`:
+  `prod_sum_active_expand_weighted` (the **weighted** swap workhorse — lattice
+  count → weighted sum `∑_{m∈block,lattice} wt m`), `sieveThetaSum_lambdaProd_
+  expand` (two-family, theta-weighted), and `sieveThetaSum_selberg_nu_expand`
+  (general weight) — so `sieveThetaSum(selberg_nu) = ∑ⱼⱼ' cⱼcⱼ' ∑_P (∏ μF μF)·
+  (∑_{m∈block,lattice} primeTheta(m+h_{i₀}))`, the exact object
+  `s2_holds_from_prime_asym_under_{EH,MPZ}` must estimate. Same `lattice_count_*`
+  / CRT reduction applies to the prime-weighted count; the difference is sub-step
+  (d): s2's prime-in-AP count is where **EH/BV is consumed** (s1's is unconditional).
+
+**Net (2026-06-04):** the **algebraic skeleton of BOTH `s1` and `s2`** is
+formalized for the genuine multidimensional `selberg_nu` weight (sub-step (a) /
+eqns (sfg-1),(theta-oo)), and sub-step (b)'s lattice count is reduced — on the
+coprime diagonal — to a single mathlib-computable AP count. (c)'s 1-D keystone
+(`∑μ²/φ=Θ(log N)`) is in hand. **Remaining nuts**, in rough order:
+1. **Off-diagonal error** (`gcd(qᵢ,qⱼ)>1`): bound the non-coprime lattice terms
+   (squarefree support + the W-trick make the diagonal dominate). Elementary but
+   real; the bridge into (c).
+2. **Sub-step (c) weighted Mertens**: `∑_{d≤R} (μ²(d)/φ(d))·F(log d/log R) ~
+   (∫₀¹F)·log R` (Abel summation vs the Mertens asymptotic), then its
+   multidim/singular-series lift to `α=I(F)` / `βᵢ=Jᵢ(F)`.
+3. **(d) error / `IsLittleO` assembly**: package the main term + error into the
+   `alphaBound`/`betaBound` `IsLittleO` shape; s1 unconditional, s2 needs EH/BV.
+All in `BoundedGaps/SieveExpansion.lean`; everything axiom-clean.
 
 ## Next-level probe (2026-06-03): the 1D Mertens lemma is a weeks-scale on-ramp
 
