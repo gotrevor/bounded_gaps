@@ -437,3 +437,22 @@ heavy multi-lap lift, not a clean lap win. Same applies a fortiori to `mk_5511`(
 (higher thresholds). Conclusion: the `mk_*_witness` axioms are gated on the bridge axioms + a
 higher-degree witness pipeline; defer until the bridge axioms land. Monotonicity of `Mk` does NOT help
 (k<200 witnesses need k-specific constructions; k>200 ones need thresholds >4).
+
+### Leaf (1) DECOMPOSED — 2-D simplex limit reduced to inner uniform convergence (lap N+2, commit `9206855`)
+`BoundedGaps/WeightedRiemann2D.lean` (axiom-clean, build green 8278): the deep leaf-1 nut (the 2-D
+weighted Riemann limit `weighted_riemann_2d`) is PROVEN modulo a single clean ingredient. Proved
+in-kernel: `phi_continuousOn` (Φ_G continuous), `perturbed_riemann` (the MAIN+ERROR perturbed
+Riemann core — if `a R m → Φ` uniformly in m, the a-weighted log-sum → ∫₀¹F·Φ), `two_d_factor` (the
+double sum factors), `weighted_riemann_2d_of_inner` (capstone). **Remaining = `inner_uniform`**:
+`(∑_{n≤R/m}G(log n/log R)/n)/log R → ∫₀^{1-log m/log R}G` uniformly in m∈[2,R]. Three attack paths:
+1. **Aristotle** — `aristotle-inner-uniform/Problem.lean` is WRITTEN & typechecks (statement +
+   `riemann_sum_log_weight` axiom + split-at-`R^{1-δ}` proof sketch). Submit when the current 2-D
+   slot frees, OR immediately if the monolithic `weighted_riemann_2d` (`3e2b6a8d`) fails.
+2. **Local split proof** — `m∈[2,R^{1-δ}]`: `R'=⌊R/m⌋≥R^δ→∞`, uniform Riemann via equicontinuity of
+   `u↦G((1-s)u)` (G unif. cont. on compact [0,1]); `m∈(R^{1-δ},R]`: `1-s<δ` so sum and integral both
+   `O(δ)`. Take δ from ε then R large. The scale-change `inner/logR=(1-s)·(∑G((1-s)·)/n)/logR'` +
+   `riemann_sum_log_weight` on `G_s(u)=G((1-s)u)` gives the pointwise piece.
+3. **Harvest the monolithic 2-D** — if `weighted_riemann_2d` (`3e2b6a8d`) returns, port directly
+   (don't even need the decomposition for the port; the decomposition stays as a cleaner proof/hedge).
+Then: connect `weighted_riemann_2d` to the repo's `gpy_diagonal_asymptotic_form` (the Selberg-diagonal
+↔ double-Riemann GPY manipulation) — the remaining port step for leaf (1).

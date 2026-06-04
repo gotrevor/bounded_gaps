@@ -655,3 +655,34 @@ New in `Sieve.lean` (right after the `betaBound` def):
    (`W=∏_{p≤D₀}p`, `M=(B−A)/W`, `R=x^{θ/2}`) that closes both the off-diag main and the leaf-2
    `R = o(M log R)` tail.
 Leaves (2) and (4) are DONE (in-kernel). Everything algebraic + the glue is machine-checked.
+
+## Leaf (1) DECOMPOSED: 2-D simplex limit proven modulo inner uniform convergence (2026-06-04, lap N+2 cont.)
+
+Commit `9206855`, full build green (8278), all decls `#print axioms = [propext, Classical.choice, Quot.sound]`.
+
+New file **`BoundedGaps/WeightedRiemann2D.lean`** reduces leaf (1)'s deep nut — the 2-D
+simplex-coupled weighted Riemann limit (= the in-flight Aristotle `weighted_riemann_2d`) — to a
+SINGLE clean ingredient, with everything else proven in-kernel:
+- `phi_continuousOn` — the simplex partial-integral `Φ_G(x) = ∫₀^{1-x} G` is continuous on `[0,1]`
+  (`intervalIntegral.continuousOn_primitive_interval` ∘ continuous `1-x`).
+- **`perturbed_riemann`** — THE analytic core: if `a R m → Φ(log m/log R)` *uniformly in `m∈[2,R]`*,
+  then `(∑_m F(log m/log R)·a R m/m)/log R → ∫₀¹ F·Φ`. Lifts the 1-D `riemann_sum_log_weight` to an
+  `R`-dependent integrand via `MAIN + ERROR` (MAIN = the `Φ`-weighted limit; ERROR squeezed by the
+  uniform bound × the bounded `(∑_m|F|/m)/log R → ∫₀¹|F|`).
+- `two_d_factor` — the `mn≤R` double sum factors over the outer variable into `perturbed_riemann`'s
+  shape (`Finset.mul_sum` to peel `F/m`, `Finset.sum_div` to peel `1/log R`; unconditional).
+- **`weighted_riemann_2d_of_inner`** — CAPSTONE: the full 2-D simplex limit GIVEN the inner uniform
+  claim `(∑_{n≤R/m} G(log n/log R)/n)/log R → Φ_G(log m/log R)` uniformly in `m`.
+
+**Net for leaf (1):** the deep 2-D nut is now ONLY the *inner uniform convergence* — a 1-D-shaped,
+self-contained statement (a far better Aristotle target than the monolithic double sum, and a hedge
+if the running `weighted_riemann_2d` job fails). Architected as `aristotle-inner-uniform/Problem.lean`
+(statement `inner_uniform`, `riemann_sum_log_weight` provided as usable axiom + a split-at-`R^{1-δ}`
+proof sketch). The pointwise scale-change is easy (`G((1-s)u)` substitution); the crux is uniformity
+for `m` near `R` (small `R'=⌊R/m⌋`), saved by `1-s` small ⟹ both sum and integral `O(1-s)`.
+
+### s1 leaf scoreboard (after lap N+2)
+- Leaf (1) diagonal asymptotic: **DECOMPOSED** — reduced to `inner_uniform` (Aristotle target).
+- Leaf (2) `∑_{diag}|coeff|=o(main)`: **DONE in-kernel** (`hyperbola_count_le` + bridge + capstone).
+- Leaf (3) off-diagonal heuristic main = o(main): OPEN (singular-series discrepancy, multi-lap).
+- Leaf (4) `IsLittleO` glue: **DONE** (`alphaBound_of_sub_littleO` + `_of_heuristic_correction`).
