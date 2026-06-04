@@ -220,3 +220,52 @@ theorem sum_g_eq_weighted_harmonic (N : ℕ) :
         have hm0 : (m : ℝ) ≠ 0 := by have := (Finset.mem_Icc.mp hm).1; positivity
         push_cast
         rw [div_mul_div_comm, mul_one]
+
+/-! ## The harmonic remainder
+
+In the weighted-harmonic form `S(N) = ∑_{e≤N}(B(e)/e)·H(⌊N/e⌋)`, replace the inner
+harmonic sum `H(⌊N/e⌋)` by `log(N/e)`. The remainder lies in `[0,1]` uniformly
+(mathlib's two-sided floor-harmonic bound), so `∑_e b(e)·remainder_e = O(∑|b(e)|) = O(1)`
+once the b-series is shown absolutely bounded (Aristotle job `830e5129`). -/
+
+/-- **Harmonic remainder bound.** For `1 ≤ e ≤ N`,
+`log(N/e) ≤ ∑_{m≤⌊N/e⌋} 1/m ≤ 1 + log(N/e)` (so the remainder is in `[0,1]`). -/
+lemma harmonic_remainder_mem {N e : ℕ} (he : 1 ≤ e) (heN : e ≤ N) :
+    Real.log ((N : ℝ) / (e : ℝ)) ≤ (∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m)
+      ∧ (∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) ≤ 1 + Real.log ((N : ℝ) / (e : ℝ)) := by
+  have he0 : (0 : ℝ) < e := by exact_mod_cast he
+  have hy1 : (1 : ℝ) ≤ (N : ℝ) / (e : ℝ) := by
+    rw [le_div_iff₀ he0, one_mul]; exact_mod_cast heN
+  have hfloor : ⌊(N : ℝ) / (e : ℝ)⌋₊ = N / e := by
+    rw [Nat.floor_div_natCast, Nat.floor_natCast]
+  have hH : (harmonic (N / e) : ℝ) = ∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m :=
+    BoundedGaps.Mertens.harmonic_eq_icc_sum (N / e)
+  refine ⟨?_, ?_⟩
+  · have h := log_le_harmonic_floor ((N : ℝ) / (e : ℝ)) (by positivity)
+    rwa [hfloor, hH] at h
+  · have h := harmonic_floor_le_one_add_log ((N : ℝ) / (e : ℝ)) hy1
+    rwa [hfloor, hH] at h
+
+/-- **Decomposition of the summatory function.** Writing `H(⌊N/e⌋) = log(N/e) + r_e`
+and `log(N/e) = log N − log e`,
+`∑_{n≤N} μ²(n)/φ(n) = P(N)·log N − Q(N) + R(N)` with
+`P(N) = ∑_{e≤N} B(e)/e`, `Q(N) = ∑_{e≤N} (B(e)/e)·log e`,
+`R(N) = ∑_{e≤N} (B(e)/e)·r_e` (`r_e = H(⌊N/e⌋) − log(N/e) ∈ [0,1]`).
+**This reduces the sharp Mertens `= log x + O(1)` to three facts**: `P(N) → 1`
+(signed b-series sum, telescoping Euler product), `Q(N) = O(1)` and `R(N) = O(1)`
+(both from `∑|b(e)| < ∞`, Aristotle `830e5129`). -/
+theorem sum_g_decomp (N : ℕ) (hN : 1 ≤ N) :
+    ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n
+      = (∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ)) * Real.log N
+        - (∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) * Real.log e)
+        + ∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) *
+            ((∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ))) := by
+  rw [sum_g_eq_weighted_harmonic N, Finset.sum_mul, ← Finset.sum_sub_distrib,
+    ← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intro e he
+  obtain ⟨he1, _⟩ := Finset.mem_Icc.mp he
+  have hN0 : (N : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
+  have he0 : (e : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
+  rw [Real.log_div hN0 he0]
+  ring
