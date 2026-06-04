@@ -2290,6 +2290,27 @@ theorem box_tensor_approx (k : ℕ) (F₁ : (Fin k → ℝ) → ℝ) (h : ℝ) (
     exact ⟨by nlinarith [h1], by nlinarith [h2]⟩
   exact abs_sub_weighted_average_le (F₁ t) _ _ δ hnn hsum hclose
 
+open MeasureTheory in
+/-- **Uniform modulus of continuity** for a compactly-supported continuous
+function on `Fin k → ℝ` with the sup metric. Discharges the `hmod` hypothesis of
+`box_tensor_approx`: a continuous `F` with compact support is uniformly continuous
+(Heine–Cantor at infinity, `HasCompactSupport.uniformContinuous_of_continuous`),
+and on the product/sup metric `dist t s ≤ h ↔ ∀ i, |t_i − s_i| ≤ h`
+(`dist_pi_le_iff`), so for any `δ > 0` there is a mesh `h > 0` such that
+`(∀ i, |t_i − s_i| ≤ h) → |F t − F s| ≤ δ`. -/
+theorem exists_uniform_modulus (k : ℕ) (F : (Fin k → ℝ) → ℝ)
+    (hFc : Continuous F) (hcs : HasCompactSupport F) (δ : ℝ) (hδ : 0 < δ) :
+    ∃ h > 0, ∀ t s : Fin k → ℝ, (∀ i, |t i - s i| ≤ h) → |F t - F s| ≤ δ := by
+  have huc : UniformContinuous F := hcs.uniformContinuous_of_continuous hFc
+  rw [Metric.uniformContinuous_iff] at huc
+  obtain ⟨r, hr, hrP⟩ := huc δ hδ
+  refine ⟨r / 2, by linarith, fun t s hts => ?_⟩
+  have hdist : dist t s ≤ r / 2 :=
+    (dist_pi_le_iff (by linarith)).mpr fun i => by rw [Real.dist_eq]; exact hts i
+  have hlt : dist (F t) (F s) < δ := hrP (lt_of_le_of_lt hdist (by linarith))
+  rw [Real.dist_eq] at hlt
+  exact hlt.le
+
 /-- **Separable sup-norm density** (the irreducible analytic core of
 `exists_separable_F_of_Mk_gt`, with the continuity half discharged by
 `mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly
