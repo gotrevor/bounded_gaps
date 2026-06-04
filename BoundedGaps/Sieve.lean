@@ -178,6 +178,45 @@ theorem betaBound_of_sub_littleO (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b 
   rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg (le_max_right _ 0)]
   exact max_le (le_abs_self _) (abs_nonneg _)
 
+/-- **Sub-step (d) modular assembly (s1).** Given the exact split
+`sieveSum = Aheur + Bcorr` (the heuristic main term + correction, e.g.
+`sieveSum_separable_eq_heuristic_add_correction`), the *heuristic-main limit*
+`Aheur − α·alphaMainTerm = o(alphaMainTerm)` (leaf 1) and the *correction bound*
+`Bcorr = o(alphaMainTerm)` (leaves 2,3) together give `alphaBound`. This is the
+machine-checked dependency `leaf 1 ∧ leaves 2,3 ⟹ s1`. -/
+theorem alphaBound_of_heuristic_correction (k : ℕ) (ν : ℕ → ℝ) (b W : ℕ) (x α : ℝ)
+    (Aheur Bcorr : ℝ → ℝ)
+    (hsplit : ∀ y, sieveSum ν b W y = Aheur y + Bcorr y)
+    (hheur : Asymptotics.IsLittleO Filter.atTop
+              (fun y => Aheur y - α * alphaMainTerm k W y) (alphaMainTerm k W))
+    (hcorr : Asymptotics.IsLittleO Filter.atTop Bcorr (alphaMainTerm k W)) :
+    alphaBound k ν b W x α := by
+  apply alphaBound_of_sub_littleO
+  have hrw : (fun y => sieveSum ν b W y - α * alphaMainTerm k W y)
+      = (fun y => (Aheur y - α * alphaMainTerm k W y) + Bcorr y) := by
+    funext y; rw [hsplit y]; ring
+  rw [hrw]
+  exact hheur.add hcorr
+
+/-- **Sub-step (d) modular assembly (s2).** Sister of
+`alphaBound_of_heuristic_correction` for the prime-weighted sum: split
+`sieveThetaSum = Aheur + Bcorr`, the heuristic limit
+`β·betaMainTerm − Aheur = o(betaMainTerm)` and correction `Bcorr = o(betaMainTerm)`
+give `betaBound`. -/
+theorem betaBound_of_heuristic_correction (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ)
+    (x β : ℝ) (Aheur Bcorr : ℝ → ℝ)
+    (hsplit : ∀ y, sieveThetaSum ν H i b W y = Aheur y + Bcorr y)
+    (hheur : Asymptotics.IsLittleO Filter.atTop
+              (fun y => β * betaMainTerm k W y - Aheur y) (betaMainTerm k W))
+    (hcorr : Asymptotics.IsLittleO Filter.atTop Bcorr (betaMainTerm k W)) :
+    betaBound k ν H b W i x β := by
+  apply betaBound_of_sub_littleO
+  have hrw : (fun y => β * betaMainTerm k W y - sieveThetaSum ν H i b W y)
+      = (fun y => (β * betaMainTerm k W y - Aheur y) - Bcorr y) := by
+    funext y; rw [hsplit y]; ring
+  rw [hrw]
+  exact hheur.sub hcorr
+
 /-- Fin-card ↔ List.countP: counting indices `i : Fin k` whose `H.getD i 0`
 satisfies `p` equals `H.countP p`, when `H.length = k`. -/
 theorem card_fin_filter_eq_countP {k : ℕ} (H : List ℕ) (hLen : H.length = k)
