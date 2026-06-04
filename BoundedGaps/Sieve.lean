@@ -2077,6 +2077,35 @@ theorem mkF_sub_lt_of_sup_le (k : ℕ) (F : (Fin k → ℝ) → ℝ)
     _ < etarget * den ^ 2 / 2 := hSlt
     _ ≤ etarget * (mkF_denominator k G * den) := by nlinarith [hbden, hetarget]
 
+/-- **Tensor partition-of-unity identity** (the algebraic core of the separable
+box-tensor density construction). If `{ρ_m}_{m∈I}` is a 1-D partition of unity
+(`∑_m ρ_m(x) = 1` for every `x`), then the `k`-fold tensor products
+`∏_i ρ_{φ(i)}(t_i)` over all index-tuples `φ : Fin k → I` also sum to `1`:
+`∑_{φ : Fin k → I} ∏_i ρ_{φ(i)}(t_i) = ∏_i (∑_m ρ_m(t_i)) = ∏_i 1 = 1`.
+This is exactly what makes `G(t) := ∑_φ F(c_φ)·∏_i ρ_{φ(i)}(t_i)` a genuine
+approximation: `F t − G t = ∑_φ (F t − F(c_φ))·∏_i ρ_{φ(i)}(t_i)`, bounded by the
+modulus of continuity of `F`. Pure `Fintype.prod_sum`. -/
+theorem tensor_partition_of_unity {k : ℕ} {I : Type*} [Fintype I] [DecidableEq I]
+    (ρ : I → ℝ → ℝ) (hρ : ∀ x : ℝ, ∑ m : I, ρ m x = 1) (t : Fin k → ℝ) :
+    ∑ φ : (Fin k → I), ∏ i : Fin k, ρ (φ i) (t i) = 1 := by
+  rw [← Fintype.prod_sum (fun (i : Fin k) (m : I) => ρ m (t i))]
+  simp only [hρ, Finset.prod_const_one]
+
+/-- **Every finite tensor sum is finite-separable.** A function of the form
+`t ↦ ∑_{φ : Fin k → I} a(φ)·∏_i g(φ i)(t_i)` (a finite linear combination of
+products of 1-D functions, with `I` a finite index type) satisfies
+`IsFiniteSeparable`. This is precisely the shape of the box-tensor density
+approximant `G`, so the *separability* conjunct of `separable_dense_sup` is
+automatic for it; only smoothness, support and the sup-bound remain. -/
+theorem isFiniteSeparable_tensor_sum {k : ℕ} {I : Type*} [Fintype I]
+    (a : (Fin k → I) → ℝ) (g : I → ℝ → ℝ) :
+    IsFiniteSeparable (fun t => ∑ φ : (Fin k → I), a φ * ∏ i : Fin k, g (φ i) (t i)) := by
+  classical
+  let e := Fintype.equivFin (Fin k → I)
+  refine ⟨Fintype.card (Fin k → I), fun j => a (e.symm j),
+    fun j i x => g ((e.symm j) i) x, 0, fun t => ?_⟩
+  exact (Equiv.sum_comp e.symm (fun φ => a φ * ∏ i, g (φ i) (t i))).symm
+
 /-- **Separable sup-norm density** (the irreducible analytic core of
 `exists_separable_F_of_Mk_gt`, with the continuity half discharged by
 `mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly

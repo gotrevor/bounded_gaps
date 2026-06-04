@@ -203,15 +203,28 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
   `Ji_integrand_integrableOn` + quotient rule) + `separable_dense_sup` (the density nut).
   `#print axioms exists_separable_F_of_Mk_gt = [propext, Classical.choice, Quot.sound,
   separable_dense_sup]`. **Truncated sister also narrowed** (`separable_dense_sup_truncated`, reuses
-  the same continuity). **ε sister NOT yet** (`MkF_eps` uses `simplex_eps`/`simplex_shrunk` — needs
-  the continuity lemmas replicated over those domains; recipe identical, ~250 lines).
-  - **REMAINING NUT — `separable_dense_sup`** (3 attack paths): (a) **box-tiling** — `support F`
-    has compact closure in the open simplex; cover by small cubes inside the simplex, smooth
-    tensor-bump partition of unity, each piece a product of 1-D bumps (separable); bound sup-error
-    by uniform continuity of `F` on the compact simplex. (b) **Stone–Weierstrass** — coordinate
-    functions generate a dense subalgebra of `C(simplex)`; multiply the polynomial approximant by a
-    *separable* bump `=1` on (a slightly-shrunk) `support F` to restore `support ⊆ simplex`.
-    (c) **Aristotle** — self-contained approximation problem (submit; verify `#print axioms`).
+  the same continuity).
+  - **ε sister FULLY DONE (2026-06-04):** (1) ported the continuity machinery to the ε-domains
+    (`mkF_eps_sub_lt_of_sup_le` axiom-clean: `Ji_eps_integrand_integrableOn`, `J_i_eps_sub_le_const`,
+    `mkF_eps_{num,den}_sub_le_const`; inner length `L=1+ε−∑s≤1+ε`, requires `0≤ε`), making
+    `sep_approx_eps` a theorem; (2) then ELIMINATED the eps density axiom: `separable_dense_sup_eps`
+    is a THEOREM reducing to base `separable_dense_sup` via the dilation `simplex_eps k ε =
+    (1+ε)•simplex k` (`Measure.setIntegral_comp_smul_of_pos` Jacobian, `Module.finrank_fin_fun`).
+    `epsilon_trick` now rests on `separable_dense_sup`, not a separate _eps axiom (Sieve axioms 11→10).
+  - **REMAINING NUT — `separable_dense_sup`** (+ `_truncated`: per-coord cap `t i ≤ α`, so does NOT
+    reduce by dilation — shares the same wall). The intended proof is the SEPARABLE box-tensor:
+    `G(t) := ∑_{φ:Fin k→I} F(c_φ)·∏_i ρ_{φ(i)}(t_i)`, `{ρ_m}` a 1-D smooth partition of unity (mesh h).
+    Two reusable in-kernel CORES landed this lap (axiom-clean): **`tensor_partition_of_unity`**
+    (`∑_φ ∏_i ρ_{φ i}(t_i)=1` from a 1-D PoU, via `Fintype.prod_sum`) and **`isFiniteSeparable_tensor_sum`**
+    (any finite tensor sum `∑_φ a(φ)∏g(φ i)(t_i)` IS `IsFiniteSeparable`, via `Fintype.equivFin`
+    reindexing). With these, the separability + the `F−G=∑(F−F(c_φ))∏ρ` decomposition are in hand;
+    the **residual hard piece** is purely analytic: "∃ a 1-D smooth PoU on ℝ, supp(ρ_m) in a width-h
+    window, ∑_m ρ_m=1" + the modulus-of-continuity sup-bound + the support/smoothness assembly. That
+    1-D PoU is a STANDARD, dimension-1, problem-independent fact (more elementary than the bespoke
+    sieve density) — the right residual axiom if not fully closed. Attack paths: (a) build the 1-D PoU
+    from `ContDiffBump` (mathlib `Analysis/Calculus/BumpFunction/`) by normalising a periodic bump sum;
+    (b) **Aristotle** — job `c46a7778` (sepdense) grinding the base case (verify `#print axioms` on return);
+    (c) Stone–Weierstrass + separable cutoff (heavier, support control is the snag).
 - **Other Sieve bridges** `s1/s2_holds_from_*` (`Sieve.lean`): the GPY/Maynard asymptotic sieve
   sums. Deep analytic NT (leaf 1 = GPY port, paper-gated for the constant; see §Z).
 - **`BombieriVinogradov`, `GEH`, `GeneralizedBombieriVinogradov`, `MPZ_polymath8a`**
