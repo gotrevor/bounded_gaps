@@ -141,4 +141,106 @@ lemma integral_F_phi2_eq_simplex (F G H : ℝ → ℝ) :
   have : (1 : ℝ) - (x + y) = 1 - x - y := by ring
   rw [this]
 
+/-! ## Inner-uniform 2-D convergence via Pólya (reducing the 3-D nut to a pointwise limit)
+
+Exactly mirroring `InnerUniformReduction` one dimension up: reparametrise `t = 1 - log l/log R` so
+the outer truncation `R/l = ⌊R^t⌋` (`floor_rpow_one_sub`); the reparametrised inner 2-D sum `Psi3`
+then a *monotone* (in `t`, for `G,H ≥ 0`) step function whose limit `Φ₂(1-t)` is continuous, so
+`PolyaUniform.polya_uniform` upgrades the pointwise scale-change limit to the uniform `huni`
+hypothesis of `weighted_riemann_3d_of_inner`. The single remaining analytic input is the *pointwise*
+2-D scale change `Psi3 G H R t → Φ₂(1-t)` — the clean, isolated next target. -/
+
+/-- The inner 2-D sum reparametrised by `t` (outer truncation `⌊R^t⌋`), normalised by `(log R)²`.
+At `t = 1 - log l/log R` it equals `inner2D G H R l` (`psi3_reparam`). -/
+noncomputable def Psi3 (G H : ℝ → ℝ) (R : ℕ) (t : ℝ) : ℝ :=
+  (∑ m ∈ Finset.Icc 2 ⌊(R : ℝ) ^ t⌋₊, ∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ t⌋₊ / m),
+      G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ)))
+    / (Real.log R) ^ 2
+
+/-- **`Psi3` is monotone in `t`** (for `G,H ≥ 0`): as `t` grows `⌊R^t⌋` grows, so both
+the outer `m`-range and each inner `n`-range grow, and all summands are `≥ 0`. Mirrors
+`psi_monotoneOn` with the extra (inner) layer. -/
+lemma psi3_monotoneOn (G H : ℝ → ℝ) (hG : ∀ x, 0 ≤ G x) (hH : ∀ x, 0 ≤ H x) (R : ℕ) :
+    MonotoneOn (Psi3 G H R) (Set.Icc (0 : ℝ) 1) := by
+  rcases Nat.lt_or_ge R 2 with hRlt | hR2
+  · have hlog0 : Real.log (R : ℝ) = 0 := by interval_cases R <;> simp
+    intro a _ b _ _; simp [Psi3, hlog0]
+  · have hR1' : (1 : ℝ) ≤ (R : ℝ) := by exact_mod_cast (show 1 ≤ R by omega)
+    have hlogpos : 0 < Real.log (R : ℝ) := Real.log_pos (by exact_mod_cast (show 1 < R by omega))
+    intro a _ b _ hab
+    have hpow : (R : ℝ) ^ a ≤ (R : ℝ) ^ b := Real.rpow_le_rpow_of_exponent_le hR1' hab
+    have hfloor : ⌊(R : ℝ) ^ a⌋₊ ≤ ⌊(R : ℝ) ^ b⌋₊ := Nat.floor_mono hpow
+    have hterm_nonneg : ∀ m n : ℕ,
+        0 ≤ G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ)) :=
+      fun m n => div_nonneg (mul_nonneg (hG _) (hH _)) (by positivity)
+    have hinner : ∀ m : ℕ,
+        (∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ a⌋₊ / m),
+            G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ)))
+        ≤ (∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ b⌋₊ / m),
+            G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ))) :=
+      fun m => Finset.sum_le_sum_of_subset_of_nonneg
+        (Finset.Icc_subset_Icc_right (Nat.div_le_div_right hfloor))
+        (fun n _ _ => hterm_nonneg m n)
+    have hnum :
+        (∑ m ∈ Finset.Icc 2 ⌊(R : ℝ) ^ a⌋₊, ∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ a⌋₊ / m),
+              G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ)))
+          ≤ (∑ m ∈ Finset.Icc 2 ⌊(R : ℝ) ^ b⌋₊, ∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ b⌋₊ / m),
+              G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ))) := by
+      calc (∑ m ∈ Finset.Icc 2 ⌊(R : ℝ) ^ a⌋₊, ∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ a⌋₊ / m),
+                G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ)))
+            ≤ (∑ m ∈ Finset.Icc 2 ⌊(R : ℝ) ^ a⌋₊, ∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ b⌋₊ / m),
+                G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ))) :=
+              Finset.sum_le_sum (fun m _ => hinner m)
+        _ ≤ (∑ m ∈ Finset.Icc 2 ⌊(R : ℝ) ^ b⌋₊, ∑ n ∈ Finset.Icc 2 (⌊(R : ℝ) ^ b⌋₊ / m),
+                G (Real.log m / Real.log R) * H (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ))) :=
+              Finset.sum_le_sum_of_subset_of_nonneg (Finset.Icc_subset_Icc_right hfloor)
+                (fun m _ _ => Finset.sum_nonneg (fun n _ => hterm_nonneg m n))
+    exact div_le_div_of_nonneg_right hnum (by positivity)
+
+/-- **Reparametrisation:** at `t = 1 - log l/log R`, `Psi3 = inner2D`. Uses `floor_rpow_one_sub`
+(`⌊R^t⌋ = R/l`) and `Nat.div_div_eq_div_mul` (`(R/l)/m = R/(l·m)`). -/
+lemma psi3_reparam (G H : ℝ → ℝ) (R l : ℕ) (hR2 : 2 ≤ R) (hl1 : 1 ≤ l) :
+    Psi3 G H R (1 - Real.log l / Real.log R) = inner2D G H R l := by
+  unfold Psi3 inner2D
+  rw [BoundedGaps.InnerUniformReduction.floor_rpow_one_sub R l hR2 hl1]
+  simp only [Nat.div_div_eq_div_mul]
+
+/-- **3-D inner-uniform convergence from the pointwise scale-change limit (`G,H ≥ 0` core).** Given
+the pointwise limit `Psi3 G H R t → Φ₂(1-t)` for every `t ∈ [0,1]`, the inner 2-D sum converges to
+`Φ₂(log l/log R)` UNIFORMLY in `l ∈ [2,R]` — exactly the `huni` hypothesis of
+`weighted_riemann_3d_of_inner`. Pólya (monotone `Psi3` + continuous limit) + the `t = 1-log l/log R`
+reparametrisation. This isolates the 3-D analytic nut to the pointwise statement. -/
+theorem inner_uniform_3d_of_pointwise_nonneg (G H : ℝ → ℝ)
+    (hG : ∀ x, 0 ≤ G x) (hH : ∀ x, 0 ≤ H x)
+    (hGcont : Continuous G) (hHcont : Continuous H)
+    (hptw : ∀ t ∈ Set.Icc (0 : ℝ) 1,
+        Tendsto (fun R : ℕ => Psi3 G H R t) atTop (𝓝 (Phi2 G H (1 - t)))) :
+    ∀ ε > 0, ∀ᶠ R : ℕ in atTop, ∀ l ∈ Finset.Icc 2 R,
+      |inner2D G H R l - Phi2 G H (Real.log l / Real.log R)| ≤ ε := by
+  have hΦcont : ContinuousOn (fun t => Phi2 G H (1 - t)) (Set.Icc (0 : ℝ) 1) :=
+    ((phi2_continuous G H hGcont hHcont).comp
+      (continuous_const.sub continuous_id)).continuousOn
+  have hpoly := BoundedGaps.PolyaUniform.polya_uniform
+    (fun t => Phi2 G H (1 - t)) (Psi3 G H) hΦcont
+    (fun R => psi3_monotoneOn G H hG hH R) hptw
+  intro ε hε
+  filter_upwards [hpoly ε hε, eventually_ge_atTop 2] with R hR hR2 l hl
+  obtain ⟨hl2, hlR⟩ := Finset.mem_Icc.mp hl
+  have hl1 : 1 ≤ l := by omega
+  have hlogRpos : 0 < Real.log (R : ℝ) := Real.log_pos (by exact_mod_cast hR2)
+  have hlogl_nonneg : 0 ≤ Real.log (l : ℝ) := Real.log_nonneg (by exact_mod_cast hl1)
+  have hlogl_le : Real.log (l : ℝ) ≤ Real.log (R : ℝ) :=
+    Real.log_le_log (by exact_mod_cast (by omega : 0 < l)) (by exact_mod_cast hlR)
+  have htl_mem : (1 - Real.log l / Real.log R) ∈ Set.Icc (0 : ℝ) 1 := by
+    have h1 : Real.log l / Real.log R ≤ 1 := by rw [div_le_one hlogRpos]; exact hlogl_le
+    have h0 : 0 ≤ Real.log l / Real.log R := div_nonneg hlogl_nonneg hlogRpos.le
+    exact ⟨by linarith, by linarith⟩
+  have hreparam : Psi3 G H R (1 - Real.log l / Real.log R) = inner2D G H R l :=
+    psi3_reparam G H R l hR2 hl1
+  have hphi_eq : Phi2 G H (1 - (1 - Real.log l / Real.log R))
+      = Phi2 G H (Real.log l / Real.log R) := by congr 1; ring
+  have hb := hR (1 - Real.log l / Real.log R) htl_mem
+  rw [hreparam, hphi_eq] at hb
+  exact hb
+
 end BoundedGaps.WeightedRiemann3D
