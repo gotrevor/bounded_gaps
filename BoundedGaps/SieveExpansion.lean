@@ -1102,4 +1102,43 @@ theorem sieveSum_selberg_nu_eq_heuristic_add_correction (k J : ℕ) (c : Fin J �
   refine Finset.sum_congr rfl (fun P _ => ?_)
   ring
 
+/-- **(s2) reduction (theta-weighted sister).** For an *arbitrary* per-tuple main
+value `mθ : P ↦ ℝ`, the prime-weighted Selberg sieve sum `sieveThetaSum` splits
+as `heuristic main + correction`, mirroring the (s1) reduction. The natural
+choice of `mθ P` is the EH/BV-supplied estimate of the theta-weighted lattice
+count `∑_{m∈lattice} θ(m+h_{i₀})`; the correction
+`∑_{j,j',P} cⱼcⱼ'·coeff·(θ-count − mθ)` is the obligation `s2` discharges from
+the level of distribution. Pure termwise add/subtract on
+`sieveThetaSum_selberg_nu_expand`. -/
+theorem sieveThetaSum_selberg_nu_eq_heuristic_add_correction (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (b W i₀ : ℕ) (x : ℝ) (hx : 0 < x)
+    (mθ : (Fin k → ℕ × ℕ) → ℝ) :
+    sieveThetaSum (selberg_nu k J c Fs H R) H i₀ b W x
+      = (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+              sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+            (∏ i : Fin k,
+              ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+                * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+            * mθ P)
+      + (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+              sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+            (∏ i : Fin k,
+              ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+                * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+            * ((∑ m ∈ ((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+                  (fun m => ∀ i : Fin k,
+                    (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0)),
+                  primeTheta (m + H.getD i₀ 0))
+                - mθ P)) := by
+  rw [sieveThetaSum_selberg_nu_expand k J c Fs H R b W i₀ x hx, ← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun j _ => ?_)
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun j' _ => ?_)
+  rw [← mul_add, ← Finset.sum_add_distrib]
+  congr 1
+  refine Finset.sum_congr rfl (fun P _ => ?_)
+  ring
+
 end BoundedGaps.Sieve
