@@ -203,4 +203,23 @@ theorem inner_uniform_of_pointwise (G : ℝ → ℝ) (hGcont : ContinuousOn G (S
   rw [hre]
   exact (htri _ _).trans (by linarith [hboundp, hboundm])
 
+/-- **GPY/Maynard 2-D simplex limit, reduced in-kernel to the 1-D pointwise scale-change limit.**
+Composing `inner_uniform_of_pointwise` (uniform ⇐ pointwise) with
+`WeightedRiemann2D.weighted_riemann_2d_of_inner` (2-D limit ⇐ uniform): the coupled double
+log-weighted Riemann sum converges to the iterated simplex integral `∫₀¹ F·(∫₀^{1-x} G)`, assuming
+ONLY the 1-D pointwise limit `Ψ H R t → ∫₀^t H` for every continuous `H`. This is exactly the
+statement of the deep axiom `WeightedRiemann2D.weighted_riemann_2d` (the Aristotle target), now
+reduced — axiom-clean, in our kernel — to a single one-dimensional limit. -/
+theorem weighted_riemann_2d_of_psi_pointwise (F G : ℝ → ℝ)
+    (hF : ContinuousOn F (Set.Icc (0 : ℝ) 1)) (hG : ContinuousOn G (Set.Icc (0 : ℝ) 1))
+    (hptw : ∀ H : ℝ → ℝ, ContinuousOn H (Set.Icc (0 : ℝ) 1) → ∀ t ∈ Set.Icc (0 : ℝ) 1,
+        Tendsto (fun R : ℕ => Psi H R t) atTop (𝓝 (∫ y in (0 : ℝ)..t, H y))) :
+    Tendsto (fun R : ℕ =>
+        (∑ m ∈ Finset.Icc 2 R, ∑ n ∈ Finset.Icc 2 (R / m),
+            F (Real.log m / Real.log R) * G (Real.log n / Real.log R) / ((m : ℝ) * (n : ℝ)))
+          / (Real.log R) ^ 2)
+      atTop (nhds (∫ x in (0 : ℝ)..1, F x * ∫ y in (0 : ℝ)..(1 - x), G y)) :=
+  BoundedGaps.WeightedRiemann2D.weighted_riemann_2d_of_inner F G hF hG
+    (inner_uniform_of_pointwise G hG hptw)
+
 end BoundedGaps.InnerUniformReduction
