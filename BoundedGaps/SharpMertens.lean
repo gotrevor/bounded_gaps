@@ -619,15 +619,15 @@ lemma dvd_primorial_sq_of_bAF_ne_zero {e N : ℕ} (h1 : 1 ≤ e) (hN : e ≤ N)
     have h2 := factorization_le_two_of_bAF_ne_zero h p
     omega
 
-/-- **Unconditional bound** `∑_{e≤N} ‖b(e)‖ ≤ exp 2`. The Euler-product partial-sum
-estimate underlying sharp Mertens, proved directly on `bAF` (no Aristotle port). -/
-theorem sum_norm_bAF_le (N : ℕ) :
-    ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ ≤ Real.exp 2 := by
+/-- **The full divisor sum `∑_{d∣(N#)²} |bAF d| ≤ exp 2`** — the Euler-product estimate,
+`= ∏_{p≤N}(1+2/(p(p-1))) ≤ exp(∑ 2/(p(p-1))) ≤ exp 2`. Reusable: the unweighted bound #1
+and the restricted (multiples-of-`p`) sums for the log-weighted bound #2 both rest on it. -/
+theorem sum_gabs_divisors_primorial_sq_le (N : ℕ) :
+    ∑ d ∈ ((primorial N) ^ 2).divisors, gabs d ≤ Real.exp 2 := by
   set M := (primorial N) ^ 2 with hMdef
-  have hMne : M ≠ 0 := pow_ne_zero _ (primorial_pos N).ne'
   set S := (Finset.range (N + 1)).filter Nat.Prime with hSdef
-  have hprimS : primorial N = ∏ p ∈ S, p := rfl
-  have hMfact : M = ∏ p ∈ S, p ^ 2 := by rw [hMdef, hprimS, ← Finset.prod_pow]
+  have hMfact : M = ∏ p ∈ S, p ^ 2 := by
+    rw [hMdef, show primorial N = ∏ p ∈ S, p from rfl, ← Finset.prod_pow]
   have hGmult : ((ζ : ArithmeticFunction ℝ) * gabs).IsMultiplicative :=
     isMultiplicative_zeta.natCast.mul gabs_isMultiplicative
   have hcop : (↑S : Set ℕ).Pairwise (fun a b => Nat.Coprime (a ^ 2) (b ^ 2)) := by
@@ -653,25 +653,8 @@ theorem sum_norm_bAF_le (N : ℕ) :
     have hpp : p.Prime := by rw [hSdef] at hp; exact (Finset.mem_filter.mp hp).2
     have hp2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hpp.two_le
     apply div_nonneg (by norm_num); nlinarith
-  calc ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖
-      = ∑ e ∈ (Finset.Icc 1 N).filter (fun e => bAF e ≠ 0), gabs e := by
-        rw [show (∑ e ∈ Finset.Icc 1 N, ‖bAF e‖)
-              = ∑ e ∈ Finset.Icc 1 N, gabs e from
-            Finset.sum_congr rfl (fun e _ => by rw [gabs_apply, Real.norm_eq_abs])]
-        symm
-        apply Finset.sum_filter_of_ne
-        intro e _ hge h0
-        rw [gabs_apply, h0, abs_zero] at hge
-        exact hge rfl
-    _ ≤ ∑ d ∈ M.divisors, gabs d := by
-        apply Finset.sum_le_sum_of_subset_of_nonneg
-        · intro e he
-          rw [Finset.mem_filter, Finset.mem_Icc] at he
-          obtain ⟨⟨ha, hb⟩, hne⟩ := he
-          rw [Nat.mem_divisors]
-          exact ⟨dvd_primorial_sq_of_bAF_ne_zero ha hb hne, hMne⟩
-        · exact fun d _ _ => by rw [gabs_apply]; exact abs_nonneg _
-    _ = ((ζ : ArithmeticFunction ℝ) * gabs) M := coe_zeta_mul_apply.symm
+  calc ∑ d ∈ M.divisors, gabs d
+      = ((ζ : ArithmeticFunction ℝ) * gabs) M := coe_zeta_mul_apply.symm
     _ = ∏ p ∈ S, ((ζ : ArithmeticFunction ℝ) * gabs) (p ^ 2) := by
         rw [hMfact]; exact hGmult.map_prod (fun p => p ^ 2) S hcop
     _ = ∏ p ∈ S, (1 + 2 / ((p : ℝ) * ((p : ℝ) - 1))) := Finset.prod_congr rfl hlocal
@@ -696,10 +679,53 @@ theorem sum_norm_bAF_le (N : ℕ) :
                 apply div_nonneg (by norm_num); nlinarith
           _ ≤ 2 := sum_Icc_two_div_le N
 
+/-- **Unconditional bound** `∑_{e≤N} ‖b(e)‖ ≤ exp 2`. The support of `bAF` restricted to
+`[1,N]` injects into the divisors of `(N#)²`, so this follows from
+`sum_gabs_divisors_primorial_sq_le`. -/
+theorem sum_norm_bAF_le (N : ℕ) :
+    ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ ≤ Real.exp 2 := by
+  have hMne : (primorial N) ^ 2 ≠ 0 := pow_ne_zero _ (primorial_pos N).ne'
+  calc ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖
+      = ∑ e ∈ (Finset.Icc 1 N).filter (fun e => bAF e ≠ 0), gabs e := by
+        rw [show (∑ e ∈ Finset.Icc 1 N, ‖bAF e‖)
+              = ∑ e ∈ Finset.Icc 1 N, gabs e from
+            Finset.sum_congr rfl (fun e _ => by rw [gabs_apply, Real.norm_eq_abs])]
+        symm
+        apply Finset.sum_filter_of_ne
+        intro e _ hge h0
+        rw [gabs_apply, h0, abs_zero] at hge
+        exact hge rfl
+    _ ≤ ∑ d ∈ ((primorial N) ^ 2).divisors, gabs d := by
+        apply Finset.sum_le_sum_of_subset_of_nonneg
+        · intro e he
+          rw [Finset.mem_filter, Finset.mem_Icc] at he
+          obtain ⟨⟨ha, hb⟩, hne⟩ := he
+          rw [Nat.mem_divisors]
+          exact ⟨dvd_primorial_sq_of_bAF_ne_zero ha hb hne, hMne⟩
+        · exact fun d _ _ => by rw [gabs_apply]; exact abs_nonneg _
+    _ ≤ Real.exp 2 := sum_gabs_divisors_primorial_sq_le N
+
 /-- **Summability of `‖b‖`, unconditionally** (from `sum_norm_bAF_le`). Discharges the
 first hypothesis of `sharp_mertens_tendsto` with no axioms. -/
 theorem summable_norm_bAF : Summable (fun n => ‖bAF n‖) :=
   summable_norm_bAF_of_bound (C := Real.exp 2) sum_norm_bAF_le
+
+/-! ## Structural divisor lemmas toward the log-weighted bound #2
+
+These build the reduction `∑_{d∣(N#)²} |bAF d|·log d ≤ (const)·∑_p (log p)/(p(p-1))`.
+The divisor sum of the (multiplicative) `|bAF|` factors over coprime products, which lets
+us isolate, for each prime `p`, the contribution of the multiples of `p`. -/
+
+/-- The divisor sum of `gabs = |bAF|` is multiplicative over coprime products. -/
+lemma gabs_sum_divisors_mul {m n : ℕ} (hmn : Nat.Coprime m n) :
+    ∑ d ∈ (m * n).divisors, gabs d
+      = (∑ d ∈ m.divisors, gabs d) * (∑ d ∈ n.divisors, gabs d) := by
+  have h := (isMultiplicative_zeta.natCast.mul gabs_isMultiplicative).map_mul_of_coprime hmn
+  simpa only [coe_zeta_mul_apply] using h
+
+/-- `∑_{d∣n} gabs d ≥ 0`. -/
+lemma sum_gabs_divisors_nonneg (n : ℕ) : 0 ≤ ∑ d ∈ n.divisors, gabs d :=
+  Finset.sum_nonneg (fun d _ => by rw [gabs_apply]; exact abs_nonneg _)
 
 /-! ## Analytic crux of the log-weighted bound #2: `∑_p (log p)/(p(p-1)) < ∞`
 
