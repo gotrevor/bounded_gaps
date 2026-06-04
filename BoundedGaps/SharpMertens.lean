@@ -128,3 +128,95 @@ lemma BSharp_prime_pow_high {p : ℕ} (hp : p.Prime) {k : ℕ} (hk : 3 ≤ k) : 
   obtain ⟨i, rfl⟩ : ∃ i, k = i + 1 := ⟨k - 1, by omega⟩
   rw [BSharp_prime_pow_succ hp, idG_pp_ge2 (i := i + 1) hp (by omega),
       idG_pp_ge2 (i := i) hp (by omega), sub_zero]
+
+/-! ## Reindexing the summatory function
+
+`S(N) := ∑_{n≤N} g(n)`. From the keystone `∑_{e∣n} B(e) = n·g(n)` (so
+`g(n) = (1/n)∑_{e∣n} B(e)`) and a divisor-pair swap, `S(N) = ∑_{e≤N}(B(e)/e)·H(⌊N/e⌋)`
+with `H(M) = ∑_{m≤M} 1/m` the harmonic sum. This is the form on which the harmonic
+bound + tail estimates assemble the sharp `log x + O(1)`. -/
+
+/-- **Multiples reindex.** Summing `f` over `{n ∈ [1,N] : e ∣ n}` equals summing
+`f(e·m)` over `m ∈ [1, ⌊N/e⌋]` (the bijection `n = e·m`). -/
+lemma sum_filter_dvd_eq_sum_Icc_div {e N : ℕ} (he : 1 ≤ e) (f : ℕ → ℝ) :
+    ∑ n ∈ (Finset.Icc 1 N).filter (fun n => e ∣ n), f n
+      = ∑ m ∈ Finset.Icc 1 (N / e), f (e * m) := by
+  refine Finset.sum_nbij' (fun n => n / e) (fun m => e * m) ?_ ?_ ?_ ?_ ?_
+  · intro n hn
+    rw [Finset.mem_filter, Finset.mem_Icc] at hn
+    obtain ⟨⟨hn1, hnN⟩, hdvd⟩ := hn
+    rw [Finset.mem_Icc]
+    exact ⟨(Nat.one_le_div_iff (by omega)).mpr (Nat.le_of_dvd hn1 hdvd), Nat.div_le_div_right hnN⟩
+  · intro m hm
+    rw [Finset.mem_Icc] at hm
+    obtain ⟨hm1, hmN⟩ := hm
+    rw [Finset.mem_filter, Finset.mem_Icc]
+    refine ⟨⟨Nat.mul_pos he hm1, ?_⟩, dvd_mul_right e m⟩
+    calc e * m = m * e := mul_comm e m
+      _ ≤ N := (Nat.le_div_iff_mul_le he).mp hmN
+  · intro n hn
+    rw [Finset.mem_filter] at hn
+    exact Nat.mul_div_cancel' hn.2
+  · intro m _
+    exact Nat.mul_div_cancel_left m he
+  · intro n hn
+    rw [Finset.mem_filter] at hn
+    rw [Nat.mul_div_cancel' hn.2]
+
+/-- **Generalized Dirichlet divisor-pair swap.** `∑_{n≤N} ∑_{d∣n} φ(d,n) =
+∑_{d≤N} ∑_{m≤⌊N/d⌋} φ(d, d·m)` (reindex divisor pairs `n = d·m`). Generalizes
+`SingularSeries.dirichlet_hyperbola` to weights depending on the outer index. -/
+theorem sum_divisorpairs (N : ℕ) (φ : ℕ → ℕ → ℝ) :
+    ∑ n ∈ Finset.Icc 1 N, ∑ d ∈ n.divisors, φ d n
+      = ∑ d ∈ Finset.Icc 1 N, ∑ m ∈ Finset.Icc 1 (N / d), φ d (d * m) := by
+  have lhs_def : ∑ n ∈ Finset.Icc 1 N, ∑ d ∈ n.divisors, φ d n
+      = ∑ n ∈ Finset.Icc 1 N, ∑ d ∈ Finset.Icc 1 N, if d ∣ n then φ d n else 0 := by
+    apply Finset.sum_congr rfl
+    intro n hn
+    obtain ⟨hn1, hnN⟩ := Finset.mem_Icc.mp hn
+    rw [← Finset.sum_filter]
+    apply Finset.sum_congr _ (fun _ _ => rfl)
+    ext d
+    simp only [Nat.mem_divisors, Finset.mem_filter, Finset.mem_Icc]
+    constructor
+    · rintro ⟨hdvd, _⟩
+      exact ⟨⟨Nat.pos_of_dvd_of_pos hdvd hn1, le_trans (Nat.le_of_dvd hn1 hdvd) hnN⟩, hdvd⟩
+    · rintro ⟨_, hdvd⟩
+      exact ⟨hdvd, by omega⟩
+  rw [lhs_def, Finset.sum_comm]
+  apply Finset.sum_congr rfl
+  intro d hd
+  obtain ⟨hd1, _⟩ := Finset.mem_Icc.mp hd
+  rw [← Finset.sum_filter]
+  exact sum_filter_dvd_eq_sum_Icc_div hd1 (φ d)
+
+/-- **Weighted-harmonic form of the summatory function.**
+`∑_{n≤N} μ²(n)/φ(n) = ∑_{e≤N} (B(e)/e)·∑_{m≤⌊N/e⌋} 1/m`. The entry point to the
+sharp `log x + O(1)` (harmonic bound on the inner sum + tail estimates on `B(e)/e`). -/
+theorem sum_g_eq_weighted_harmonic (N : ℕ) :
+    ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n
+      = ∑ e ∈ Finset.Icc 1 N,
+          (BSharp e / (e : ℝ)) * (∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) := by
+  have step1 : ∀ n ∈ Finset.Icc 1 N,
+      gMoebiusSqTotient n = ∑ d ∈ n.divisors, BSharp d / (n : ℝ) := by
+    intro n hn
+    have hn0 : (n : ℝ) ≠ 0 := by
+      have := (Finset.mem_Icc.mp hn).1; positivity
+    rw [gMoebiusSqTotient_apply, ← Finset.sum_div, sum_divisors_BSharp n]
+    exact (mul_div_cancel_left₀ _ hn0).symm
+  calc ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n
+      = ∑ n ∈ Finset.Icc 1 N, ∑ d ∈ n.divisors, BSharp d / (n : ℝ) :=
+        Finset.sum_congr rfl step1
+    _ = ∑ d ∈ Finset.Icc 1 N, ∑ m ∈ Finset.Icc 1 (N / d), BSharp d / ((d * m : ℕ) : ℝ) :=
+        sum_divisorpairs N (fun d n => BSharp d / (n : ℝ))
+    _ = ∑ e ∈ Finset.Icc 1 N,
+          (BSharp e / (e : ℝ)) * (∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) := by
+        apply Finset.sum_congr rfl
+        intro d hd
+        have hd0 : (d : ℝ) ≠ 0 := by have := (Finset.mem_Icc.mp hd).1; positivity
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro m hm
+        have hm0 : (m : ℝ) ≠ 0 := by have := (Finset.mem_Icc.mp hm).1; positivity
+        push_cast
+        rw [div_mul_div_comm, mul_one]
