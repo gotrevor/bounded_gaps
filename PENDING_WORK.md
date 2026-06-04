@@ -369,10 +369,17 @@ now also DONE — `SieveExpansion.lean` has the GPY diagonalization ladder (all 
 2026-06-04 continuation): `gpy_diagonalize` (`∑_{d,e}w(d)w(e)/[d,e]=∑_r φ(r)(∑_{r∣d}w(d)/d)²`),
 `gpy_diagonalize_moebius` (the `w=μ·g` sieve form = per-coordinate quadratic form in the expansion),
 `gpy_yvar_substitution` (`y_r=(μ(r)/r)·∑_{(r,s)=1}μ(s)g(rs)/s`), `gpy_quadform_nonneg` (PSD).
-**Next genuine nut:** the diagonal-sum *asymptotic* `∑_r φ(r)(μ(r)/r)²(∑_{(r,s)=1}μ(s)F(log rs/logR)/s)²
-→ (integral const)` as `R→∞` — the GPY main-term computation; its multidimensional smooth-Riemann
-core is the in-flight Aristotle job `3e2b6a8d` (`weighted_riemann_2d`). Then the off-diagonal-main-
-term discrepancy (singular series) + sub-step (d) `IsLittleO` glue. Reusable analytic bricks in
+Sub-step (c) ALGEBRA LADDER now COMPLETE (8 axiom-clean commits this lap): also added
+`gpy_diagonalize_moebius_squarefree`, `gpy_yvar_eq_zero_of_not_squarefree`,
+`gpy_diagonal_asymptotic_form` (canonical capstone `∑μμgg/[d,e]=∑_{r sf}(φ(r)/r²)z_r²`),
+`piFinset_lattice_main_factor` + `heuristic_main_term_diagonalized` (heuristic main = `M·∏ᵢ`
+diagonalized form), and the (s1) REDUCTION `sieveSum_separable_eq_heuristic_add_correction`
+(`sieveSum = heuristic_main + correction`). The whole algebra of sub-step (a)→(c) is machine-checked.
+**Three purely-analytic obligations remain** (see ANALYTIC_AXIOM_BURNDOWN.md tail): (1) the
+diagonal-sum asymptotic `∑_{r sf}(φ(r)/r²)z_r²→const` (smooth core = Aristotle `3e2b6a8d`); (2) the
+correction bound `∑_P coeffₚ(countₚ−M/∏[Pᵢ])=o(main)` via the W-trick discharge
+(`lattice_count_offdiag_vanish_Wtrick`) + diagonal `O(1)` error (`lattice_count_main_term`) with
+`M=(B−A)/W`; (3) sub-step (d) `IsLittleO` glue into `alphaBound`. Reusable analytic bricks in
 `WeightedMertens.lean`: `weighted_cesaro_tendsto_zero`, `weighted_avg_majorant_tendsto_zero`,
 `harmonic_div_log_tendsto_one`, `sum_log_mul_log_diff_le_sq`, `Bdisc`/`discrepancy_*`, `abel_tail_*`,
 `weighted_mertens_of_riemann`, `weighted_mertens_of_contDiff`.

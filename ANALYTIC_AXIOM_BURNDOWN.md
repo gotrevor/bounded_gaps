@@ -512,3 +512,28 @@ multidimensional (simplex-coupled) version of the underlying smooth Riemann limi
 Aristotle job `3e2b6a8d` (`weighted_riemann_2d`). After that: the off-diagonal-main-term
 discrepancy (the heuristic count vs the genuine count — where the singular series lives) and the
 sub-step (d) `IsLittleO` assembly into `alphaBound`.
+
+### UPDATE (same continuation lap): sub-step (c) ALGEBRA LADDER COMPLETE + (s1) reduction
+8 axiom-clean commits total this lap; full build green (8277). Added beyond the 4 bricks above:
+- **`gpy_diagonalize_moebius_squarefree`** + **`gpy_yvar_eq_zero_of_not_squarefree`** — the diagonal
+  sum is supported on squarefree `r` (`y_r = 0` off the squarefree locus, since every multiple of a
+  non-squarefree `r` is non-squarefree ⟹ `μ=0`).
+- **`gpy_diagonal_asymptotic_form`** — the CANONICAL capstone:
+  `∑_{d,e}μμgg/[d,e] = ∑_{r∈R sf} (φ(r)/r²)·(∑_{(r,s)=1}μ(s)g(rs)/s)²` (combines the squarefree
+  restriction + `y_r` substitution + `μ(r)²=1`). The exact object the `R→∞` asymptotic consumes.
+- **`piFinset_lattice_main_factor`** + **`heuristic_main_term_diagonalized`** — the heuristic main
+  term (count → `M/∏ᵢ[dᵢ,eᵢ]`) factors over coordinates into `M·∏ᵢ(diagonalized 1-D form)`.
+- **`sieveSum_separable_eq_heuristic_add_correction`** — the (s1) REDUCTION:
+  `sieveSum = heuristic_main + ∑_P coeffₚ(countₚ − M/∏ᵢ[Pᵢ])`, isolating the exact remaining
+  analytic obligation (the correction must be `o(main)`).
+
+**Net:** the ENTIRE algebraic content of sub-step (c) (and the (a)→(c) bridge) is machine-checked.
+What remains for `s1_holds_from_nonprime_asym` is purely analytic:
+1. **Diagonal-sum asymptotic** — `∑_{r sf}(φ(r)/r²)z_r² → (integral const)` as `R→∞`, with
+   `z_r=∑μ(s)F(log rs/logR)/s`; its multidimensional smooth core is Aristotle `3e2b6a8d`
+   (`weighted_riemann_2d`, in flight).
+2. **Correction bound** — `∑_P coeffₚ(countₚ − M/∏[Pᵢ]) = o(main)`: needs the W-trick discharge
+   (`lattice_count_offdiag_vanish_Wtrick`: off-diagonal count = 0) + the diagonal `O(1)` error
+   (`lattice_count_main_term`) summed against `∑|coeff|`, with `M=(B−A)/W`. This is where the GPY
+   parameter plumbing (`W=∏_{p≤D₀}p`, admissible shifts `≤D₀`, squarefree moduli) enters.
+3. **Sub-step (d) `IsLittleO` glue** into `alphaBound`.
