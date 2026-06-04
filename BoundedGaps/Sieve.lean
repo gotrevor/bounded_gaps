@@ -2170,6 +2170,86 @@ theorem abs_sub_weighted_average_le {ι : Type*} [Fintype ι]
         · exact mul_le_mul_of_nonneg_right (hclose i h0) (hw i)
     _ = δ := by rw [← Finset.mul_sum, hsum, mul_one]
 
+/-- **Mesh-`h` smooth bump family.** `meshBump h m x = σ(x/h + 1 − m) − σ(x/h − m)`
+with `σ = Real.smoothTransition`. The `m`-th bump is centred at `m·h`, supported in
+`((m−1)h, (m+1)h)`, smooth and nonnegative; and `∑_{m=0}^N meshBump h m = 1` on
+`[0, N·h]` (rescaled/shifted `smoothTransition_finite_partition`). These are the
+1-D partition-of-unity pieces fed to `tensor_partition_of_unity` to build the
+separable box-tensor approximant `G(t) = ∑_φ F(c_φ)·∏_i meshBump h (φ i) (t_i)`. -/
+noncomputable def meshBump (h : ℝ) (m : ℕ) (x : ℝ) : ℝ :=
+  Real.smoothTransition (x / h + 1 - m) - Real.smoothTransition (x / h - m)
+
+/-- Each mesh bump is nonnegative (monotonicity of `smoothTransition`, applied to
+`x/h − m ≤ x/h + 1 − m`). -/
+theorem meshBump_nonneg (h : ℝ) (m : ℕ) (x : ℝ) : 0 ≤ meshBump h m x := by
+  unfold meshBump
+  have := Real.smoothTransition.monotone (show x / h - m ≤ x / h + 1 - m by linarith)
+  linarith
+
+/-- Each mesh bump is `C^∞` (composition of `smoothTransition` with an affine map). -/
+theorem meshBump_contDiff (h : ℝ) (m : ℕ) : ContDiff ℝ ∞ (meshBump h m) := by
+  unfold meshBump
+  have hσ : ContDiff ℝ ∞ Real.smoothTransition := Real.smoothTransition.contDiff
+  have h1 : ContDiff ℝ ∞ (fun x : ℝ => x / h + 1 - (m : ℝ)) :=
+    (((contDiff_id.div_const h).add contDiff_const).sub contDiff_const)
+  have h2 : ContDiff ℝ ∞ (fun x : ℝ => x / h - (m : ℝ)) :=
+    ((contDiff_id.div_const h).sub contDiff_const)
+  exact (hσ.comp h1).sub (hσ.comp h2)
+
+/-- **Rescaled partition of unity.** With mesh `h > 0`, the `N+1` bumps sum to `1`
+on `[0, N·h]`. (Telescoping `∑_{m=0}^N (g m − g (m+1))` with `g j = σ(x/h + 1 − j)`,
+then `σ(x/h+1) = 1` for `x ≥ 0` and `σ(x/h − N) = 0` for `x ≤ N·h`.) -/
+theorem meshBump_partition (h : ℝ) (N : ℕ) (x : ℝ) (hh : 0 < h)
+    (hx0 : 0 ≤ x) (hxN : x ≤ (N : ℝ) * h) :
+    ∑ m ∈ Finset.range (N + 1), meshBump h m x = 1 := by
+  set f : ℕ → ℝ := fun j => Real.smoothTransition (x / h + 1 - (j : ℝ)) with hf
+  have hxh0 : 0 ≤ x / h := by positivity
+  have hxhN : x / h ≤ (N : ℝ) := (div_le_iff₀ hh).mpr hxN
+  -- each bump is a forward difference of `f`
+  have hterm : ∀ m ∈ Finset.range (N + 1), meshBump h m x = f m - f (m + 1) := by
+    intro m _
+    simp only [hf]
+    unfold meshBump
+    rw [show x / h - (m : ℝ) = x / h + 1 - (((m + 1 : ℕ) : ℝ)) from by push_cast; ring]
+  rw [Finset.sum_congr rfl hterm, Finset.sum_range_sub' f (N + 1)]
+  -- telescopes to `f 0 - f (N+1) = σ(x/h+1) - σ(x/h - N) = 1 - 0`
+  have e0 : f 0 = 1 := by
+    simp only [hf, Nat.cast_zero, sub_zero]
+    exact Real.smoothTransition.one_of_one_le (by linarith)
+  have eN : f (N + 1) = 0 := by
+    simp only [hf]
+    rw [show x / h + 1 - (((N + 1 : ℕ) : ℝ)) = x / h - (N : ℝ) from by push_cast; ring]
+    exact Real.smoothTransition.zero_of_nonpos (by linarith)
+  rw [e0, eN]; ring
+
+/-- **Locality of a mesh bump.** If `meshBump h m x ≠ 0` (with `h > 0`) then `x`
+lies strictly within `h` of the bump centre `m·h`: `(m−1)h < x < (m+1)h`. This
+controls how far `t_i` can be from the grid point `(c_φ)_i = (φ i)·h` on a box
+with nonzero weight. -/
+theorem meshBump_support (h : ℝ) (m : ℕ) (x : ℝ) (hh : 0 < h)
+    (hne : meshBump h m x ≠ 0) :
+    ((m : ℝ) - 1) * h < x ∧ x < ((m : ℝ) + 1) * h := by
+  unfold meshBump at hne
+  constructor
+  · by_contra hx
+    push_neg at hx
+    -- x ≤ (m-1)h ⟹ x/h + 1 - m ≤ 0 ⟹ both σ-terms are 0
+    have hxh : x / h ≤ (m : ℝ) - 1 := (div_le_iff₀ hh).mpr (by linarith)
+    have h1 : Real.smoothTransition (x / h + 1 - (m : ℝ)) = 0 :=
+      Real.smoothTransition.zero_of_nonpos (by linarith)
+    have h2 : Real.smoothTransition (x / h - (m : ℝ)) = 0 :=
+      Real.smoothTransition.zero_of_nonpos (by linarith)
+    exact hne (by rw [h1, h2]; ring)
+  · by_contra hx
+    push_neg at hx
+    -- x ≥ (m+1)h ⟹ x/h - m ≥ 1 ⟹ both σ-terms are 1
+    have hxh : (m : ℝ) + 1 ≤ x / h := (le_div_iff₀ hh).mpr (by linarith)
+    have h1 : Real.smoothTransition (x / h + 1 - (m : ℝ)) = 1 :=
+      Real.smoothTransition.one_of_one_le (by linarith)
+    have h2 : Real.smoothTransition (x / h - (m : ℝ)) = 1 :=
+      Real.smoothTransition.one_of_one_le (by linarith)
+    exact hne (by rw [h1, h2]; ring)
+
 /-- **Separable sup-norm density** (the irreducible analytic core of
 `exists_separable_F_of_Mk_gt`, with the continuity half discharged by
 `mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly
