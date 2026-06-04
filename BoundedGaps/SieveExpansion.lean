@@ -1724,4 +1724,39 @@ theorem support_simplex_prod_le {k : ℕ} (F : (Fin k → ℝ) → ℝ)
   have hexp := Real.exp_le_exp.mpr hsumlog
   rwa [Real.exp_log hprodpos, Real.exp_log (lt_trans one_pos hR)] at hexp
 
+/-- **Simplex-supported continuous `F` is globally bounded.** A continuous `F`
+with `Function.support F ⊆ simplex k` satisfies `∃ C ≥ 0, ∀ t, |F t| ≤ C`. The
+simplex sits inside the compact box `[0,1]^k` (`0 ≤ tᵢ` and `∑tᵢ ≤ 1 ⟹ tᵢ ≤ 1`),
+on which the continuous `|F|` attains a finite max; off the box `F = 0`.
+
+This supplies the `‖F‖∞` bound the diagonal size estimate needs: combined with
+`selberg_nu_basis_diagonal_reassemble` (diagonal weight `= ∑(∏μ²)F²`) and
+`support_simplex_prod_le` (contributing tuples have `∏dᵢ ≤ R`), the diagonal
+weight is `≤ C²·#{squarefree d-tuples with ∏dᵢ ≤ R}`, reducing analytic obligation
+#2 to the `k`-dim divisor count `Dₖ(R) ≍ R(log R)^{k-1}` (via the repo's
+`SingularSeries.dirichlet_hyperbola`). The `s1` premise `ContDiff ℝ ∞ F` gives
+the continuity. -/
+theorem support_simplex_bounded {k : ℕ} (F : (Fin k → ℝ) → ℝ)
+    (hF : Continuous F) (hsupp : Function.support F ⊆ simplex k) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ t : Fin k → ℝ, |F t| ≤ C := by
+  classical
+  set K : Set (Fin k → ℝ) := Set.univ.pi (fun _ => Set.Icc (0:ℝ) 1) with hKdef
+  have hKcompact : IsCompact K := isCompact_univ_pi (fun _ => isCompact_Icc)
+  have hsimplexK : simplex k ⊆ K := by
+    intro t ht
+    rw [hKdef, Set.mem_univ_pi]
+    intro i
+    exact Set.mem_Icc.mpr ⟨ht.1 i,
+      le_trans (Finset.single_le_sum (fun j _ => ht.1 j) (Finset.mem_univ i)) ht.2⟩
+  obtain ⟨C, hC⟩ := hKcompact.bddAbove_image hF.abs.continuousOn
+  refine ⟨max C 0, le_max_right _ _, fun t => ?_⟩
+  by_cases htK : t ∈ K
+  · exact le_trans (hC (Set.mem_image_of_mem _ htK)) (le_max_left _ _)
+  · have hts : t ∉ simplex k := fun h => htK (hsimplexK h)
+    have hF0 : F t = 0 := by
+      by_contra hne
+      exact hts (hsupp (Function.mem_support.mpr hne))
+    rw [hF0, abs_zero]
+    exact le_max_right _ _
+
 end BoundedGaps.Sieve
