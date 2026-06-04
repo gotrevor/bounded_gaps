@@ -706,4 +706,51 @@ theorem mertens_second_term_bound (n : ℕ) (hn : 2 ≤ n) :
     _ = (1 + 1 / Real.log 2) / ((n : ℝ) * Real.log n) := by
         field_simp
 
+/-! ## Stirling-type bounds on `∑ log m = log(N!)` (for the *sharp* Mertens route)
+
+The von Mangoldt approach to the **sharp** Mertens 1st theorem
+(`∑_{p≤N}(log p)/p = log N + O(1)`, coefficient exactly 1 — unlike the lossy
+`log 4` of `mertens_first_le`) needs `∑_{m≤N} log m = N log N + O(N)`. Both sides
+follow from comparison with `∫ log x dx = x log x − x` (mathlib `integral_log`). -/
+
+/-- `∑_{m≤N} log m ≤ N log N` (each summand `≤ log N`). -/
+theorem sum_log_le {N : ℕ} :
+    ∑ m ∈ Finset.Icc 1 N, Real.log (m : ℝ) ≤ (N : ℝ) * Real.log N := by
+  calc ∑ m ∈ Finset.Icc 1 N, Real.log (m : ℝ)
+      ≤ ∑ m ∈ Finset.Icc 1 N, Real.log (N : ℝ) := by
+        apply Finset.sum_le_sum
+        intro m hm
+        rw [Finset.mem_Icc] at hm
+        exact Real.log_le_log (by exact_mod_cast hm.1) (by exact_mod_cast hm.2)
+    _ = (N : ℝ) * Real.log N := by
+        rw [Finset.sum_const, Nat.card_Icc, nsmul_eq_mul]
+        simp
+
+/-- `N log N − N + 1 ≤ ∑_{m≤N} log m` (lower bound by `∫_1^N log x dx = N log N − N + 1`). -/
+theorem le_sum_log {N : ℕ} (hN : 1 ≤ N) :
+    (N : ℝ) * Real.log N - N + 1 ≤ ∑ m ∈ Finset.Icc 1 N, Real.log (m : ℝ) := by
+  have hmono : MonotoneOn (fun x : ℝ => Real.log x) (Set.Icc 1 ((1 : ℝ) + (N - 1 : ℕ))) := by
+    intro x hx y hy hxy
+    simp only [Set.mem_Icc] at hx hy
+    exact Real.log_le_log (by linarith [hx.1]) hxy
+  have h := MonotoneOn.integral_le_sum hmono
+  have hNcast : (1 : ℝ) + ((N - 1 : ℕ) : ℝ) = (N : ℝ) := by
+    rw [Nat.cast_sub hN]; simp
+  rw [hNcast, integral_log] at h
+  simp only [Real.log_one, mul_zero, sub_zero] at h
+  refine le_trans h ?_
+  have hreindex : ∑ i ∈ Finset.range (N - 1), Real.log (1 + ((i + 1 : ℕ) : ℝ))
+      = ∑ m ∈ Finset.Icc 2 N, Real.log (m : ℝ) := by
+    rw [← Finset.Ico_add_one_right_eq_Icc, Finset.sum_Ico_eq_sum_range]
+    refine Finset.sum_congr (by congr 1) (fun i _ => ?_)
+    congr 1
+    push_cast
+    ring
+  rw [hreindex]
+  apply Finset.sum_le_sum_of_subset_of_nonneg
+  · intro x hx; rw [Finset.mem_Icc] at hx ⊢; omega
+  · intro m hm _
+    rw [Finset.mem_Icc] at hm
+    exact Real.log_nonneg (by exact_mod_cast hm.1)
+
 end BoundedGaps.Mertens
