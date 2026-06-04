@@ -231,11 +231,30 @@ v4.29.1 *does* have `radical` (`UniqueFactorizationMonoid.radical`,
 `radical_of_prime`, `radical_mul`, `squarefree_radical` — the "no `radical`"
 claim was wrong; that is what made the 1D bound a days-task, not weeks.
 
-**Next brick (the on-ramp continues):** the 1D *upper* companion
-`∑_{n≤N} μ²(n)/φ(n) ≤ ∏_{p≤N}(1+1/(p-1))` (Euler-product domination over
-squarefree `n`), giving the matching `Θ(log N)` upper bound; then the sharp
-`= log N + O(1)` (Mertens constant), then the **multidimensional** singular-series
-→ ∫F² version (the genuine multi-month nut, sub-step (c)).
+**✅ DONE 2026-06-04 (lap ~19:40Z, commits `a2e4c60`…`422a1f8` on `path-a-selberg-nu`).**
+The 1D *upper* ladder advanced several rungs, all axiom-clean
+(`[propext, Classical.choice, Quot.sound]`, no `native_decide`):
+- `mertensSummand_eq_prod` + `mertens_prod_upper`: `∑_{n≤N} μ²/φ ≤ ∏_{p≤N}(1+1/(p-1))`
+  (Euler-product domination of squarefree `n`; `n ↦ primeFactors n` injects squarefree
+  `n≤N` into the powerset of primes `≤N`). Proved LOCALLY in v4.29.1.
+- `chebyshev_theta_le`: `θ(N)=∑_{p≤N} log p ≤ N·log 4` (from mathlib `primorial_le_four_pow`).
+- `abel_div_le` (Aristotle `32baa99f`, summation-by-parts, verified kernel-clean) +
+  `mertens_first_le`: **Mertens' first theorem** `∑_{p≤N}(log p)/p ≤ log 4·(1+log N)`.
+- Plumbing bricks: `chebyshev_theta_le'`, `mertens_first_le'` (partial-sum/indicator forms),
+  `telescope_tail_*`/`prime_tail_le` (`∑_{p≤N}(1/(p-1)−1/p) ≤ 1`).
+
+**Next nut — Mertens' second theorem** `∑_{p≤N} 1/p ≤ log log N + O(1)`. Decomposition:
+a *second* Abel step from `mertens_first_le'`, with weight `w_p = 1/log p` (NOT the
+`1/n` weight of `abel_div_le`). Needs (i) the **general Abel identity**
+`∑ a_n w_n = A_N w_N − ∑ A_n (w_{n+1}−w_n)` — **submitted to Aristotle `431512dd`**
+(`aristotle-abelid/AbelId.lean`); and (ii) the analytic estimate
+`∑_{2≤n≤N} 1/(n·log n) = O(log log N)` (integral comparison `∫ dt/(t log t)=log log t`;
+the genuine remaining analytic content — likely its own brick, may need
+`AntitoneOn.sum_le_integral`-style mathlib tooling). With Mertens 2nd:
+`∑_{p≤N} log(1+1/(p-1)) ≤ ∑ 1/(p-1) ≤ ∑ 1/p + 1 = log log N + O(1)` ⇒
+`∏_{p≤N}(1+1/(p-1)) = O(log N)` ⇒ **`∑μ²/φ = O(log N)`**, pairing with `mertens_lower`
+for the two-sided `Θ(log N)`. Then the sharp `= log N + O(1)` (Mertens constant), then
+the **multidimensional** singular-series → ∫F² version (the multi-month sub-step (c) nut).
 
 Artifact: `scratch_mertens.lean` — the original standalone probe (two sorries);
 superseded by the landed `BoundedGaps/Mertens.lean`. The download/verify scratch
