@@ -1698,6 +1698,293 @@ theorem exists_F_of_Mk_gt (k : ℕ) (hk : 2 ≤ k) (c : ℝ) (hc : c < Mk k) :
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
+/-! ### Sup-norm continuity of the Maynard functionals (toward `sep_approx`)
+
+These reduce `sep_approx`'s continuity content to elementary integral-monotonicity:
+both `mkF_denominator` and each marginal `J_i` differ by at most the uniform
+(sup-over-simplex) distance between the test functions, times a finite constant.
+No `L²`/Cauchy–Schwarz machinery — just `‖∫‖ ≤ ∫‖·‖` and `setIntegral_mono`. -/
+
+open MeasureTheory in
+/-- The Maynard denominator difference is bounded by the simplex integral of
+`|F² − G²|`. -/
+theorem mkF_denominator_sub_abs_le (k : ℕ) (F G : (Fin k → ℝ) → ℝ)
+    (hF : Continuous F) (hG : Continuous G) :
+    |mkF_denominator k F - mkF_denominator k G|
+      ≤ ∫ t in simplex k, |F t ^ 2 - G t ^ 2| := by
+  have hIF : IntegrableOn (fun t => F t ^ 2) (simplex k) volume :=
+    (hF.pow 2).locallyIntegrable.integrableOn_isCompact (isCompact_simplex k)
+  have hIG : IntegrableOn (fun t => G t ^ 2) (simplex k) volume :=
+    (hG.pow 2).locallyIntegrable.integrableOn_isCompact (isCompact_simplex k)
+  unfold mkF_denominator
+  rw [← integral_sub hIF hIG]
+  simpa [Real.norm_eq_abs] using
+    norm_integral_le_integral_norm (μ := volume.restrict (simplex k))
+      (f := fun t => F t ^ 2 - G t ^ 2)
+
+open MeasureTheory in
+/-- **Sup-norm continuity of the Maynard denominator.** If `|F+G| ≤ A` and
+`|F−G| ≤ ε` pointwise on the simplex, the denominators differ by at most
+`ε·A·vol(simplex)`. -/
+theorem mkF_denominator_sub_le_const (k : ℕ) (F G : (Fin k → ℝ) → ℝ) (A ε : ℝ)
+    (hF : Continuous F) (hG : Continuous G)
+    (hsum : ∀ t ∈ simplex k, |F t + G t| ≤ A) (happ : ∀ t ∈ simplex k, |F t - G t| ≤ ε) :
+    |mkF_denominator k F - mkF_denominator k G| ≤ ε * A * (volume (simplex k)).toReal := by
+  refine (mkF_denominator_sub_abs_le k F G hF hG).trans ?_
+  have hms : MeasurableSet (simplex k) := (isCompact_simplex k).isClosed.measurableSet
+  have hbound : ∀ t ∈ simplex k, |F t ^ 2 - G t ^ 2| ≤ ε * A := by
+    intro t ht
+    have hfac : F t ^ 2 - G t ^ 2 = (F t - G t) * (F t + G t) := by ring
+    rw [hfac, abs_mul]
+    exact mul_le_mul (happ t ht) (hsum t ht) (abs_nonneg _)
+      (le_trans (abs_nonneg _) (happ t ht))
+  have hI1 : IntegrableOn (fun t => |F t ^ 2 - G t ^ 2|) (simplex k) volume :=
+    (((hF.pow 2).sub (hG.pow 2)).abs).locallyIntegrable.integrableOn_isCompact (isCompact_simplex k)
+  calc ∫ t in simplex k, |F t ^ 2 - G t ^ 2|
+      ≤ ∫ _t in simplex k, ε * A :=
+        setIntegral_mono_on hI1 (integrableOn_const (isCompact_simplex k).measure_lt_top.ne)
+          hms hbound
+    _ = ε * A * (volume (simplex k)).toReal := by
+        rw [setIntegral_const, smul_eq_mul, measureReal_def, mul_comm]
+
+open MeasureTheory Set in
+/-- The `J_i` integrand `s ↦ (∫_{[0,1-∑s]} H(insertNth i · s))²` is integrable over
+`simplex n` (the parametric-integral integrability extracted from `J_i_le_denom`:
+on the simplex the clamped inner integral equals the full-line marginal
+`m s = ∫ H(insertNth i · s)`, whose square is integrable, being `≤ Φ s = ∫
+H(insertNth i · s)²`). -/
+private theorem Ji_integrand_integrableOn (n : ℕ) (H : (Fin (n + 1) → ℝ) → ℝ)
+    (hHc : Continuous H) (hHsupp : Function.support H ⊆ simplex (n + 1)) (i : Fin (n + 1)) :
+    IntegrableOn
+      (fun s => (∫ ti in Icc 0 (1 - ∑ j, s j), H (i.insertNth ti s)) ^ 2) (simplex n) := by
+  classical
+  have hsimpClosed : IsClosed (simplex (n + 1)) := isClosed_simplex (n + 1)
+  have hcs : HasCompactSupport H :=
+    IsCompact.of_isClosed_subset (isCompact_simplex (n + 1)) isClosed_closure
+      (closure_minimal hHsupp hsimpClosed)
+  have hH2cont : Continuous (fun t => H t ^ 2) := hHc.pow 2
+  have hcs2 : HasCompactSupport (fun t => H t ^ 2) := by
+    apply hcs.comp_left (g := fun x : ℝ => x ^ 2); simp
+  have hHi : Integrable H := hHc.integrable_of_hasCompactSupport hcs
+  have hH2i : Integrable (fun t => H t ^ 2) := hH2cont.integrable_of_hasCompactSupport hcs2
+  set e := MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i with he
+  have mp := volume_preserving_piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+  set m : (Fin n → ℝ) → ℝ := fun s => ∫ ti : ℝ, H (i.insertNth ti s) with hm
+  set Φ : (Fin n → ℝ) → ℝ := fun s => ∫ ti : ℝ, H (i.insertNth ti s) ^ 2 with hΦ
+  have hprodH2 : Integrable (fun p : ℝ × (Fin n → ℝ) => H (e.symm p) ^ 2) (volume.prod volume) := by
+    rw [← Measure.volume_eq_prod ℝ (Fin n → ℝ)]
+    exact mp.symm.integrable_comp_of_integrable hH2i
+  have hΦi : Integrable Φ := by
+    have h := hprodH2.integral_prod_right
+    simp only [he, MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv,
+      Equiv.coe_fn_mk] at h
+    exact h
+  have hprodH : Integrable (fun p : ℝ × (Fin n → ℝ) => H (e.symm p)) (volume.prod volume) := by
+    rw [← Measure.volume_eq_prod ℝ (Fin n → ℝ)]
+    exact mp.symm.integrable_comp_of_integrable hHi
+  have hmi : Integrable m := by
+    have h := hprodH.integral_prod_right
+    simp only [he, MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv,
+      Equiv.coe_fn_mk] at h
+    exact h
+  have key : ∀ s ∈ simplex n,
+      (∫ ti in Icc 0 (1 - ∑ j, s j), H (i.insertNth ti s)) = m s ∧ m s ^ 2 ≤ Φ s := by
+    intro s hs
+    obtain ⟨hs_nn, hs_sum⟩ := hs
+    have hsum_nn : 0 ≤ ∑ j, s j := Finset.sum_nonneg fun j _ => hs_nn j
+    set L := 1 - ∑ j, s j with hL
+    have hLnn : 0 ≤ L := by rw [hL]; linarith
+    have hL1 : L ≤ 1 := by rw [hL]; linarith
+    have hzero : ∀ ti, ti ∉ Icc (0 : ℝ) L → H (i.insertNth ti s) = 0 := by
+      intro ti hti
+      by_contra hne
+      have hmem : i.insertNth ti s ∈ simplex (n + 1) := hHsupp (Function.mem_support.mpr hne)
+      obtain ⟨hmem_nn, hmem_sum⟩ := hmem
+      apply hti
+      refine ⟨?_, ?_⟩
+      · have := hmem_nn i; rwa [Fin.insertNth_apply_same] at this
+      · rw [hL, le_sub_iff_add_le]
+        have hsum_eq : ∑ j, (i.insertNth ti s) j = ti + ∑ j, s j := by
+          rw [Fin.sum_univ_succAbove _ i, Fin.insertNth_apply_same]
+          congr 1
+          exact Finset.sum_congr rfl fun j _ => by rw [Fin.insertNth_apply_succAbove]
+        rw [hsum_eq] at hmem_sum; linarith
+    have hcont_h : Continuous (fun ti => H (i.insertNth ti s)) :=
+      hHc.comp (Continuous.finInsertNth (A := fun _ : Fin (n + 1) => ℝ) i
+        continuous_id continuous_const)
+    have hint_h : IntegrableOn (fun ti => H (i.insertNth ti s)) (Icc 0 L) :=
+      hcont_h.integrableOn_Icc
+    have hint_h2 : IntegrableOn (fun ti => H (i.insertNth ti s) ^ 2) (Icc 0 L) :=
+      (hcont_h.pow 2).integrableOn_Icc
+    have eqfull : (∫ ti in Icc 0 L, H (i.insertNth ti s)) = m s :=
+      setIntegral_eq_integral_of_forall_compl_eq_zero hzero
+    have eqfull2 : (∫ ti in Icc 0 L, H (i.insertNth ti s) ^ 2) = Φ s := by
+      refine setIntegral_eq_integral_of_forall_compl_eq_zero ?_
+      intro ti hti; rw [hzero ti hti]; ring
+    refine ⟨eqfull, ?_⟩
+    have hcsq := cs_Icc L hLnn (fun ti => H (i.insertNth ti s)) hint_h hint_h2
+    rw [eqfull] at hcsq
+    have hnn2 : 0 ≤ ∫ ti in Icc 0 L, H (i.insertNth ti s) ^ 2 :=
+      integral_nonneg fun ti => sq_nonneg _
+    calc m s ^ 2 ≤ L * ∫ ti in Icc 0 L, H (i.insertNth ti s) ^ 2 := hcsq
+      _ ≤ 1 * ∫ ti in Icc 0 L, H (i.insertNth ti s) ^ 2 := mul_le_mul_of_nonneg_right hL1 hnn2
+      _ = Φ s := by rw [one_mul, eqfull2]
+  have hmeasS : MeasurableSet (simplex n) := (isClosed_simplex n).measurableSet
+  have hm2_aesm : AEStronglyMeasurable (fun s => m s ^ 2) (volume.restrict (simplex n)) :=
+    (hmi.aestronglyMeasurable.pow 2).restrict
+  have hm2_int : IntegrableOn (fun s => m s ^ 2) (simplex n) := by
+    refine Integrable.mono' hΦi.integrableOn hm2_aesm ?_
+    refine (ae_restrict_iff' hmeasS).mpr (Filter.Eventually.of_forall fun s hs => ?_)
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+    exact (key s hs).2
+  refine (integrableOn_congr_fun ?_ hmeasS).mpr hm2_int
+  intro s hs; dsimp only; rw [(key s hs).1]
+
+open MeasureTheory Set in
+/-- **Sup-norm continuity of each Maynard marginal `J_i`.** If `|F+G| ≤ A` and
+`|F−G| ≤ ε` pointwise on `simplex (n+1)`, with `F, G` continuous and supported on
+the simplex, then `|J_i F − J_i G| ≤ ε·A·vol(simplex n)`. The inner `[0,1−∑s]`
+integrals differ by `≤ ε` and sum to `≤ A` (integral monotonicity + the inserted
+point staying in the simplex), so the squared integrands differ by `≤ εA`. -/
+theorem J_i_sub_le_const (n : ℕ) (F G : (Fin (n + 1) → ℝ) → ℝ) (A ε : ℝ)
+    (hFc : Continuous F) (hGc : Continuous G)
+    (hFsupp : Function.support F ⊆ simplex (n + 1))
+    (hGsupp : Function.support G ⊆ simplex (n + 1))
+    (hsum : ∀ t ∈ simplex (n + 1), |F t + G t| ≤ A)
+    (happ : ∀ t ∈ simplex (n + 1), |F t - G t| ≤ ε)
+    (hε : 0 ≤ ε) (hA : 0 ≤ A) (i : Fin (n + 1)) :
+    |J_i (n + 1) F i - J_i (n + 1) G i| ≤ ε * A * (volume (simplex n)).toReal := by
+  classical
+  have hmeasS : MeasurableSet (simplex n) := (isClosed_simplex n).measurableSet
+  have hIF2 : IntegrableOn
+      (fun s => (∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2) (simplex n) :=
+    Ji_integrand_integrableOn n F hFc hFsupp i
+  have hIG2 : IntegrableOn
+      (fun s => (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2) (simplex n) :=
+    Ji_integrand_integrableOn n G hGc hGsupp i
+  -- pointwise bound `|iF² − iG²| ≤ εA` on the simplex
+  have hbound : ∀ s ∈ simplex n,
+      |(∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+        - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2| ≤ ε * A := by
+    intro s hs
+    obtain ⟨hs_nn, hs_sum⟩ := hs
+    have hsum_nn : 0 ≤ ∑ j, s j := Finset.sum_nonneg fun j _ => hs_nn j
+    set L := 1 - ∑ j, s j with hL
+    have hLnn : 0 ≤ L := by rw [hL]; linarith
+    have hL1 : L ≤ 1 := by rw [hL]; linarith
+    have hmem : ∀ ti ∈ Icc (0 : ℝ) L, i.insertNth ti s ∈ simplex (n + 1) := by
+      intro ti hti
+      refine ⟨fun j => ?_, ?_⟩
+      · rcases eq_or_ne j i with rfl | hj
+        · rw [Fin.insertNth_apply_same]; exact hti.1
+        · obtain ⟨j', rfl⟩ := Fin.exists_succAbove_eq hj
+          rw [Fin.insertNth_apply_succAbove]; exact hs_nn j'
+      · have hsum_eq : ∑ j, (i.insertNth ti s) j = ti + ∑ j, s j := by
+          rw [Fin.sum_univ_succAbove _ i, Fin.insertNth_apply_same]
+          congr 1
+          exact Finset.sum_congr rfl fun j _ => by rw [Fin.insertNth_apply_succAbove]
+        rw [hsum_eq]; have h2 := hti.2; rw [hL] at h2; linarith
+    have hcontF : Continuous (fun ti => F (i.insertNth ti s)) :=
+      hFc.comp (Continuous.finInsertNth (A := fun _ : Fin (n + 1) => ℝ) i
+        continuous_id continuous_const)
+    have hcontG : Continuous (fun ti => G (i.insertNth ti s)) :=
+      hGc.comp (Continuous.finInsertNth (A := fun _ : Fin (n + 1) => ℝ) i
+        continuous_id continuous_const)
+    have hintF : IntegrableOn (fun ti => F (i.insertNth ti s)) (Icc 0 L) := hcontF.integrableOn_Icc
+    have hintG : IntegrableOn (fun ti => G (i.insertNth ti s)) (Icc 0 L) := hcontG.integrableOn_Icc
+    have hmIcc : MeasurableSet (Icc (0 : ℝ) L) := measurableSet_Icc
+    have hvolIcc : (volume (Icc (0 : ℝ) L)).toReal = L := by
+      rw [Real.volume_Icc, ENNReal.toReal_ofReal (by linarith)]; ring
+    have hvol_ne : volume (Icc (0 : ℝ) L) ≠ ⊤ := by
+      rw [Real.volume_Icc]; exact ENNReal.ofReal_lt_top.ne
+    have hconstε : IntegrableOn (fun _ : ℝ => ε) (Icc 0 L) := integrableOn_const hvol_ne
+    have hconstA : IntegrableOn (fun _ : ℝ => A) (Icc 0 L) := integrableOn_const hvol_ne
+    have hdiff : |(∫ ti in Icc 0 L, F (i.insertNth ti s))
+                  - (∫ ti in Icc 0 L, G (i.insertNth ti s))| ≤ ε := by
+      rw [← integral_sub hintF hintG]
+      have habs : |∫ ti in Icc 0 L, (F (i.insertNth ti s) - G (i.insertNth ti s))|
+          ≤ ∫ ti in Icc 0 L, |F (i.insertNth ti s) - G (i.insertNth ti s)| := by
+        simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm
+          (μ := volume.restrict (Icc (0:ℝ) L))
+          (f := fun ti => F (i.insertNth ti s) - G (i.insertNth ti s))
+      refine habs.trans ?_
+      calc ∫ ti in Icc 0 L, |F (i.insertNth ti s) - G (i.insertNth ti s)|
+          ≤ ∫ _ti in Icc 0 L, ε :=
+            setIntegral_mono_on (hintF.sub hintG).abs hconstε hmIcc
+              (fun ti hti => happ _ (hmem ti hti))
+        _ = ε * L := by rw [setIntegral_const, smul_eq_mul, measureReal_def, hvolIcc, mul_comm]
+        _ ≤ ε := by nlinarith
+    have hsm : |(∫ ti in Icc 0 L, F (i.insertNth ti s))
+                  + (∫ ti in Icc 0 L, G (i.insertNth ti s))| ≤ A := by
+      rw [← integral_add hintF hintG]
+      have habs : |∫ ti in Icc 0 L, (F (i.insertNth ti s) + G (i.insertNth ti s))|
+          ≤ ∫ ti in Icc 0 L, |F (i.insertNth ti s) + G (i.insertNth ti s)| := by
+        simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm
+          (μ := volume.restrict (Icc (0:ℝ) L))
+          (f := fun ti => F (i.insertNth ti s) + G (i.insertNth ti s))
+      refine habs.trans ?_
+      calc ∫ ti in Icc 0 L, |F (i.insertNth ti s) + G (i.insertNth ti s)|
+          ≤ ∫ _ti in Icc 0 L, A :=
+            setIntegral_mono_on (hintF.add hintG).abs hconstA hmIcc
+              (fun ti hti => hsum _ (hmem ti hti))
+        _ = A * L := by rw [setIntegral_const, smul_eq_mul, measureReal_def, hvolIcc, mul_comm]
+        _ ≤ A := by nlinarith
+    have hfac : (∫ ti in Icc 0 L, F (i.insertNth ti s)) ^ 2
+                  - (∫ ti in Icc 0 L, G (i.insertNth ti s)) ^ 2
+                = ((∫ ti in Icc 0 L, F (i.insertNth ti s))
+                    - (∫ ti in Icc 0 L, G (i.insertNth ti s)))
+                  * ((∫ ti in Icc 0 L, F (i.insertNth ti s))
+                    + (∫ ti in Icc 0 L, G (i.insertNth ti s))) := by ring
+    rw [hfac, abs_mul]
+    exact mul_le_mul hdiff hsm (abs_nonneg _) hε
+  -- assemble
+  rw [show J_i (n + 1) F i
+        = ∫ s in simplex n, (∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2 from rfl,
+      show J_i (n + 1) G i
+        = ∫ s in simplex n, (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2 from rfl,
+      ← integral_sub hIF2 hIG2]
+  have habs : |∫ s in simplex n, ((∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+            - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2)|
+      ≤ ∫ s in simplex n, |(∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+            - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2| := by
+    simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm
+      (μ := volume.restrict (simplex n))
+      (f := fun s => (∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+            - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2)
+  have hIabs : IntegrableOn
+      (fun s => |(∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+        - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2|) (simplex n) := by
+    simpa only [Pi.sub_apply] using (hIF2.sub hIG2).abs
+  refine habs.trans ?_
+  calc ∫ s in simplex n, |(∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
+            - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2|
+      ≤ ∫ _s in simplex n, ε * A :=
+        setIntegral_mono_on hIabs
+          (integrableOn_const (isCompact_simplex n).measure_lt_top.ne) hmeasS
+          (fun s hs => hbound s hs)
+    _ = ε * A * (volume (simplex n)).toReal := by
+        rw [setIntegral_const, smul_eq_mul, measureReal_def]; ring
+
+open MeasureTheory in
+/-- **Sup-norm continuity of the Maynard numerator.** Summing `J_i_sub_le_const`
+over the `k` marginals. -/
+theorem mkF_numerator_sub_le_const (k : ℕ) (F G : (Fin k → ℝ) → ℝ) (A ε : ℝ)
+    (hFc : Continuous F) (hGc : Continuous G)
+    (hFsupp : Function.support F ⊆ simplex k) (hGsupp : Function.support G ⊆ simplex k)
+    (hsum : ∀ t ∈ simplex k, |F t + G t| ≤ A) (happ : ∀ t ∈ simplex k, |F t - G t| ≤ ε)
+    (hε : 0 ≤ ε) (hA : 0 ≤ A) :
+    |mkF_numerator k F - mkF_numerator k G|
+      ≤ (k : ℝ) * (ε * A * (volume (simplex (k - 1))).toReal) := by
+  cases k with
+  | zero => simp [mkF_numerator]
+  | succ n =>
+    rw [mkF_numerator_eq_sum_J_i, mkF_numerator_eq_sum_J_i, ← Finset.sum_sub_distrib]
+    refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+    refine (Finset.sum_le_sum (fun i _ =>
+      J_i_sub_le_const n F G A ε hFc hGc hFsupp hGsupp hsum happ hε hA i)).trans ?_
+    rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
+      Nat.add_sub_cancel]
+
 /-- **Separable $L^2$-approximation of the Maynard ratio** (pure real analysis —
 the *narrowed analytic core* of the cited `exists_separable_F_of_Mk_gt`).
 
