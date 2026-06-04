@@ -1203,6 +1203,38 @@ theorem correction_abs_bound {ι : Type*} (s : Finset ι) (w val main : ι → �
   gcongr
   exact diag_error_bound (s.filter diag) w val main herr
 
+/-- **Off-diagonal heuristic-main absolute bound (leaf 3 narrowing).** When the heuristic main
+`main P ≥ 0`, the off-diagonal main term `|∑_{¬diag} wₚ·(−mainₚ)|` is bounded by the *absolute*
+weighted sum `∑_{¬diag} |wₚ|·mainₚ` (triangle inequality + `|wₚ·(−mainₚ)| = |wₚ|·mainₚ`). Turns the
+signed off-diagonal obligation into a clean nonnegative size bound. -/
+theorem offdiag_main_abs_le {ι : Type*} (s : Finset ι) (w main : ι → ℝ)
+    (hmain : ∀ P ∈ s, 0 ≤ main P) :
+    |∑ P ∈ s, w P * (- main P)| ≤ ∑ P ∈ s, |w P| * main P := by
+  calc |∑ P ∈ s, w P * (- main P)|
+      ≤ ∑ P ∈ s, |w P * (- main P)| := Finset.abs_sum_le_sum_abs _ _
+    _ = ∑ P ∈ s, |w P| * main P := by
+        refine Finset.sum_congr rfl (fun P hP => ?_)
+        rw [abs_mul, abs_neg, abs_of_nonneg (hmain P hP)]
+
+/-- **Fully-explicit correction bound (s1 obligation, both halves nonnegative).** Combines
+`correction_abs_bound` (split + diagonal `O(1)` error) with `offdiag_main_abs_le` (off-diagonal main
+`≥ 0`): the whole correction is bounded by the diagonal total weight `∑_{diag}|wₚ|` PLUS the
+off-diagonal weighted-main sum `∑_{¬diag}|wₚ|·mainₚ`. So `s1`'s analytic obligation `correction =
+o(main)` reduces to two CLEAN nonnegative size estimates: `∑_{diag}|wₚ| = o(main)` (leaf 2, DONE via
+`diagonal_weight_le_hyperbola`) and `∑_{¬diag}|wₚ|·mainₚ = o(main)` (leaf 3, the singular-series
+discrepancy). -/
+theorem correction_abs_bound_offdiag {ι : Type*} (s : Finset ι) (w val main : ι → ℝ)
+    (diag : ι → Prop) [DecidablePred diag]
+    (hvanish : ∀ P ∈ s, ¬ diag P → val P = 0)
+    (herr : ∀ P ∈ s.filter diag, |val P - main P| ≤ 1)
+    (hmain : ∀ P ∈ s.filter (fun P => ¬ diag P), 0 ≤ main P) :
+    |∑ P ∈ s, w P * (val P - main P)|
+      ≤ (∑ P ∈ s.filter diag, |w P|)
+        + ∑ P ∈ s.filter (fun P => ¬ diag P), |w P| * main P := by
+  refine (correction_abs_bound s w val main diag hvanish herr).trans ?_
+  gcongr
+  exact offdiag_main_abs_le (s.filter (fun P => ¬ diag P)) w main hmain
+
 /-- **The Möbius-weighted (Selberg) quadratic form is PSD.** Direct instance of
 `gpy_quadform_nonneg` at `w = μ·g` (the `lambdaTransform` summand): the
 per-coordinate GPY quadratic form `∑_{d,e} μ(d)g(d)·μ(e)g(e)/[d,e]` is `≥ 0`. -/
