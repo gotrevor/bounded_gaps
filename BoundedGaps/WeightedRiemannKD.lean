@@ -96,4 +96,47 @@ lemma nestedLogSum_pair (R : ℕ) (g h : ℝ → ℝ) :
   refine Finset.sum_congr rfl (fun n₂ _ => ?_)
   ring
 
+open BoundedGaps.WeightedRiemann2D (perturbed_riemann)
+
+/-- **Generic factor step** (the `three_d_factor` analog, any list length). The level-`k+1` nested
+sum, normalized by `(log R)^(k+1)`, factors over the OUTER index `n` into the `perturbed_riemann`
+shape with inner term `a R n := nestedLogSum R gs (R/n) / (log R)^k`. Pure field algebra. -/
+lemma nestedLogSum_factor (R : ℕ) (g : ℝ → ℝ) (gs : List (ℝ → ℝ)) :
+    nestedLogSum R (g :: gs) R / (Real.log R) ^ (gs.length + 1)
+      = (∑ n ∈ Finset.Icc 2 R, g (Real.log n / Real.log R)
+          * (nestedLogSum R gs (R / n) / (Real.log R) ^ gs.length) / (n : ℝ)) / Real.log R := by
+  rw [nestedLogSum_cons]
+  have key : ∀ n ∈ Finset.Icc 2 R,
+      g (Real.log n / Real.log R)
+          * (nestedLogSum R gs (R / n) / (Real.log R) ^ gs.length) / (n : ℝ)
+      = (g (Real.log n / Real.log R) * nestedLogSum R gs (R / n) / (n : ℝ))
+          / (Real.log R) ^ gs.length := by
+    intro n _; ring
+  rw [Finset.sum_congr rfl key, ← Finset.sum_div, div_div, ← pow_succ]
+  congr 1
+  exact Finset.sum_congr rfl (fun n _ => by ring)
+
+/-- **Generic inductive-step reduction** (the `weighted_riemann_3d_of_inner` analog, any list).
+GIVEN the inner-uniform convergence of the `(k-1)`-D tail
+`nestedLogSum R gs (R/n)/(log R)^k → nestedPhi gs` (uniformly in `n ∈ [2,R]`) and continuity of the
+tail limit `nestedPhi gs`, the level-`k` simplex
+limit holds: `nestedLogSum R (g::gs) R / (log R)^|g::gs| → nestedPhi (g::gs) 0`. Combines
+`nestedLogSum_factor` with the SAME reusable `perturbed_riemann` (outer `F := g`, `Φ := nestedPhi
+gs`). This is the engine; the remaining inductive obligations (the inner-uniform — via Pólya + the
+`t`-rescaling pointwise step reducing to level `k-1` — and `nestedPhi gs` continuity) mirror the 3-D
+`inner_uniform_3d_of_pointwise_nonneg` / `psi3_pointwise` / `phi2_continuous` one list-cons up. -/
+theorem weighted_riemann_cons_of_inner (g : ℝ → ℝ) (gs : List (ℝ → ℝ))
+    (hg : ContinuousOn g (Set.Icc (0 : ℝ) 1))
+    (hΦcont : ContinuousOn (nestedPhi gs) (Set.Icc (0 : ℝ) 1))
+    (huni : ∀ ε > 0, ∀ᶠ R : ℕ in atTop, ∀ n ∈ Finset.Icc 2 R,
+        |nestedLogSum R gs (R / n) / (Real.log R) ^ gs.length
+          - nestedPhi gs (Real.log n / Real.log R)| ≤ ε) :
+    Tendsto (fun R : ℕ => nestedLogSum R (g :: gs) R / (Real.log R) ^ (g :: gs).length)
+      atTop (nhds (nestedPhi (g :: gs) 0)) := by
+  have hlim : nestedPhi (g :: gs) 0 = ∫ x in (0 : ℝ)..1, g x * nestedPhi gs x := by
+    rw [nestedPhi_cons]; simp only [sub_zero, zero_add]
+  rw [hlim, List.length_cons, funext (fun R => nestedLogSum_factor R g gs)]
+  exact perturbed_riemann g (nestedPhi gs)
+    (fun R n => nestedLogSum R gs (R / n) / (Real.log R) ^ gs.length) hg hΦcont huni
+
 end BoundedGaps.WeightedRiemannKD
