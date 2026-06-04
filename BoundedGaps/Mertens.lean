@@ -651,4 +651,16 @@ theorem sum_one_div_n_log_n_le {N : ℕ} (hN : 2 ≤ N) :
   push_cast
   ring_nf
 
+/-- **General Abel summation identity** (summation by parts): with partial sums
+`A n = ∑_{1 ≤ k ≤ n} a k`,
+`∑_{1≤n≤N} a n · w n = A N · w N − ∑_{1≤n≤N-1} A n · (w (n+1) − w n)`.
+Proved by Aristotle (`431512dd`, induction on `N`); verified kernel-clean under
+v4.29.1. The general-weight tool for the second Mertens Abel step (weight `1/log p`). -/
+theorem abel_summation_identity (N : ℕ) (a w : ℕ → ℝ) :
+    ∑ n ∈ Finset.Icc 1 N, a n * w n
+      = (∑ k ∈ Finset.Icc 1 N, a k) * w N
+        - ∑ n ∈ Finset.Icc 1 (N - 1), (∑ k ∈ Finset.Icc 1 n, a k) * (w (n + 1) - w n) := by
+  induction' N with N ih <;> simp_all +decide [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] ; ring!;
+  cases N <;> norm_num [ add_comm, Finset.sum_Ioc_succ_top ] at * ; linarith!;
+
 end BoundedGaps.Mertens
