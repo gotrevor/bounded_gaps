@@ -528,4 +528,16 @@ theorem summable_norm_bAF_log_of_bound {C : ℝ}
             (by simp [norm_bAF_zero]) m).symm
       _ ≤ C := hC m
 
+/-- **Sharp Mertens from the two partial-sum bounds (one-shot).** Packages the full
+reduction: given the unweighted and `log`-weighted Euler-product bounds (the two
+Aristotle leaves), `(∑_{n≤N} μ²/φ)/log N → 1`. Porting `830e5129` (and its
+`log`-weighted sister) into `h1`/`h2` makes the sharp Mertens fully unconditional. -/
+theorem sharp_mertens_of_bounds {C₁ C₂ : ℝ}
+    (h1 : ∀ N, ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ ≤ C₁)
+    (h2 : ∀ N, ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ * |Real.log (e : ℝ)| ≤ C₂) :
+    Filter.Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) / Real.log N)
+      Filter.atTop (nhds 1) :=
+  sharp_mertens_tendsto (summable_norm_bAF_of_bound h1) (summable_norm_bAF_log_of_bound h2)
+
 end BoundedGaps.SharpMertens
