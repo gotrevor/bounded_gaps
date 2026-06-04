@@ -796,6 +796,62 @@ theorem sum_gabs_divisors_multiples_le {N p : ℕ} (hp : p.Prime) (hpN : p ≤ N
       _ ≤ Real.exp 2 := sum_gabs_divisors_primorial_sq_le N
   exact mul_le_mul_of_nonneg_left hBle hApos
 
+/-- A product of **distinct primes** is squarefree: each prime exponent is `≤ 1`. -/
+lemma prod_primes_factorization_le_one {T : Finset ℕ} (hT : ∀ q ∈ T, q.Prime) (p : ℕ) :
+    (∏ q ∈ T, q).factorization p ≤ 1 := by
+  classical
+  rw [Nat.factorization_prod (fun q hq => (hT q hq).pos.ne'), Finset.sum_apply']
+  have hcongr : ∑ q ∈ T, (q.factorization) p = ∑ q ∈ T, (if q = p then 1 else 0) :=
+    Finset.sum_congr rfl (fun q hq => by rw [(hT q hq).factorization, Finsupp.single_apply])
+  rw [hcongr, Finset.sum_ite_eq' T p (fun _ => 1)]
+  split <;> norm_num
+
+/-- The primorial is squarefree: `(N#).factorization p ≤ 1`. -/
+lemma primorial_factorization_le_one (N p : ℕ) : (primorial N).factorization p ≤ 1 :=
+  prod_primes_factorization_le_one (fun q hq => (Finset.mem_filter.mp hq).2) p
+
+/-- **(A) Log bound.** For `d ∣ (N#)²` (all prime exponents `≤ 2`), `d ∣ rad(d)²`, so
+`log d ≤ 2·log(rad d) = 2·∑_{p∣d} log p`. -/
+lemma log_le_two_sum_log_primeFactors {N d : ℕ} (hd : d ∈ ((primorial N) ^ 2).divisors) :
+    Real.log d ≤ 2 * ∑ p ∈ d.primeFactors, Real.log p := by
+  obtain ⟨hdvd, hMne⟩ := Nat.mem_divisors.mp hd
+  have hd_ne : d ≠ 0 := ne_zero_of_dvd_ne_zero hMne hdvd
+  set rad := ∏ p ∈ d.primeFactors, p with hrad
+  have hrad_pos : 0 < rad :=
+    Finset.prod_pos (fun p hp => (Nat.prime_of_mem_primeFactors hp).pos)
+  have hfact2 : ∀ p, d.factorization p ≤ 2 := by
+    intro p
+    have h1 := (Nat.factorization_le_iff_dvd hd_ne hMne).mpr hdvd p
+    have h2 : ((primorial N) ^ 2).factorization p ≤ 2 := by
+      rw [Nat.factorization_pow, Finsupp.smul_apply, smul_eq_mul]
+      have := primorial_factorization_le_one N p; omega
+    omega
+  have hd_dvd : d ∣ rad ^ 2 := by
+    rw [← Nat.factorization_le_iff_dvd hd_ne (by positivity)]
+    intro p
+    rw [Nat.factorization_pow, Finsupp.smul_apply, smul_eq_mul]
+    by_cases hp : p ∈ d.primeFactors
+    · have hpr : p.Prime := Nat.prime_of_mem_primeFactors hp
+      have hpdvd : p ∣ rad := hrad ▸ Finset.dvd_prod_of_mem _ hp
+      have hpos : 1 ≤ rad.factorization p :=
+        hpr.factorization_pos_of_dvd hrad_pos.ne' hpdvd
+      have := hfact2 p; omega
+    · have : d.factorization p = 0 := by
+        rw [← Nat.support_factorization] at hp
+        exact Finsupp.notMem_support_iff.mp hp
+      omega
+  have hle : (d : ℝ) ≤ (rad : ℝ) ^ 2 := by
+    have := Nat.le_of_dvd (by positivity) hd_dvd
+    push_cast; exact_mod_cast this
+  have hlograd : Real.log (rad : ℝ) = ∑ p ∈ d.primeFactors, Real.log p := by
+    rw [hrad, Nat.cast_prod,
+        Real.log_prod (fun p hp =>
+          Nat.cast_ne_zero.mpr (Nat.prime_of_mem_primeFactors hp).pos.ne')]
+  calc Real.log d ≤ Real.log ((rad : ℝ) ^ 2) :=
+        Real.log_le_log (by exact_mod_cast Nat.pos_of_ne_zero hd_ne) hle
+    _ = 2 * Real.log (rad : ℝ) := by rw [Real.log_pow]; push_cast; ring
+    _ = 2 * ∑ p ∈ d.primeFactors, Real.log p := by rw [hlograd]
+
 /-! ## Analytic crux of the log-weighted bound #2: `∑_p (log p)/(p(p-1)) < ∞`
 
 The log-weighted summability hypothesis of `sharp_mertens_tendsto` reduces (after the
