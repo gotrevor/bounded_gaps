@@ -1985,50 +1985,136 @@ theorem mkF_numerator_sub_le_const (k : ℕ) (F G : (Fin k → ℝ) → ℝ) (A 
     rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
       Nat.add_sub_cancel]
 
-/-- **Separable $L^2$-approximation of the Maynard ratio** (pure real analysis —
-the *narrowed analytic core* of the cited `exists_separable_F_of_Mk_gt`).
+open MeasureTheory in
+/-- **Sup-norm continuity of the Maynard ratio `MkF`.** For a fixed admissible `F`
+and any target `etarget > 0`, there is `δ > 0` such that every continuous,
+simplex-supported `G` within sup-distance `δ` of `F` on the simplex has positive
+denominator and `|MkF G − MkF F| < etarget`. Combines the numerator/denominator
+sup-continuity with the quotient rule (the denominator stays `≥ den F / 2` for
+small `δ`). This is the **continuity half of `sep_approx`, proved in-kernel**. -/
+theorem mkF_sub_lt_of_sup_le (k : ℕ) (F : (Fin k → ℝ) → ℝ)
+    (hFc : Continuous F) (hFsupp : Function.support F ⊆ simplex k)
+    (hFden : 0 < mkF_denominator k F) (etarget : ℝ) (hetarget : 0 < etarget) :
+    ∃ δ > 0, ∀ G : (Fin k → ℝ) → ℝ, Continuous G → Function.support G ⊆ simplex k →
+      (∀ t ∈ simplex k, |F t - G t| ≤ δ) →
+      0 < mkF_denominator k G ∧ |MkF k G - MkF k F| < etarget := by
+  obtain ⟨CF, hCF0, hCF⟩ : ∃ CF : ℝ, 0 ≤ CF ∧ ∀ t ∈ simplex k, |F t| ≤ CF := by
+    obtain ⟨CF, hCF⟩ := (isCompact_simplex k).exists_bound_of_continuousOn hFc.continuousOn
+    exact ⟨max CF 0, le_max_right _ _, fun t ht => (hCF t ht).trans (le_max_left _ _)⟩
+  set A0 : ℝ := 2 * CF + 1 with hA0
+  have hA0pos : 0 < A0 := by rw [hA0]; linarith
+  set vk : ℝ := (volume (simplex k)).toReal with hvk
+  set vk1 : ℝ := (volume (simplex (k - 1))).toReal with hvk1
+  have hvk0 : 0 ≤ vk := ENNReal.toReal_nonneg
+  have hvk10 : 0 ≤ vk1 := ENNReal.toReal_nonneg
+  set den : ℝ := mkF_denominator k F with hden
+  set numF : ℝ := mkF_numerator k F with hnumF
+  -- the numerator-bound slope `S` (so `N = δ·S`)
+  set S : ℝ := A0 * ((k : ℝ) * vk1 * den + |numF| * vk) with hS
+  have hSinner : 0 ≤ (k : ℝ) * vk1 * den + |numF| * vk :=
+    add_nonneg (mul_nonneg (mul_nonneg (Nat.cast_nonneg k) hvk10) hFden.le)
+      (mul_nonneg (abs_nonneg _) hvk0)
+  have hS0 : 0 ≤ S := mul_nonneg hA0pos.le hSinner
+  have hAvk0 : 0 ≤ A0 * vk := mul_nonneg hA0pos.le hvk0
+  have hP : 0 < etarget * den ^ 2 := mul_pos hetarget (pow_pos hFden 2)
+  set δ : ℝ := min 1 (min (den / (2 * (A0 * vk) + 2)) (etarget * den ^ 2 / (2 * S + 2))) with hδdef
+  have hδpos : 0 < δ := by
+    rw [hδdef]; refine lt_min one_pos (lt_min ?_ ?_)
+    · positivity
+    · apply div_pos hP; linarith
+  refine ⟨δ, hδpos, ?_⟩
+  intro G hGc hGsupp hclose
+  have hδ1 : δ ≤ 1 := min_le_left _ _
+  have hδ2 : δ ≤ den / (2 * (A0 * vk) + 2) := (min_le_right _ _).trans (min_le_left _ _)
+  have hδ3 : δ ≤ etarget * den ^ 2 / (2 * S + 2) := (min_le_right _ _).trans (min_le_right _ _)
+  -- uniform bound `|F+G| ≤ A0`
+  have hsumG : ∀ t ∈ simplex k, |F t + G t| ≤ A0 := by
+    intro t ht
+    have hFt := abs_le.mp (hCF t ht); have hFGt := abs_le.mp (hclose t ht)
+    rw [hA0, abs_le]; constructor <;> nlinarith [hFt.1, hFt.2, hFGt.1, hFGt.2, hδ1]
+  -- denominator closeness + lower bound `den/2`
+  have hDden : |den - mkF_denominator k G| ≤ δ * A0 * vk := by
+    rw [hden, hvk]
+    exact mkF_denominator_sub_le_const k F G A0 δ hFc hGc hsumG hclose
+  have hden2 : δ * A0 * vk ≤ den / 2 := by
+    have hmul : δ * (2 * (A0 * vk) + 2) ≤ den := (le_div_iff₀ (by linarith)).mp hδ2
+    nlinarith [hmul, hδpos, hAvk0]
+  have hdenG_lb : den / 2 ≤ mkF_denominator k G := by
+    have hh := abs_le.mp (hDden.trans hden2); linarith [hh.1]
+  have hdenG_pos : 0 < mkF_denominator k G := by linarith [hdenG_lb, hFden]
+  refine ⟨hdenG_pos, ?_⟩
+  -- numerator closeness
+  have hDnum : |numF - mkF_numerator k G| ≤ (k : ℝ) * (δ * A0 * vk1) := by
+    rw [hnumF, hvk1]
+    exact mkF_numerator_sub_le_const k F G A0 δ hFc hGc hFsupp hGsupp hsumG hclose hδpos.le hA0pos.le
+  -- the ratio bound
+  rw [show MkF k G = mkF_numerator k G / mkF_denominator k G from rfl,
+      show MkF k F = numF / den from rfl,
+      div_sub_div _ _ (ne_of_gt hdenG_pos) (ne_of_gt hFden), abs_div]
+  have hposprod : 0 < mkF_denominator k G * den := mul_pos hdenG_pos hFden
+  rw [abs_of_pos hposprod, div_lt_iff₀ hposprod]
+  -- numerator bound: `|num_G·den − den_G·numF| ≤ δ·S`
+  have hnum_bound : |mkF_numerator k G * den - mkF_denominator k G * numF| ≤ δ * S := by
+    have heq : mkF_numerator k G * den - mkF_denominator k G * numF
+        = (mkF_numerator k G - numF) * den + numF * (den - mkF_denominator k G) := by ring
+    rw [heq]
+    calc |(mkF_numerator k G - numF) * den + numF * (den - mkF_denominator k G)|
+        ≤ |(mkF_numerator k G - numF) * den| + |numF * (den - mkF_denominator k G)| :=
+          abs_add_le _ _
+      _ = |mkF_numerator k G - numF| * den + |numF| * |den - mkF_denominator k G| := by
+          rw [abs_mul, abs_mul, abs_of_pos hFden]
+      _ ≤ (k : ℝ) * (δ * A0 * vk1) * den + |numF| * (δ * A0 * vk) :=
+          add_le_add (mul_le_mul_of_nonneg_right (by rw [abs_sub_comm]; exact hDnum) hFden.le)
+            (mul_le_mul_of_nonneg_left hDden (abs_nonneg _))
+      _ = δ * S := by rw [hS]; ring
+  -- `δ·S < etarget·den²/2 ≤ etarget·(den_G·den)`
+  have hbden : den ^ 2 / 2 ≤ mkF_denominator k G * den := by nlinarith [hdenG_lb, hFden]
+  have hSlt : δ * S < etarget * den ^ 2 / 2 := by
+    have hmul : δ * (2 * S + 2) ≤ etarget * den ^ 2 := (le_div_iff₀ (by linarith [hS0])).mp hδ3
+    nlinarith [hmul, hδpos, hS0]
+  calc |mkF_numerator k G * den - mkF_denominator k G * numF|
+      ≤ δ * S := hnum_bound
+    _ < etarget * den ^ 2 / 2 := hSlt
+    _ ≤ etarget * (mkF_denominator k G * den) := by nlinarith [hbden, hetarget]
 
-Any admissible smooth test function `F` on the `k`-simplex can be approximated,
-in the value of the Maynard ratio `MkF`, by a *finite-separable* (still smooth,
-simplex-supported, positive-denominator) test function `G`, to within any
-`ε > 0`.
-
-This isolates the genuine analytic content of separability, with **no number
-theory**:
-* **(continuity)** the functionals `mkF_numerator`/`mkF_denominator` are
-  continuous in `F` w.r.t. the `L²(simplex)` distance — both are integrals of
-  quadratics in `F` over the simplex, so `∫(G²−F²)=∫(G−F)(G+F)` is
-  Cauchy–Schwarz-controlled by `‖G−F‖_{L²}`, and `J_i` likewise after the inner
-  `t_i`-integral (a bounded operator on `L²`);
-* **(density)** finite sums of products of 1-D smooth bumps supported on small
-  boxes inside the *open* simplex are `L²(simplex)`-dense among smooth
-  simplex-supported `F` (box-tensor refinement; cf. the product-of-bumps witness
-  in `MkSet_nonempty`, which is already `IsFiniteSeparable`).
-
-`MkF k G` depends only on `G`'s values on the simplex, so the
-`support G ⊆ simplex k` clause is decoupled from the ratio and met by keeping
-each bump-box inside the simplex.
-
-Attack paths:
-1. Split into `mkF_continuous_L2` (concrete Cauchy–Schwarz bound on
-   `|MkF G − MkF F|` by the `L²` distance — `mkF_denominator` half is immediate;
-   `mkF_numerator`/`J_i` half via the fibration lemma `integral_fin_succ_eq`
-   used in `MkSet_bddAbove`) and `separable_dense_L2` (box-bump density). The
-   continuity half is in-kernel provable; density is then the lone residue.
-2. Box-tiling: cover `closure(support F) ⊆ open simplex` by small cubes inside
-   the simplex; take a smooth tensor-bump partition of unity; each piece is a
-   product of 1-D bumps (separable). Bound the `L²` error by uniform continuity
-   of `F` on the compact simplex.
-3. Stone–Weierstrass: coordinate functions generate a dense subalgebra of
-   `C(simplex)`; multiply the polynomial approximant by a separable bump equal to
-   `1` on `support F` (which sits in a box inside the simplex once slightly
-   shrunk) to restore `support ⊆ simplex`. -/
-axiom sep_approx (k : ℕ) (F : (Fin k → ℝ) → ℝ)
+/-- **Separable sup-norm density** (the irreducible analytic core of
+`exists_separable_F_of_Mk_gt`, with the continuity half discharged by
+`mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly
+approximable on the simplex, to within any `δ > 0`, by a *finite-separable*
+smooth simplex-supported `G`. Pure approximation theory, **no number theory**:
+finite sums of products of 1-D smooth bumps on small boxes inside the open
+simplex are sup-dense among smooth simplex-supported functions (box-tensor
+refinement; cf. the product-of-bumps witness in `MkSet_nonempty`). The positive
+denominator and the `MkF`-closeness are then automatic via `mkF_sub_lt_of_sup_le`. -/
+axiom separable_dense_sup (k : ℕ) (F : (Fin k → ℝ) → ℝ)
     (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex k)
-    (_hden : mkF_denominator k F > 0) (ε : ℝ) (_hε : 0 < ε) :
+    (_hden : mkF_denominator k F > 0) (δ : ℝ) (_hδ : 0 < δ) :
     ∃ G : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex k ∧
-      mkF_denominator k G > 0 ∧ |MkF k G - MkF k F| < ε
+      (∀ t ∈ simplex k, |F t - G t| ≤ δ)
+
+/-- **Separable approximation of the Maynard ratio** (the *narrowed analytic core*
+of the cited `exists_separable_F_of_Mk_gt`). Any admissible smooth `F` on the
+`k`-simplex can be approximated, in the value of the Maynard ratio `MkF`, by a
+*finite-separable* (still smooth, simplex-supported, positive-denominator) `G`,
+to within any `ε > 0`.
+
+**Now a theorem** (was a cited number-theory axiom): the continuity half is
+proved in-kernel (`mkF_sub_lt_of_sup_le`), so this rests only on the pure
+approximation-theory axiom `separable_dense_sup` (sup-norm density of separable
+functions). Take the continuity modulus `δ` for `ε`, get a separable `G` within
+sup-distance `δ`, and `mkF_sub_lt_of_sup_le` delivers `0 < den G` and
+`|MkF G − MkF F| < ε`. -/
+theorem sep_approx (k : ℕ) (F : (Fin k → ℝ) → ℝ)
+    (hF : ContDiff ℝ ∞ F) (hsupp : Function.support F ⊆ simplex k)
+    (hden : mkF_denominator k F > 0) (ε : ℝ) (hε : 0 < ε) :
+    ∃ G : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex k ∧
+      mkF_denominator k G > 0 ∧ |MkF k G - MkF k F| < ε := by
+  obtain ⟨δ, hδpos, hcont⟩ := mkF_sub_lt_of_sup_le k F hF.continuous hsupp hden ε hε
+  obtain ⟨G, hGsep, hGsm, hGsupp, hGclose⟩ := separable_dense_sup k F hF hsupp hden δ hδpos
+  obtain ⟨hGden, hGlt⟩ := hcont G hGsm.continuous hGsupp hGclose
+  exact ⟨G, hGsep, hGsm, hGsupp, hGden, hGlt⟩
 
 /-- **Separable realisation of $M_k$** (Polymath8b §6): if $c < M_k$
 then a witness $F$ realising $\mathrm{MkF}(k, F) > c$ may be taken to be a
