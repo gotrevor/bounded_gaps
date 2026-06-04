@@ -781,4 +781,16 @@ theorem sharp_mertens_of_bounds {C₁ C₂ : ℝ}
       Filter.atTop (nhds 1) :=
   sharp_mertens_tendsto (summable_norm_bAF_of_bound h1) (summable_norm_bAF_log_of_bound h2)
 
+/-- **Sharp Mertens from the log-weighted bound ALONE** (the unweighted bound #1 is now
+discharged unconditionally via `summable_norm_bAF`). So `(∑_{n≤N} μ²/φ)/log N → 1` rests on
+the single remaining ingredient: the `log`-weighted partial-sum bound `h2` (the von-Mangoldt
+/ divisor-sum reduction to the convergent `∑_p (log p)/(p(p-1))`, see `sum_log_div_primes_le`;
+on Aristotle `blog 4b5e45de`). -/
+theorem sharp_mertens_of_log_bound {C₂ : ℝ}
+    (h2 : ∀ N, ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ * |Real.log (e : ℝ)| ≤ C₂) :
+    Filter.Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) / Real.log N)
+      Filter.atTop (nhds 1) :=
+  sharp_mertens_tendsto summable_norm_bAF (summable_norm_bAF_log_of_bound h2)
+
 end BoundedGaps.SharpMertens
