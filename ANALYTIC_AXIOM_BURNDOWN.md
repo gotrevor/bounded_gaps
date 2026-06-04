@@ -726,3 +726,29 @@ monolithic uniform target. The classical "fixed-`m` scale change": `N = ⌊R^t�
 - Leaf (2) `∑_{diag}|coeff|=o(main)`: **DONE in-kernel**.
 - Leaf (3) off-diagonal heuristic main = o(main): OPEN (singular-series discrepancy, multi-lap).
 - Leaf (4) `IsLittleO` glue: **DONE**.
+
+## Leaf (1) SMOOTH CORE CLOSED: weighted_riemann_2d proven unconditionally (2026-06-04, lap N+3 cont.)
+
+Continuing the same lap, `psi_tendsto` (the 1-D pointwise scale-change limit, the sole remaining
+ingredient) was PROVEN in-kernel, and fed through the reduction chain to close the 2-D limit. Commit
+`68e9eb0`; `#print axioms` clean; full build green (8280). The three redundant Aristotle leaf-1 jobs
+(`3e2b6a8d` monolithic 2-D, `79da4f45` inner_uniform, `1f84c4d6` psi_tendsto) were CANCELLED.
+
+- **`psi_tendsto`** (`InnerUniformReduction.lean`): `Ψ G R t = (∑_{n≤⌊R^t⌋} G(log n/log R)/n)/log R
+  → ∫₀^t G` for fixed `t∈[0,1]`, continuous `G`. Proof: with `N=⌊R^t⌋`, `c_R=log N/log R`,
+  `Ψ G R t = c_R · B R`. `B R → ∫₀¹ G(t·u)du` because the `c_R`-drifted Riemann sum equals the
+  `t`-scaled one (`riemann_sum_log_weight` on `F_t=G(t·)`, composed with `N→∞`) up to an error
+  bounded by `(ε/4)·(∑1/n)/log N ≤ ε/2` (uniform continuity of `G` gives the per-term `ε/4`; the
+  harmonic ratio `tendsto_harmonic_icc2_div_log` gives the `≤2`). `c_R → t`
+  (`tendsto_logFloor_rpow_div`). Substitution `t·∫₀¹G(t·u)du = ∫₀^t G` via
+  `intervalIntegral.mul_integral_comp_mul_left`.
+- **`weighted_riemann_2d`** (UNCONDITIONAL): `weighted_riemann_2d_of_psi_pointwise … (fun H hH t ht
+  => psi_tendsto H hH t ht)`. The 2-D simplex weighted Riemann limit = leaf 1's smooth core, CLOSED.
+
+### s1 leaf scoreboard (after lap N+3 cont.)
+- Leaf (1) diagonal asymptotic **SMOOTH CORE CLOSED** (`weighted_riemann_2d` proven). REMAINING:
+  the GPY port — connect `gpy_diagonal_asymptotic_form`'s `∑_{r sf}(φ/r²)z_r²` to the
+  `weighted_riemann_2d` double-sum shape (Möbius/singular-series manipulation) + `𝔖(H)` Euler product.
+- Leaf (2) `∑_{diag}|coeff|=o(main)`: **DONE in-kernel**.
+- Leaf (3) off-diagonal heuristic main = o(main): OPEN (singular-series discrepancy, multi-lap).
+- Leaf (4) `IsLittleO` glue: **DONE**.
