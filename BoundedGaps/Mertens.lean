@@ -1570,4 +1570,212 @@ theorem mertens2_two_sided_of_tail (N : ℕ) (hN : 3 ≤ N)
   · exact mertens2_upper_of N hN (Real.log 4 + 5) hC
       (fun n hn => mertens_prime_log_upper_of_tail n hn (htail n hn))
 
+/-! ## Discharging the prime-power tail — fully UNCONDITIONAL `∑ μ²/φ = Θ(log N)`
+
+The last gate. The proper-prime-power tail `∑_{n≤N, IsPrimePow ∧ ¬Prime} Λ(n)/n` is
+bounded by an absolute constant (`≤ 3`), proved here from scratch:
+`Chebyshev.sum_PrimePow_eq_sum_sum` regroups it as `∑_{k≥2} ∑_{p≤N^{1/k}} (log p)/p^k`
+(subtracting the `k=1` primes); bounding each `k`-slice's range to `[2,N]` makes the `k`
+and `n` ranges independent, so `Finset.sum_comm` swaps them; the inner geometric
+`∑_{k≥2} n^{-k} ≤ 1/(n(n−1)) ≤ 2/n²` (`geom_tail_le`) and the convergent
+`∑ (log n)/n² = O(1)` (`sum_log_div_sq_le`) close it. With the tail discharged, the entire
+sharp chain — `∑(log p)/p`, Mertens 2nd, and the headline `∑ μ²/φ = Θ(log N)` — becomes
+**unconditional** (`#print axioms = [propext, Classical.choice, Quot.sound]`). -/
+
+/-- Regrouping of the proper-prime-power tail (`Chebyshev.sum_PrimePow_eq_sum_sum`, minus
+the `k=1` prime slice): `tail = ∑_{k=2}^{⌊log N/log2⌋} ∑_{p≤⌊N^{1/k}⌋} Λ(p^k)/p^k`. -/
+theorem tail_eq_kge2 (N : ℕ) (hN : 2 ≤ N) :
+    ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n),
+        ArithmeticFunction.vonMangoldt n / (n : ℝ)
+      = ∑ k ∈ Finset.Icc 2 ⌊Real.log N / Real.log 2⌋₊,
+          ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / k)⌋₊).filter (fun p => p.Prime),
+            ArithmeticFunction.vonMangoldt (p ^ k) / ((p ^ k : ℕ) : ℝ) := by
+  set f : ℕ → ℝ := fun n => ArithmeticFunction.vonMangoldt n / (n : ℝ) with hf
+  set K : ℕ := ⌊Real.log N / Real.log 2⌋₊ with hK
+  have hA : ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n), f n
+      = (∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n), f n)
+        - ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, f p := by
+    have hsplit : ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n), f n
+        = (∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ Nat.Prime n), f n)
+          + ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n), f n := by
+      rw [← Finset.filter_filter, ← Finset.filter_filter, Finset.sum_filter_add_sum_filter_not]
+    have hPP : (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ Nat.Prime n)
+        = (Finset.Icc 1 N).filter Nat.Prime := by
+      apply Finset.filter_congr
+      intro x _; simp only [and_iff_right_iff_imp]
+      exact fun hp => hp.isPrimePow
+    rw [hPP] at hsplit; linarith [hsplit]
+  have hB : ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n), f n
+      = ∑ k ∈ Finset.Icc 1 K, ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / k)⌋₊).filter (fun p => p.Prime),
+          f (p ^ k) := by
+    rw [show Finset.Icc 1 N = Finset.Ioc 0 ⌊(N : ℝ)⌋₊ from by
+          rw [Nat.floor_natCast]; ext x; simp only [Finset.mem_Icc, Finset.mem_Ioc]; omega]
+    rw [Chebyshev.sum_PrimePow_eq_sum_sum f (by positivity : (0 : ℝ) ≤ (N : ℝ))]
+  have hslice1 : ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, f p
+      = ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / (1 : ℕ))⌋₊).filter (fun p => p.Prime), f (p ^ (1 : ℕ)) := by
+    have hfloor1 : ⌊(N : ℝ) ^ ((1 : ℝ) / (1 : ℕ))⌋₊ = N := by
+      rw [Nat.cast_one, div_one, Real.rpow_one, Nat.floor_natCast]
+    rw [hfloor1, show Finset.Ioc 0 N = Finset.Icc 1 N from by
+          ext x; simp only [Finset.mem_Ioc, Finset.mem_Icc]; omega]
+    apply Finset.sum_congr rfl
+    intro p _; rw [pow_one]
+  have hKpos : 1 ≤ K := by
+    rw [hK, Nat.le_floor_iff (by positivity), le_div_iff₀ (Real.log_pos (by norm_num))]
+    have : Real.log 2 ≤ Real.log N := Real.log_le_log (by norm_num) (by exact_mod_cast hN)
+    push_cast; linarith
+  rw [hA, hB, hslice1]
+  rw [show Finset.Icc 1 K = insert 1 (Finset.Icc 2 K) from by
+        ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega,
+      Finset.sum_insert (by simp [Finset.mem_Icc])]
+  ring
+
+/-- The regrouped tail is bounded by the absolute constant `3`, uniformly in `N`. Each
+`k`-slice's prime range is widened to `[2,N]` (making the `k,n` ranges independent), then
+`Finset.sum_comm` + `geom_tail_le` + `sum_log_div_sq_le`. -/
+theorem tail_kge2_le (N : ℕ) (hN : 2 ≤ N) :
+    ∑ k ∈ Finset.Icc 2 ⌊Real.log N / Real.log 2⌋₊,
+        ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / k)⌋₊).filter (fun p => p.Prime),
+          ArithmeticFunction.vonMangoldt (p ^ k) / ((p ^ k : ℕ) : ℝ)
+      ≤ 3 := by
+  set K : ℕ := ⌊Real.log N / Real.log 2⌋₊ with hK
+  have h1N : (1 : ℝ) ≤ N := by exact_mod_cast (by omega : 1 ≤ N)
+  have hD1 : ∀ k ∈ Finset.Icc 2 K,
+      ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / k)⌋₊).filter (fun p => p.Prime),
+          ArithmeticFunction.vonMangoldt (p ^ k) / ((p ^ k : ℕ) : ℝ)
+        ≤ ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) / (n : ℝ) ^ k := by
+    intro k hk
+    rw [Finset.mem_Icc] at hk
+    have hk0 : k ≠ 0 := by omega
+    have hkR : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast (by omega : 1 ≤ k)
+    have hfloorle : ⌊(N : ℝ) ^ ((1 : ℝ) / (k : ℝ))⌋₊ ≤ N := by
+      have hexp : (N : ℝ) ^ ((1 : ℝ) / (k : ℝ)) ≤ (N : ℝ) := by
+        calc (N : ℝ) ^ ((1 : ℝ) / (k : ℝ)) ≤ (N : ℝ) ^ (1 : ℝ) := by
+              apply Real.rpow_le_rpow_of_exponent_le h1N
+              rw [div_le_one (by positivity)]; exact hkR
+          _ = (N : ℝ) := Real.rpow_one _
+      calc ⌊(N : ℝ) ^ ((1 : ℝ) / (k : ℝ))⌋₊ ≤ ⌊(N : ℝ)⌋₊ := Nat.floor_le_floor hexp
+        _ = N := Nat.floor_natCast N
+    calc ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / k)⌋₊).filter (fun p => p.Prime),
+            ArithmeticFunction.vonMangoldt (p ^ k) / ((p ^ k : ℕ) : ℝ)
+        = ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / k)⌋₊).filter (fun p => p.Prime),
+            Real.log (p : ℝ) / (p : ℝ) ^ k := by
+          apply Finset.sum_congr rfl
+          intro p hp
+          rw [Finset.mem_filter] at hp
+          rw [ArithmeticFunction.vonMangoldt_apply_pow hk0,
+              ArithmeticFunction.vonMangoldt_apply_prime hp.2, Nat.cast_pow]
+      _ ≤ ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) / (n : ℝ) ^ k := by
+          apply Finset.sum_le_sum_of_subset_of_nonneg
+          · intro p hp
+            rw [Finset.mem_filter, Finset.mem_Ioc] at hp
+            rw [Finset.mem_Icc]
+            exact ⟨hp.2.two_le, le_trans hp.1.2 hfloorle⟩
+          · intro n hn _
+            rw [Finset.mem_Icc] at hn
+            have h1n : (1 : ℝ) ≤ n := by exact_mod_cast (by omega : 1 ≤ n)
+            have : (0 : ℝ) ≤ Real.log n := Real.log_nonneg h1n
+            positivity
+  calc ∑ k ∈ Finset.Icc 2 K,
+        ∑ p ∈ (Finset.Ioc 0 ⌊(N : ℝ) ^ ((1 : ℝ) / k)⌋₊).filter (fun p => p.Prime),
+          ArithmeticFunction.vonMangoldt (p ^ k) / ((p ^ k : ℕ) : ℝ)
+      ≤ ∑ k ∈ Finset.Icc 2 K, ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) / (n : ℝ) ^ k :=
+        Finset.sum_le_sum hD1
+    _ = ∑ n ∈ Finset.Icc 2 N, ∑ k ∈ Finset.Icc 2 K, Real.log (n : ℝ) / (n : ℝ) ^ k :=
+        Finset.sum_comm
+    _ = ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) * ∑ k ∈ Finset.Icc 2 K, (1 / (n : ℝ)) ^ k := by
+        apply Finset.sum_congr rfl
+        intro n _
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro k _
+        rw [div_pow, one_pow]; ring
+    _ ≤ ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) * (1 / ((n : ℝ) * ((n : ℝ) - 1))) := by
+        apply Finset.sum_le_sum
+        intro n hn
+        rw [Finset.mem_Icc] at hn
+        have h1n : (1 : ℝ) ≤ n := by exact_mod_cast (by omega : 1 ≤ n)
+        exact mul_le_mul_of_nonneg_left (geom_tail_le n hn.1 K) (Real.log_nonneg h1n)
+    _ ≤ ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) * (2 / (n : ℝ) ^ 2) := by
+        apply Finset.sum_le_sum
+        intro n hn
+        rw [Finset.mem_Icc] at hn
+        have hnR : (2 : ℝ) ≤ n := by exact_mod_cast hn.1
+        apply mul_le_mul_of_nonneg_left _ (Real.log_nonneg (by linarith))
+        rw [div_le_div_iff₀ (by nlinarith) (by positivity)]
+        nlinarith
+    _ = 2 * ∑ n ∈ Finset.Icc 2 N, Real.log (n : ℝ) / (n : ℝ) ^ 2 := by
+        rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro n _; ring
+    _ ≤ 2 * (Real.log 2 / 4 + (Real.log 2 + 1) / 2) :=
+        mul_le_mul_of_nonneg_left (sum_log_div_sq_le hN) (by norm_num)
+    _ ≤ 3 := by have := Real.log_two_lt_d9; nlinarith
+
+/-- **Prime-power tail bound `∑_{n≤N, IsPrimePow ∧ ¬Prime} Λ(n)/n ≤ 3`, UNCONDITIONAL.**
+The `N < 2` tail is empty (`1` is not a prime power); for `N ≥ 2` combine `tail_eq_kge2`
+and `tail_kge2_le`. This is the discharge of the last gate of the sharp Mertens chain. -/
+theorem prime_power_tail_le_three (N : ℕ) :
+    ∑ n ∈ (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n),
+        ArithmeticFunction.vonMangoldt n / (n : ℝ) ≤ 3 := by
+  rcases Nat.lt_or_ge N 2 with h | h
+  · have hempty : (Finset.Icc 1 N).filter (fun n => IsPrimePow n ∧ ¬ Nat.Prime n) = ∅ := by
+      rw [Finset.filter_eq_empty_iff]
+      intro x hx
+      rw [Finset.mem_Icc] at hx
+      have hx1 : x = 1 := by omega
+      subst hx1; simp [not_isPrimePow_one]
+    rw [hempty, Finset.sum_empty]; norm_num
+  · rw [tail_eq_kge2 N h]; exact tail_kge2_le N h
+
+/-- **Sharp `∑_{p≤N}(log p)/p = log N + O(1)`, UNCONDITIONAL**: `|·− log N| ≤ log 4 + 7`. -/
+theorem mertens_prime_log_two_sided (n : ℕ) (hn : 1 ≤ n) :
+    |(∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)) - Real.log n|
+      ≤ Real.log 4 + 7 := by
+  have hsplit := vonMangoldt_split_prime n
+  have htwo := mertens_vonMangoldt_two_sided n hn
+  have htail := prime_power_tail_le_three n
+  have htail0 : 0 ≤ ∑ m ∈ (Finset.Icc 1 n).filter (fun m => IsPrimePow m ∧ ¬ Nat.Prime m),
+      ArithmeticFunction.vonMangoldt m / (m : ℝ) :=
+    Finset.sum_nonneg (fun m _ => div_nonneg ArithmeticFunction.vonMangoldt_nonneg (Nat.cast_nonneg _))
+  rw [abs_le] at htwo ⊢
+  constructor <;> linarith [htwo.1, htwo.2]
+
+/-- `∑_{p≤n}(log p)/p ≤ log n + (log 4 + 7)` (unconditional upper half). -/
+theorem mertens_prime_log_upper (n : ℕ) (hn : 1 ≤ n) :
+    (∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ))
+      ≤ Real.log n + (Real.log 4 + 7) := by
+  have h := mertens_prime_log_two_sided n hn; rw [abs_le] at h; linarith [h.2]
+
+/-- `log n − (log 4 + 7) ≤ ∑_{p≤n}(log p)/p` (unconditional lower half). -/
+theorem mertens_prime_log_lower (n : ℕ) (hn : 1 ≤ n) :
+    Real.log (n : ℝ) - (Real.log 4 + 7)
+      ≤ ∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ) := by
+  have h := mertens_prime_log_two_sided n hn; rw [abs_le] at h; linarith [h.1]
+
+/-- **The headline, UNCONDITIONAL: `∑_{n≤N} μ²(n)/φ(n) = Θ(log N)`.** Lower half
+`log N ≤ ∑ μ²/φ` (`mertens_lower`) and upper half `∑ μ²/φ ≤ K·log N` (`mertens_upper_of`
+at `C = log 4 + 7`, the discharged sharp prime-log bound). No remaining hypotheses;
+`#print axioms = [propext, Classical.choice, Quot.sound]`. -/
+theorem mertens_theta_log (N : ℕ) (hN : 3 ≤ N) :
+    Real.log N ≤ ∑ n ∈ Finset.Icc 1 N, mertensSummand n
+      ∧ ∑ n ∈ Finset.Icc 1 N, mertensSummand n
+          ≤ Real.exp (1 + (1 + 2 * ((Real.log 4 + 7) / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2)
+                - Real.log (Real.log 2))) * Real.log N := by
+  have hC : (0 : ℝ) ≤ Real.log 4 + 7 := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num); linarith
+  exact ⟨mertens_lower N,
+    mertens_upper_of N hN (Real.log 4 + 7) hC (fun n hn => mertens_prime_log_upper n hn)⟩
+
+/-- **Mertens' second theorem `∑_{p≤N} 1/p = log log N + O(1)` (coefficient 1), UNCONDITIONAL.** -/
+theorem mertens2_two_sided (N : ℕ) (hN : 3 ≤ N) :
+    Real.log (Real.log N)
+        - (Real.log (Real.log 2) + 1 / ((2 : ℝ) * Real.log 2) + (Real.log 4 + 7) / Real.log 2)
+        ≤ ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, (1 : ℝ) / (p : ℝ)
+      ∧ ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, (1 : ℝ) / (p : ℝ)
+        ≤ Real.log (Real.log N)
+          + (1 + 2 * ((Real.log 4 + 7) / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2)
+              - Real.log (Real.log 2)) := by
+  have hC : (0 : ℝ) ≤ Real.log 4 + 7 := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num); linarith
+  exact ⟨mertens2_lower_of N hN (Real.log 4 + 7) hC (fun n hn => mertens_prime_log_lower n hn),
+    mertens2_upper_of N hN (Real.log 4 + 7) hC (fun n hn => mertens_prime_log_upper n hn)⟩
+
 end BoundedGaps.Mertens
