@@ -1066,4 +1066,40 @@ theorem gpy_diagonal_asymptotic_form (T R : Finset ℕ) (g : ℕ → ℝ)
   rw [hmu]
   ring
 
+/-- **(s1) reduction for the FULL `selberg_nu` weight.** The general-basis
+analogue of `sieveSum_separable_eq_heuristic_add_correction` — the form
+`s1_holds_from_nonprime_asym` actually uses (general `J, c, Fs`). For any chosen
+main value `M`, the Selberg sieve sum splits exactly as `heuristic main +
+correction`, the heuristic part carrying the `M/∏ᵢ[Pᵢ]` GPY main value and the
+correction `∑_{j,j',P} cⱼcⱼ'·coeff·(countₚ − M/∏ᵢ[Pᵢ])` being the analytic
+obligation. Pure termwise add/subtract on `sieveSum_selberg_nu_expand`. -/
+theorem sieveSum_selberg_nu_eq_heuristic_add_correction (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (hx : 0 < x) (M : ℝ) :
+    sieveSum (selberg_nu k J c Fs H R) b W x
+      = (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+              sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+            (∏ i : Fin k,
+              ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+                * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+            * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      + (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+              sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+            (∏ i : Fin k,
+              ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+                * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+            * ((((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+                  (fun m => ∀ i : Fin k,
+                    (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+                - M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))) := by
+  rw [sieveSum_selberg_nu_expand k J c Fs H R b W x hx, ← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun j _ => ?_)
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun j' _ => ?_)
+  rw [← mul_add, ← Finset.sum_add_distrib]
+  congr 1
+  refine Finset.sum_congr rfl (fun P _ => ?_)
+  ring
+
 end BoundedGaps.Sieve
