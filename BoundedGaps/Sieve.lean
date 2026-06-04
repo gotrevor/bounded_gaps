@@ -2106,6 +2106,17 @@ theorem isFiniteSeparable_tensor_sum {k : ℕ} {I : Type*} [Fintype I]
     fun j i x => g ((e.symm j) i) x, 0, fun t => ?_⟩
   exact (Equiv.sum_comp e.symm (fun φ => a φ * ∏ i, g (φ i) (t i))).symm
 
+/-- **Smoothness of a finite tensor sum.** If each 1-D factor `g_m` is `C^∞`,
+the box-tensor approximant `t ↦ ∑_{φ : Fin k → I} a(φ)·∏_i g(φ i)(t_i)` is `C^∞`
+(finite sum of products of `C^∞` coordinate compositions). The `IsFiniteSeparable`
+predicate alone does NOT carry smoothness, so the *smoothness* conjunct of
+`separable_dense_sup` needs this companion to `isFiniteSeparable_tensor_sum`. -/
+theorem contDiff_tensor_sum {k : ℕ} {I : Type*} [Fintype I]
+    (a : (Fin k → I) → ℝ) (g : I → ℝ → ℝ) (hg : ∀ m, ContDiff ℝ ∞ (g m)) :
+    ContDiff ℝ ∞ (fun t : Fin k → ℝ => ∑ φ : (Fin k → I), a φ * ∏ i : Fin k, g (φ i) (t i)) := by
+  refine ContDiff.sum (fun φ _ => ?_)
+  exact contDiff_const.mul (contDiff_prod (fun i _ => (hg (φ i)).comp (contDiff_apply ℝ ℝ i)))
+
 /-- **1-D smooth partition of unity** (the residual analytic input to the
 box-tensor density). With the smooth transition `σ = Real.smoothTransition`
 (`σ = 0` on `(-∞,0]`, `= 1` on `[1,∞)`, `C^∞`), the bumps
