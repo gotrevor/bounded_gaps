@@ -217,10 +217,29 @@ the on-ramp from "weeks" to "verify + port"; grinding out corroborates the weeks
 estimate. Poll `aristotle list`; verify in-kernel + `#print axioms` before
 trusting (Aristotle pins v4.28; this repo is v4.29.1).
 
-Artifact: `scratch_mertens.lean` — standalone, NOT in the lakefile lib (so it
-doesn't touch the fleet build), typechecks with the two sorries isolated above.
-Left untracked per the repo's scratch convention (and to avoid tripping the
-pre-commit `lake build` gate against concurrent WIP).
+**✅ DONE 2026-06-04 (commit on `path-a-selberg-nu`).** Aristotle `6c45fd6b`
+returned a **sorry-free** `mertens_crux` (radical-fiber partition, NOT the naive
+termwise bound). Ported + re-verified in v4.29.1 — one `grind` regression in
+`radical_factor_split` (the `radical(p^k)=p` step) replaced by an explicit
+`radical_pow`/`radical_of_prime` derivation; the plumbing lemma
+`harmonic_eq_icc_sum` discharged by induction. The whole **`mertens_lower :
+log N ≤ ∑_{n≤N} μ²(n)/φ(n)` now lives in `BoundedGaps/Mertens.lean`** (in the
+fleet build, `#print axioms = [propext, Classical.choice, Quot.sound]` — kernel
+clean, no `native_decide`). **Correction to the inventory table above**: mathlib
+v4.29.1 *does* have `radical` (`UniqueFactorizationMonoid.radical`,
+`Mathlib/RingTheory/Radical/Basic.lean`) with `radical_dvd_self`, `radical_pow`,
+`radical_of_prime`, `radical_mul`, `squarefree_radical` — the "no `radical`"
+claim was wrong; that is what made the 1D bound a days-task, not weeks.
+
+**Next brick (the on-ramp continues):** the 1D *upper* companion
+`∑_{n≤N} μ²(n)/φ(n) ≤ ∏_{p≤N}(1+1/(p-1))` (Euler-product domination over
+squarefree `n`), giving the matching `Θ(log N)` upper bound; then the sharp
+`= log N + O(1)` (Mertens constant), then the **multidimensional** singular-series
+→ ∫F² version (the genuine multi-month nut, sub-step (c)).
+
+Artifact: `scratch_mertens.lean` — the original standalone probe (two sorries);
+superseded by the landed `BoundedGaps/Mertens.lean`. The download/verify scratch
+lives in `aristotle-mertens-dl/` and `scratch_mertens_verify.lean` (untracked).
 
 ## Confidence + caveats
 

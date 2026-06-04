@@ -249,4 +249,24 @@ theorem mertens_lower (N : ℕ) :
     _ = ∑ n ∈ Finset.Icc 1 N, (1 : ℝ) / n := harmonic_eq_icc_sum N
     _ ≤ ∑ n ∈ Finset.Icc 1 N, mertensSummand n := mertens_crux N
 
+/-- `μ²(n)/φ(n) ≤ 1/φ(n)` (since `μ²(n) ∈ {0,1}`). -/
+lemma mertensSummand_le_inv_totient (n : ℕ) :
+    mertensSummand n ≤ 1 / (Nat.totient n : ℝ) := by
+  have hμ : (ArithmeticFunction.moebius n : ℤ) ^ 2 ≤ 1 := by
+    by_cases hsf : Squarefree n
+    · exact le_of_eq (moebius_sq_eq_one_of_squarefree hsf)
+    · rw [moebius_eq_zero_of_not_squarefree hsf]; norm_num
+  have hμr : ((ArithmeticFunction.moebius n : ℤ) : ℝ) ^ 2 ≤ 1 := by exact_mod_cast hμ
+  unfold mertensSummand
+  rcases Nat.eq_zero_or_pos (Nat.totient n) with h | h
+  · simp [h]
+  · gcongr
+
+/-- **Corollary** (lower bound on the totient harmonic sum):
+`log N ≤ ∑_{n≤N} 1/φ(n)`. Immediate from `mertens_lower` and `μ²(n) ≤ 1`. -/
+theorem log_le_sum_inv_totient (N : ℕ) :
+    Real.log N ≤ ∑ n ∈ Finset.Icc 1 N, 1 / (Nat.totient n : ℝ) :=
+  (mertens_lower N).trans
+    (Finset.sum_le_sum fun n _ => mertensSummand_le_inv_totient n)
+
 end BoundedGaps.Mertens

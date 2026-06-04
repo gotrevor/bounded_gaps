@@ -146,6 +146,12 @@ theorem tuple200_admissible : BoundedGaps.Admissible tuple200 :=
   BoundedGaps.admissible_of_check_small_primes tuple200_sorted
     (fun p hp hple => tuple200_check p hp (tuple200_length ▸ hple))
 
+/-- **`H(200) ≤ 1304`.** `tuple200` witnesses an upper bound on the narrowness
+(minimal admissible-tuple diameter) at `k = 200`. -/
+theorem narrowness_200_le_1304 : BoundedGaps.narrowness 200 ≤ 1304 :=
+  BoundedGaps.narrowness_le_of_admissible_tuple tuple200_admissible tuple200_length
+    tuple200_diameter
+
 /-- **Unconditional bounded gaps from `M_200 > 4`.** Feeding the kernel-checked `Mk_200_gt_4`
 into the Maynard–Bombieri–Vinogradov bridge `Targets.H1_le_of_Mk_witness`: there is an admissible
 200-tuple `H` whose diameter bounds `liminfGap 1` (a finite bound on the prime gap that recurs
