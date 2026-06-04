@@ -1234,4 +1234,36 @@ theorem mertens_upper_of (N : ℕ) (hN : 3 ≤ N) (C : ℝ) (hC : 0 ≤ C)
     _ ≤ Real.exp (Real.log (Real.log N) + D + 1) := Real.exp_le_exp.mpr hexp
     _ = Real.exp (1 + D) * Real.log N := heq
 
+/-- Sharp prime-log **upper** half from the prime-power tail bound at `n`:
+`∑_{p≤n}(log p)/p ≤ log n + (log 4 + 5)`. The `hAupper` input to `mertens_upper_of`. -/
+theorem mertens_prime_log_upper_of_tail (n : ℕ) (hn : 1 ≤ n)
+    (htail : ∑ m ∈ (Finset.Icc 1 n).filter (fun m => IsPrimePow m ∧ ¬ Nat.Prime m),
+        ArithmeticFunction.vonMangoldt m / (m : ℝ) ≤ 1) :
+    (∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ))
+      ≤ Real.log n + (Real.log 4 + 5) := by
+  have h := mertens_prime_log_two_sided_of n hn htail
+  rw [abs_le] at h
+  linarith [h.2]
+
+/-- **Two-sided `∑ μ²/φ = Θ(log N)`, conditional only on the prime-power tail bound.**
+Bundling `mertens_lower` (lower half, already unconditional) with `mertens_upper_of`
+(upper half) instantiated at `C = log 4 + 5` via `mertens_prime_log_upper_of_tail`.
+The single remaining hypothesis `htail` is the proper-prime-power tail bound
+`∑_{m≤n, IsPrimePow ∧ ¬Prime} Λ(m)/m ≤ 1` (the in-flight Aristotle lemma
+`prime_power_tail_le`); discharging it makes the whole estimate unconditional. -/
+theorem mertens_theta_log_of_tail (N : ℕ) (hN : 3 ≤ N)
+    (htail : ∀ n, 1 ≤ n →
+        ∑ m ∈ (Finset.Icc 1 n).filter (fun m => IsPrimePow m ∧ ¬ Nat.Prime m),
+          ArithmeticFunction.vonMangoldt m / (m : ℝ) ≤ 1) :
+    Real.log N ≤ ∑ n ∈ Finset.Icc 1 N, mertensSummand n
+      ∧ ∑ n ∈ Finset.Icc 1 N, mertensSummand n
+          ≤ Real.exp (1 + (1 + 2 * ((Real.log 4 + 5) / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2)
+                - Real.log (Real.log 2))) * Real.log N := by
+  refine ⟨mertens_lower N, ?_⟩
+  refine mertens_upper_of N hN (Real.log 4 + 5) ?_ ?_
+  · have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    linarith
+  · intro n hn
+    exact mertens_prime_log_upper_of_tail n hn (htail n hn)
+
 end BoundedGaps.Mertens
