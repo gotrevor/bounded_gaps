@@ -902,4 +902,20 @@ theorem gpy_yvar_substitution (T : Finset ℕ) (g : ℕ → ℝ) (r : ℕ) (hr :
     rw [ArithmeticFunction.moebius_eq_zero_of_not_squarefree hnsf]
     push_cast; ring
 
+/-- **The GPY/Selberg quadratic form is positive semidefinite.** For any real
+weight `w` on a finite set `T` of positive integers,
+`0 ≤ ∑_{d,e ∈ T} w(d) w(e) / [d,e]`. Immediate from `gpy_diagonalize`: the form
+equals `∑_r φ(r) · (∑_{r∣d} w(d)/d)²`, a sum of non-negative terms (`φ(r) ≥ 0`,
+square `≥ 0`). This is the matrix-positivity fact `(1/[d,e])_{d,e} ⪰ 0`
+underlying every Selberg-sieve majorant — in particular `sieveSum (selberg_nu …)
+≥ 0` per coordinate. -/
+theorem gpy_quadform_nonneg (T : Finset ℕ) (w : ℕ → ℝ) (hT : ∀ d ∈ T, 1 ≤ d) :
+    0 ≤ ∑ d ∈ T, ∑ e ∈ T, w d * w e / (Nat.lcm d e : ℝ) := by
+  classical
+  rw [gpy_diagonalize T (T.biUnion (fun d => d.divisors)) w hT
+        (fun d hd r hrd => Finset.mem_biUnion.mpr
+          ⟨d, hd, Nat.mem_divisors.mpr ⟨hrd, by have := hT d hd; omega⟩⟩)]
+  refine Finset.sum_nonneg (fun r _ => ?_)
+  positivity
+
 end BoundedGaps.Sieve
