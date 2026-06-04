@@ -252,4 +252,32 @@ theorem lattice_count_lcm {k : ℕ} (H : List ℕ) (S : Finset ℕ) (P : Fin k �
   intro m _
   exact forall_congr' (fun i => (nat_lcm_dvd_iff _ _ _).symm)
 
+/-- **Sub-step (b) CRT combination.** For coprime `W, Q` (with `0 < Q`), the
+simultaneous sieve condition `m ≡ b [MOD W] ∧ Q ∣ (m + h)` (the per-coordinate
+residue-plus-divisibility constraint, after `lattice_count_lcm` with
+`Q = [dᵢ,eᵢ]`) is a single residue class mod `W*Q`. Plugging this into the
+interval-count formula `Nat.Ioc_filter_modEq_card` yields the GPY main term
+`(interval length)/(W·Q)` up to an `O(1)` boundary error. -/
+theorem crt_combine {W Q : ℕ} (hcop : Nat.Coprime W Q) (hQ : 0 < Q) (b h : ℕ) :
+    ∃ r, ∀ m : ℕ, (m ≡ b [MOD W] ∧ Q ∣ (m + h)) ↔ m ≡ r [MOD (W * Q)] := by
+  -- `c := (Q-1)*h` solves `Q ∣ (c + h)` since `c + h = Q*h`.
+  set c := (Q - 1) * h with hc
+  have hch : c + h = Q * h := by
+    rw [hc, Nat.sub_one_mul, Nat.sub_add_cancel (Nat.le_mul_of_pos_left h hQ)]
+  have hc0 : (c + h) ≡ 0 [MOD Q] := Nat.modEq_zero_iff_dvd.mpr ⟨h, hch⟩
+  -- `Q ∣ (m+h) ↔ m ≡ c [MOD Q]`.
+  have hdvd_iff : ∀ m, Q ∣ (m + h) ↔ m ≡ c [MOD Q] := by
+    intro m
+    rw [← Nat.modEq_zero_iff_dvd]
+    exact ⟨fun hm => Nat.ModEq.add_right_cancel' h (hm.trans hc0.symm),
+           fun hm => (hm.add_right h).trans hc0⟩
+  obtain ⟨r, hr1, hr2⟩ := Nat.chineseRemainder hcop b c
+  refine ⟨r, fun m => ?_⟩
+  rw [hdvd_iff m,
+      show (m ≡ b [MOD W]) ↔ (m ≡ r [MOD W]) from
+        ⟨fun h => h.trans hr1.symm, fun h => h.trans hr1⟩,
+      show (m ≡ c [MOD Q]) ↔ (m ≡ r [MOD Q]) from
+        ⟨fun h => h.trans hr2.symm, fun h => h.trans hr2⟩]
+  exact Nat.modEq_and_modEq_iff_modEq_mul hcop
+
 end BoundedGaps.Sieve
