@@ -702,4 +702,21 @@ theorem lattice_count_pair_offdiag_vanish {k : ℕ} (H : List ℕ) (S : Finset �
   have e2 : m + H.getD j.val 0 ≡ 0 [MOD p] := (Nat.modEq_zero_iff_dvd).mpr hj
   exact Nat.ModEq.add_left_cancel' m (e1.trans e2.symm)
 
+/-- **Theta-weighted off-diagonal vanishing (s2 sister).** The weighted count in
+`sieveThetaSum_selberg_nu_expand`, `∑_{m∈S, lattice} wt m` (with `wt = primeTheta(·+h_{i₀})`),
+also vanishes on the off-diagonal: if two coordinates' moduli `lcm(P i), lcm(P j)`
+share a value `p` with incompatible shifts (`hᵢ ≢ hⱼ [MOD p]`), the membership set
+is empty so the weighted sum is `0`, for *any* weight `wt`. So the same diagonal
+restriction governs `s2` as `s1`. -/
+theorem sieveTheta_pair_offdiag_vanish {k : ℕ} (H : List ℕ) (S : Finset ℕ)
+    (P : Fin k → ℕ × ℕ) (wt : ℕ → ℝ) {i j : Fin k} {p : ℕ}
+    (hpi : p ∣ Nat.lcm (P i).1 (P i).2) (hpj : p ∣ Nat.lcm (P j).1 (P j).2)
+    (hne : ¬ (H.getD i.val 0 ≡ H.getD j.val 0 [MOD p])) :
+    ∑ m ∈ S.filter (fun m => ∀ t : Fin k,
+        (P t).1 ∣ (m + H.getD t.val 0) ∧ (P t).2 ∣ (m + H.getD t.val 0)), wt m = 0 := by
+  have hempty : S.filter (fun m => ∀ t : Fin k,
+      (P t).1 ∣ (m + H.getD t.val 0) ∧ (P t).2 ∣ (m + H.getD t.val 0)) = ∅ :=
+    Finset.card_eq_zero.mp (lattice_count_pair_offdiag_vanish H S P hpi hpj hne)
+  rw [hempty, Finset.sum_empty]
+
 end BoundedGaps.Sieve
