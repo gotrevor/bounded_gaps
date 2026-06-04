@@ -572,4 +572,83 @@ theorem mertens_first_le' (n : ℕ) :
         rw [Finset.sum_filter]; exact hexpand.symm
     _ ≤ Real.log 4 * (1 + Real.log n) := mertens_first_le n
 
+/-! ## The Mertens-2nd analytic core: `∑ 1/(n log n) = O(log log N)`
+
+The second Abel step (weight `1/log p`) toward `∑_{p≤N} 1/p` reduces to bounding
+`∑_{n} 1/(n log n)`, which is `log log N + O(1)` by comparison with
+`∫ dt/(t log t) = log(log t)`. These are the analytic-input lemmas. -/
+
+/-- `(log ∘ log)' = 1/(t log t)` for `t > 1` (chain rule). -/
+theorem hasDerivAt_log_log {t : ℝ} (ht : 1 < t) :
+    HasDerivAt (fun x => Real.log (Real.log x)) (1 / (t * Real.log t)) t := by
+  have ht0 : t ≠ 0 := by positivity
+  have hlog : Real.log t ≠ 0 := ne_of_gt (Real.log_pos ht)
+  have h1 : HasDerivAt Real.log t⁻¹ t := Real.hasDerivAt_log ht0
+  have h2 : HasDerivAt Real.log (Real.log t)⁻¹ (Real.log t) := Real.hasDerivAt_log hlog
+  have hcomp := h2.comp t h1
+  convert hcomp using 1
+  rw [one_div, mul_inv, mul_comm]
+
+/-- `fun x => 1/(x log x)` is continuous on `[2, N]` (denominator nonzero there). -/
+theorem continuousOn_one_div_x_log_x {N : ℕ} :
+    ContinuousOn (fun x : ℝ => 1 / (x * Real.log x)) (Set.Icc 2 (N : ℝ)) := by
+  apply ContinuousOn.div continuousOn_const
+  · exact continuousOn_id.mul (Real.continuousOn_log.mono (by
+      intro x hx
+      simp only [Set.mem_Icc] at hx
+      simp only [Set.mem_compl_iff, Set.mem_singleton_iff]
+      linarith [hx.1]))
+  · intro x hx
+    simp only [Set.mem_Icc] at hx
+    have hx2 : (1 : ℝ) < x := by linarith [hx.1]
+    have : Real.log x ≠ 0 := ne_of_gt (Real.log_pos hx2)
+    have hxpos : (0 : ℝ) < x := by linarith [hx.1]
+    positivity
+
+/-- The integral `∫_2^N 1/(x log x) dx = log(log N) − log(log 2)` (for `2 ≤ N`). -/
+theorem integral_one_div_x_log_x {N : ℕ} (hN : 2 ≤ N) :
+    ∫ x in (2 : ℝ)..(N : ℝ), 1 / (x * Real.log x)
+      = Real.log (Real.log N) - Real.log (Real.log 2) := by
+  have h2N : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  have hderiv : ∀ x ∈ Set.uIcc (2 : ℝ) (N : ℝ),
+      HasDerivAt (fun x => Real.log (Real.log x)) (1 / (x * Real.log x)) x := by
+    intro x hx
+    rw [Set.uIcc_of_le h2N, Set.mem_Icc] at hx
+    exact hasDerivAt_log_log (by linarith [hx.1])
+  have hint : IntervalIntegrable (fun x : ℝ => 1 / (x * Real.log x)) MeasureTheory.volume 2 N := by
+    apply ContinuousOn.intervalIntegrable
+    rw [Set.uIcc_of_le h2N]
+    exact continuousOn_one_div_x_log_x
+  rw [intervalIntegral.integral_eq_sub_of_hasDerivAt hderiv hint]
+
+/-- `fun x => 1/(x log x)` is antitone on `[2, N]`. -/
+theorem antitoneOn_one_div_x_log_x {N : ℕ} :
+    AntitoneOn (fun x : ℝ => 1 / (x * Real.log x)) (Set.Icc 2 (N : ℝ)) := by
+  intro x hx y hy hxy
+  simp only [Set.mem_Icc] at hx hy
+  have hx1 : (1 : ℝ) < x := by linarith [hx.1]
+  have hy1 : (1 : ℝ) < y := by linarith [hy.1]
+  have hxpos : (0 : ℝ) < x := by linarith
+  have hlogx : (0 : ℝ) < Real.log x := Real.log_pos hx1
+  have hlogy : (0 : ℝ) < Real.log y := Real.log_pos hy1
+  have hdenx : (0 : ℝ) < x * Real.log x := by positivity
+  have hlogle : Real.log x ≤ Real.log y := Real.log_le_log hxpos hxy
+  have hdenle : x * Real.log x ≤ y * Real.log y :=
+    mul_le_mul hxy hlogle (le_of_lt hlogx) (by linarith)
+  simp only
+  exact one_div_le_one_div_of_le hdenx hdenle
+
+/-- **Mertens-2nd analytic core**: `∑_{n=3}^{N} 1/(n log n) ≤ log log N − log log 2`
+(sum-integral comparison for the antitone `1/(x log x)`). -/
+theorem sum_one_div_n_log_n_le {N : ℕ} (hN : 2 ≤ N) :
+    ∑ i ∈ Finset.Ico 2 N, 1 / (((i : ℝ) + 1) * Real.log ((i : ℝ) + 1))
+      ≤ Real.log (Real.log N) - Real.log (Real.log 2) := by
+  have h := AntitoneOn.sum_le_integral_Ico (a := 2) (b := N) hN antitoneOn_one_div_x_log_x
+  simp only [Nat.cast_ofNat] at h
+  rw [integral_one_div_x_log_x hN] at h
+  refine le_trans (le_of_eq ?_) h
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  push_cast
+  ring_nf
+
 end BoundedGaps.Mertens
