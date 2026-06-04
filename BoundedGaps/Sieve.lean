@@ -149,6 +149,35 @@ def betaBound (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ) (_x : �
     (fun y : ℝ => max (β * betaMainTerm k W y - sieveThetaSum ν H i b W y) 0)
     (betaMainTerm k W)
 
+/-- **Sub-step (d) structural core (s1 side).** `alphaBound` is the `IsLittleO` of the
+*positive part* `max(sieveSum − α·main, 0)`. Since `max(a,0) ≤ |a|`, the (cleaner,
+two-sided) difference `sieveSum − α·alphaMainTerm = o(alphaMainTerm)` already implies
+`alphaBound`. Proof: `max(f,0) =O[atTop] f` (pointwise `|max(f,0)| ≤ |f|`), then transit
+through the hypothesis. This reduces the `s1` analytic obligation to the symmetric
+difference asymptotic the heuristic-main limit + correction bound naturally produce. -/
+theorem alphaBound_of_sub_littleO (k : ℕ) (ν : ℕ → ℝ) (b W : ℕ) (x α : ℝ)
+    (h : Asymptotics.IsLittleO Filter.atTop
+          (fun y : ℝ => sieveSum ν b W y - α * alphaMainTerm k W y)
+          (alphaMainTerm k W)) :
+    alphaBound k ν b W x α := by
+  refine Asymptotics.IsBigO.trans_isLittleO ?_ h
+  refine Asymptotics.isBigO_of_le _ (fun y => ?_)
+  rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg (le_max_right _ 0)]
+  exact max_le (le_abs_self _) (abs_nonneg _)
+
+/-- **Sub-step (d) structural core (s2 side).** Sister of `alphaBound_of_sub_littleO`:
+the two-sided shortfall `β·betaMainTerm − sieveThetaSum = o(betaMainTerm)` implies the
+one-sided `betaBound`. -/
+theorem betaBound_of_sub_littleO (k : ℕ) (ν : ℕ → ℝ) (H : List ℕ) (b W i : ℕ) (x β : ℝ)
+    (h : Asymptotics.IsLittleO Filter.atTop
+          (fun y : ℝ => β * betaMainTerm k W y - sieveThetaSum ν H i b W y)
+          (betaMainTerm k W)) :
+    betaBound k ν H b W i x β := by
+  refine Asymptotics.IsBigO.trans_isLittleO ?_ h
+  refine Asymptotics.isBigO_of_le _ (fun y => ?_)
+  rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg (le_max_right _ 0)]
+  exact max_le (le_abs_self _) (abs_nonneg _)
+
 /-- Fin-card ↔ List.countP: counting indices `i : Fin k` whose `H.getD i 0`
 satisfies `p` equals `H.countP p`, when `H.length = k`. -/
 theorem card_fin_filter_eq_countP {k : ℕ} (H : List ℕ) (hLen : H.length = k)
