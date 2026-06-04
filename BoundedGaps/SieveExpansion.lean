@@ -849,4 +849,57 @@ theorem gpy_diagonalize_moebius (T R : Finset ℕ) (g : ℕ → ℝ)
           * (∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g d / (d : ℝ)) ^ 2 :=
   gpy_diagonalize T R (fun d => (moebius d : ℝ) * g d) hT hR
 
+/-- **GPY `y_r` substitution** — the divisor-restricted inner sum of
+`gpy_diagonalize_moebius` written in terms of a *coprime-restricted* sum over
+`s = d/r`. Reindexing `d = r·s` and using `μ(r·s) = μ(r)·μ(s)·[gcd(r,s)=1]`
+(Möbius vanishes off the squarefree locus) gives
+`∑_{d ∈ T, r∣d} μ(d) g(d)/d = (μ(r)/r) · ∑_{s, (r,s)=1} μ(s) g(r·s)/s`.
+This is the GPY change of variable exposing the diagonal sum `∑_r φ(r) y_r²`
+(with `y_r := ∑_{d, r∣d} μ(d)g(d)/d`) in the multiplicative form whose
+Mertens/Riemann asymptotic (sub-step (c)) yields the integral constant. Pure
+finite algebra (`Finset.sum_image` reindex + Möbius multiplicativity);
+`#print axioms = [propext, Classical.choice, Quot.sound]`. -/
+theorem gpy_yvar_substitution (T : Finset ℕ) (g : ℕ → ℝ) (r : ℕ) (hr : 1 ≤ r) :
+    ∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g d / (d : ℝ)
+      = (moebius r : ℝ) / (r : ℝ) *
+          ∑ s ∈ ((T.filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+              (fun s => Nat.Coprime r s),
+            (moebius s : ℝ) * g (r * s) / (s : ℝ) := by
+  classical
+  set S := T.filter (fun d => r ∣ d) with hS
+  have hr0 : r ≠ 0 := by omega
+  have hrR : (r : ℝ) ≠ 0 := by exact_mod_cast hr0
+  have hinj : ∀ x ∈ S, ∀ y ∈ S, x / r = y / r → x = y := by
+    intro x hx y hy hxy
+    simp only [hS, Finset.mem_filter] at hx hy
+    rw [← Nat.mul_div_cancel' hx.2, ← Nat.mul_div_cancel' hy.2, hxy]
+  have hreindex : ∑ d ∈ S, (moebius d : ℝ) * g d / (d : ℝ)
+      = ∑ s ∈ S.image (fun d => d / r),
+          (moebius (r * s) : ℝ) * g (r * s) / ((r * s : ℕ) : ℝ) := by
+    rw [Finset.sum_image hinj]
+    refine Finset.sum_congr rfl (fun d hd => ?_)
+    simp only [hS, Finset.mem_filter] at hd
+    rw [Nat.mul_div_cancel' hd.2]
+  rw [hreindex, Finset.mul_sum, Finset.sum_filter]
+  refine Finset.sum_congr rfl (fun s _ => ?_)
+  by_cases hcop : Nat.Coprime r s
+  · rw [if_pos hcop, (ArithmeticFunction.isMultiplicative_moebius).map_mul_of_coprime hcop]
+    by_cases hs0 : s = 0
+    · simp [hs0]
+    · have hsR : (s : ℝ) ≠ 0 := by exact_mod_cast hs0
+      push_cast
+      field_simp
+  · rw [if_neg hcop]
+    have hnsf : ¬ Squarefree (r * s) := by
+      have hgcd : Nat.gcd r s ≠ 1 := hcop
+      obtain ⟨p, hp, hpg⟩ := Nat.exists_prime_and_dvd hgcd
+      have hpr : p ∣ r := hpg.trans (Nat.gcd_dvd_left r s)
+      have hps : p ∣ s := hpg.trans (Nat.gcd_dvd_right r s)
+      intro hsf
+      have hu : IsUnit p := hsf p (Nat.mul_dvd_mul hpr hps)
+      rw [Nat.isUnit_iff] at hu
+      have := hp.one_lt; omega
+    rw [ArithmeticFunction.moebius_eq_zero_of_not_squarefree hnsf]
+    push_cast; ring
+
 end BoundedGaps.Sieve
