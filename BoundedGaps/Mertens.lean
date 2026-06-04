@@ -481,4 +481,73 @@ theorem prime_tail_le (N : ℕ) :
     have : 1 / (p : ℝ) ≤ 1 / ((p : ℝ) - 1) := one_div_le_one_div_of_le h1 h2
     linarith
 
+/-! ## Mertens' first theorem (upper bound)
+
+Discrete Abel summation turns the Chebyshev θ-bound into the Mertens estimate
+`∑_{p≤N} (log p)/p = O(log N)`. The Abel-summation lemma `abel_div_le` was proved
+by Harmonic's Aristotle (project `32baa99f`, summation-by-parts) and verified
+kernel-clean under v4.29.1. -/
+
+/-- **Discrete Abel summation bound.** If the partial sums `∑_{1 ≤ k ≤ n} a k` are
+bounded by `c · n` (and `c ≥ 0`), then `∑_{1 ≤ n ≤ N} a n / n ≤ c · ∑_{1 ≤ n ≤ N} 1/n`.
+Proved by Aristotle (`32baa99f`); the nonnegativity hypothesis `ha` is unused by the
+upper bound but kept to document the intended (Chebyshev) application. -/
+theorem abel_div_le (N : ℕ) (a : ℕ → ℝ) (c : ℝ) (hc : 0 ≤ c)
+    (ha : ∀ n, 0 ≤ a n)
+    (hA : ∀ n, ∑ k ∈ Finset.Icc 1 n, a k ≤ c * (n : ℝ)) :
+    ∑ n ∈ Finset.Icc 1 N, a n / (n : ℝ) ≤ c * ∑ n ∈ Finset.Icc 1 N, (1 : ℝ) / (n : ℝ) := by
+  have h_abel : ∑ n ∈ Finset.Icc 1 N, a n / (n : ℝ) = (∑ n ∈ Finset.Icc 1 N, a n) / N + ∑ n ∈ Finset.Icc 1 (N - 1), (∑ k ∈ Finset.Icc 1 n, a k) / (n * (n + 1)) := by
+    induction N <;> simp_all +decide [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] ; ring;
+    cases ‹ℕ› <;> norm_num [ Finset.sum_Ioc_succ_top ] at * ; ring;
+    grind;
+  have h_bound : (∑ n ∈ Finset.Icc 1 N, a n) / N + ∑ n ∈ Finset.Icc 1 (N - 1), (∑ k ∈ Finset.Icc 1 n, a k) / (n * (n + 1)) ≤ c + ∑ n ∈ Finset.Icc 1 (N - 1), c / (n + 1) := by
+    refine' add_le_add _ ( Finset.sum_le_sum fun n hn => _ );
+    · exact div_le_of_le_mul₀ ( Nat.cast_nonneg _ ) hc ( hA N );
+    · rw [ div_le_div_iff₀ ] <;> nlinarith only [ show ( n : ℝ ) ≥ 1 by exact_mod_cast Finset.mem_Icc.mp hn |>.1, hA n, hc ];
+  rcases N with ( _ | N ) <;> simp_all +decide [ div_eq_mul_inv, Finset.mul_sum _ _ _ ];
+  exact h_bound.trans ( by erw [ Finset.sum_Ico_eq_sum_range _ _ ] ; erw [ Finset.sum_Ico_eq_sum_range _ _ ] ; norm_num [ add_comm, add_left_comm, Finset.sum_range_succ' ] )
+
+/-- **Mertens' first theorem (upper bound)**: `∑_{p≤N} (log p)/p ≤ log 4 · (1 + log N)`.
+Instantiates `abel_div_le` with `a n = [n prime]·log n` (`c = log 4`), using
+`chebyshev_theta_le'` for the partial-sum hypothesis and mathlib's
+`harmonic_le_one_add_log` for the harmonic upper bound. -/
+theorem mertens_first_le (N : ℕ) :
+    ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)
+      ≤ Real.log 4 * (1 + Real.log N) := by
+  set a : ℕ → ℝ := fun n => if n.Prime then Real.log (n : ℝ) else 0 with ha_def
+  have hc : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+  have ha : ∀ n, 0 ≤ a n := by
+    intro n
+    rw [ha_def]
+    by_cases hp : n.Prime
+    · simp only [hp, if_true]
+      exact Real.log_nonneg (by exact_mod_cast hp.one_lt.le)
+    · simp [hp]
+  have hA : ∀ n, ∑ k ∈ Finset.Icc 1 n, a k ≤ Real.log 4 * (n : ℝ) := by
+    intro n
+    rw [mul_comm]
+    exact chebyshev_theta_le' n
+  have hkey := abel_div_le N a (Real.log 4) hc ha hA
+  have hLHS : ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)
+      = ∑ n ∈ Finset.Icc 1 N, a n / (n : ℝ) := by
+    have hsub : Finset.Icc 1 N ⊆ Finset.range (N + 1) := by
+      intro x hx; rw [Finset.mem_Icc] at hx; rw [Finset.mem_range]; omega
+    have hexpand : ∑ n ∈ Finset.range (N + 1), a n / (n : ℝ)
+        = ∑ n ∈ Finset.Icc 1 N, a n / (n : ℝ) := by
+      refine (Finset.sum_subset hsub ?_).symm
+      intro x hxr hxIcc
+      rw [Finset.mem_range] at hxr
+      rw [Finset.mem_Icc] at hxIcc
+      have hx0 : x = 0 := by omega
+      subst hx0; simp [ha_def]
+    rw [← hexpand]
+    rw [Finset.sum_filter]
+    refine Finset.sum_congr rfl (fun n _ => ?_)
+    rw [ha_def]
+    by_cases hp : n.Prime <;> simp [hp]
+  rw [hLHS]
+  refine hkey.trans ?_
+  rw [← harmonic_eq_icc_sum]
+  exact mul_le_mul_of_nonneg_left (harmonic_le_one_add_log N) hc
+
 end BoundedGaps.Mertens
