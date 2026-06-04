@@ -165,9 +165,13 @@ on-box in ~50s. **Do not re-assume host-only for heavy native_decide — bump ts
 two bridge axioms land (Aristotle `0b5bf5be`/`9d05dbaa`), this is a fully kernel-clean (mod
 native_decide) `M_200 > 4` → unconditional bounded gaps.
 
-The numeric diameter in `bounded_gap_of_Mk_200` is the cheap factorial tuple's (`199·200!`) — finite
-but huge. A narrow admissible 200-tuple (H(200) ≈ 1500) via `admissible_of_check_small_primes` would
-make it a concrete (still weaker-than-246) numeric bound; gilding, not gating.
+~~The numeric diameter in `bounded_gap_of_Mk_200` is the cheap factorial tuple's (`199·200!`).~~
+**✅ GILDED 2026-06-04 (commit `60cd99c`).** `bounded_gap_of_Mk_200` now uses the explicit narrow
+admissible 200-tuple `tuple200` (diameter **1304**, greedy residue-sieve, proven admissible via the
+Engelsma `checkAdm` bundled-`native_decide` pattern). New: `liminfGap_one_le_1304 : liminfGap 1 ≤
+1304` (the concrete H_1 bound) and `narrowness_200_le_1304 : H(200) ≤ 1304`. `Mk_200_gt_4` stays
+axiom-clean; `bounded_gap_of_Mk_200` rests only on the 4 analytic-NT axioms (BV, exists_separable_F,
+s1/s2) + native_decide.
 
 Witness data IN HAND (`tools/mk/_ldl.py`, exact LDL): k=200 D=7 ratio 4.002898, k=300 ratio 4.006944,
 45 orbits each, ~100-digit integer orbit coeffs (regenerate via `PYTHONPATH=. python3` over
@@ -204,14 +208,19 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 ---
 
-## C. Aristotle (status 2026-06-03, late)
-- **IN FLIGHT — THE TWO GATING CORES** (both numerically pre-verified, self-contained):
-  - `0b5bf5be` (`aristotle-denbridge/DenBridge.lean`) — `denom_bridge`: orbit-sum of `∏(pᵢ+qᵢ)!` =
-    `matchDenSum`, up to `autParts`. The permanent/rook identity, ℕ.
-  - `9d05dbaa` (`aristotle-numbridge/NumBridge.lean`) — `num_bridge`: ℚ analog with `∑ g(pᵢ,qᵢ)`.
-  When EITHER returns: `aristotle list` (one-shot) → download → verify in our kernel + `#print
-  axioms` clean → port (repo axiom is on `monoOrbit (ofParts L)`; the job uses `orbitFin L k`, which
-  is defeq — a `rfl`/`Finset` rewrite) → the corresponding Gram side is fully kernel-clean.
+## C. Aristotle (status 2026-06-04)
+- **IN FLIGHT — `129257d7-52c7-444b-8952-7bb2c5ab9e6a`** (`aristotle-mertupper/MertUpper.lean`):
+  `mertens_prod_upper` — the Euler-product UPPER companion to the just-landed `mertens_lower`:
+  `∑_{n≤N} μ²(n)/φ(n) ≤ ∏_{p≤N}(1+1/(p-1))` (domination of the squarefree sum by the full Euler
+  product). Self-contained (def `mertensSummand` inlined; statement typechecks in our v4.29.1). On
+  return: `aristotle list` (one-shot) → download → verify in-kernel + `#print axioms` clean → port
+  into `BoundedGaps/Mertens.lean`. Then the next brick is the SHARP `∑μ²/φ = log N + O(1)`.
+- **DONE+ported 2026-06-04 — `6c45fd6b` `mertens_crux`** (the analytic on-ramp's nut): returned
+  sorry-free, verified + ported into `BoundedGaps/Mertens.lean` as part of `mertens_lower`
+  (`log N ≤ ∑ μ²/φ`), `#print axioms = [propext, Classical.choice, Quot.sound]`. One `grind`
+  regression (radical(p^k)=p) hand-fixed; mathlib v4.29.1 DOES have `radical`.
+- **DONE+ported (earlier): the two bridge cores.** `0b5bf5be` denom_bridge, `9d05dbaa` num_bridge —
+  both eliminated (handoff `d977260`); `Mk_200_gt_4` axiom-clean.
 - DONE+ported (earlier): `f84ef793` multinomialFast (→ `MultinomialFast.lean`); `656d6b54`
   card_filter_ofParts (→ re-proved). `3591b35b` multfold = dead path (enumeration abandoned).
 - After both bridges land: the ONLY remaining gap to a kernel-checked `Mk 200 > 4` is the heavy
