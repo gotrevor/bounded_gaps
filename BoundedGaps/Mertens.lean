@@ -824,4 +824,56 @@ theorem mertens_vonMangoldt_lower (N : ℕ) (hN : 1 ≤ N) :
     nlinarith [le_trans hlow hstep]
   exact le_of_mul_le_mul_left hcomb hpos
 
+/-- **Sharp `∑ Λ(n)/n` upper bound**: `∑_{1≤n≤N} Λ(n)/n ≤ log N + (log 4 + 4)`. From the
+hyperbola identity with `⌊N/n⌋ ≥ N/n − 1`, the Stirling upper bound `sum_log_le`, and the
+Chebyshev `ψ`-bound `Chebyshev.psi_le_const_mul_self` (`∑_{n≤N} Λ(n) ≤ (log 4 + 4)·N`). -/
+theorem mertens_vonMangoldt_upper (N : ℕ) (hN : 1 ≤ N) :
+    ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ)
+      ≤ Real.log N + (Real.log 4 + 4) := by
+  have hpos : (0 : ℝ) < N := by exact_mod_cast hN
+  set S := ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ) with hS
+  set P := ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n with hP
+  have hstep : (N : ℝ) * S - P
+      ≤ ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n * ((N / n : ℕ) : ℝ) := by
+    rw [hS, hP, Finset.mul_sum, ← Finset.sum_sub_distrib]
+    apply Finset.sum_le_sum
+    intro n hn
+    rw [Finset.mem_Icc] at hn
+    have hΛ : 0 ≤ ArithmeticFunction.vonMangoldt n := ArithmeticFunction.vonMangoldt_nonneg
+    have hfloor : (N : ℝ) / (n : ℝ) - 1 ≤ ((N / n : ℕ) : ℝ) := sub_one_le_cast_div N n hn.1
+    have hmul : ArithmeticFunction.vonMangoldt n * ((N : ℝ) / n - 1)
+        ≤ ArithmeticFunction.vonMangoldt n * ((N / n : ℕ) : ℝ) :=
+      mul_le_mul_of_nonneg_left hfloor hΛ
+    calc (N : ℝ) * (ArithmeticFunction.vonMangoldt n / n) - ArithmeticFunction.vonMangoldt n
+        = ArithmeticFunction.vonMangoldt n * ((N : ℝ) / n - 1) := by ring
+      _ ≤ _ := hmul
+  rw [vonMangoldt_hyperbola] at hstep
+  have hsl := sum_log_le (N := N)
+  have hPle : P ≤ (Real.log 4 + 4) * (N : ℝ) := by
+    have hpsi : Chebyshev.psi (N : ℝ) = ∑ n ∈ Finset.Icc 0 N, ArithmeticFunction.vonMangoldt n := by
+      rw [Chebyshev.psi_eq_sum_Icc, Nat.floor_natCast]
+    have hsub : P ≤ Chebyshev.psi (N : ℝ) := by
+      rw [hP, hpsi]
+      apply Finset.sum_le_sum_of_subset_of_nonneg
+      · intro x hx; rw [Finset.mem_Icc] at hx ⊢; omega
+      · intro i _ _; exact ArithmeticFunction.vonMangoldt_nonneg
+    exact le_trans hsub (Chebyshev.psi_le_const_mul_self (by positivity))
+  have hfin : (N : ℝ) * S ≤ (N : ℝ) * (Real.log N + (Real.log 4 + 4)) := by
+    nlinarith [le_trans hstep hsl, hPle]
+  exact le_of_mul_le_mul_left hfin hpos
+
+/-- **Sharp Mertens' first theorem (von Mangoldt form)**: `∑_{1≤n≤N} Λ(n)/n = log N + O(1)`,
+with explicit `|·− log N| ≤ log 4 + 4`. This is the COEFFICIENT-1 estimate (unlike the
+Chebyshev-`θ`-based `mertens_first_le`, whose constant is the lossy `log 4`), and the right
+base for the sharp `∑_{p≤N}(log p)/p = log N + O(1)` (drop the convergent prime-power tail)
+and ultimately `∑μ²/φ = Θ(log N)`. -/
+theorem mertens_vonMangoldt_two_sided (N : ℕ) (hN : 1 ≤ N) :
+    |(∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ)) - Real.log N|
+      ≤ Real.log 4 + 4 := by
+  have hlo := mertens_vonMangoldt_lower N hN
+  have hhi := mertens_vonMangoldt_upper N hN
+  have hlog4 : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+  rw [abs_le]
+  constructor <;> linarith
+
 end BoundedGaps.Mertens
