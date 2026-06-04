@@ -74,6 +74,39 @@ theorem divisor_pair_expand (S : Finset ℕ) (hS : 0 ∉ S) (f g : ℕ → ℝ) 
   rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
   ring
 
+/-- **Multidimensional divisor-lattice swap (workhorse).**
+For a `Fintype` index `ι`, a finite set `S`, per-coordinate candidate sets
+`D i`, a per-coordinate selection predicate `cond i x m`, and weights `u i x`,
+the block-sum of the product of the *active* (selected) sub-sums regroups as a
+sum over selection tuples `P ∈ ∏ᵢ D i`, weighted by the count of `m ∈ S`
+selecting `P` in every coordinate:
+`∑_{m∈S} ∏ᵢ (∑_{x∈D i, cond i x m} u i x)
+   = ∑_{P∈∏ D} (∏ᵢ u i (P i)) · #{m∈S : ∀i, cond i (P i) m}`.
+This is the `Fintype`-indexed generalization of `divisor_pair_expand`; the GPY
+sub-step (a) swap for the `k`-fold Selberg product is the `ι = Fin k`,
+`N = ℕ×ℕ` instance (`sieveSum_selberg_nu_separable_expand`). -/
+theorem prod_sum_active_expand {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {N M : Type*} [DecidableEq N] [DecidableEq M]
+    (S : Finset M) (D : ι → Finset N) (cond : ι → N → M → Prop)
+    [∀ i x m, Decidable (cond i x m)] (u : ι → N → ℝ) :
+    ∑ m ∈ S, ∏ i, (∑ x ∈ (D i).filter (fun x => cond i x m), u i x)
+      = ∑ P ∈ Fintype.piFinset D, (∏ i, u i (P i))
+          * ((S.filter (fun m => ∀ i, cond i (P i) m)).card : ℝ) := by
+  classical
+  have key : ∀ m ∈ S, ∏ i, (∑ x ∈ (D i).filter (fun x => cond i x m), u i x)
+      = ∑ P ∈ Fintype.piFinset D,
+          if (∀ i, cond i (P i) m) then ∏ i, u i (P i) else 0 := by
+    intro m _
+    have hf : ∀ i, (∑ x ∈ (D i).filter (fun x => cond i x m), u i x)
+        = ∑ x ∈ D i, (if cond i x m then u i x else 0) := fun i => Finset.sum_filter _ _
+    simp_rw [hf]
+    rw [Finset.prod_univ_sum]
+    exact Finset.sum_congr rfl (fun P _ => Fintype.prod_ite_zero)
+  rw [Finset.sum_congr rfl key, Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun P _ => ?_)
+  rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
+  ring
+
 /-- **Sub-step (a), single-coordinate, for the Möbius-divisor transform.**
 Specializing `divisor_pair_expand` to `f' d = μ(d)·f(log d/log R)` and
 `g' e = μ(e)·g(log e/log R)` opens a block-sum of products of two
