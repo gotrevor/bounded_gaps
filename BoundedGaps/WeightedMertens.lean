@@ -26,6 +26,7 @@ import BoundedGaps.SharpMertens
 
 open scoped BigOperators
 open Filter Topology
+open BoundedGaps.SingularSeries
 
 namespace BoundedGaps.WeightedMertens
 
@@ -152,5 +153,114 @@ theorem weighted_cesaro_tendsto_zero {ε w : ℕ → ℝ}
   rw [div_lt_iff₀ hWpos]
   calc |S| ≤ C + (δ / 2) * W := hSbound
     _ < δ * W := by linarith [hCW]
+
+/-- **Weighted average against a divergent majorant.** A variant of
+`weighted_cesaro_tendsto_zero` where the normalizer is an arbitrary `D N → ∞` that
+*majorizes* the weight partial sums (`∑_{n<N} w n ≤ D N` eventually). Lets us normalize
+by a clean closed-form `D N` (e.g. `(log N)²`) instead of the weight sum itself, sidestepping
+a separate divergence lemma for `∑ w`. -/
+theorem weighted_avg_majorant_tendsto_zero {ε w D : ℕ → ℝ}
+    (hw : ∀ n, 0 ≤ w n)
+    (hε : Tendsto ε atTop (nhds 0))
+    (hD : Tendsto D atTop atTop)
+    (hmaj : ∀ᶠ N in atTop, (∑ n ∈ Finset.range N, w n) ≤ D N) :
+    Tendsto (fun N => (∑ n ∈ Finset.range N, ε n * w n) / D N) atTop (nhds 0) := by
+  rw [Metric.tendsto_atTop]
+  intro δ hδ
+  rw [Metric.tendsto_atTop] at hε
+  obtain ⟨M, hM⟩ := hε (δ / 2) (by linarith)
+  set C : ℝ := |∑ n ∈ Finset.range M, ε n * w n| with hC
+  have hC0 : 0 ≤ C := abs_nonneg _
+  -- D N exceeds B := 2C/δ + 1 eventually (hence positive and C/D < δ/2)
+  set B : ℝ := 2 * C / δ + 1 with hB
+  have hBpos : 0 < B := by positivity
+  have hev : ∀ᶠ N in atTop, B < D N := hD.eventually_gt_atTop B
+  obtain ⟨N₀, hN₀⟩ := (hev.and hmaj).exists_forall_of_atTop
+  refine ⟨max M N₀, fun N hN => ?_⟩
+  have hNM : M ≤ N := le_trans (le_max_left _ _) hN
+  have hNN₀ : N₀ ≤ N := le_trans (le_max_right _ _) hN
+  obtain ⟨hDB, hWD⟩ := hN₀ N hNN₀
+  set S : ℝ := ∑ n ∈ Finset.range N, ε n * w n with hS
+  have hDpos : 0 < D N := lt_trans hBpos hDB
+  -- split S = head + tail
+  have hsplit : S = (∑ n ∈ Finset.range M, ε n * w n) + ∑ n ∈ Finset.Ico M N, ε n * w n := by
+    rw [hS, ← Finset.sum_range_add_sum_Ico _ hNM]
+  -- tail bound, finishing on the majorant
+  have htail : |∑ n ∈ Finset.Ico M N, ε n * w n| ≤ (δ / 2) * D N := by
+    calc |∑ n ∈ Finset.Ico M N, ε n * w n|
+        ≤ ∑ n ∈ Finset.Ico M N, |ε n * w n| := Finset.abs_sum_le_sum_abs _ _
+      _ = ∑ n ∈ Finset.Ico M N, |ε n| * w n := by
+            refine Finset.sum_congr rfl (fun n _ => ?_)
+            rw [abs_mul, abs_of_nonneg (hw n)]
+      _ ≤ ∑ n ∈ Finset.Ico M N, (δ / 2) * w n := by
+            refine Finset.sum_le_sum (fun n hn => ?_)
+            have hεn : |ε n| ≤ δ / 2 := by
+              have := hM n (Finset.mem_Ico.mp hn).1
+              rw [Real.dist_eq, sub_zero] at this; exact this.le
+            exact mul_le_mul_of_nonneg_right hεn (hw n)
+      _ = (δ / 2) * ∑ n ∈ Finset.Ico M N, w n := by rw [Finset.mul_sum]
+      _ ≤ (δ / 2) * D N := by
+            apply mul_le_mul_of_nonneg_left _ (by linarith)
+            refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg ?_ (fun i _ _ => hw i)) hWD
+            intro x hx; exact Finset.mem_range.mpr (Finset.mem_Ico.mp hx).2
+  have hSbound : |S| ≤ C + (δ / 2) * D N := by
+    rw [hsplit]
+    calc |(∑ n ∈ Finset.range M, ε n * w n) + ∑ n ∈ Finset.Ico M N, ε n * w n|
+        ≤ |∑ n ∈ Finset.range M, ε n * w n| + |∑ n ∈ Finset.Ico M N, ε n * w n| := abs_add_le _ _
+      _ ≤ C + (δ / 2) * D N := by rw [← hC]; linarith [htail]
+  have hCD : C < (δ / 2) * D N := by
+    have h1 : 2 * C / δ < D N := lt_trans (by linarith) hDB
+    rw [div_lt_iff₀ hδ] at h1; nlinarith [h1, hδ]
+  rw [Real.dist_eq, sub_zero, abs_div, abs_of_pos hDpos, div_lt_iff₀ hDpos]
+  calc |S| ≤ C + (δ / 2) * D N := hSbound
+    _ < δ * D N := by linarith [hCD]
+
+/-! ## Discrepancy of the arithmetic weight vs the harmonic model -/
+
+/-- **The discrepancy `B(N) = (∑_{n≤N} μ²/φ) − harmonic N` is `o(log N)`.** Immediate from
+sharp Mertens (`G(N)/log N → 1`) and `harmonic N/log N → 1`. This is the null sequence
+`ε` (after dividing by `log n`) fed to the weighted Cesàro step. -/
+theorem discrepancy_div_log_tendsto_zero :
+    Tendsto (fun N : ℕ =>
+        ((∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) - (harmonic N : ℝ)) / Real.log N)
+      atTop (nhds 0) := by
+  have h := (BoundedGaps.SharpMertens.sharp_mertens_unconditional).sub harmonic_div_log_tendsto_one
+  rw [show (1 : ℝ) - 1 = 0 by norm_num] at h
+  exact h.congr (fun N => (sub_div _ _ _).symm)
+
+/-! ## Telescoping majorant for the `log`-difference weight -/
+
+/-- **Telescoping majorant.** With the weight `w n = log n · (log (n+1) − log n)` (the natural
+weight for the Abel tail of the weighted Mertens, where `log(n+1)−log n` is the increment of the
+sample points `log n / log N`), the partial sums are majorized by `(log N)²`:
+`∑_{n<N} log n · (log (n+1) − log n) ≤ (log N)²`. Proof: `log n ≤ log N` on the range, and
+`∑_{n<N} (log (n+1) − log n) = log N` telescopes (`log 0 = 0`). -/
+theorem sum_log_mul_log_diff_le_sq (N : ℕ) :
+    (∑ n ∈ Finset.range N, Real.log n * (Real.log (n + 1) - Real.log n)) ≤ (Real.log N) ^ 2 := by
+  have hlogN : 0 ≤ Real.log N := Real.log_natCast_nonneg N
+  -- telescoping: ∑ (log(n+1) - log n) = log N - log 0 = log N
+  have htel : (∑ n ∈ Finset.range N, (Real.log ((n : ℝ) + 1) - Real.log n)) = Real.log N := by
+    have := Finset.sum_range_sub (fun n : ℕ => Real.log n) N
+    simpa using this
+  calc (∑ n ∈ Finset.range N, Real.log n * (Real.log (n + 1) - Real.log n))
+      ≤ ∑ n ∈ Finset.range N, Real.log N * (Real.log (n + 1) - Real.log n) := by
+        refine Finset.sum_le_sum (fun n hn => ?_)
+        have hnN : (n : ℝ) ≤ (N : ℝ) := by
+          exact_mod_cast (Nat.lt_of_lt_of_le (Finset.mem_range.mp hn) (le_refl N)).le
+        have hdiff : 0 ≤ Real.log ((n : ℝ) + 1) - Real.log n := by
+          rcases Nat.eq_zero_or_pos n with h0 | hpos
+          · subst h0; simp
+          · have : Real.log (n : ℝ) ≤ Real.log ((n : ℝ) + 1) :=
+              Real.log_le_log (by exact_mod_cast hpos) (by linarith)
+            linarith
+        have hlogle : Real.log (n : ℝ) ≤ Real.log N := by
+          rcases Nat.eq_zero_or_pos n with h0 | hpos
+          · subst h0; simpa using hlogN
+          · exact Real.log_le_log (by exact_mod_cast hpos) hnN
+        exact mul_le_mul_of_nonneg_right hlogle hdiff
+    _ = Real.log N * ∑ n ∈ Finset.range N, (Real.log (n + 1) - Real.log n) := by
+        rw [Finset.mul_sum]
+    _ = Real.log N * Real.log N := by rw [htel]
+    _ = (Real.log N) ^ 2 := by ring
 
 end BoundedGaps.WeightedMertens
