@@ -208,31 +208,43 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 ---
 
-## C. Aristotle (status 2026-06-04, lap ~19:40Z)
-- **IN FLIGHT — `32baa99f-5e4b-4c91-84b6-870366290522`** (`aristotle-abel/AbelDiv.lean`):
-  the pure-analysis **discrete Abel-summation bound** `abel_div_le`:
-  given `a k ≥ 0` with partial sums `∑_{k∈Icc 1 n} a k ≤ c·n`, then
-  `∑_{n∈Icc 1 N} a n / n ≤ c · ∑_{n∈Icc 1 N} 1/n`. Number-theory-free → low port-risk.
-  **CONSUMER ALREADY VALIDATED** in `scratch_mertens1.lean` (repo root): with `abel_div_le` as a
-  temporary `axiom`, the full `mertens_first_le : ∑_{p≤N}(log p)/p ≤ log 4·(1+log N)` typechecks
-  green (instantiate `a n = [n prime]·log n`, `c = log 4`; uses `chebyshev_theta_le'` + mathlib
-  `harmonic_le_one_add_log`). **On return**: `aristotle download 32baa99f --destination aristotle-abel-out`,
-  verify in-kernel + `#print axioms` clean, fix any v4.28→v4.29 `grind`/`simp` regressions, then
-  port `abel_div_le` + `mertens_first_le` into `BoundedGaps/Mertens.lean` and commit (axiom-clean).
-  (Mangled-prompt twin `35008d3a` was cancelled — ignore it.)
-- **DONE+LANDED this lap (commits on `path-a-selberg-nu`):**
-  - `a2e4c60` `mertens_prod_upper : ∑_{n≤N} μ²/φ ≤ ∏_{p≤N}(1+1/(p-1))` + `mertensSummand_eq_prod`
-    — proved LOCALLY (not via the old Aristotle `129257d7`, which I let finish→IDLE and did NOT
-    harvest, since the local proof is axiom-clean and v4.29-native). `129257d7` is now stale/IDLE.
-  - `5cfec21` `chebyshev_theta_le : θ(N) = ∑_{p≤N} log p ≤ N·log 4` (from mathlib `primorial_le_four_pow`).
-  - `4abc26d` `chebyshev_theta_le'` (the `Icc 1 n`/indicator partial-sum form — Abel hypothesis shape).
-- **NEXT bricks on the Mertens ladder** (after `mertens_first_le` lands):
-  (1) **Mertens 2nd** `∑_{p≤N} 1/p ≤ log log N + O(1)` — a SECOND Abel step from `∑(log p)/p`, but with
-      weight `1/log p` (NOT the `1/n` template of `abel_div_le`; needs a more general Abel lemma —
-      good next Aristotle brick). (2) `∑_{p≤N} 1/(p-1) ≤ ∑ 1/p + 1` via telescoping `∑ 1/(p(p-1)) ≤ 1`.
-      (3) `∏_{p≤N}(1+1/(p-1)) ≤ C·log N` via `1+x ≤ eˣ` + (1)+(2). (4) ⇒ `∑μ²/φ = O(log N)`, pairing
-      with `mertens_lower` for the two-sided `Θ(log N)`. Then the SHARP `= log N + O(1)` (Mertens const),
-      then the multidim singular-series → ∫F² (the real sub-step (c) nut).
+## C. Aristotle (status 2026-06-04, lap ~02:50Z)
+- **IN FLIGHT — `cc0dfbaf-e386-4f5c-aee4-0f99cbf0bbf5`** (`aristotle-vmhyp/VMHyp.lean`):
+  the **von Mangoldt hyperbola identity** `vonMangoldt_hyperbola`:
+  `∑_{1≤n≤N} Λ(n)·⌊N/n⌋ = ∑_{1≤m≤N} log m  (= log N!)`. Entry point to the **SHARP** Mertens 1st
+  (coefficient-1) route — see the sharp/crude note below. On return: download, verify in-kernel +
+  `#print axioms` clean, fix any v4.28→v4.29 regressions, port into `BoundedGaps/Mertens.lean`.
+- **LANDED THIS LAP (12 commits `a2e4c60`…`8295e10` on `path-a-selberg-nu`, all axiom-clean,
+  full build green 8272 jobs):** the complete 1D-analytic toolkit in `BoundedGaps/Mertens.lean`:
+  - `mertens_prod_upper`/`mertensSummand_eq_prod` (`∑μ²/φ ≤ ∏(1+1/(p-1))`), proved locally.
+  - `chebyshev_theta_le`/`chebyshev_theta_le'` (`θ(N) ≤ N·log 4`, plain + indicator form).
+  - `abel_div_le` (Aristotle `32baa99f`, weight `1/n` summation-by-parts) + `mertens_first_le`
+    (`∑_{p≤N}(log p)/p ≤ log4·(1+log N)`) + `mertens_first_le'` (indicator form).
+  - `telescope_tail_eq/le`, `prime_tail_le` (`∑_{p≤N}(1/(p-1)−1/p) ≤ 1`).
+  - `hasDerivAt_log_log`, `continuousOn/antitoneOn_one_div_x_log_x`, `integral_one_div_x_log_x`
+    (FTC: `∫_2^N 1/(x log x)=log log N−log log 2`), `sum_one_div_n_log_n_le` (sum-integral comparison).
+  - `abel_summation_identity` (Aristotle `431512dd`, GENERAL-weight summation-by-parts).
+  - `mertens_second_term_bound` (`(1+log n)(1/log n−1/log(n+1)) ≤ (1+1/log2)/(n log n)`).
+- **⚠️ KEY INSIGHT (sharp vs crude).** The `abel_div_le`-based route gives Mertens 1st with a LOSSY
+  `log 4 ≈ 1.386` coefficient (from Chebyshev `θ≤N log4`), so the second Abel step yields only
+  `∑1/p ≤ C·log log N` with NON-SHARP `C = log4·(1+1/log2) ≈ 3.4`. Exponentiating gives
+  `∑μ²/φ = O((log N)^{3.4})`, **NOT** the sharp `Θ(log N)`. The two-sided `∑μ²/φ ~ log N` (needed
+  for sub-step (c)'s main term) requires the SHARP Mertens 1st `∑(log p)/p = log N + O(1)`
+  (coefficient exactly 1), via the von Mangoldt / `log(N!)` / Stirling route — hence the `cc0dfbaf` job.
+- **NEXT bricks — two tracks:**
+  - **(crude, ~80 lines, OPTIONAL milestone)** Assemble qualitative **Mertens 2nd** `∑_{p≤N}1/p = O(log log N)`
+    from the landed pieces: `abel_summation_identity` with `a k=[k prime](log k)/k`, `w k=1/log k`
+    (⇒ `a k·w k=[k prime]/k`); `A_n` bounded by `mertens_first_le'`; split off n=1 (A₁=0, junk weight);
+    bound the difference-sum termwise via `mertens_second_term_bound` then `sum_one_div_n_log_n_le`
+    (mind the `Icc 2 (N-1)` vs `Ico 2 N`/`n=3..N` index shift, +`1/(2log2)` for the n=2 term).
+    Famous theorem, but non-sharp constant — does NOT give the headline `∑μ²/φ=Θ(log N)`.
+  - **(SHARP, the real headline path)** von Mangoldt route: `vonMangoldt_hyperbola` (in flight) →
+    Stirling `N log N−N+1 ≤ ∑_{m≤N}log m ≤ N log N` (use mathlib `integral_log` +
+    `MonotoneOn.integral_le_sum`; ALL tooling present) → `⌊N/n⌋=N/n−frac`, ψ(N)=∑Λ(n)≤C·N
+    (Chebyshev) → `∑Λ(n)/n = log N + O(1)` → drop prime-power tail (`∑_{k≥2}(log p)/p^k` converges)
+    → SHARP `∑(log p)/p = log N+O(1)` → sharp Abel (reuse `abel_summation_identity`) → `∑1/p=log log N+O(1)`
+    → `∑μ²/φ = Θ(log N)`. mathlib has `ArithmeticFunction.vonMangoldt_sum`, `vonMangoldt_apply_prime`,
+    `vonMangoldt_le_log`, `Stirling.le_log_factorial_stirling`.
 - **DONE+ported 2026-06-04 — `6c45fd6b` `mertens_crux`** (the analytic on-ramp's nut): returned
   sorry-free, verified + ported into `BoundedGaps/Mertens.lean` as part of `mertens_lower`
   (`log N ≤ ∑ μ²/φ`), `#print axioms = [propext, Classical.choice, Quot.sound]`. One `grind`
