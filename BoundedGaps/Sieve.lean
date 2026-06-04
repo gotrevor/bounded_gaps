@@ -2106,6 +2106,28 @@ theorem isFiniteSeparable_tensor_sum {k : ℕ} {I : Type*} [Fintype I]
     fun j i x => g ((e.symm j) i) x, 0, fun t => ?_⟩
   exact (Equiv.sum_comp e.symm (fun φ => a φ * ∏ i, g (φ i) (t i))).symm
 
+/-- **1-D smooth partition of unity** (the residual analytic input to the
+box-tensor density). With the smooth transition `σ = Real.smoothTransition`
+(`σ = 0` on `(-∞,0]`, `= 1` on `[1,∞)`, `C^∞`), the bumps
+`ρ_m(x) := σ(x − m) − σ(x − (m+1))` are smooth, each supported on `[m, m+2]`,
+and the `N+1` of them sum to `1` on the whole interval `[1, N+1]`:
+`∑_{m=0}^{N} (σ(x−m) − σ(x−(m+1))) = 1` (telescoping, with `σ(x)=1` for `x≥1`
+and `σ(x−(N+1))=0` for `x ≤ N+1`). This is the 1-D PoU consumed (after a mesh
+rescale `x ↦ x/h`) by `tensor_partition_of_unity`; together with
+`isFiniteSeparable_tensor_sum` it furnishes the separable approximant
+`G(t)=∑_φ F(c_φ)∏_i ρ_{φ i}(t_i)` for `separable_dense_sup`. The residue is then
+the modulus-of-continuity sup-bound + keeping the active bump-boxes inside the
+simplex (inward dilation). -/
+theorem smoothTransition_finite_partition (N : ℕ) {x : ℝ}
+    (hx1 : 1 ≤ x) (hxN : x ≤ (N : ℝ) + 1) :
+    ∑ m ∈ Finset.range (N + 1),
+      (Real.smoothTransition (x - m) - Real.smoothTransition (x - (m + 1))) = 1 := by
+  have key := Finset.sum_range_sub' (fun j : ℕ => Real.smoothTransition (x - (j : ℝ))) (N + 1)
+  simp only [Nat.cast_add, Nat.cast_one, Nat.cast_zero, sub_zero] at key
+  rw [key, Real.smoothTransition.one_of_one_le hx1,
+    Real.smoothTransition.zero_of_nonpos (show x - ((N : ℝ) + 1) ≤ 0 by linarith)]
+  ring
+
 /-- **Separable sup-norm density** (the irreducible analytic core of
 `exists_separable_F_of_Mk_gt`, with the continuity half discharged by
 `mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly
