@@ -1,5 +1,7 @@
 import BoundedGaps.WeightedRiemann2D
 import BoundedGaps.PolyaUniform
+import BoundedGaps.Mertens
+import Mathlib.NumberTheory.Harmonic.EulerMascheroni
 
 /-!
 # Reducing the GPY inner-uniform convergence to the pointwise scale-change limit
@@ -110,6 +112,30 @@ lemma tendsto_logFloor_rpow_div (t : ℝ) (ht : 0 < t) :
     rw [Real.log_rpow hRpos] at hlog_le
     rw [div_le_iff₀ hlogRpos]
     linarith [hlog_le]
+
+/-- **Harmonic normalisation `(∑_{2≤n≤N} 1/n)/log N → 1`.** The other ingredient of the
+`psi_tendsto` drift bound: the harmonic tail over `log N` tends to `1`. From the Euler–Mascheroni
+asymptotic `harmonic N - log N → γ` (mathlib `tendsto_harmonic_sub_log`) and
+`∑_{2≤n≤N} 1/n = harmonic N - 1`. A reusable analysis brick toward closing leaf 1 in-kernel. -/
+lemma tendsto_harmonic_icc2_div_log :
+    Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 2 N, (1 : ℝ) / n) / Real.log (N : ℝ)) atTop (𝓝 1) := by
+  have hsum_eq : ∀ N : ℕ, 1 ≤ N → (∑ n ∈ Finset.Icc 2 N, (1 : ℝ) / n) = (harmonic N : ℝ) - 1 := by
+    intro N hN
+    have hins : Finset.Icc 1 N = insert 1 (Finset.Icc 2 N) := by
+      ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
+    rw [BoundedGaps.Mertens.harmonic_eq_icc_sum, hins, Finset.sum_insert (by simp)]; norm_num
+  have hden : Tendsto (fun N : ℕ => Real.log (N : ℝ)) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have herr : Tendsto (fun N : ℕ => ((harmonic N : ℝ) - Real.log N - 1) / Real.log (N : ℝ))
+      atTop (𝓝 0) := (Real.tendsto_harmonic_sub_log.sub tendsto_const_nhds).div_atTop hden
+  have hkey : (fun N : ℕ => (∑ n ∈ Finset.Icc 2 N, (1 : ℝ) / n) / Real.log (N : ℝ))
+      =ᶠ[atTop] (fun N : ℕ => 1 + ((harmonic N : ℝ) - Real.log N - 1) / Real.log (N : ℝ)) := by
+    filter_upwards [eventually_ge_atTop 2] with N hN
+    have hne : Real.log (N : ℝ) ≠ 0 :=
+      ne_of_gt (Real.log_pos (by exact_mod_cast (by omega : 1 < N)))
+    rw [hsum_eq N (by omega)]; field_simp; ring
+  rw [tendsto_congr' hkey]
+  simpa using tendsto_const_nhds.add herr
 
 /-- For `G ≥ 0`, `Ψ G R ·` is monotone on `[0,1]`: increasing `t` only enlarges the truncation
 `⌊R^t⌋`, adding nonnegative terms; division by `log R ≥ 0` preserves the order. For `R ≤ 1` the map
