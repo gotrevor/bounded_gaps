@@ -798,4 +798,30 @@ theorem vonMangoldt_hyperbola (N : ℕ) :
   · rw [ Finset.sum_congr rfl ];
     intro m hm; rw [ ← ArithmeticFunction.vonMangoldt_sum ] ; aesop;
 
+/-- **Sharp `∑ Λ(n)/n` lower bound**: `log N − 1 ≤ ∑_{1≤n≤N} Λ(n)/n`. From the
+hyperbola identity `∑Λ(n)⌊N/n⌋ = ∑log m`, with `⌊N/n⌋ ≤ N/n` (and `Λ ≥ 0`) giving
+`∑log m ≤ N·∑Λ(n)/n`, combined with the Stirling lower bound `le_sum_log`. This is
+the lower half of the sharp Mertens 1st intermediate `∑Λ(n)/n = log N + O(1)`
+(coefficient exactly 1 — the upper half needs `ψ(N) = ∑Λ(n) ≤ C·N`). -/
+theorem mertens_vonMangoldt_lower (N : ℕ) (hN : 1 ≤ N) :
+    Real.log N - 1 ≤ ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ) := by
+  have hpos : (0 : ℝ) < N := by exact_mod_cast hN
+  have hstep : ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n * ((N / n : ℕ) : ℝ)
+      ≤ (N : ℝ) * ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ) := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_le_sum
+    intro n hn
+    have hΛ : 0 ≤ ArithmeticFunction.vonMangoldt n := ArithmeticFunction.vonMangoldt_nonneg
+    have hfloor : ((N / n : ℕ) : ℝ) ≤ (N : ℝ) / (n : ℝ) := cast_div_le_self N n
+    calc ArithmeticFunction.vonMangoldt n * ((N / n : ℕ) : ℝ)
+        ≤ ArithmeticFunction.vonMangoldt n * ((N : ℝ) / (n : ℝ)) :=
+          mul_le_mul_of_nonneg_left hfloor hΛ
+      _ = (N : ℝ) * (ArithmeticFunction.vonMangoldt n / (n : ℝ)) := by ring
+  rw [vonMangoldt_hyperbola] at hstep
+  have hlow := le_sum_log (N := N) hN
+  have hcomb : (N : ℝ) * (Real.log N - 1)
+      ≤ (N : ℝ) * ∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / (n : ℝ) := by
+    nlinarith [le_trans hlow hstep]
+  exact le_of_mul_le_mul_left hcomb hpos
+
 end BoundedGaps.Mertens
