@@ -535,4 +535,36 @@ theorem weighted_mertens_of_riemann {F : ℝ → ℝ} {M : ℝ}
   refine Finset.sum_congr rfl (fun n _ => ?_)
   ring
 
+/-! ## The capstone, modulo the single Riemann-sum analytic axiom -/
+
+/-- **The `1/n` Riemann-sum model limit** (pure real analysis, no number theory):
+`(∑_{2≤n≤N} F(log n/log N)/n) / log N → ∫₀¹ F` for `F` continuous on `[0,1]`.
+
+The substitution `u = log n/log N` turns the log-weighted sum into a Riemann sum of `F` over
+`[0,1]`. This is the single remaining analytic ingredient of the weighted Mertens asymptotic
+(front #4); everything else is proved axiom-free (`weighted_mertens_of_riemann`).
+DISCLOSED as an axiom while Aristotle job `930e468a` (`aristotle-wmertens/`,
+`WMertens.riemann_sum_log_weight`) grinds the pure-analysis proof. On return, verify
+`#print axioms` clean in our v4.29.1 kernel and replace this axiom with the ported theorem. -/
+axiom riemann_sum_log_weight (F : ℝ → ℝ) (hF : ContinuousOn F (Set.Icc (0 : ℝ) 1)) :
+    Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 2 N, F (Real.log n / Real.log N) / (n : ℝ)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u))
+
+/-- **Weighted Mertens asymptotic** (GPY/Maynard sieve main term, 1-D, sub-step (c)).
+For `F` Lipschitz and continuous on `[0,1]` (in particular any `ContDiff` `F`),
+`(∑_{1≤n≤N} (μ²(n)/φ(n))·F(log n/log N)) / log N → ∫₀¹ F`.
+
+Rests on the single analytic axiom `riemann_sum_log_weight` (Aristotle); the arithmetic content
+— the Abel-summation reduction against sharp Mertens — is axiom-free
+(`weighted_mertens_of_riemann`). -/
+theorem weighted_mertens {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|)
+    (hCont : ContinuousOn F (Set.Icc (0 : ℝ) 1)) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) :=
+  weighted_mertens_of_riemann hLip (riemann_sum_log_weight F hCont)
+
 end BoundedGaps.WeightedMertens
