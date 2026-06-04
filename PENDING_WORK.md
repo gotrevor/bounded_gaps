@@ -422,11 +422,15 @@ two of them:
    strictly easier than the monolithic `3e2b6a8d`). **RECIPE for a local proof** (if Aristotle fails):
    `t=0` trivial (empty sum). For `t∈(0,1]`: `Ψ G R t = c_R·[(∑_{n≤N} G(c_R·u_n)/n)/log N]`,
    `N=⌊R^t⌋`, `u_n=log n/log N`, `c_R=log N/log R`. (i) **`c_R → t` — DONE**
-   (`tendsto_logFloor_rpow_div`, this lap). (ii) drift: `|G(c_R·u_n)−G(t·u_n)| ≤ ε` uniformly (unif.
-   cont. of `G` on `[0,1]`, `c_R→t`, `c_R u_n,t u_n∈[0,1]`); error `≤ ε·(∑_{2≤n≤N}1/n)/log N ≤ 2ε`
-   (harmonic ratio `→1` via mathlib `tendsto_harmonic_sub_log` + repo `harmonic_eq_icc_sum`).
-   (iii) `riemann_sum_log_weight` on `F_t(u)=G(t·u)` ⟹ `(∑ G(t·u_n)/n)/log N → ∫₀¹G(t·u)du`.
-   (iv) `c_R·∫₀¹G(t·u)du = t·∫₀¹G(t·u)du = ∫₀^t G` (substitution `y=t·u`).
+   (`tendsto_logFloor_rpow_div`). (ii) **harmonic ratio `(∑_{2≤n≤N}1/n)/log N → 1` — DONE**
+   (`tendsto_harmonic_icc2_div_log`). (ii') **drift — REMAINS (the crux)**: `|G(c_R·u_n)−G(t·u_n)| ≤ ε`
+   uniformly (unif. cont. of `G` on `[0,1]`, `c_R→t`, `c_R u_n,t u_n∈[0,1]`); error
+   `≤ ε·(∑_{2≤n≤N}1/n)/log N ≤ 2ε` (uses the harmonic brick). (iii) **REMAINS**:
+   `riemann_sum_log_weight` on `F_t(u)=G(t·u)` composed with `N=⌊R^t⌋→∞` ⟹
+   `(∑ G(t·u_n)/n)/log N → ∫₀¹G(t·u)du`. (iv) **REMAINS**: `c_R·∫₀¹G(t·u)du = t·∫₀¹G(t·u)du = ∫₀^t G`
+   (substitution `y=t·u`; mathlib `intervalIntegral.smul_integral_comp_mul_right`/`_left` or
+   `integral_comp_mul_left`). Net: 2 of 3 ingredients proven in-kernel; only the drift + the
+   riemann-compose + the substitution remain (also on Aristotle `1f84c4d6`).
    THEN: build the multidim limit on `gpy_diagonal_asymptotic_form` (the GPY port, still multi-lap)
    + singular-series Euler product `𝔖(H)` (reuse `SharpMertens` `eulerProduct_tprod`).
 2. **Leaf (3) off-diagonal heuristic main = o(main)** = `M·∑_{¬diag}w_P/∏[Pᵢ] = o(M(log R)^k)` (the
