@@ -106,4 +106,37 @@ theorem self_div_totient_eq_sum_moebiusSq_div_totient (n : ℕ) :
   simp only [gMoebiusSqTotient_apply] at h
   exact h.symm
 
+/-- **General Dirichlet hyperbola interchange.** Summing any `g : ℕ → ℝ` over the
+divisors of each `n ∈ [1, N]` and then over `n` equals summing `g d` weighted by
+the count `⌊N/d⌋` of multiples of `d` in `[1, N]`:
+`∑_{n=1}^N ∑_{d∣n} g d = ∑_{d=1}^N g d · ⌊N/d⌋`. (Proved on Aristotle job
+`627d10e3`; verified kernel-clean under v4.29.1.) -/
+theorem dirichlet_hyperbola (N : ℕ) (g : ℕ → ℝ) :
+    ∑ n ∈ Finset.Icc 1 N, (∑ d ∈ n.divisors, g d)
+      = ∑ d ∈ Finset.Icc 1 N, g d * ((N / d : ℕ) : ℝ) := by
+  have lhs_def : ∑ n ∈ Finset.Icc 1 N, ∑ d ∈ n.divisors, g d
+      = ∑ n ∈ Finset.Icc 1 N, ∑ d ∈ Finset.Icc 1 N, if d ∣ n then g d else 0 := by
+    rw [Finset.sum_congr rfl]
+    intro x hx; rw [← Finset.sum_filter]; congr; ext; simp +decide [Nat.mem_divisors]
+    obtain ⟨hx1, hx2⟩ := Finset.mem_Icc.mp hx
+    exact ⟨fun h => ⟨⟨Nat.pos_of_dvd_of_pos h.1 hx1,
+        Nat.le_trans (Nat.le_of_dvd hx1 h.1) hx2⟩, h.1⟩,
+      fun h => ⟨h.2, by linarith⟩⟩
+  rw [lhs_def, Finset.sum_comm, Finset.sum_congr rfl]
+  simp +contextual [Finset.sum_ite, mul_comm]
+  exact fun x _ _ => Or.inl <| Nat.Ioc_filter_dvd_card_eq_div N x
+
+/-- **Hyperbola form of the `∑ n/φ(n)` summatory function.** Combining the
+singular-series keystone `n/φ(n) = ∑_{d∣n} μ²(d)/φ(d)` with the Dirichlet
+hyperbola: the average of `n/φ(n)` is a weighted divisor sum,
+`∑_{n=1}^N n/φ(n) = ∑_{d=1}^N (μ²(d)/φ(d)) · ⌊N/d⌋`. This is the entry point to
+the singular-series constant (the main term of `∑ n/φ(n) ∼ A·N`). -/
+theorem sum_self_div_totient_eq_weighted (N : ℕ) :
+    ∑ n ∈ Finset.Icc 1 N, (n : ℝ) / (Nat.totient n : ℝ)
+      = ∑ d ∈ Finset.Icc 1 N,
+          ((ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ)) * ((N / d : ℕ) : ℝ) := by
+  rw [← dirichlet_hyperbola N
+    (fun d => (ArithmeticFunction.moebius d : ℝ) ^ 2 / (Nat.totient d : ℝ))]
+  exact Finset.sum_congr rfl (fun n _ => self_div_totient_eq_sum_moebiusSq_div_totient n)
+
 end BoundedGaps.SingularSeries
