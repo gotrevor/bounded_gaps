@@ -1514,4 +1514,45 @@ theorem heuristic_main_selberg_nu_canonical (k J : ℕ) (c : Fin J → ℝ)
     (fun _ _ hd => sieveDivisors_pos hd)
     (fun _ _ hd r hr => sieveDivisors_dvd_closed hd hr)]
 
+/-- **Lattice weight, absolute value, factorizes over coordinates.** For a
+product weight `∏ᵢ aᵢ(Pᵢ)` over the lattice `∏ᵢ Dset i`, the sum of absolute
+values factors:
+`∑_{P} |∏ᵢ aᵢ(Pᵢ)| = ∏ᵢ ∑_{de∈Dset i} |aᵢ(de)|`.
+This is the structural reduction of the correction's total weight (the
+`∑_{diag}|coeff|` that `diag_error_bound` reduces the diagonal `O(1)` error to)
+from a `k`-dimensional lattice sum to a product of `k` *one-dimensional* divisor
+sums — turning the analytic size bound `∑|coeff| = o(main)` into a per-coordinate
+estimate. Pure algebra (`Finset.prod_univ_sum` + `Finset.abs_prod`). -/
+theorem piFinset_sum_abs_prod_factor {k : ℕ} (Dset : Fin k → Finset (ℕ × ℕ))
+    (a : Fin k → (ℕ × ℕ) → ℝ) :
+    ∑ P ∈ Fintype.piFinset Dset, |∏ i : Fin k, a i (P i)|
+      = ∏ i : Fin k, ∑ de ∈ Dset i, |a i de| := by
+  classical
+  rw [Finset.prod_univ_sum]
+  refine Finset.sum_congr rfl (fun P _ => ?_)
+  rw [Finset.abs_prod]
+
+/-- **Correction total-weight bound, factorized (sieve form).** Specializing
+`piFinset_sum_abs_prod_factor` to the concrete correction weight
+`coeffₚ = ∏ᵢ μ(Pᵢ.1)Fⱼᵢ·μ(Pᵢ.2)Fⱼ'ᵢ` of
+`sieveSum_selberg_nu_eq_heuristic_add_correction`: the total absolute weight
+`∑_P |coeffₚ|` equals
+`∏ᵢ ∑_{(d,e)∈Dᵢ×Dᵢ} |μ(d)Fⱼᵢ(log d/log R)·μ(e)Fⱼ'ᵢ(log e/log R)|`,
+a product of `k` one-dimensional weighted divisor sums. Each 1-D factor is
+`≤ ‖Fⱼᵢ‖∞‖Fⱼ'ᵢ‖∞·(∑_{d∈Dᵢ}μ(d)²)·(∑_{e∈Dᵢ}μ(e)²)` — the divisor-sum size the
+`o(main)` estimate must control (with the simplex support of `F` keeping the
+product below `M·(log R)^k`). -/
+theorem correction_weight_factor {k : ℕ} (D : Fin k → Finset ℕ)
+    (Gs₁ Gs₂ : Fin k → ℝ → ℝ) (R : ℝ) :
+    ∑ P ∈ Fintype.piFinset (fun i => D i ×ˢ D i),
+        |∏ i : Fin k,
+          ((moebius (P i).1 : ℝ) * Gs₁ i (Real.log (P i).1 / Real.log R))
+            * ((moebius (P i).2 : ℝ) * Gs₂ i (Real.log (P i).2 / Real.log R))|
+      = ∏ i : Fin k, ∑ de ∈ (D i ×ˢ D i),
+          |((moebius de.1 : ℝ) * Gs₁ i (Real.log de.1 / Real.log R))
+            * ((moebius de.2 : ℝ) * Gs₂ i (Real.log de.2 / Real.log R))| :=
+  piFinset_sum_abs_prod_factor (fun i => D i ×ˢ D i)
+    (fun i de => ((moebius de.1 : ℝ) * Gs₁ i (Real.log de.1 / Real.log R))
+      * ((moebius de.2 : ℝ) * Gs₂ i (Real.log de.2 / Real.log R)))
+
 end BoundedGaps.Sieve
