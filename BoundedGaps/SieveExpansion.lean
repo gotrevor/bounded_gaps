@@ -918,4 +918,58 @@ theorem gpy_quadform_nonneg (T : Finset ℕ) (w : ℕ → ℝ) (hT : ∀ d ∈ T
   refine Finset.sum_nonneg (fun r _ => ?_)
   positivity
 
+/-- **Heuristic main term factorizes over coordinates.** When the lattice-point
+count in the expansion is replaced by its GPY main value `M / ∏ᵢ [dᵢ,eᵢ]`
+(`M = (B−A)/W` shared, `lattice_count_main_term`), the resulting sum over the
+product lattice `∏ᵢ (Dset i)` factors into a product of independent
+per-coordinate sums:
+`∑_P (∏ᵢ aᵢ(Pᵢ))·(M/∏ᵢ[Pᵢ]) = M · ∏ᵢ (∑_{de∈Dset i} aᵢ(de)/[de])`.
+Pure algebra (`Finset.prod_univ_sum` distributing `∏∑ = ∑_P ∏`, plus
+`prod_div_distrib`). This is the structural step turning the (heuristic) GPY
+main term into a `k`-fold product of 1-D quadratic forms. -/
+theorem piFinset_lattice_main_factor {k : ℕ} (Dset : Fin k → Finset (ℕ × ℕ))
+    (a : Fin k → (ℕ × ℕ) → ℝ) (M : ℝ) :
+    ∑ P ∈ Fintype.piFinset Dset,
+        (∏ i : Fin k, a i (P i)) * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))
+      = M * ∏ i : Fin k, ∑ de ∈ Dset i, a i de / (Nat.lcm de.1 de.2 : ℝ) := by
+  classical
+  rw [Finset.prod_univ_sum, Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun P _ => ?_)
+  rw [Finset.prod_div_distrib]
+  ring
+
+/-- **Heuristic GPY main term, fully diagonalized.** Combining
+`piFinset_lattice_main_factor` (factor over coordinates), `Finset.sum_product`
+(each coordinate's `(d,e)`-pair sum is a double sum), and
+`gpy_diagonalize_moebius` (diagonalize each 1-D quadratic form), the heuristic
+main term of the separable sieve expansion — with the lattice count replaced by
+`M/∏ᵢ[dᵢ,eᵢ]` and the GPY weight `aᵢ(d,e) = μ(d)Fᵢ·μ(e)Fᵢ` (the
+`sieveSum_selberg_nu_separable_expand` summand) — equals
+`M · ∏ᵢ ∑_r φ(r) (∑_{d∈Dᵢ, r∣d} μ(d)Fᵢ(log d/log R)/d)²`,
+a product of `k` diagonalized 1-D Selberg quadratic forms. This is the complete
+algebraic skeleton of the (s1) main term; only the *asymptotic* evaluation of
+each diagonal sum (sub-step (c), `R→∞`) and the off-diagonal count discrepancy
+remain. -/
+theorem heuristic_main_term_diagonalized {k : ℕ} (D Rset : Fin k → Finset ℕ)
+    (Fs : Fin k → ℝ → ℝ) (R M : ℝ)
+    (hD : ∀ i, ∀ d ∈ D i, 1 ≤ d)
+    (hR : ∀ i, ∀ d ∈ D i, ∀ r, r ∣ d → r ∈ Rset i) :
+    ∑ P ∈ Fintype.piFinset (fun i => D i ×ˢ D i),
+        (∏ i : Fin k,
+          ((moebius (P i).1 : ℝ) * Fs i (Real.log (P i).1 / Real.log R))
+            * ((moebius (P i).2 : ℝ) * Fs i (Real.log (P i).2 / Real.log R)))
+        * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))
+      = M * ∏ i : Fin k, ∑ r ∈ Rset i, (Nat.totient r : ℝ)
+          * (∑ d ∈ (D i).filter (fun d => r ∣ d),
+              (moebius d : ℝ) * Fs i (Real.log d / Real.log R) / (d : ℝ)) ^ 2 := by
+  classical
+  rw [piFinset_lattice_main_factor (fun i => D i ×ˢ D i)
+      (fun i de => ((moebius de.1 : ℝ) * Fs i (Real.log de.1 / Real.log R))
+        * ((moebius de.2 : ℝ) * Fs i (Real.log de.2 / Real.log R))) M]
+  congr 1
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  rw [Finset.sum_product]
+  exact gpy_diagonalize_moebius (D i) (Rset i)
+    (fun d => Fs i (Real.log d / Real.log R)) (hD i) (hR i)
+
 end BoundedGaps.Sieve
