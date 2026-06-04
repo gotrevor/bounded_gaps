@@ -528,6 +528,179 @@ theorem summable_norm_bAF_log_of_bound {C : ℝ}
             (by simp [norm_bAF_zero]) m).symm
       _ ≤ C := hC m
 
+/-! ## Unconditional bound `∑_{e≤N} ‖b(e)‖ ≤ exp 2` — discharges hypothesis #1
+
+Rather than the abstract Euler product on `babs` (Aristotle), we bound the partial sum
+directly on the concrete `bAF`. The structural fact: `bAF e ≠ 0` forces every prime
+exponent of `e` to be `≤ 2` (since `bAF (p^k) = 0` for `k ≥ 3`), so any `e ≤ N` in the
+support divides the **primorial squared** `(N#)²`. Hence
+  `∑_{e≤N} |bAF e| ≤ ∑_{d ∣ (N#)²} |bAF d| = ∏_{p ≤ N} (1 + 2/(p(p-1))) ≤ exp 2`,
+the middle equality by multiplicativity of `ζ ⋆ |bAF|`, the last by `1+x ≤ eˣ` and the
+convergent telescoping `∑_p 2/(p(p-1)) ≤ ∑_{2≤n≤N} 2/(n(n-1)) = 2 - 2/N ≤ 2`. -/
+
+/-- `|bAF|` packaged as a (multiplicative) real arithmetic function. -/
+noncomputable def gabs : ArithmeticFunction ℝ := ⟨fun n => |bAF n|, by simp⟩
+
+@[simp] lemma gabs_apply (n : ℕ) : gabs n = |bAF n| := rfl
+
+lemma gabs_isMultiplicative : gabs.IsMultiplicative := by
+  refine ⟨?_, ?_⟩
+  · show |bAF 1| = 1
+    rw [bAF_isMultiplicative.1, abs_one]
+  · intro m n hmn
+    show |bAF (m * n)| = |bAF m| * |bAF n|
+    rw [bAF_isMultiplicative.2 hmn, abs_mul]
+
+/-- Telescoping value `∑_{2≤n≤N} 2/(n(n-1)) = 2 - 2/N` (for `N ≥ 1`). -/
+lemma sum_Icc_two_div_eq : ∀ N : ℕ, 1 ≤ N →
+    ∑ n ∈ Finset.Icc 2 N, (2 : ℝ) / ((n : ℝ) * ((n : ℝ) - 1)) = 2 - 2 / (N : ℝ) := by
+  intro N
+  induction N with
+  | zero => intro h; omega
+  | succ M ih =>
+    intro _
+    rcases Nat.eq_zero_or_pos M with hM | hM
+    · subst hM
+      rw [Finset.Icc_eq_empty (by norm_num), Finset.sum_empty]
+      norm_num
+    · rw [Finset.sum_Icc_succ_top (by omega : 2 ≤ M + 1), ih hM]
+      have hM0 : (M : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
+      have hM1 : (M : ℝ) + 1 ≠ 0 := by positivity
+      have hMc : (M : ℝ) + 1 - 1 = (M : ℝ) := by ring
+      push_cast
+      rw [hMc]
+      field_simp
+      ring
+
+/-- Uniform telescoping bound `∑_{2≤n≤N} 2/(n(n-1)) ≤ 2`. -/
+lemma sum_Icc_two_div_le (N : ℕ) :
+    ∑ n ∈ Finset.Icc 2 N, (2 : ℝ) / ((n : ℝ) * ((n : ℝ) - 1)) ≤ 2 := by
+  rcases Nat.eq_zero_or_pos N with hN | hN
+  · subst hN
+    rw [Finset.Icc_eq_empty (by norm_num), Finset.sum_empty]; norm_num
+  · rw [sum_Icc_two_div_eq N hN]
+    have hNr : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+    have : (0 : ℝ) ≤ 2 / (N : ℝ) := by positivity
+    linarith
+
+/-- `bAF e ≠ 0` forces every prime exponent of `e` to be `≤ 2`
+(because `bAF (p^k) = 0` for `k ≥ 3`, and `bAF` is multiplicative). -/
+lemma factorization_le_two_of_bAF_ne_zero {e : ℕ} (h : bAF e ≠ 0) (p : ℕ) :
+    e.factorization p ≤ 2 := by
+  by_contra hlt
+  push_neg at hlt
+  have he : e ≠ 0 := by
+    rintro rfl; exact h (by rw [ArithmeticFunction.map_zero])
+  have hp : p.Prime := by
+    by_contra hnp
+    rw [Nat.factorization_eq_zero_of_not_prime e hnp] at hlt; omega
+  apply h
+  rw [bAF_isMultiplicative.multiplicative_factorization _ he]
+  exact Finset.prod_eq_zero (Finsupp.mem_support_iff.mpr (by omega))
+    (bAF_prime_pow_high hp (by omega))
+
+/-- Any `e ∈ [1,N]` in the support of `bAF` divides the primorial squared `(N#)²`. -/
+lemma dvd_primorial_sq_of_bAF_ne_zero {e N : ℕ} (h1 : 1 ≤ e) (hN : e ≤ N)
+    (h : bAF e ≠ 0) : e ∣ (primorial N) ^ 2 := by
+  have he : e ≠ 0 := by omega
+  have hM : (primorial N) ^ 2 ≠ 0 := pow_ne_zero _ (primorial_pos N).ne'
+  rw [← Nat.factorization_prime_le_iff_dvd he hM]
+  intro p hp
+  rw [Nat.factorization_pow, Finsupp.smul_apply, smul_eq_mul]
+  rcases Nat.eq_zero_or_pos (e.factorization p) with h0 | hpos
+  · rw [h0]; exact Nat.zero_le _
+  · have hpe : p ∣ e := Nat.dvd_of_factorization_pos (by omega)
+    have hpN : p ≤ N := le_trans (Nat.le_of_dvd (by omega) hpe) hN
+    have hmem : p ∈ (Finset.range (N + 1)).filter Nat.Prime :=
+      Finset.mem_filter.mpr ⟨Finset.mem_range.mpr (by omega), hp⟩
+    have hdvd : p ∣ primorial N := Finset.dvd_prod_of_mem _ hmem
+    have hpp : 0 < (primorial N).factorization p :=
+      hp.factorization_pos_of_dvd (primorial_pos N).ne' hdvd
+    have h2 := factorization_le_two_of_bAF_ne_zero h p
+    omega
+
+/-- **Unconditional bound** `∑_{e≤N} ‖b(e)‖ ≤ exp 2`. The Euler-product partial-sum
+estimate underlying sharp Mertens, proved directly on `bAF` (no Aristotle port). -/
+theorem sum_norm_bAF_le (N : ℕ) :
+    ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ ≤ Real.exp 2 := by
+  set M := (primorial N) ^ 2 with hMdef
+  have hMne : M ≠ 0 := pow_ne_zero _ (primorial_pos N).ne'
+  set S := (Finset.range (N + 1)).filter Nat.Prime with hSdef
+  have hprimS : primorial N = ∏ p ∈ S, p := rfl
+  have hMfact : M = ∏ p ∈ S, p ^ 2 := by rw [hMdef, hprimS, ← Finset.prod_pow]
+  have hGmult : ((ζ : ArithmeticFunction ℝ) * gabs).IsMultiplicative :=
+    isMultiplicative_zeta.natCast.mul gabs_isMultiplicative
+  have hcop : (↑S : Set ℕ).Pairwise (fun a b => Nat.Coprime (a ^ 2) (b ^ 2)) := by
+    intro p hp q hq hpq
+    rw [hSdef] at hp hq
+    simp only [Finset.mem_coe, Finset.mem_filter, Finset.mem_range] at hp hq
+    exact Nat.Coprime.pow 2 2 ((Nat.coprime_primes hp.2 hq.2).mpr hpq)
+  have hlocal : ∀ p ∈ S, ((ζ : ArithmeticFunction ℝ) * gabs) (p ^ 2)
+      = 1 + 2 / ((p : ℝ) * ((p : ℝ) - 1)) := by
+    intro p hp
+    have hpp : p.Prime := by rw [hSdef] at hp; exact (Finset.mem_filter.mp hp).2
+    have hp2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hpp.two_le
+    have hppos : (0 : ℝ) < (p : ℝ) * ((p : ℝ) - 1) := by apply mul_pos <;> linarith
+    rw [coe_zeta_mul_apply, Nat.sum_divisors_prime_pow hpp,
+        Finset.sum_range_succ, Finset.sum_range_succ, Finset.sum_range_one,
+        gabs_apply, gabs_apply, gabs_apply, pow_zero, pow_one,
+        show bAF 1 = 1 from bAF_isMultiplicative.1, bAF_prime hpp, bAF_prime_sq hpp,
+        abs_one, abs_of_pos (by positivity : (0:ℝ) < 1 / ((p:ℝ) * ((p:ℝ) - 1))),
+        abs_neg, abs_of_pos (by positivity : (0:ℝ) < 1 / ((p:ℝ) * ((p:ℝ) - 1)))]
+    ring
+  have hpos_term : ∀ p ∈ S, (0 : ℝ) ≤ 2 / ((p : ℝ) * ((p : ℝ) - 1)) := by
+    intro p hp
+    have hpp : p.Prime := by rw [hSdef] at hp; exact (Finset.mem_filter.mp hp).2
+    have hp2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hpp.two_le
+    apply div_nonneg (by norm_num); nlinarith
+  calc ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖
+      = ∑ e ∈ (Finset.Icc 1 N).filter (fun e => bAF e ≠ 0), gabs e := by
+        rw [show (∑ e ∈ Finset.Icc 1 N, ‖bAF e‖)
+              = ∑ e ∈ Finset.Icc 1 N, gabs e from
+            Finset.sum_congr rfl (fun e _ => by rw [gabs_apply, Real.norm_eq_abs])]
+        symm
+        apply Finset.sum_filter_of_ne
+        intro e _ hge h0
+        rw [gabs_apply, h0, abs_zero] at hge
+        exact hge rfl
+    _ ≤ ∑ d ∈ M.divisors, gabs d := by
+        apply Finset.sum_le_sum_of_subset_of_nonneg
+        · intro e he
+          rw [Finset.mem_filter, Finset.mem_Icc] at he
+          obtain ⟨⟨ha, hb⟩, hne⟩ := he
+          rw [Nat.mem_divisors]
+          exact ⟨dvd_primorial_sq_of_bAF_ne_zero ha hb hne, hMne⟩
+        · exact fun d _ _ => by rw [gabs_apply]; exact abs_nonneg _
+    _ = ((ζ : ArithmeticFunction ℝ) * gabs) M := coe_zeta_mul_apply.symm
+    _ = ∏ p ∈ S, ((ζ : ArithmeticFunction ℝ) * gabs) (p ^ 2) := by
+        rw [hMfact]; exact hGmult.map_prod (fun p => p ^ 2) S hcop
+    _ = ∏ p ∈ S, (1 + 2 / ((p : ℝ) * ((p : ℝ) - 1))) := Finset.prod_congr rfl hlocal
+    _ ≤ ∏ p ∈ S, Real.exp (2 / ((p : ℝ) * ((p : ℝ) - 1))) := by
+        apply Finset.prod_le_prod
+        · exact fun p hp => by linarith [hpos_term p hp]
+        · exact fun p _ => by rw [add_comm]; exact Real.add_one_le_exp _
+    _ = Real.exp (∑ p ∈ S, 2 / ((p : ℝ) * ((p : ℝ) - 1))) :=
+        (Real.exp_sum S _).symm
+    _ ≤ Real.exp 2 := by
+        apply Real.exp_le_exp.mpr
+        calc ∑ p ∈ S, 2 / ((p : ℝ) * ((p : ℝ) - 1))
+            ≤ ∑ n ∈ Finset.Icc 2 N, 2 / ((n : ℝ) * ((n : ℝ) - 1)) := by
+              apply Finset.sum_le_sum_of_subset_of_nonneg
+              · intro p hp
+                rw [hSdef, Finset.mem_filter, Finset.mem_range] at hp
+                rw [Finset.mem_Icc]
+                exact ⟨hp.2.two_le, by omega⟩
+              · intro n hn _
+                rw [Finset.mem_Icc] at hn
+                have h2 : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn.1
+                apply div_nonneg (by norm_num); nlinarith
+          _ ≤ 2 := sum_Icc_two_div_le N
+
+/-- **Summability of `‖b‖`, unconditionally** (from `sum_norm_bAF_le`). Discharges the
+first hypothesis of `sharp_mertens_tendsto` with no axioms. -/
+theorem summable_norm_bAF : Summable (fun n => ‖bAF n‖) :=
+  summable_norm_bAF_of_bound (C := Real.exp 2) sum_norm_bAF_le
+
 /-- **Sharp Mertens from the two partial-sum bounds (one-shot).** Packages the full
 reduction: given the unweighted and `log`-weighted Euler-product bounds (the two
 Aristotle leaves), `(∑_{n≤N} μ²/φ)/log N → 1`. Porting `830e5129` (and its
