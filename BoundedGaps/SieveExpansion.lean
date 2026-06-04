@@ -677,4 +677,29 @@ theorem lattice_count_offdiag_vanish_of_lt {ι : Type*} (l : List ι) (q h : ι 
   rw [Nat.ModEq, Nat.mod_eq_of_lt hip, Nat.mod_eq_of_lt hjp] at hcon
   exact hcon
 
+/-- **Off-diagonal vanishing in the expansion form.** The exact lattice count
+appearing in `sieveSum_selberg_nu_separable_expand` (and the theta sister) is
+`#{m ∈ S : ∀i, (P i).1 ∣ (m+hᵢ) ∧ (P i).2 ∣ (m+hᵢ)}`. If some value `p` divides
+the `i`-th modulus `lcm((P i).1,(P i).2)` and the `j`-th modulus
+`lcm((P j).1,(P j).2)` (`i ≠ j`) but the shifts disagree mod `p`
+(`hᵢ ≢ hⱼ [MOD p]`), this count is exactly `0`. So in the `∑_P` expansion every
+off-diagonal tuple `P` (two coordinates sharing a prime with incompatible shifts)
+drops out — only the coprime-diagonal `P` survive, where `lattice_count_main_term`
+gives the GPY main term. (Pair-divisibility form of `lattice_count_offdiag_vanish`,
+via `nat_lcm_dvd_iff`.) -/
+theorem lattice_count_pair_offdiag_vanish {k : ℕ} (H : List ℕ) (S : Finset ℕ)
+    (P : Fin k → ℕ × ℕ) {i j : Fin k} {p : ℕ}
+    (hpi : p ∣ Nat.lcm (P i).1 (P i).2) (hpj : p ∣ Nat.lcm (P j).1 (P j).2)
+    (hne : ¬ (H.getD i.val 0 ≡ H.getD j.val 0 [MOD p])) :
+    (S.filter (fun m => ∀ t : Fin k,
+        (P t).1 ∣ (m + H.getD t.val 0) ∧ (P t).2 ∣ (m + H.getD t.val 0))).card = 0 := by
+  rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+  intro m _ hm
+  apply hne
+  have hi : p ∣ (m + H.getD i.val 0) := hpi.trans ((nat_lcm_dvd_iff _ _ _).mpr (hm i))
+  have hj : p ∣ (m + H.getD j.val 0) := hpj.trans ((nat_lcm_dvd_iff _ _ _).mpr (hm j))
+  have e1 : m + H.getD i.val 0 ≡ 0 [MOD p] := (Nat.modEq_zero_iff_dvd).mpr hi
+  have e2 : m + H.getD j.val 0 ≡ 0 [MOD p] := (Nat.modEq_zero_iff_dvd).mpr hj
+  exact Nat.ModEq.add_left_cancel' m (e1.trans e2.symm)
+
 end BoundedGaps.Sieve
