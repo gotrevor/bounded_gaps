@@ -229,4 +229,27 @@ theorem sieveSum_selberg_nu_separable_expand (k : ℕ) (Fs : Fin k → ℝ → �
     (fun i de => ((moebius de.1 : ℝ) * Fs i (Real.log de.1 / Real.log R))
               * ((moebius de.2 : ℝ) * Fs i (Real.log de.2 / Real.log R)))
 
+/-- `Nat.lcm a b ∣ c ↔ a ∣ c ∧ b ∣ c`. -/
+private theorem nat_lcm_dvd_iff (a b c : ℕ) : Nat.lcm a b ∣ c ↔ a ∣ c ∧ b ∣ c :=
+  ⟨fun h => ⟨(Nat.dvd_lcm_left a b).trans h, (Nat.dvd_lcm_right a b).trans h⟩,
+   fun ⟨h1, h2⟩ => Nat.lcm_dvd h1 h2⟩
+
+/-- **Sub-step (b) reduction: pair-divisibility ↦ single lcm modulus.**
+The lattice-point count appearing in `sieveSum_selberg_nu_separable_expand`,
+`#{m ∈ S : ∀i, dᵢ∣(m+hᵢ) ∧ eᵢ∣(m+hᵢ)}`, equals the count with each coordinate
+condition collapsed to the single GPY modulus `[dᵢ,eᵢ] = lcm(dᵢ,eᵢ)`:
+`#{m ∈ S : ∀i, [dᵢ,eᵢ]∣(m+hᵢ)}`. This is the standard reduction to a
+per-coordinate congruence — the precursor to the CRT lattice count (sub-step
+(b)), after which `Nat.Ioc_filter_modEq_card` gives the interval count. -/
+theorem lattice_count_lcm {k : ℕ} (H : List ℕ) (S : Finset ℕ) (P : Fin k → ℕ × ℕ) :
+    (S.filter (fun m => ∀ i : Fin k,
+        (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+      = (S.filter (fun m => ∀ i : Fin k,
+          Nat.lcm (P i).1 (P i).2 ∣ (m + H.getD i.val 0))).card := by
+  classical
+  congr 1
+  apply Finset.filter_congr
+  intro m _
+  exact forall_congr' (fun i => (nat_lcm_dvd_iff _ _ _).symm)
+
 end BoundedGaps.Sieve
