@@ -1165,4 +1165,22 @@ theorem correction_split_offdiag {ι : Type*} (s : Finset ι) (w val main : ι �
   rw [hvanish P hP.1 hP.2]
   ring
 
+/-- **Diagonal `O(1)`-error bound.** If `|valₚ − mainₚ| ≤ 1` for every `P ∈ s`
+(the diagonal lattice count vs its GPY main value, `lattice_count_main_term`),
+then `|∑_P wₚ(valₚ − mainₚ)| ≤ ∑_P |wₚ|`. So the diagonal-error piece of the
+correction (`correction_split_offdiag`) is controlled by the total weight
+`∑_{diag}|coeffₚ|` — reducing that analytic sub-obligation to a divisor-sum size
+bound `∑|coeff| = o(main)`. Triangle inequality + `|val−main| ≤ 1`. -/
+theorem diag_error_bound {ι : Type*} (s : Finset ι) (w val main : ι → ℝ)
+    (h : ∀ P ∈ s, |val P - main P| ≤ 1) :
+    |∑ P ∈ s, w P * (val P - main P)| ≤ ∑ P ∈ s, |w P| := by
+  calc |∑ P ∈ s, w P * (val P - main P)|
+      ≤ ∑ P ∈ s, |w P * (val P - main P)| := Finset.abs_sum_le_sum_abs _ _
+    _ = ∑ P ∈ s, |w P| * |val P - main P| := by
+          refine Finset.sum_congr rfl (fun P _ => ?_); rw [abs_mul]
+    _ ≤ ∑ P ∈ s, |w P| * 1 :=
+          Finset.sum_le_sum (fun P hP =>
+            mul_le_mul_of_nonneg_left (h P hP) (abs_nonneg _))
+    _ = ∑ P ∈ s, |w P| := by simp
+
 end BoundedGaps.Sieve
