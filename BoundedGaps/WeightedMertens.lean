@@ -567,4 +567,23 @@ theorem weighted_mertens {F : ℝ → ℝ} {M : ℝ}
       atTop (nhds (∫ u in (0 : ℝ)..1, F u)) :=
   weighted_mertens_of_riemann hLip (riemann_sum_log_weight F hCont)
 
+/-- **Weighted Mertens for a `C¹` weight** (the form the GPY/Maynard sieve actually uses, where
+the cutoff `F` is smooth). For `ContDiff ℝ 1 F`,
+`(∑_{1≤n≤N} (μ²(n)/φ(n))·F(log n/log N)) / log N → ∫₀¹ F`. The Lipschitz constant comes from the
+mean-value theorem with the derivative bounded on the compact `[0,1]`. -/
+theorem weighted_mertens_of_contDiff {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) := by
+  have hCont : ContinuousOn F (Set.Icc (0 : ℝ) 1) := hF.continuous.continuousOn
+  obtain ⟨C, hC⟩ :=
+    isCompact_Icc.exists_bound_of_continuousOn (hF.continuous_deriv_one.continuousOn)
+  have hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ C * |x - y| := by
+    intro x hx y hy
+    have h := Convex.norm_image_sub_le_of_norm_deriv_le (f := F) (s := Set.Icc (0 : ℝ) 1) (C := C)
+      (fun z _ => (hF.differentiable (by norm_num)).differentiableAt) hC (convex_Icc 0 1) hy hx
+    simpa [Real.norm_eq_abs] using h
+  exact weighted_mertens hLip hCont
+
 end BoundedGaps.WeightedMertens
