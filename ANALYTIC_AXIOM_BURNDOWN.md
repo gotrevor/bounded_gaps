@@ -590,3 +590,19 @@ are automatically controlled and the `IsLittleO` glue needs only the diagonal li
 3. **`∑_{diag}|coeff| = o(main)`** size bound (the simplex-coupled version; the factored 1-D form is
    the substrate but the joint-support coupling must be used).
 4. **Sub-step (d) `IsLittleO` glue** into `alphaBound` — now only needs the diagonal limit + (2),(3).
+
+### Obligation #2 (`∑_{diag}|coeff| = o(main)`) — reduction chain (same lap)
+Three further axiom-clean bricks reduce the diagonal size bound to ONE divisor count:
+- `selberg_nu_basis_diagonal_reassemble` — the `j,j'`-sum of the diagonal coeff collapses to
+  `(∏ᵢμ(dᵢ)²)·F(log d/log R)²` (joint `F`, simplex-supported). Resolves the looseness of the
+  per-block factorization.
+- `support_simplex_prod_le` — `support F ⊆ simplex ∧ F(log d/log R) ≠ 0 ⟹ ∏ᵢdᵢ ≤ R` (the
+  hyperbolic constraint confining contributing tuples).
+- `support_simplex_bounded` — continuous simplex-supported `F` is globally bounded (`∃C≥0, |F|≤C`),
+  via the compact box `[0,1]^k ⊇ simplex`. Supplies `‖F‖∞`.
+
+**Net:** diagonal weight `≤ C²·#{squarefree d-tuples : ∏ᵢdᵢ ≤ R}`. So obligation #2 = the `k`-dim
+Dirichlet divisor count `Dₖ(R) = #{d : ∏dᵢ ≤ R} ≍ R(log R)^{k-1}` being `o(main = M·(log R)^k)`,
+which holds since `R = x^{θ/2} ≪ x ≈ M·W`. The repo already has the 1-D interchange
+`SingularSeries.dirichlet_hyperbola` (`∑_{n≤N}∑_{d∣n}g = ∑_{d≤N}g·⌊N/d⌋`); the `k`-dim count is
+its iterate — a good next Aristotle target. **This nearly closes #2 modulo that one count bound.**
