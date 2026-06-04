@@ -329,6 +329,31 @@ noncomputable def bAF : ArithmeticFunction ℝ := BSharp.pmul invR
 lemma bAF_isMultiplicative : bAF.IsMultiplicative :=
   BSharp_isMultiplicative.pmul invR_isMultiplicative
 
+/-- `B(p) = 1/(p−1)` at the prime `p` itself (not as `p^1`). -/
+lemma BSharp_prime' {p : ℕ} (hp : p.Prime) : BSharp p = 1 / ((p : ℝ) - 1) := by
+  conv_lhs => rw [← pow_one p]
+  exact BSharp_prime hp
+
+/-- `b(p) = 1/(p(p−1))` at a prime (value used by the absolute-bound port). -/
+lemma bAF_prime {p : ℕ} (hp : p.Prime) : bAF p = 1 / ((p : ℝ) * ((p : ℝ) - 1)) := by
+  have hp1 : (1 : ℝ) < (p : ℝ) := by exact_mod_cast hp.one_lt
+  have hp0 : (p : ℝ) - 1 ≠ 0 := by linarith
+  have hpne : (p : ℝ) ≠ 0 := by linarith
+  rw [bAF_apply, BSharp_prime' hp]
+  field_simp
+
+/-- `b(p²) = −1/(p(p−1))` at a prime square. -/
+lemma bAF_prime_sq {p : ℕ} (hp : p.Prime) : bAF (p ^ 2) = -(1 / ((p : ℝ) * ((p : ℝ) - 1))) := by
+  have hp1 : (1 : ℝ) < (p : ℝ) := by exact_mod_cast hp.one_lt
+  have hp0 : (p : ℝ) - 1 ≠ 0 := by linarith
+  have hpne : (p : ℝ) ≠ 0 := by linarith
+  rw [bAF_apply, BSharp_prime_sq hp]
+  push_cast; field_simp
+
+/-- `b(p^k) = 0` for `k ≥ 3`. -/
+lemma bAF_prime_pow_high {p : ℕ} (hp : p.Prime) {k : ℕ} (hk : 3 ≤ k) : bAF (p ^ k) = 0 := by
+  rw [bAF_apply, BSharp_prime_pow_high hp hk, zero_div]
+
 /-- **The local Euler factor is `1`.** For a prime `p`, `∑'_e b(p^e) = 1`
 (`= 1 + b(p) + b(p²) = 1 + 1/(p(p−1)) − 1/(p(p−1))`). -/
 lemma tsum_bAF_primePow {p : ℕ} (hp : p.Prime) : ∑' e : ℕ, bAF (p ^ e) = 1 := by
