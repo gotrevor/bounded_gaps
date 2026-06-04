@@ -35,3 +35,4 @@ import BoundedGaps.MkWitness200
 import BoundedGaps.Mertens
 import BoundedGaps.RiemannSumLogWeight
 import BoundedGaps.WeightedMertens
+import BoundedGaps.WeightedRiemann2D
