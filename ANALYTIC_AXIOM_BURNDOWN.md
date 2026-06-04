@@ -445,3 +445,27 @@ left behind in `SharpMertens.lean`: `gabs` (`|bAF|` as a multiplicative Arithmet
 log-weight `(∑_{n≤R}(1/n)F(log n/log R))/log R → ∫₀¹F` — is on Aristotle (`930e468a`,
 `aristotle-wmertens/`). Then the multidimensional/singular-series lift to `α=I(F)`, then sub-step
 (d) IsLittleO assembly into `alphaBound`/`s1_holds_from_nonprime_asym`.
+
+## Front #4 (weighted Mertens) REDUCED TO ONE AXIOM (2026-06-04 PM)
+
+The 1-D **weighted Mertens** `∑_{1≤n≤N}(μ²/φ)·F(log n/log N)/log N → ∫₀¹F` (GPY/Maynard sub-step
+(c), the keystone after sharp Mertens) is now **fully reduced** in `BoundedGaps/WeightedMertens.lean`
+to a **single disclosed analytic axiom** `riemann_sum_log_weight` (the pure Riemann-sum model limit
+`(∑_{2≤n≤N}F(log n/log N)/n)/log N → ∫₀¹F`, on Aristotle `930e468a`). The whole arithmetic content
+is **axiom-clean & machine-checked**:
+- `weighted_mertens` / `weighted_mertens_of_contDiff` (capstone; C¹ form for the smooth sieve cutoff)
+  → axioms `[propext, Classical.choice, Quot.sound, riemann_sum_log_weight]`.
+- `weighted_mertens_of_riemann` (the axiom-free reduction): `g·F = (1/n)·F + (g−1/n)·F`; model part
+  is the Riemann axiom (+ bounded `F0/logN→0`), discrepancy part `→0` by Abel summation.
+- `discrepancy_weighted_tendsto_zero` ← `abel_summation_identity` ⇒ `Bdisc N·F(1) − Abel-tail`;
+  `discrepancy_div_log_tendsto_zero` (`Bdisc=∑μ²/φ−harmonic=o(log)`, sharp Mertens + harmonic∼log)
+  + `abel_tail_tendsto_zero` (Lipschitz squeeze vs the weighted-Cesàro majorant average).
+- Reusable analytic bricks: `weighted_cesaro_tendsto_zero`, `weighted_avg_majorant_tendsto_zero`,
+  `sum_log_mul_log_diff_le_sq` (telescoping `(log N)²` majorant), `harmonic_div_log_tendsto_one`.
+
+**Correction to the prior "sub-step (c) is multi-month" framing:** the 1-D keystone was days-scale
+once the integral Abel summation (`Mathlib.NumberTheory.AbelSummation`) + weighted-Cesàro pattern
+were used. The genuine multi-month nut is the **multidimensional / singular-series lift**
+(k-dim weighted Mertens → `α = I(F) = ∫_{R_k} F²`), then sub-step (d) IsLittleO assembly into
+`alphaBound`/`s1_holds_from_nonprime_asym`. Next-lap targets: (a) port/verify the Riemann axiom
+when `930e468a` returns (→ front #4 fully axiom-free); (b) state the k-dimensional weighted Mertens.
