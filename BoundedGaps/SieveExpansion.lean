@@ -1817,4 +1817,210 @@ theorem diagonal_weight_le_count {k : ℕ} (D : Fin k → Finset ℕ) (F : (Fin 
           (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R)).card : ℝ) := by
         rw [Finset.sum_const, nsmul_eq_mul]; ring
 
+/-! ### Obligation #2 leaf (2): the `k`-dimensional Dirichlet hyperbola count.
+
+`diagonal_weight_le_count` reduced the diagonal sieve weight to the lattice count
+`#{d ∈ lattice : ∏ᵢ dᵢ ≤ R}`. The genuine analytic content of that count is the
+`k`-fold divisor estimate `Dₖ(R) = #{d : ∏dᵢ ≤ R} ≍ R(log R)^{k-1}`. We prove the
+clean UPPER bound `Dₖ(N) ≤ N·(1+log N)^{k-1}` (machine-checked, axiom-clean), then
+bridge the real-`R`/general-lattice count down to it. Combined with
+`diagonal_weight_le_count` this gives the diagonal weight an explicit closed-form
+bound `≤ C²·⌊R⌋₊·(1+log⌊R⌋₊)^{k-1}`, which is `o(M·(log R)^k)` for `R = x^{θ/2} ≪ x ≈ MW`
+— exactly analytic obligation #2 for `s1_holds_from_nonprime_asym`. -/
+
+/-- **k-dimensional Dirichlet hyperbola count, upper bound.** The number of ordered
+`k`-tuples of positive integers in `[1,N]` with product `≤ N` is
+`≤ N·(1+log N)^{k-1}`. Proof: induction on `k`, partitioning the `(k+1)`-tuples by
+their first coordinate `m ∈ [1,N]`; the fiber bijects (via `Fin.cons`/`Fin.tail`)
+with the `k`-tuple count at bound `⌊N/m⌋`, and the harmonic sum
+`∑_{m≤N} 1/m ≤ 1+log N` (`harmonic_le_one_add_log`) closes the step. -/
+theorem hyperbola_count_le (k : ℕ) (hk : 1 ≤ k) (N : ℕ) (hN : 1 ≤ N) :
+    (((Fintype.piFinset (fun _ : Fin k => Finset.Icc 1 N)).filter
+        (fun d => ∏ i : Fin k, d i ≤ N)).card : ℝ)
+      ≤ (N : ℝ) * (1 + Real.log N) ^ (k - 1) := by
+  suffices aux : ∀ j : ℕ, ∀ N : ℕ, 1 ≤ N →
+      (((Fintype.piFinset (fun _ : Fin (j+1) => Finset.Icc 1 N)).filter
+          (fun d => ∏ i : Fin (j+1), d i ≤ N)).card : ℝ)
+        ≤ (N : ℝ) * (1 + Real.log N) ^ j by
+    obtain ⟨j, rfl⟩ : ∃ j, k = j + 1 := ⟨k-1, (Nat.succ_pred_eq_of_pos hk).symm⟩
+    simpa using aux j N hN
+  clear hk hN N k
+  intro j
+  induction j with
+  | zero =>
+    intro N hN
+    rw [pow_zero, mul_one]
+    have hfilter : (Fintype.piFinset (fun _ : Fin 1 => Finset.Icc 1 N)).filter
+        (fun d => ∏ i : Fin 1, d i ≤ N)
+        = Fintype.piFinset (fun _ : Fin 1 => Finset.Icc 1 N) := by
+      apply Finset.filter_true_of_mem
+      intro d hd
+      rw [Fin.prod_univ_one]
+      exact (Finset.mem_Icc.mp (Fintype.mem_piFinset.mp hd 0)).2
+    rw [hfilter, Fintype.card_piFinset]
+    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin, pow_one, Nat.card_Icc]
+    have : N + 1 - 1 = N := by omega
+    rw [this]
+  | succ j IH =>
+    intro N hN
+    classical
+    set S := (Fintype.piFinset (fun _ : Fin (j+2) => Finset.Icc 1 N)).filter
+        (fun d => ∏ i : Fin (j+2), d i ≤ N) with hS
+    have hprod : ∀ d : Fin (j+2) → ℕ,
+        ∏ i : Fin (j+2), d i = d 0 * ∏ i : Fin (j+1), Fin.tail d i := by
+      intro d; rw [Fin.prod_univ_succ]; rfl
+    have hpart : S.card = ∑ m ∈ Finset.Icc 1 N, (S.filter (fun d => d 0 = m)).card := by
+      apply Finset.card_eq_sum_card_fiberwise
+        (f := fun d : Fin (j+2) → ℕ => d 0) (t := Finset.Icc 1 N)
+      intro d hd
+      rw [Finset.mem_coe, hS, Finset.mem_filter] at hd
+      rw [Finset.mem_coe]
+      exact Fintype.mem_piFinset.mp hd.1 0
+    have hterm : ∀ m ∈ Finset.Icc 1 N,
+        ((S.filter (fun d => d 0 = m)).card : ℝ) ≤ (N : ℝ) / m * (1 + Real.log N) ^ j := by
+      intro m hm
+      rw [Finset.mem_Icc] at hm
+      obtain ⟨hm1, hmN⟩ := hm
+      have hm0 : 0 < m := by omega
+      set M := N / m with hMdef
+      have hMpos : 1 ≤ M := by
+        rw [hMdef, Nat.le_div_iff_mul_le hm0]; simpa using hmN
+      have hMle : M ≤ N := Nat.div_le_self N m
+      have hcard_eq : (S.filter (fun d => d 0 = m)).card
+          = ((Fintype.piFinset (fun _ : Fin (j+1) => Finset.Icc 1 M)).filter
+              (fun d' => ∏ i : Fin (j+1), d' i ≤ M)).card := by
+        refine Finset.card_bij' (fun d _ => Fin.tail d) (fun d' _ => Fin.cons m d') ?_ ?_ ?_ ?_
+        · intro d hd
+          simp only [hS, Finset.mem_filter, Fintype.mem_piFinset, Finset.mem_Icc] at hd
+          obtain ⟨⟨hmem, hprodN⟩, hd0⟩ := hd
+          have hprodM : ∏ i : Fin (j+1), Fin.tail d i ≤ M := by
+            have hkey : m * ∏ i : Fin (j+1), Fin.tail d i ≤ N := by
+              rw [← hd0, ← hprod d]; exact hprodN
+            rw [hMdef, Nat.le_div_iff_mul_le hm0, mul_comm]; exact hkey
+          rw [Finset.mem_filter, Fintype.mem_piFinset]
+          refine ⟨fun i => ?_, hprodM⟩
+          rw [Finset.mem_Icc]
+          refine ⟨(hmem i.succ).1, ?_⟩
+          calc Fin.tail d i ≤ ∏ i' : Fin (j+1), Fin.tail d i' :=
+                Finset.single_le_prod' (fun i' _ => (hmem i'.succ).1) (Finset.mem_univ i)
+            _ ≤ M := hprodM
+        · intro d' hd'
+          simp only [Finset.mem_filter, Fintype.mem_piFinset, Finset.mem_Icc] at hd'
+          obtain ⟨hmem', hprodM'⟩ := hd'
+          simp only [hS, Finset.mem_filter, Fintype.mem_piFinset, Finset.mem_Icc]
+          refine ⟨⟨fun i => ?_, ?_⟩, ?_⟩
+          · refine Fin.cases ?_ ?_ i
+            · rw [Fin.cons_zero]; exact ⟨hm1, hmN⟩
+            · intro i'; rw [Fin.cons_succ]; exact ⟨(hmem' i').1, le_trans (hmem' i').2 hMle⟩
+          · rw [hprod (Fin.cons m d'), Fin.cons_zero, Fin.tail_cons]
+            calc m * ∏ i, d' i ≤ m * M := Nat.mul_le_mul (le_refl m) hprodM'
+              _ ≤ N := by rw [hMdef, mul_comm]; exact Nat.div_mul_le_self N m
+          · rw [Fin.cons_zero]
+        · intro d hd
+          have hd2 : d 0 = m := by
+            simp only [hS, Finset.mem_filter] at hd; exact hd.2
+          change Fin.cons m (Fin.tail d) = d
+          funext i
+          refine Fin.cases ?_ ?_ i
+          · rw [Fin.cons_zero]; exact hd2.symm
+          · intro i'; rw [Fin.cons_succ]; rfl
+        · intro d' hd'
+          change Fin.tail (Fin.cons m d' : Fin (j+2) → ℕ) = d'
+          simp [Fin.tail_cons]
+      rw [hcard_eq]
+      have hIH := IH M hMpos
+      have hM0 : 0 < M := hMpos
+      have hlogM : (0:ℝ) ≤ 1 + Real.log M := by
+        have h := Real.log_nonneg (show (1:ℝ) ≤ (M:ℝ) by exact_mod_cast hMpos); linarith
+      have hlogMN : 1 + Real.log M ≤ 1 + Real.log N := by
+        have : Real.log M ≤ Real.log N :=
+          Real.log_le_log (show (0:ℝ) < (M:ℝ) by exact_mod_cast hM0)
+            (show (M:ℝ) ≤ (N:ℝ) by exact_mod_cast hMle)
+        linarith
+      calc (((Fintype.piFinset (fun _ : Fin (j+1) => Finset.Icc 1 M)).filter
+              (fun d' => ∏ i : Fin (j+1), d' i ≤ M)).card : ℝ)
+          ≤ (M : ℝ) * (1 + Real.log M) ^ j := hIH
+        _ ≤ (N : ℝ) / m * (1 + Real.log N) ^ j := by
+            apply mul_le_mul
+            · rw [hMdef]; exact_mod_cast Nat.cast_div_le
+            · exact pow_le_pow_left₀ hlogM hlogMN j
+            · exact pow_nonneg hlogM j
+            · positivity
+    have hcast : (S.card : ℝ)
+        = ∑ m ∈ Finset.Icc 1 N, ((S.filter (fun d => d 0 = m)).card : ℝ) := by
+      rw [hpart]; push_cast; rfl
+    rw [hcast]
+    have hharm : (∑ m ∈ Finset.Icc 1 N, ((m:ℝ))⁻¹) ≤ 1 + Real.log N := by
+      have h := harmonic_le_one_add_log N
+      rw [harmonic_eq_sum_Icc] at h
+      push_cast at h
+      exact h
+    have hlogN_nonneg : (0:ℝ) ≤ 1 + Real.log N := by
+      have h := Real.log_nonneg (show (1:ℝ) ≤ (N:ℝ) by exact_mod_cast hN); linarith
+    have hpow_nonneg : (0:ℝ) ≤ (1 + Real.log N) ^ j := pow_nonneg hlogN_nonneg j
+    calc ∑ m ∈ Finset.Icc 1 N, ((S.filter (fun d => d 0 = m)).card : ℝ)
+        ≤ ∑ m ∈ Finset.Icc 1 N, (N : ℝ) / m * (1 + Real.log N) ^ j :=
+          Finset.sum_le_sum hterm
+      _ = (1 + Real.log N) ^ j * (N * ∑ m ∈ Finset.Icc 1 N, ((m:ℝ))⁻¹) := by
+          rw [Finset.mul_sum, Finset.mul_sum]
+          apply Finset.sum_congr rfl
+          intro m _
+          rw [div_eq_mul_inv]; ring
+      _ ≤ (1 + Real.log N) ^ j * (N * (1 + Real.log N)) := by
+          apply mul_le_mul_of_nonneg_left _ hpow_nonneg
+          apply mul_le_mul_of_nonneg_left hharm (by positivity)
+      _ = (N : ℝ) * (1 + Real.log N) ^ (j + 1) := by ring
+
+/-- **Bridge: the general (real-`R`, arbitrary lattice) diagonal count is bounded by
+the hyperbola count.** Any `d` in the filtered lattice has positive entries with
+`∏(dᵢ:ℝ) ≤ R`, hence each `dᵢ ≤ ∏dⱼ ≤ ⌊R⌋₊` and the nat product is `≤ ⌊R⌋₊`, so the
+filtered set injects into the `[1,⌊R⌋₊]`-box count. Then `hyperbola_count_le` applies. -/
+theorem lattice_count_le_hyperbola {k : ℕ} (hk : 1 ≤ k) (D : Fin k → Finset ℕ)
+    (hD : ∀ i, ∀ d ∈ D i, 1 ≤ d) (R : ℝ) (hR : 1 < R) :
+    (((Fintype.piFinset D).filter
+        (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R)).card : ℝ)
+      ≤ (⌊R⌋₊ : ℝ) * (1 + Real.log ⌊R⌋₊) ^ (k - 1) := by
+  classical
+  set N := ⌊R⌋₊ with hNdef
+  have hN : 1 ≤ N := Nat.le_floor (by exact_mod_cast hR.le)
+  have hsub : (Fintype.piFinset D).filter (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R)
+      ⊆ (Fintype.piFinset (fun _ : Fin k => Finset.Icc 1 N)).filter
+          (fun d => ∏ i : Fin k, d i ≤ N) := by
+    intro d hd
+    rw [Finset.mem_filter] at hd
+    obtain ⟨hdmem, hdR⟩ := hd
+    have hd1 : ∀ i, 1 ≤ d i := fun i => hD i (d i) (Fintype.mem_piFinset.mp hdmem i)
+    have hprodN : ∏ i : Fin k, d i ≤ N := by
+      rw [hNdef, Nat.le_floor_iff (le_trans zero_le_one hR.le)]
+      push_cast
+      exact hdR
+    rw [Finset.mem_filter, Fintype.mem_piFinset]
+    refine ⟨fun i => ?_, hprodN⟩
+    rw [Finset.mem_Icc]
+    refine ⟨hd1 i, ?_⟩
+    calc d i ≤ ∏ i' : Fin k, d i' :=
+          Finset.single_le_prod' (fun i' _ => hd1 i') (Finset.mem_univ i)
+      _ ≤ N := hprodN
+  calc (((Fintype.piFinset D).filter
+          (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R)).card : ℝ)
+      ≤ (((Fintype.piFinset (fun _ : Fin k => Finset.Icc 1 N)).filter
+          (fun d => ∏ i : Fin k, d i ≤ N)).card : ℝ) := by
+        exact_mod_cast Finset.card_le_card hsub
+    _ ≤ (N : ℝ) * (1 + Real.log N) ^ (k - 1) := hyperbola_count_le k hk N hN
+
+/-- **Obligation #2 diagonal capstone (closed form).** The diagonal sieve weight is
+bounded by `C²·⌊R⌋₊·(1+log⌊R⌋₊)^{k-1}`. Combines `diagonal_weight_le_count` (weight ≤
+`C²·count`) with the hyperbola bound. Since `R = x^{θ/2} ≪ x ≈ MW`, the RHS is
+`o(M·(log R)^k)` — discharging the diagonal half of analytic obligation #2 to an
+explicit `≍ R(log R)^{k-1}` estimate. -/
+theorem diagonal_weight_le_hyperbola {k : ℕ} (hk : 1 ≤ k) (D : Fin k → Finset ℕ)
+    (F : (Fin k → ℝ) → ℝ) (hsupp : Function.support F ⊆ simplex k) (R : ℝ) (hR : 1 < R)
+    (hD : ∀ i, ∀ d ∈ D i, 1 ≤ d) (C : ℝ) (hC : ∀ t, |F t| ≤ C) :
+    ∑ d ∈ Fintype.piFinset D,
+        (∏ i : Fin k, ((moebius (d i) : ℝ)) ^ 2)
+          * (F (fun i => Real.log (d i) / Real.log R)) ^ 2
+      ≤ C ^ 2 * ((⌊R⌋₊ : ℝ) * (1 + Real.log ⌊R⌋₊) ^ (k - 1)) := by
+  refine le_trans (diagonal_weight_le_count D F hsupp R hR hD C hC) ?_
+  exact mul_le_mul_of_nonneg_left (lattice_count_le_hyperbola hk D hD R hR) (sq_nonneg C)
+
 end BoundedGaps.Sieve
