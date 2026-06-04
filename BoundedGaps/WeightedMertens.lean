@@ -23,6 +23,7 @@ and the Riemann-sum model limit are tracked separately.
 -/
 import Mathlib
 import BoundedGaps.SharpMertens
+import BoundedGaps.Mertens
 
 open scoped BigOperators
 open Filter Topology
@@ -428,5 +429,110 @@ theorem abel_tail_tendsto_zero {F : ℝ → ℝ} {M : ℝ}
           * ∑ n ∈ Finset.range N, |Bdisc n| * (Real.log ((n : ℝ) + 1) - Real.log n) := hbound
     _ = M * ((∑ n ∈ Finset.range N, |Bdisc n| * (Real.log ((n : ℝ) + 1) - Real.log n))
           / (Real.log N) ^ 2) * Real.log N := by field_simp
+
+/-! ## Abel-summation assembly: the `g`-vs-`1/n` weighted discrepancy vanishes -/
+
+/-- The partial sum of `a_k = μ²(k)/φ(k) − 1/k` is exactly the discrepancy `Bdisc n`. -/
+lemma sum_sub_eq_Bdisc (n : ℕ) :
+    (∑ k ∈ Finset.Icc 1 n, (gMoebiusSqTotient k - 1 / (k : ℝ))) = Bdisc n := by
+  rw [Finset.sum_sub_distrib, Bdisc]
+  congr 1
+  rw [harmonic_eq_sum_Icc]
+  push_cast
+  refine Finset.sum_congr rfl (fun k _ => by rw [one_div])
+
+/-- **The weighted `g`-vs-`1/n` discrepancy vanishes after `/ log N`.** For `F` Lipschitz on
+`[0,1]`,
+`(∑_{1≤n≤N} (μ²(n)/φ(n) − 1/n)·F(log n/log N)) / log N → 0`.
+
+This is the Abel-summation reduction: by `abel_summation_identity`, the sum equals
+`Bdisc N · F(1) − (Abel tail)`; dividing by `log N`, the first term `→ F(1)·0` (sharp Mertens,
+`discrepancy_div_log_tendsto_zero`) and the second `→ 0` (`abel_tail_tendsto_zero`). -/
+theorem discrepancy_weighted_tendsto_zero {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, (gMoebiusSqTotient n - 1 / (n : ℝ)) * F (Real.log n / Real.log N))
+          / Real.log N) atTop (nhds 0) := by
+  -- target limit: F 1 · (Bdisc N/log N) − (Abel tail/log N) → F 1·0 − 0 = 0
+  have hlim : Tendsto (fun N : ℕ =>
+      F 1 * (Bdisc N / Real.log N)
+        - (∑ n ∈ Finset.Icc 1 (N - 1), Bdisc n *
+            (F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N)))
+          / Real.log N) atTop (nhds 0) := by
+    have h1 := discrepancy_div_log_tendsto_zero.const_mul (F 1)
+    have h2 := abel_tail_tendsto_zero (F := F) (M := M) hLip
+    have := h1.sub h2
+    simpa using this
+  refine hlim.congr' ?_
+  filter_upwards [eventually_gt_atTop 1] with N hN
+  have hN1 : (1 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+  have hLpos : 0 < Real.log N := Real.log_pos hN1
+  -- Abel summation identity for a k = g k − 1/k, w m = F(log m/log N)
+  have hAbel := BoundedGaps.Mertens.abel_summation_identity N
+    (fun k => gMoebiusSqTotient k - 1 / (k : ℝ))
+    (fun m => F (Real.log m / Real.log N))
+  -- replace the target numerator by the Abel RHS, then simplify
+  rw [hAbel]
+  simp only [div_self hLpos.ne']
+  rw [sum_sub_eq_Bdisc N, sub_div, mul_comm (Bdisc N) (F 1), mul_div_assoc]
+  congr 1
+  -- tail terms: ∑ (Bdisc k)·(F(log(k+1)/logN) − F(log k/logN))
+  congr 1
+  refine Finset.sum_congr rfl (fun k _ => ?_)
+  rw [sum_sub_eq_Bdisc k]
+  push_cast
+  ring
+
+/-! ## The weighted Mertens asymptotic (modulo the Riemann-sum model limit) -/
+
+/-- **Weighted Mertens, conditional on the `1/n` Riemann-sum model limit.** For `F` Lipschitz
+on `[0,1]`, IF the model average converges,
+`(∑_{2≤n≤N} F(log n/log N)/n) / log N → ∫₀¹ F` (the pure analysis statement
+`WMertens.riemann_sum_log_weight`, on Aristotle), THEN the full weighted Mertens holds:
+`(∑_{1≤n≤N} (μ²(n)/φ(n))·F(log n/log N)) / log N → ∫₀¹ F`.
+
+Proof: `g·F = (1/n)·F + (g − 1/n)·F`. The `(1/n)` part is the model average (plus the bounded
+`n=1` term `F 0 / log N → 0`); the discrepancy part `→ 0` by `discrepancy_weighted_tendsto_zero`. -/
+theorem weighted_mertens_of_riemann {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|)
+    (hRiemann : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 2 N, F (Real.log n / Real.log N) / (n : ℝ)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u))) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) := by
+  have hlog : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  -- the bounded n=1 boundary term vanishes
+  have hF0 : Tendsto (fun N : ℕ => F 0 / Real.log N) atTop (nhds 0) :=
+    tendsto_const_nhds.div_atTop hlog
+  -- the `1/n` model average → ∫₀¹ F
+  have hModel : Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, 1 / (n : ℝ) * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) := by
+    have hsum := hF0.add hRiemann
+    rw [zero_add] at hsum
+    refine hsum.congr' ?_
+    filter_upwards [eventually_ge_atTop 1] with N hN1
+    have hins : Finset.Icc 1 N = insert 1 (Finset.Icc 2 N) := by
+      ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
+    rw [hins, Finset.sum_insert (by simp), add_div]
+    congr 1
+    · simp
+    · rw [Finset.sum_div, Finset.sum_div]
+      refine Finset.sum_congr rfl (fun n _ => ?_)
+      rw [one_div_mul_eq_div]
+  -- discrepancy part → 0
+  have hDisc := discrepancy_weighted_tendsto_zero (F := F) (M := M) hLip
+  -- combine
+  have := hModel.add hDisc
+  rw [add_zero] at this
+  refine this.congr (fun N => ?_)
+  rw [← add_div, ← Finset.sum_add_distrib]
+  congr 1
+  refine Finset.sum_congr rfl (fun n _ => ?_)
+  ring
 
 end BoundedGaps.WeightedMertens
