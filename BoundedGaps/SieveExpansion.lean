@@ -158,4 +158,75 @@ theorem selberg_nu_separable_expand_pointwise (k : ℕ) (Fs : Fin k → ℝ → 
   simp_rw [hsq]
   rw [Finset.prod_univ_sum]
 
+/-- Per-coordinate divisor-candidate set: all divisors of `n + hᵢ` as `n`
+ranges over the sieve block `[⌈x⌉, ⌊2x⌋] ∩ (b mod W)`. The support of the
+`i`-th coordinate in the divisor-lattice expansion. -/
+noncomputable def sieveDivisors (H : List ℕ) (i b W : ℕ) (x : ℝ) : Finset ℕ :=
+  ((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).biUnion
+    (fun n => (n + H.getD i 0).divisors)
+
+/-- **Sub-step (a) headline (separable weight).**
+The full Selberg sieve sum `∑_{n∈block} ν_sep(n)` opens into a divisor-lattice
+sum over tuples `P i = (dᵢ, eᵢ)` (each `dᵢ, eᵢ` ranging over the candidate set
+`sieveDivisors`), weighted by the Möbius product and the **lattice-point count**
+`#{m ∈ block : ∀i, dᵢ ∣ (m+hᵢ) ∧ eᵢ ∣ (m+hᵢ)}`. This is Polymath8b §3 eqn
+(sfg-1) fully expanded — the algebraic skeleton that the CRT count (sub-step (b),
+mathlib's `Nat.Ioc_filter_modEq_card`) and the Mertens/singular-series summation
+(sub-step (c), `BoundedGaps.Mertens.mertens_theta_log`) then turn into the (s1)
+main term. Obtained by instantiating `prod_sum_active_expand` at `ι = Fin k`,
+`N = ℕ×ℕ`, after collapsing each coordinate's active sum to `λ_{Fᵢ}(m+hᵢ)²`. -/
+theorem sieveSum_selberg_nu_separable_expand (k : ℕ) (Fs : Fin k → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (hx : 0 < x) :
+    sieveSum (selberg_nu_separable k Fs H R) b W x
+      = ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Fs i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Fs i (Real.log (P i).2 / Real.log R)))
+          * (((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+              (fun m => ∀ i : Fin k,
+                (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card := by
+  classical
+  set block := (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W) with hblock
+  -- `m ∈ block ⟹ 0 < m + hᵢ` (so divisor sets are honest).
+  have hpos : ∀ m ∈ block, ∀ i : Fin k, 0 < m + H.getD i.val 0 := by
+    intro m hm i
+    have hm' : m ∈ Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊ := (Finset.mem_filter.mp hm).1
+    have hceil : 1 ≤ ⌈x⌉₊ := Nat.one_le_ceil_iff.mpr hx
+    have : ⌈x⌉₊ ≤ m := (Finset.mem_Icc.mp hm').1
+    omega
+  -- Step A: pointwise, `ν_sep(m) = ∏ᵢ (active sum over the candidate product)`.
+  have stepA : ∀ m ∈ block,
+      selberg_nu_separable k Fs H R m
+        = ∏ i : Fin k, ∑ x' ∈ (sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x).filter
+              (fun de => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0)),
+            ((moebius x'.1 : ℝ) * Fs i (Real.log x'.1 / Real.log R))
+              * ((moebius x'.2 : ℝ) * Fs i (Real.log x'.2 / Real.log R)) := by
+    intro m hm
+    unfold selberg_nu_separable
+    rw [sq, ← Finset.prod_mul_distrib]
+    refine Finset.prod_congr rfl (fun i _ => ?_)
+    have hsub : (m + H.getD i.val 0).divisors ⊆ sieveDivisors H i.val b W x :=
+      Finset.subset_biUnion_of_mem (fun n => (n + H.getD i.val 0).divisors) hm
+    have hm0 : m + H.getD i.val 0 ≠ 0 := (hpos m hm i).ne'
+    -- the filtered candidate product equals the genuine divisor product.
+    have hset : (sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x).filter
+          (fun de => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
+        = (m + H.getD i.val 0).divisors ×ˢ (m + H.getD i.val 0).divisors := by
+      ext de
+      simp only [Finset.mem_filter, Finset.mem_product, Nat.mem_divisors]
+      refine ⟨fun ⟨_, hd1, hd2⟩ => ⟨⟨hd1, hm0⟩, hd2, hm0⟩, fun ⟨⟨hd1, _⟩, hd2, _⟩ => ?_⟩
+      exact ⟨⟨hsub (Nat.mem_divisors.mpr ⟨hd1, hm0⟩),
+              hsub (Nat.mem_divisors.mpr ⟨hd2, hm0⟩)⟩, hd1, hd2⟩
+    rw [hset]
+    simp only [lambdaTransform]
+    rw [Finset.sum_mul_sum, Finset.sum_product]
+  -- Step B: rewrite the block sum and apply the multidimensional swap workhorse.
+  rw [sieveSum, ← hblock, Finset.sum_congr rfl stepA]
+  convert prod_sum_active_expand block
+    (fun i => sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x)
+    (fun i de m => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
+    (fun i de => ((moebius de.1 : ℝ) * Fs i (Real.log de.1 / Real.log R))
+              * ((moebius de.2 : ℝ) * Fs i (Real.log de.2 / Real.log R)))
+
 end BoundedGaps.Sieve
