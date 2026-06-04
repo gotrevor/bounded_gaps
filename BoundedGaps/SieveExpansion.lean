@@ -333,4 +333,20 @@ theorem sieve_condition_single_class {ι : Type*} (l : List ι) (q h : ι → �
         ⟨fun hh => hh.trans hr2.symm, fun hh => hh.trans hr2⟩]
   exact Nat.modEq_and_modEq_iff_modEq_mul hWcop
 
+/-- **Sub-step (b): the GPY lattice count is a single arithmetic-progression
+count.** On the coprime diagonal, the count of block elements satisfying the
+full sieve membership condition equals the count of one residue class mod
+`W·(l.map q).prod` — exactly the form `Nat.Ioc_filter_modEq_card` evaluates to
+`(interval length)/(W·∏q) + O(1)`. This closes the chain from the divisor-lattice
+expansion (`sieveSum_selberg_nu_separable_expand`, with `q i = [dᵢ,eᵢ]` via
+`lattice_count_lcm`) to a mathlib-computable count, on the coprime diagonal. -/
+theorem lattice_count_eq_modEq {ι : Type*} (l : List ι) (q h : ι → ℕ)
+    (W b : ℕ) (S : Finset ℕ) (co : l.Pairwise (fun i j => Nat.Coprime (q i) (q j)))
+    (hq : ∀ i ∈ l, 0 < q i) (hWcop : Nat.Coprime W (l.map q).prod) :
+    ∃ r, (S.filter (fun m => m ≡ b [MOD W] ∧ ∀ i ∈ l, q i ∣ (m + h i))).card
+        = (S.filter (fun m => m ≡ r [MOD (W * (l.map q).prod)])).card := by
+  classical
+  obtain ⟨r, hr⟩ := sieve_condition_single_class l q h W b co hq hWcop
+  exact ⟨r, by rw [Finset.filter_congr (fun m _ => hr m)]⟩
+
 end BoundedGaps.Sieve
