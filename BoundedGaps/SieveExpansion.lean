@@ -765,4 +765,88 @@ theorem sum_restrict_offdiag_vanish {ι : Type*} (s : Finset ι) (weight val : �
   · rw [if_pos h]
   · rw [if_neg h, hvanish P hP h, mul_zero]
 
+/-- **Sub-step (c) entry — the GPY 1-D diagonalization identity.**
+The Selberg quadratic form on a finite set `T` of positive integers,
+`∑_{d,e ∈ T} w(d) w(e) / [d,e]` (with `[d,e] = Nat.lcm d e`), diagonalizes into a
+*single* sum of squares over the common-divisor variable `r`:
+`∑_{d,e} w(d)w(e)/[d,e] = ∑_{r ∈ R} φ(r) · (∑_{d ∈ T, r∣d} w(d)/d)²`,
+for any finset `R` that contains every divisor of every `d ∈ T`.
+
+This is the algebraic core of GPY's diagonalization of the Selberg sieve (the
+step turning the divisor-lattice quadratic form of sub-step (b)'s diagonal main
+term into the diagonal sum whose Mertens/Riemann asymptotic gives the constant
+`α = I(F)`). For the sieve application take `w d = μ(d) · F(log d / log R)` (the
+summand of `lambdaTransform`): see `gpy_diagonalize_moebius`. Pure finite
+algebra: `1/[d,e] = gcd(d,e)/(d·e)` (`Nat.gcd_mul_lcm`) followed by
+`gcd(d,e) = ∑_{r∣gcd} φ(r)` (`Nat.sum_totient`) and reindexing `r` outermost. -/
+theorem gpy_diagonalize (T R : Finset ℕ) (w : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T, w d * w e / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R, (Nat.totient r : ℝ)
+          * (∑ d ∈ T.filter (fun d => r ∣ d), w d / (d : ℝ)) ^ 2 := by
+  classical
+  have step1 : ∀ d ∈ T, ∀ e ∈ T,
+      w d * w e / (Nat.lcm d e : ℝ)
+        = ∑ r ∈ R, (if r ∣ d ∧ r ∣ e then (Nat.totient r : ℝ) else 0)
+            * (w d / (d:ℝ)) * (w e / (e:ℝ)) := by
+    intro d hd e he
+    have hd1 := hT d hd; have he1 := hT e he
+    have hd0 : (d:ℝ) ≠ 0 := by exact_mod_cast Nat.one_le_iff_ne_zero.mp hd1
+    have he0 : (e:ℝ) ≠ 0 := by exact_mod_cast Nat.one_le_iff_ne_zero.mp he1
+    have hgcd0 : Nat.gcd d e ≠ 0 := Nat.gcd_ne_zero_left (by omega)
+    have hgl : (Nat.gcd d e : ℝ) * (Nat.lcm d e : ℝ) = (d:ℝ) * (e:ℝ) := by
+      exact_mod_cast Nat.gcd_mul_lcm d e
+    have hlcm0 : (Nat.lcm d e : ℝ) ≠ 0 := by
+      have : Nat.lcm d e ≠ 0 := Nat.lcm_ne_zero (by omega) (by omega)
+      exact_mod_cast this
+    have hrw : w d * w e / (Nat.lcm d e : ℝ)
+        = (Nat.gcd d e : ℝ) * ((w d / (d:ℝ)) * (w e / (e:ℝ))) := by
+      field_simp
+      linear_combination (-(w d * w e)) * hgl
+    rw [hrw]
+    have htot : (Nat.gcd d e : ℝ) = ∑ r ∈ (Nat.gcd d e).divisors, (Nat.totient r : ℝ) := by
+      rw [← Nat.cast_sum]; exact_mod_cast (Nat.sum_totient _).symm
+    have hfilter : (Nat.gcd d e).divisors = R.filter (fun r => r ∣ d ∧ r ∣ e) := by
+      ext r
+      simp only [Nat.mem_divisors, Finset.mem_filter, Nat.dvd_gcd_iff]
+      constructor
+      · rintro ⟨⟨hrd, hre⟩, _⟩
+        exact ⟨hR d hd r hrd, hrd, hre⟩
+      · rintro ⟨_, hrd, hre⟩
+        exact ⟨⟨hrd, hre⟩, hgcd0⟩
+    rw [htot, hfilter, Finset.sum_filter, Finset.sum_mul]
+    refine Finset.sum_congr rfl (fun r _ => ?_)
+    ring
+  rw [Finset.sum_congr rfl (fun d hd => Finset.sum_congr rfl (fun e he => step1 d hd e he))]
+  -- swap `r` to the outermost position
+  rw [Finset.sum_congr rfl (fun d (_ : d ∈ T) => Finset.sum_comm), Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun r _ => ?_)
+  -- per-`r` slice factors into a square
+  have key : ∑ d ∈ T.filter (fun d => r ∣ d), w d / (d:ℝ)
+      = ∑ d ∈ T, (if r ∣ d then (1:ℝ) else 0) * (w d / (d:ℝ)) := by
+    rw [Finset.sum_filter]
+    refine Finset.sum_congr rfl (fun d _ => ?_)
+    by_cases h : r ∣ d <;> simp [h]
+  rw [key, sq, Finset.sum_mul_sum, Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun d _ => ?_)
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun e _ => ?_)
+  by_cases h1 : r ∣ d <;> by_cases h2 : r ∣ e <;> simp [h1, h2, mul_assoc]
+
+/-- **GPY diagonalization, Möbius-weighted form** (the sieve specialization).
+With the GPY weight `w(d) = μ(d) · g(d)` — exactly the summand of
+`lambdaTransform g R` over divisors — the Selberg quadratic form diagonalizes:
+`∑_{d,e ∈ T} μ(d)μ(e) g(d)g(e)/[d,e] = ∑_{r ∈ R} φ(r) (∑_{d∈T, r∣d} μ(d)g(d)/d)²`.
+The right side is the diagonal sum whose asymptotic (sub-step (c) Mertens/Riemann
+limit) produces the main-term constant. Direct instance of `gpy_diagonalize`. -/
+theorem gpy_diagonalize_moebius (T R : Finset ℕ) (g : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g d * ((moebius e : ℝ) * g e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R, (Nat.totient r : ℝ)
+          * (∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g d / (d : ℝ)) ^ 2 :=
+  gpy_diagonalize T R (fun d => (moebius d : ℝ) * g d) hT hR
+
 end BoundedGaps.Sieve
