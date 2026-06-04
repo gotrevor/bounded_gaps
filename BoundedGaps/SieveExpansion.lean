@@ -1387,4 +1387,60 @@ theorem heuristic_main_selberg_nu_diagonalized (k J : ℕ) (c : Fin J → ℝ)
     (fun _ _ hd => sieveDivisors_pos hd)
     (fun _ _ hd r hr => sieveDivisors_dvd_closed hd hr)]
 
+/-- **Bilinear diagonalized form, restricted to squarefree `r`.** The bilinear
+analogue of `gpy_diagonalize_moebius_squarefree`: off the squarefree locus the
+`g₁` factor `∑_{r∣d} μ(d)g₁(d)/d` vanishes (`gpy_yvar_eq_zero_of_not_squarefree`),
+killing the whole product, so the cross diagonal sum restricts to squarefree `r`. -/
+theorem gpy_diagonalize_moebius_bilinear_squarefree (T R : Finset ℕ) (g₁ g₂ : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d) (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g₁ d * ((moebius e : ℝ) * g₂ e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R.filter (fun r => Squarefree r), (Nat.totient r : ℝ)
+          * ((∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g₁ d / (d : ℝ))
+             * (∑ e ∈ T.filter (fun e => r ∣ e), (moebius e : ℝ) * g₂ e / (e : ℝ))) := by
+  classical
+  rw [gpy_diagonalize_moebius_bilinear T R g₁ g₂ hT hR, Finset.sum_filter]
+  refine Finset.sum_congr rfl (fun r _ => ?_)
+  by_cases h : Squarefree r
+  · rw [if_pos h]
+  · rw [if_neg h, gpy_yvar_eq_zero_of_not_squarefree T g₁ r h]
+    ring
+
+/-- **Bilinear diagonal Selberg form, asymptotic-ready** (cross `j ≠ j'` block).
+The bilinear analogue of `gpy_diagonal_asymptotic_form`: combining
+`gpy_diagonalize_moebius_bilinear_squarefree`, `gpy_yvar_substitution` on both
+factors, and `μ(r)² = 1` on the squarefree locus, the cross Selberg form equals
+`∑_{r sf} (φ(r)/r²) · z₁ᵣ · z₂ᵣ` with `zᵢᵣ = ∑_{(r,s)=1} μ(s)gᵢ(rs)/s` the
+coprime-restricted Möbius sums. This is the canonical bilinear form whose `R→∞`
+asymptotic produces each cross main-term constant; the `g₁ = g₂` case recovers
+`gpy_diagonal_asymptotic_form`. -/
+theorem gpy_diagonal_asymptotic_form_bilinear (T R : Finset ℕ) (g₁ g₂ : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d) (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g₁ d * ((moebius e : ℝ) * g₂ e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R.filter (fun r => Squarefree r), ((Nat.totient r : ℝ) / (r : ℝ) ^ 2)
+          * ((∑ s ∈ ((T.filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s),
+              (moebius s : ℝ) * g₁ (r * s) / (s : ℝ))
+             * (∑ s ∈ ((T.filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s),
+              (moebius s : ℝ) * g₂ (r * s) / (s : ℝ))) := by
+  classical
+  rw [gpy_diagonalize_moebius_bilinear_squarefree T R g₁ g₂ hT hR]
+  refine Finset.sum_congr rfl (fun r hr => ?_)
+  have hsf : Squarefree r := (Finset.mem_filter.mp hr).2
+  have hr1 : 1 ≤ r := Nat.one_le_iff_ne_zero.mpr hsf.ne_zero
+  rw [gpy_yvar_substitution T g₁ r hr1, gpy_yvar_substitution T g₂ r hr1]
+  have hmu : ((moebius r : ℝ)) ^ 2 = 1 := by
+    exact_mod_cast ArithmeticFunction.moebius_sq_eq_one_of_squarefree hsf
+  set Z₁ := ∑ s ∈ ((T.filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s), (moebius s : ℝ) * g₁ (r * s) / (s : ℝ)
+  set Z₂ := ∑ s ∈ ((T.filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s), (moebius s : ℝ) * g₂ (r * s) / (s : ℝ)
+  have hexp : (Nat.totient r : ℝ)
+        * ((moebius r : ℝ) / (r : ℝ) * Z₁ * ((moebius r : ℝ) / (r : ℝ) * Z₂))
+      = (moebius r : ℝ) ^ 2 * ((Nat.totient r : ℝ) / (r : ℝ) ^ 2 * (Z₁ * Z₂)) := by
+    ring
+  rw [hexp, hmu, one_mul]
+
 end BoundedGaps.Sieve
