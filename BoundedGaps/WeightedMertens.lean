@@ -24,6 +24,7 @@ and the Riemann-sum model limit are tracked separately.
 import Mathlib
 import BoundedGaps.SharpMertens
 import BoundedGaps.Mertens
+import BoundedGaps.RiemannSumLogWeight
 
 open scoped BigOperators
 open Filter Topology
@@ -541,15 +542,15 @@ theorem weighted_mertens_of_riemann {F : ℝ → ℝ} {M : ℝ}
 `(∑_{2≤n≤N} F(log n/log N)/n) / log N → ∫₀¹ F` for `F` continuous on `[0,1]`.
 
 The substitution `u = log n/log N` turns the log-weighted sum into a Riemann sum of `F` over
-`[0,1]`. This is the single remaining analytic ingredient of the weighted Mertens asymptotic
-(front #4); everything else is proved axiom-free (`weighted_mertens_of_riemann`).
-DISCLOSED as an axiom while Aristotle job `930e468a` (`aristotle-wmertens/`,
-`WMertens.riemann_sum_log_weight`) grinds the pure-analysis proof. On return, verify
-`#print axioms` clean in our v4.29.1 kernel and replace this axiom with the ported theorem. -/
-axiom riemann_sum_log_weight (F : ℝ → ℝ) (hF : ContinuousOn F (Set.Icc (0 : ℝ) 1)) :
+`[0,1]`. This is the single analytic ingredient of the weighted Mertens asymptotic (front #4).
+**PROVED** (was a disclosed axiom): proof produced by Aristotle (`930e468a`), verified
+`#print axioms` clean in our v4.29.1 kernel and ported to `BoundedGaps.WeightedMertens.Riemann`
+(`BoundedGaps/RiemannSumLogWeight.lean`). So `weighted_mertens` is now fully axiom-clean. -/
+theorem riemann_sum_log_weight (F : ℝ → ℝ) (hF : ContinuousOn F (Set.Icc (0 : ℝ) 1)) :
     Tendsto
       (fun N : ℕ => (∑ n ∈ Finset.Icc 2 N, F (Real.log n / Real.log N) / (n : ℝ)) / Real.log N)
-      atTop (nhds (∫ u in (0 : ℝ)..1, F u))
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) :=
+  Riemann.riemann_sum_log_weight F hF
 
 /-- **Consistency check for `riemann_sum_log_weight` (the `F ≡ 1` case), proved axiom-free.**
 `(∑_{2≤n≤N} 1/n) / log N → 1 = ∫₀¹ 1`. Since `∑_{2≤n≤N} 1/n = harmonic N − 1`, this is

@@ -33,4 +33,5 @@ import BoundedGaps.SymmetricReductionEpsOrbitFree
 import BoundedGaps.MultinomialFast
 import BoundedGaps.MkWitness200
 import BoundedGaps.Mertens
+import BoundedGaps.RiemannSumLogWeight
 import BoundedGaps.WeightedMertens
