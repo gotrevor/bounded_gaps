@@ -2250,6 +2250,46 @@ theorem meshBump_support (h : ℝ) (m : ℕ) (x : ℝ) (hh : 0 < h)
       Real.smoothTransition.one_of_one_le (by linarith)
     exact hne (by rw [h1, h2]; ring)
 
+/-- **Box-tensor approximation bound** (the modulus-of-continuity glue step,
+fully in-kernel). For `F₁` with a uniform modulus of continuity `δ` at scale `h`
+(`hmod`), the box-tensor approximant
+`G(t) = ∑_{φ : Fin k → Fin (N+1)} F₁(c_φ)·∏_i meshBump h (φ i) (t_i)`,
+with grid points `c_φ = (φ i · h)_i`, satisfies `|F₁ t − G t| ≤ δ` for every `t`
+whose coordinates lie in the partition-of-unity range `[0, N·h]`. Assembles the
+three landed cores: `tensor_partition_of_unity` (the weights sum to 1),
+`meshBump_nonneg` (they are nonnegative), `meshBump_support` (a nonzero weight
+forces `|t_i − c_{φ,i}| < h`, activating the modulus), fed through
+`abs_sub_weighted_average_le`. -/
+theorem box_tensor_approx (k : ℕ) (F₁ : (Fin k → ℝ) → ℝ) (h : ℝ) (N : ℕ) (δ : ℝ)
+    (hh : 0 < h)
+    (hmod : ∀ t s : Fin k → ℝ, (∀ i, |t i - s i| ≤ h) → |F₁ t - F₁ s| ≤ δ)
+    (t : Fin k → ℝ) (ht0 : ∀ i, 0 ≤ t i) (htN : ∀ i, t i ≤ (N : ℝ) * h) :
+    |F₁ t - ∑ φ : (Fin k → Fin (N + 1)),
+        F₁ (fun i => ((φ i : ℕ) : ℝ) * h) * ∏ i, meshBump h ((φ i : ℕ)) (t i)| ≤ δ := by
+  classical
+  -- weights are nonnegative products of nonnegative bumps
+  have hnn : ∀ φ : Fin k → Fin (N + 1), 0 ≤ ∏ i, meshBump h ((φ i : ℕ)) (t i) :=
+    fun φ => Finset.prod_nonneg fun i _ => meshBump_nonneg h _ (t i)
+  -- weights sum to 1 by the tensor partition of unity
+  have hsum : ∑ φ : (Fin k → Fin (N + 1)), ∏ i, meshBump h ((φ i : ℕ)) (t i) = 1 := by
+    have hρ : ∀ i : Fin k, ∑ m : Fin (N + 1), meshBump h ((m : ℕ)) (t i) = 1 := by
+      intro i
+      rw [Fin.sum_univ_eq_sum_range (fun m => meshBump h m (t i)) (N + 1)]
+      exact meshBump_partition h N (t i) hh (ht0 i) (htN i)
+    exact tensor_partition_of_unity (fun (m : Fin (N + 1)) x => meshBump h ((m : ℕ)) x) t hρ
+  -- on a box with nonzero weight, every coordinate is within `h` of the grid point
+  have hclose : ∀ φ : Fin k → Fin (N + 1),
+      (∏ i, meshBump h ((φ i : ℕ)) (t i)) ≠ 0 →
+      |F₁ t - F₁ (fun i => ((φ i : ℕ) : ℝ) * h)| ≤ δ := by
+    intro φ hφ
+    have hfac : ∀ i, meshBump h ((φ i : ℕ)) (t i) ≠ 0 :=
+      fun i => (Finset.prod_ne_zero_iff.mp hφ) i (Finset.mem_univ i)
+    refine hmod t (fun i => ((φ i : ℕ) : ℝ) * h) (fun i => ?_)
+    obtain ⟨h1, h2⟩ := meshBump_support h ((φ i : ℕ)) (t i) hh (hfac i)
+    rw [abs_le]
+    exact ⟨by nlinarith [h1], by nlinarith [h2]⟩
+  exact abs_sub_weighted_average_le (F₁ t) _ _ δ hnn hsum hclose
+
 /-- **Separable sup-norm density** (the irreducible analytic core of
 `exists_separable_F_of_Mk_gt`, with the continuity half discharged by
 `mkF_sub_lt_of_sup_le`). Any admissible smooth `F` on the simplex is uniformly
