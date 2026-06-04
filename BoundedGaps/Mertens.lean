@@ -550,4 +550,26 @@ theorem mertens_first_le (N : ℕ) :
   rw [← harmonic_eq_icc_sum]
   exact mul_le_mul_of_nonneg_left (harmonic_le_one_add_log N) hc
 
+/-- Mertens' first theorem in **partial-sum / indicator form**: the partial sums
+of `[k prime]·(log k)/k` over `Icc 1 n` are `≤ log 4 · (1 + log n)`. This is the
+partial-sum hypothesis for the *second* Abel-summation step (weight `1/log p`)
+that yields Mertens' second theorem `∑_{p≤N} 1/p = O(log log N)`. -/
+theorem mertens_first_le' (n : ℕ) :
+    ∑ k ∈ Finset.Icc 1 n, (if k.Prime then Real.log (k : ℝ) / (k : ℝ) else 0)
+      ≤ Real.log 4 * (1 + Real.log n) := by
+  have hsub : Finset.Icc 1 n ⊆ Finset.range (n + 1) := by
+    intro x hx; rw [Finset.mem_Icc] at hx; rw [Finset.mem_range]; omega
+  have hexpand : ∑ k ∈ Finset.range (n + 1), (if k.Prime then Real.log (k : ℝ) / (k : ℝ) else 0)
+      = ∑ k ∈ Finset.Icc 1 n, (if k.Prime then Real.log (k : ℝ) / (k : ℝ) else 0) := by
+    refine (Finset.sum_subset hsub ?_).symm
+    intro x hxr hxIcc
+    rw [Finset.mem_range] at hxr
+    rw [Finset.mem_Icc] at hxIcc
+    have hx0 : x = 0 := by omega
+    subst hx0; simp
+  calc ∑ k ∈ Finset.Icc 1 n, (if k.Prime then Real.log (k : ℝ) / (k : ℝ) else 0)
+      = ∑ p ∈ (Finset.range (n + 1)).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ) := by
+        rw [Finset.sum_filter]; exact hexpand.symm
+    _ ≤ Real.log 4 * (1 + Real.log n) := mertens_first_le n
+
 end BoundedGaps.Mertens
