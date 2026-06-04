@@ -13,6 +13,7 @@ import BoundedGaps.Basic
 import BoundedGaps.Prerequisites
 import BoundedGaps.Sieve
 import BoundedGaps.SieveExpansion
+import BoundedGaps.SingularSeries
 import BoundedGaps.Maynard
 import BoundedGaps.Zhang
 import BoundedGaps.Polymath8b
