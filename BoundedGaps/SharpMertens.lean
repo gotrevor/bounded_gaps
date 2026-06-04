@@ -852,6 +852,35 @@ lemma log_le_two_sum_log_primeFactors {N d : ℕ} (hd : d ∈ ((primorial N) ^ 2
     _ = 2 * Real.log (rad : ℝ) := by rw [Real.log_pow]; push_cast; ring
     _ = 2 * ∑ p ∈ d.primeFactors, Real.log p := by rw [hlograd]
 
+/-- `|bAF p| + |bAF p²| = 2/(p(p-1))` at a prime. -/
+lemma gabs_prime_add_sq {p : ℕ} (hp : p.Prime) :
+    gabs p + gabs (p ^ 2) = 2 / ((p : ℝ) * ((p : ℝ) - 1)) := by
+  have hp2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.two_le
+  have hpos : (0 : ℝ) < (p : ℝ) * ((p : ℝ) - 1) := by apply mul_pos <;> linarith
+  rw [gabs_apply, gabs_apply, bAF_prime hp, bAF_prime_sq hp,
+      abs_of_pos (by positivity : (0 : ℝ) < 1 / ((p : ℝ) * ((p : ℝ) - 1))), abs_neg,
+      abs_of_pos (by positivity : (0 : ℝ) < 1 / ((p : ℝ) * ((p : ℝ) - 1)))]
+  ring
+
+/-- The prime factors of `(N#)²` are exactly the primes `≤ N`. -/
+lemma primorial_sq_primeFactors (N : ℕ) :
+    ((primorial N) ^ 2).primeFactors = (Finset.range (N + 1)).filter Nat.Prime := by
+  rw [Nat.primeFactors_pow _ (by norm_num : (2 : ℕ) ≠ 0)]
+  ext p
+  rw [Nat.mem_primeFactors, Finset.mem_filter, Finset.mem_range]
+  constructor
+  · rintro ⟨hpr, hpd, _⟩
+    refine ⟨?_, hpr⟩
+    rw [show primorial N = ∏ q ∈ (Finset.range (N + 1)).filter Nat.Prime, q from rfl,
+        hpr.prime.dvd_finset_prod_iff] at hpd
+    obtain ⟨q, hqS, hpq⟩ := hpd
+    have hq : q.Prime := (Finset.mem_filter.mp hqS).2
+    rw [(Nat.prime_dvd_prime_iff_eq hpr hq).mp hpq]
+    exact Finset.mem_range.mp (Finset.mem_filter.mp hqS).1
+  · rintro ⟨hpN, hpr⟩
+    refine ⟨hpr, ?_, (primorial_pos N).ne'⟩
+    exact Finset.dvd_prod_of_mem _ (Finset.mem_filter.mpr ⟨Finset.mem_range.mpr hpN, hpr⟩)
+
 /-! ## Analytic crux of the log-weighted bound #2: `∑_p (log p)/(p(p-1)) < ∞`
 
 The log-weighted summability hypothesis of `sharp_mertens_tendsto` reduces (after the
@@ -919,6 +948,127 @@ theorem sum_log_div_primes_le (N : ℕ) :
     rw [Finset.mem_Icc] at hn
     have h2 : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn.1
     exact div_nonneg (Real.log_nonneg (by linarith)) (by nlinarith)
+
+/-- **Unconditional log-weighted bound #2** `∑_{e≤N} ‖b(e)‖·|log e| ≤ 4·exp 2·∑' 4·n^{-3/2}`.
+Assembles: reduce to `∑_{d∣(N#)²} |bAF d|·log d` (support ⊆ divisors of `(N#)²`); bound
+`log d ≤ 2∑_{p∣d} log p` (A); swap the order of summation to isolate each prime; bound the
+multiples-of-`p` divisor sum by `(|bAF p|+|bAF p²|)·exp 2 = (2/(p(p-1)))·exp 2` (C); and close
+with the convergent prime sum `∑_p (log p)/(p(p-1)) < ∞` (the analytic crux). -/
+theorem sum_norm_bAF_log_le (N : ℕ) :
+    ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ * |Real.log (e : ℝ)|
+      ≤ 4 * Real.exp 2 * ∑' n : ℕ, (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2) := by
+  classical
+  have hMne : (primorial N) ^ 2 ≠ 0 := pow_ne_zero _ (primorial_pos N).ne'
+  have step12 : ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ * |Real.log (e : ℝ)|
+      ≤ ∑ d ∈ ((primorial N) ^ 2).divisors, gabs d * Real.log d := by
+    have hconv : ∑ e ∈ Finset.Icc 1 N, ‖bAF e‖ * |Real.log (e : ℝ)|
+        = ∑ e ∈ Finset.Icc 1 N, gabs e * Real.log e :=
+      Finset.sum_congr rfl (fun e he => by
+        rw [Finset.mem_Icc] at he
+        rw [gabs_apply, Real.norm_eq_abs,
+            abs_of_nonneg (Real.log_nonneg (by exact_mod_cast he.1))])
+    rw [hconv,
+        show (∑ e ∈ Finset.Icc 1 N, gabs e * Real.log e)
+            = ∑ e ∈ (Finset.Icc 1 N).filter (fun e => bAF e ≠ 0), gabs e * Real.log e from by
+          symm
+          apply Finset.sum_filter_of_ne
+          intro e _ hge h0
+          rw [gabs_apply, h0, abs_zero, zero_mul] at hge
+          exact hge rfl]
+    apply Finset.sum_le_sum_of_subset_of_nonneg
+    · intro e he
+      rw [Finset.mem_filter, Finset.mem_Icc] at he
+      obtain ⟨⟨ha, hb⟩, hne⟩ := he
+      rw [Nat.mem_divisors]
+      exact ⟨dvd_primorial_sq_of_bAF_ne_zero ha hb hne, hMne⟩
+    · intro d hd _
+      rw [Nat.mem_divisors] at hd
+      have hd1 : 1 ≤ d := Nat.one_le_iff_ne_zero.mpr (ne_zero_of_dvd_ne_zero hd.2 hd.1)
+      exact mul_nonneg (by rw [gabs_apply]; exact abs_nonneg _)
+        (Real.log_nonneg (by exact_mod_cast hd1))
+  have step3 : ∑ d ∈ ((primorial N) ^ 2).divisors, gabs d * Real.log d
+      ≤ ∑ d ∈ ((primorial N) ^ 2).divisors,
+          gabs d * (2 * ∑ p ∈ d.primeFactors, Real.log p) := by
+    apply Finset.sum_le_sum
+    intro d hd
+    exact mul_le_mul_of_nonneg_left (log_le_two_sum_log_primeFactors hd)
+      (by rw [gabs_apply]; exact abs_nonneg _)
+  have step4 : ∑ d ∈ ((primorial N) ^ 2).divisors,
+        gabs d * (2 * ∑ p ∈ d.primeFactors, Real.log p)
+      = 2 * ∑ p ∈ ((primorial N) ^ 2).primeFactors,
+          Real.log p * ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => p ∣ d)), gabs d := by
+    rw [show (∑ d ∈ ((primorial N) ^ 2).divisors,
+              gabs d * (2 * ∑ p ∈ d.primeFactors, Real.log p))
+            = 2 * ∑ d ∈ ((primorial N) ^ 2).divisors,
+                gabs d * (∑ p ∈ d.primeFactors, Real.log p) from by
+          rw [Finset.mul_sum]; exact Finset.sum_congr rfl (fun d _ => by ring)]
+    congr 1
+    calc ∑ d ∈ ((primorial N) ^ 2).divisors, gabs d * (∑ p ∈ d.primeFactors, Real.log p)
+        = ∑ d ∈ ((primorial N) ^ 2).divisors,
+            gabs d * (∑ p ∈ ((primorial N) ^ 2).primeFactors,
+              (if p ∣ d then Real.log p else 0)) := by
+          apply Finset.sum_congr rfl
+          intro d hd
+          rw [← Finset.sum_filter,
+              Nat.primeFactors_filter_dvd_of_dvd hMne (Nat.mem_divisors.mp hd).1]
+      _ = ∑ d ∈ ((primorial N) ^ 2).divisors,
+            ∑ p ∈ ((primorial N) ^ 2).primeFactors,
+              gabs d * (if p ∣ d then Real.log p else 0) := by
+          exact Finset.sum_congr rfl (fun d _ => Finset.mul_sum _ _ _)
+      _ = ∑ p ∈ ((primorial N) ^ 2).primeFactors,
+            ∑ d ∈ ((primorial N) ^ 2).divisors,
+              gabs d * (if p ∣ d then Real.log p else 0) := Finset.sum_comm
+      _ = ∑ p ∈ ((primorial N) ^ 2).primeFactors,
+            Real.log p * ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => p ∣ d)), gabs d := by
+          apply Finset.sum_congr rfl
+          intro p _
+          rw [show (∑ d ∈ ((primorial N) ^ 2).divisors, gabs d * (if p ∣ d then Real.log p else 0))
+                = ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => p ∣ d)), gabs d * Real.log p
+              from by
+                rw [Finset.sum_filter]
+                exact Finset.sum_congr rfl (fun d _ => by split <;> simp)]
+          rw [← Finset.sum_mul, mul_comm]
+  have step5 : 2 * ∑ p ∈ ((primorial N) ^ 2).primeFactors,
+          Real.log p * ∑ d ∈ (((primorial N) ^ 2).divisors.filter (fun d => p ∣ d)), gabs d
+      ≤ 2 * ∑ p ∈ ((primorial N) ^ 2).primeFactors,
+          Real.log p * ((gabs p + gabs (p ^ 2)) * Real.exp 2) := by
+    apply mul_le_mul_of_nonneg_left _ (by norm_num)
+    apply Finset.sum_le_sum
+    intro p hp
+    rw [primorial_sq_primeFactors] at hp
+    have hpr : p.Prime := (Finset.mem_filter.mp hp).2
+    have hpN : p ≤ N := Nat.lt_succ_iff.mp (Finset.mem_range.mp (Finset.mem_filter.mp hp).1)
+    exact mul_le_mul_of_nonneg_left (sum_gabs_divisors_multiples_le hpr hpN)
+      (Real.log_nonneg (by exact_mod_cast hpr.one_lt.le))
+  have step6 : 2 * ∑ p ∈ ((primorial N) ^ 2).primeFactors,
+          Real.log p * ((gabs p + gabs (p ^ 2)) * Real.exp 2)
+      ≤ 4 * Real.exp 2 * ∑' n : ℕ, (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2) := by
+    rw [primorial_sq_primeFactors]
+    have hrw : ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime,
+            Real.log p * ((gabs p + gabs (p ^ 2)) * Real.exp 2)
+        = Real.exp 2 * (2 * ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime,
+            Real.log p / ((p : ℝ) * ((p : ℝ) - 1))) := by
+      rw [Finset.mul_sum, Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro p hp
+      rw [gabs_prime_add_sq (Finset.mem_filter.mp hp).2]
+      ring
+    rw [hrw,
+        show (2 : ℝ) * (Real.exp 2 * (2 * ∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime,
+              Real.log p / ((p : ℝ) * ((p : ℝ) - 1))))
+            = 4 * Real.exp 2 * (∑ p ∈ (Finset.range (N + 1)).filter Nat.Prime,
+              Real.log p / ((p : ℝ) * ((p : ℝ) - 1))) from by ring]
+    exact mul_le_mul_of_nonneg_left (sum_log_div_primes_le N) (by positivity)
+  exact step12.trans (step3.trans (step4.le.trans (step5.trans step6)))
+
+/-- **Sharp Mertens, fully unconditional.** `(∑_{n≤N} μ²/φ)/log N → 1` with no axioms beyond
+`[propext, Classical.choice, Quot.sound]`: both partial-sum bounds (`sum_norm_bAF_le` and
+`sum_norm_bAF_log_le`) are now proved directly on `bAF`. -/
+theorem sharp_mertens_unconditional :
+    Filter.Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) / Real.log N)
+      Filter.atTop (nhds 1) :=
+  sharp_mertens_tendsto summable_norm_bAF (summable_norm_bAF_log_of_bound sum_norm_bAF_log_le)
 
 /-- **Sharp Mertens from the two partial-sum bounds (one-shot).** Packages the full
 reduction: given the unweighted and `log`-weighted Euler-product bounds (the two
