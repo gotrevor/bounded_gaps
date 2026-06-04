@@ -269,3 +269,33 @@ theorem sum_g_decomp (N : ℕ) (hN : 1 ≤ N) :
   have he0 : (e : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
   rw [Real.log_div hN0 he0]
   ring
+
+/-- **The remainder term `R(N)` is `O(1)`.** `|R(N)| ≤ ∑_{e≤N} |B(e)/e|`, since each
+`r_e ∈ [0,1]`. Combined with the absolute b-series bound (`∑|b(e)| ≤ 8`, Aristotle
+`830e5129`) this gives `|R(N)| ≤ 8`, one of the two `O(1)` error terms of `sum_g_decomp`. -/
+theorem abs_remainder_term_le (N : ℕ) :
+    |∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) *
+        ((∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ)))|
+      ≤ ∑ e ∈ Finset.Icc 1 N, |BSharp e / (e : ℝ)| := by
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  apply Finset.sum_le_sum
+  intro e he
+  obtain ⟨he1, heN⟩ := Finset.mem_Icc.mp he
+  rw [abs_mul]
+  have hr := harmonic_remainder_mem he1 heN
+  have hr01 : |(∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ))| ≤ 1 := by
+    rw [abs_le]; exact ⟨by linarith [hr.1], by linarith [hr.2]⟩
+  calc |BSharp e / (e : ℝ)|
+          * |(∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ))|
+        ≤ |BSharp e / (e : ℝ)| * 1 := mul_le_mul_of_nonneg_left hr01 (abs_nonneg _)
+    _ = |BSharp e / (e : ℝ)| := mul_one _
+
+/-- **The `log`-weighted term `Q(N)` is controlled by the `log`-weighted b-series.**
+`|Q(N)| ≤ ∑_{e≤N} |B(e)/e|·|log e|`. The RHS is bounded (`∑ |b(e) log e| < ∞`, terms
+`≪ p^{-2} log p`) — a future Euler-product estimate — giving the second `O(1)` error
+term of `sum_g_decomp`. -/
+theorem abs_logweighted_term_le (N : ℕ) :
+    |∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) * Real.log e|
+      ≤ ∑ e ∈ Finset.Icc 1 N, |BSharp e / (e : ℝ)| * |Real.log e| := by
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  exact Finset.sum_le_sum (fun e _ => le_of_eq (abs_mul _ _))
