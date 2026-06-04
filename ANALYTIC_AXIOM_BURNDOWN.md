@@ -416,3 +416,32 @@ direct inspection of `.lake/packages/mathlib` v4.29.1, and the EH/GEH/BV/MPZ
 docstrings in `Prerequisites.lean`. Conversation context: Trevor's directive to
 stop treating cited axioms as permanently out of scope and instead map a
 literature-burn-down path.
+
+## Sub-step (c) 1-D keystone DONE — sharp Mertens FULLY UNCONDITIONAL (2026-06-04 PM)
+
+`BoundedGaps.SharpMertens.sharp_mertens_unconditional : (∑_{n≤N} μ²/φ)/log N → 1` is now
+proved **axiom-clean** (`[propext, Classical.choice, Quot.sound]`), **no Aristotle dependency**.
+Both Euler-product partial-sum bounds are proved DIRECTLY on `bAF`:
+- `sum_norm_bAF_le : ∑_{e≤N}|bAF e| ≤ exp 2` — KEY TRICK: `bAF e ≠ 0` ⟹ all prime exponents ≤2,
+  so any `e≤N` in the support **divides the primorial squared `(N#)²`**; then the bound is the
+  DIVISOR-sum Euler product `(ζ⋆|bAF|)((N#)²) = ∏_{p≤N}(1+2/(p(p-1))) ≤ exp 2` (mathlib HAS
+  `multiplicative_factorization`/`coe_zeta_mul_apply`/`map_prod`; it only LACKS the *partial-sum*
+  Euler product, which the primorial² trick sidesteps).
+- `sum_norm_bAF_log_le : ∑_{e≤N}|bAF e|·log e ≤ 4·exp2·∑'4n^{-3/2}` — (A) `log d ≤ 2∑_{p|d}log p`
+  (`d|(N#)² ⟹ d|rad(d)²`); (B) swap order (indicator + `Finset.sum_comm`); (C)
+  `sum_gabs_divisors_multiples_le` bounds the multiples-of-`p` divisor sum by `(2/(p(p-1)))·exp2`;
+  (D) the convergent prime sum `∑_p (log p)/(p(p-1)) < ∞` (`sum_log_div_primes_le`, via
+  `Real.log_le_rpow_div` + `summable_one_div_nat_rpow`).
+
+This corrects the prior framing ("multi-month nut", "2 Aristotle leaves"): the 1-D sharp Mertens
+was a days-task once the primorial² / divisor-sum-Euler-product route was found. Reusable bricks
+left behind in `SharpMertens.lean`: `gabs` (`|bAF|` as a multiplicative ArithmeticFunction),
+`gabs_sum_divisors_mul`, `sum_gabs_divisors_primorial_sq_le`, `prod_primes_factorization_le_one`,
+`primorial_sq_primeFactors`, `term_log_div_le` + `summable_four_div_rpow`.
+
+**NEXT (the genuine remaining sub-step (c) nut): the WEIGHTED version** `∑_{d≤R}(μ²/φ)·F(log d/log R)
+∼ (∫₀¹F)·log R`, via Abel summation (`Mertens.abel_summation_identity`) against
+`sharp_mertens_unconditional`. Its analytic heart — the Riemann-sum convergence for the `1/n`
+log-weight `(∑_{n≤R}(1/n)F(log n/log R))/log R → ∫₀¹F` — is on Aristotle (`930e468a`,
+`aristotle-wmertens/`). Then the multidimensional/singular-series lift to `α=I(F)`, then sub-step
+(d) IsLittleO assembly into `alphaBound`/`s1_holds_from_nonprime_asym`.
