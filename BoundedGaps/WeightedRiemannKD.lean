@@ -151,6 +151,29 @@ lemma nestedLogSum_mono (R : ℕ) : ∀ (gs : List (ℝ → ℝ)), (∀ g ∈ gs
             Finset.sum_le_sum_of_subset_of_nonneg (Finset.Icc_subset_Icc_right hQ)
               (fun n _ _ => mul_nonneg (div_nonneg (hg _) (by positivity)) (hgs_nn _))
 
+/-- The reparametrised level-`k` nested sum (outer truncation `⌊R^t⌋`), normalised by `(log R)^k`.
+At `t = 1 - log n/log R` it relates the tail term to the budget `R/n` (the generic `Psi3`). -/
+noncomputable def PsiK (R : ℕ) (gs : List (ℝ → ℝ)) (t : ℝ) : ℝ :=
+  nestedLogSum R gs ⌊(R : ℝ) ^ t⌋₊ / (Real.log R) ^ gs.length
+
+/-- **`PsiK R gs` is monotone in `t`** (for nonnegative `gs`): `⌊R^t⌋` grows with `t`, and
+`nestedLogSum R gs` is monotone in its budget (`nestedLogSum_mono`). The generic `psi3_monotoneOn`,
+the Pólya monotonicity for the generic inner-uniform. -/
+lemma psiK_monotoneOn (R : ℕ) (gs : List (ℝ → ℝ)) (h : ∀ g ∈ gs, ∀ x, 0 ≤ g x) :
+    MonotoneOn (PsiK R gs) (Set.Icc (0 : ℝ) 1) := by
+  rcases Nat.lt_or_ge R 2 with hRlt | hR2
+  · have hlog0 : Real.log (R : ℝ) = 0 := by interval_cases R <;> simp
+    intro a _ b _ _
+    rcases gs with _ | ⟨g, gs'⟩
+    · simp [PsiK]
+    · simp [PsiK, hlog0, List.length_cons, zero_pow]
+  · have hR1' : (1 : ℝ) ≤ (R : ℝ) := by exact_mod_cast (show 1 ≤ R by omega)
+    have hlogpos : 0 < Real.log (R : ℝ) := Real.log_pos (by exact_mod_cast (show 1 < R by omega))
+    intro a _ b _ hab
+    have hpow : (R : ℝ) ^ a ≤ (R : ℝ) ^ b := Real.rpow_le_rpow_of_exponent_le hR1' hab
+    have hfloor : ⌊(R : ℝ) ^ a⌋₊ ≤ ⌊(R : ℝ) ^ b⌋₊ := Nat.floor_mono hpow
+    exact div_le_div_of_nonneg_right (nestedLogSum_mono R gs h hfloor) (by positivity)
+
 open BoundedGaps.WeightedRiemann2D (perturbed_riemann)
 
 /-- **Generic factor step** (the `three_d_factor` analog, any list length). The level-`k+1` nested
