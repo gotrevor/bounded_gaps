@@ -1555,4 +1555,40 @@ theorem correction_weight_factor {k : ℕ} (D : Fin k → Finset ℕ)
     (fun i de => ((moebius de.1 : ℝ) * Gs₁ i (Real.log de.1 / Real.log R))
       * ((moebius de.2 : ℝ) * Gs₂ i (Real.log de.2 / Real.log R)))
 
+/-- **Absolute-value product sum factorizes.** `∑_{(d,e)∈A×B} |f(d)·g(e)| =
+(∑_{d∈A}|f(d)|)·(∑_{e∈B}|g(e)|)`. The 1-D companion of `correction_weight_factor`:
+each per-coordinate pair-sum splits into a product of two independent
+single-variable absolute sums (`Finset.sum_product` + `abs_mul` +
+`Finset.sum_mul_sum`). -/
+theorem sum_prod_abs_mul_factor {α : Type*} (A B : Finset α) (f g : α → ℝ) :
+    ∑ de ∈ A ×ˢ B, |f de.1 * g de.2| = (∑ d ∈ A, |f d|) * (∑ e ∈ B, |g e|) := by
+  classical
+  rw [Finset.sum_product, Finset.sum_mul_sum]
+  refine Finset.sum_congr rfl (fun d _ => Finset.sum_congr rfl (fun e _ => ?_))
+  rw [abs_mul]
+
+/-- **Correction total-weight bound, fully split into 1-D Möbius sums.** Refining
+`correction_weight_factor` with `sum_prod_abs_mul_factor` per coordinate: the
+total absolute correction weight equals
+`∏ᵢ (∑_{d∈Dᵢ} |μ(d)Fⱼᵢ(log d/log R)|)·(∑_{e∈Dᵢ} |μ(e)Fⱼ'ᵢ(log e/log R)|)`,
+a product of `2k` clean single-variable Möbius-weighted divisor sums. Each factor
+`∑_{d∈Dᵢ} |μ(d)F(log d/log R)| ≤ ‖F‖∞ · #{d∈Dᵢ squarefree}` is the precise 1-D
+size the `∑|coeff| = o(main)` estimate bounds (using `|μ| ≤ 1` and the simplex
+support `d ≤ R`). This is the final structural reduction of analytic obligation
+#2 to per-coordinate 1-D Möbius-sum size bounds. -/
+theorem correction_weight_factor_split {k : ℕ} (D : Fin k → Finset ℕ)
+    (Gs₁ Gs₂ : Fin k → ℝ → ℝ) (R : ℝ) :
+    ∑ P ∈ Fintype.piFinset (fun i => D i ×ˢ D i),
+        |∏ i : Fin k,
+          ((moebius (P i).1 : ℝ) * Gs₁ i (Real.log (P i).1 / Real.log R))
+            * ((moebius (P i).2 : ℝ) * Gs₂ i (Real.log (P i).2 / Real.log R))|
+      = ∏ i : Fin k,
+          (∑ d ∈ D i, |(moebius d : ℝ) * Gs₁ i (Real.log d / Real.log R)|)
+          * (∑ e ∈ D i, |(moebius e : ℝ) * Gs₂ i (Real.log e / Real.log R)|) := by
+  rw [correction_weight_factor D Gs₁ Gs₂ R]
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  exact sum_prod_abs_mul_factor (D i) (D i)
+    (fun d => (moebius d : ℝ) * Gs₁ i (Real.log d / Real.log R))
+    (fun e => (moebius e : ℝ) * Gs₂ i (Real.log e / Real.log R))
+
 end BoundedGaps.Sieve
