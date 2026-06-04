@@ -972,4 +972,35 @@ theorem heuristic_main_term_diagonalized {k : ℕ} (D Rset : Fin k → Finset �
   exact gpy_diagonalize_moebius (D i) (Rset i)
     (fun d => Fs i (Real.log d / Real.log R)) (hD i) (hR i)
 
+/-- **(s1) reduction: `sieveSum = heuristic main + correction`.** For *any*
+chosen main value `M`, the separable Selberg sieve sum splits exactly as
+`sieveSum = ∑_P coeffₚ·(M/∏ᵢ[Pᵢ]) + ∑_P coeffₚ·(countₚ − M/∏ᵢ[Pᵢ])`,
+the first summand being the heuristic main term (`= M·∏ᵢ diagonalized quadratic
+form` via `heuristic_main_term_diagonalized` once `M = (B−A)/W`), the second the
+**correction** `∑_P coeffₚ·(countₚ − M/∏ᵢ[Pᵢ])` that the analytic estimate must
+show is `o(main)`. Pure algebra (add and subtract `M/∏[·]` termwise on
+`sieveSum_selberg_nu_separable_expand`); isolates the exact remaining analytic
+obligation (sub-step (c) asymptotic + off-diagonal/error discrepancy). -/
+theorem sieveSum_separable_eq_heuristic_add_correction (k : ℕ) (Fs : Fin k → ℝ → ℝ)
+    (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (hx : 0 < x) (M : ℝ) :
+    sieveSum (selberg_nu_separable k Fs H R) b W x
+      = (∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Fs i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Fs i (Real.log (P i).2 / Real.log R)))
+          * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      + (∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Fs i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Fs i (Real.log (P i).2 / Real.log R)))
+          * ((((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+                (fun m => ∀ i : Fin k,
+                  (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+              - M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))) := by
+  rw [sieveSum_selberg_nu_separable_expand k Fs H R b W x hx, ← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun P _ => ?_)
+  ring
+
 end BoundedGaps.Sieve
