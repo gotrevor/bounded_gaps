@@ -540,18 +540,36 @@ UNCONDITIONALLY. The 3-D file mirrors the 2-D construction one dimension up, reu
 
 Aristotle psi3-pointwise (`680977a8`) is now SUPERSEDED (proven in-kernel); harvest unnecessary.
 
-**NEXT (general k-D):** the SAME architecture recurses — level `k` reduces (via `perturbed_riemann` +
-a `(k-1)`-D `Φ_{k-1}` cross-section + Pólya monotonicity + a `t`-rescaling pointwise step that feeds
-`weighted_riemann_{k-1}`) to a `(k-1)`-D inner-uniform, bottoming out at `psi_tendsto`. The 3-D file
-is the fully-worked blueprint. Two routes:
-1. **Concrete 4-D** (`weighted_riemann_4d`) — copy the 3-D file, one dimension up. `Φ₃ G H K s =
-   ∫₀^{1-s} G(y)·Φ₂ H K (s+y) dy`; `psi4_pointwise` rescales to `weighted_riemann_3d` (now available).
-   Lap-sized, low-risk (pure mirror). Good for k=4 (and the pattern hardens).
-2. **Generic k-D induction** over `Fin k → (ℝ→ℝ)` (or a list) — define `Phi_k` recursively, the
-   k-fold sum, `Psi_k` monotone, and `psi_k_pointwise` by induction reducing to
-   `weighted_riemann_{k-1}`. More upfront work (dependent simplex integral + nested truncations
-   stated generically) but discharges ALL k at once — the real target, since s1/s2 need arbitrary k.
-   The 3-D concrete proof is the spec to generalise.
+### Generic k-D FRAMEWORK BUILT — only the inner-uniform induction remains (lap 2026-06-04 PM)
+`BoundedGaps/WeightedRiemannKD.lean` (axiom-clean, build green 8282) sets up the generic recursive
+framework over a LIST of functions and proves everything EXCEPT the recursive inner-uniform:
+- `nestedLogSum R Gs Q`, `nestedPhi Gs s` — the generic nested sum and recursive cross-section
+  integral; `nestedPhi_singleton`/`nestedPhi_pair` (= `Phi`/`Phi2`), `nestedLogSum_singleton`/`_pair`
+  (= the 1-D/2-D sum forms).
+- `nestedPhi_continuous` — `nestedPhi Gs` continuous for continuous `Gs` (generic `phi2_continuous`).
+- `nestedLogSum_factor` — the generic `three_d_factor` (factor the outer index).
+- `weighted_riemann_cons_of_inner` — **the generic reduction engine**: GIVEN the `(k-1)`-D tail
+  inner-uniform + `nestedPhi gs` continuity, level `k` follows via `perturbed_riemann`. The full
+  induction = `weighted_riemann_kd_nil` (base) chained through this.
+
+**THE ONE REMAINING GENERIC PIECE: the inner-uniform** `nestedLogSum R gs (R/n)/(logR)^k →
+nestedPhi gs (log n/logR)` uniformly in `n∈[2,R]` (the `huni` of `weighted_riemann_cons_of_inner`).
+Mirror the 3-D `inner_uniform_3d_of_pointwise_nonneg` + `psi3_pointwise` GENERICALLY:
+- `Psi_k R gs t := nestedLogSum R gs ⌊R^t⌋ / (logR)^|gs|` (reparametrise; `Psi_k(1-log n/logR)` =
+  the tail term via `floor_rpow_one_sub` + a `nestedLogSum`-budget rescale `R/n ↔ ⌊R^t⌋`).
+- `psi_k_monotone` (for `gs` all `≥0`) — generic `psi3_monotoneOn` (nested-sum monotone in `⌊R^t⌋`).
+- `psi_k_pointwise` — generic `psi3_pointwise`: rescale the level-`k` nested sum at `⌊R^t⌋` to the
+  level-`k` nested sum at the SAME functions but normalised by `logR` not `log⌊R^t⌋`; the drift +
+  `t`-rescaling reduce it to **`weighted_riemann_kd gs` itself** (the INDUCTION HYPOTHESIS). This is
+  the recursive heart — the only genuinely new work; `phi2_scale`'s analog is a `nestedPhi` rescale.
+- Pólya (`polya_uniform`) upgrades pointwise→uniform → `huni`. Then induction on the list closes
+  `weighted_riemann_kd` for ALL k (G₀ continuous, rest continuous & ≥0).
+The 3-D concrete proofs (`psi3_pointwise` etc.) are the exact spec; the generic versions add an
+induction on `gs` whose IH is the level-`(k-1)` `weighted_riemann_kd`. ~1 focused lap.
+
+**Concrete 4-D** (`weighted_riemann_4d`) is the low-risk fallback if the generic induction stalls:
+copy the 3-D file one dimension up (`Φ₃ G H K s = ∫₀^{1-s} G·Φ₂ H K (s+y)`, `psi4_pointwise`
+rescales to the now-available `weighted_riemann_3d`).
 
 **Signed `G,H`** (still open, low priority): `inner_uniform_3d_of_pointwise_nonneg` needs `G,H ≥ 0`
 (Pólya monotonicity). For signed, ±-split each (4-way for the product) mirroring
