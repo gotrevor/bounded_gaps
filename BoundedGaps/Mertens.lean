@@ -408,4 +408,26 @@ theorem chebyshev_theta_le (N : ℕ) :
   rw [hlogeq, Real.log_pow] at hlogle
   exact hlogle
 
+/-- Chebyshev's θ-bound in **partial-sum / indicator form**: summing the indicator
+`[n prime]·log n` over `Icc 1 n` gives `θ(n) ≤ n · log 4`. This is the shape needed
+as the partial-sum hypothesis for the Abel-summation step
+(`∑_{p≤N} (log p)/p = O(log N)`). -/
+theorem chebyshev_theta_le' (n : ℕ) :
+    ∑ k ∈ Finset.Icc 1 n, (if k.Prime then Real.log (k : ℝ) else 0)
+      ≤ (n : ℝ) * Real.log 4 := by
+  have hsub : Finset.Icc 1 n ⊆ Finset.range (n + 1) := by
+    intro x hx; rw [Finset.mem_Icc] at hx; rw [Finset.mem_range]; omega
+  have hexpand : ∑ k ∈ Finset.range (n + 1), (if k.Prime then Real.log (k : ℝ) else 0)
+      = ∑ k ∈ Finset.Icc 1 n, (if k.Prime then Real.log (k : ℝ) else 0) := by
+    refine (Finset.sum_subset hsub ?_).symm
+    intro x hxr hxIcc
+    rw [Finset.mem_range] at hxr
+    rw [Finset.mem_Icc] at hxIcc
+    have hx0 : x = 0 := by omega
+    subst hx0; simp
+  calc ∑ k ∈ Finset.Icc 1 n, (if k.Prime then Real.log (k : ℝ) else 0)
+      = ∑ p ∈ (Finset.range (n + 1)).filter Nat.Prime, Real.log (p : ℝ) := by
+        rw [Finset.sum_filter]; exact hexpand.symm
+    _ ≤ (n : ℝ) * Real.log 4 := chebyshev_theta_le n
+
 end BoundedGaps.Mertens
