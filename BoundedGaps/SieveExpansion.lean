@@ -1691,4 +1691,37 @@ theorem selberg_nu_basis_diagonal_reassemble {k J : ℕ} (c : Fin J → ℝ)
         refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
         ring
 
+/-- **Simplex support ⟹ divisor product `≤ R`.** If the joint test function `F`
+is supported on the Maynard simplex and `F(log d₁/log R, …, log dₖ/log R) ≠ 0`
+(with `dᵢ ≥ 1`, `R > 1`), then `∏ᵢ dᵢ ≤ R`. Translating the simplex constraint
+`∑ᵢ (log dᵢ/log R) ≤ 1` by `log R > 0` gives `∑ᵢ log dᵢ ≤ log R`, i.e.
+`log(∏dᵢ) ≤ log R`, i.e. `∏dᵢ ≤ R`.
+
+This is the bridge turning the simplex support hypothesis (an `s1` premise) into
+the *hyperbolic* divisor constraint `∏dᵢ ≤ R` that bounds the diagonal weight
+`∑_{d on simplex,sf}(∏μ²)F²` (`selberg_nu_basis_diagonal_reassemble`): the d-tuples
+contributing are confined to `∏dᵢ ≤ R`, whose count is `≍ R(log R)^{k-1}` — the
+`o(main)` gain over the naive `R^k` that makes analytic obligation #3 close. -/
+theorem support_simplex_prod_le {k : ℕ} (F : (Fin k → ℝ) → ℝ)
+    (hsupp : Function.support F ⊆ simplex k) (R : ℝ) (hR : 1 < R)
+    (d : Fin k → ℕ) (hd : ∀ i, 1 ≤ d i)
+    (hF : F (fun i => Real.log (d i) / Real.log R) ≠ 0) :
+    (∏ i : Fin k, (d i : ℝ)) ≤ R := by
+  have hlogR : 0 < Real.log R := Real.log_pos hR
+  have hdpos : ∀ i, (0:ℝ) < (d i : ℝ) := fun i => by
+    have h0 : 0 < d i := hd i
+    exact_mod_cast h0
+  have hprodpos : (0:ℝ) < ∏ i : Fin k, (d i : ℝ) := Finset.prod_pos (fun i _ => hdpos i)
+  have hmem : (fun i => Real.log (d i) / Real.log R) ∈ simplex k :=
+    hsupp (Function.mem_support.mpr hF)
+  have hsum1 : ∑ i : Fin k, Real.log (d i) / Real.log R ≤ 1 := hmem.2
+  have hsumlog : ∑ i : Fin k, Real.log (d i) ≤ Real.log R := by
+    rw [← Finset.sum_div] at hsum1
+    exact (div_le_one hlogR).mp hsum1
+  have hlogprod : Real.log (∏ i : Fin k, (d i : ℝ)) = ∑ i : Fin k, Real.log (d i) :=
+    Real.log_prod (fun i _ => ne_of_gt (hdpos i))
+  rw [← hlogprod] at hsumlog
+  have hexp := Real.exp_le_exp.mpr hsumlog
+  rwa [Real.exp_log hprodpos, Real.exp_log (lt_trans one_pos hR)] at hexp
+
 end BoundedGaps.Sieve
