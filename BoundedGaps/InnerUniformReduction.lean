@@ -45,6 +45,72 @@ lemma floor_rpow_one_sub (R m : ℕ) (hR : 2 ≤ R) (hm : 1 ≤ m) :
     rw [Real.rpow_def_of_pos hR0, mul_comm, div_mul_cancel₀ (Real.log m) hlogR, Real.exp_log hm0]
   rw [key, Nat.floor_div_natCast, Nat.floor_natCast]
 
+/-- **The log-ratio limit `c_R → t`.** For fixed `t > 0`, `log⌊R^t⌋ / log R → t` as `R → ∞`. This is
+the scale factor in the pointwise scale-change limit `psi_tendsto` (still on Aristotle): writing
+`N = ⌊R^t⌋`, the inner sum normalises by `log R` while the 1-D Riemann limit normalises by `log N`,
+and `log N / log R = c_R → t`. Squeeze: `⌊R^t⌋ ≤ R^t` gives `c_R ≤ t`, while `R^t - 1 ≤ ⌊R^t⌋` and
+`log(R^t - 1) = t·log R + log(1 - R^{-t})` give the lower bound `t + log(1-R^{-t})/log R → t`
+(the error term `→ 0` since the numerator `→ log 1 = 0` and `log R → ∞`). A reusable analysis brick
+toward closing leaf 1 in-kernel. -/
+lemma tendsto_logFloor_rpow_div (t : ℝ) (ht : 0 < t) :
+    Tendsto (fun R : ℕ => Real.log (⌊(R : ℝ) ^ t⌋₊ : ℝ) / Real.log (R : ℝ)) atTop (𝓝 t) := by
+  have hlogR_atTop : Tendsto (fun R : ℕ => Real.log (R : ℝ)) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have herr : Tendsto (fun R : ℕ => Real.log (1 - (R : ℝ) ^ (-t)) / Real.log (R : ℝ))
+      atTop (𝓝 0) := by
+    have hnum : Tendsto (fun R : ℕ => Real.log (1 - (R : ℝ) ^ (-t))) atTop (𝓝 0) := by
+      have hpow0 : Tendsto (fun R : ℕ => (R : ℝ) ^ (-t)) atTop (𝓝 0) :=
+        (tendsto_rpow_neg_atTop ht).comp tendsto_natCast_atTop_atTop
+      have h1 : Tendsto (fun R : ℕ => 1 - (R : ℝ) ^ (-t)) atTop (𝓝 1) := by
+        simpa using tendsto_const_nhds.sub hpow0
+      have := (Real.continuousAt_log (by norm_num : (1 : ℝ) ≠ 0)).tendsto.comp h1
+      simpa [Real.log_one] using this
+    exact hnum.div_atTop hlogR_atTop
+  have hlower : Tendsto
+      (fun R : ℕ => t + Real.log (1 - (R : ℝ) ^ (-t)) / Real.log (R : ℝ)) atTop (𝓝 t) := by
+    simpa using tendsto_const_nhds.add herr
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' hlower tendsto_const_nhds ?_ ?_
+  · filter_upwards [eventually_ge_atTop 2] with R hR2
+    have hR1 : (1 : ℝ) < (R : ℝ) := by exact_mod_cast (by omega : 1 < R)
+    have hRpos : (0 : ℝ) < (R : ℝ) := by linarith
+    have hlogRpos : 0 < Real.log (R : ℝ) := Real.log_pos hR1
+    have hRt1 : (1 : ℝ) < (R : ℝ) ^ t :=
+      (Real.one_lt_rpow_iff_of_pos hRpos).mpr (Or.inl ⟨hR1, ht⟩)
+    have hRtpos : (0 : ℝ) < (R : ℝ) ^ t := by linarith
+    have hRneg1 : (R : ℝ) ^ (-t) < 1 := by
+      rw [Real.rpow_neg (le_of_lt hRpos)]; exact inv_lt_one_of_one_lt₀ hRt1
+    have hRneg_pos : (0 : ℝ) < 1 - (R : ℝ) ^ (-t) := by linarith
+    have hfloor_ge : (R : ℝ) ^ t - 1 ≤ (⌊(R : ℝ) ^ t⌋₊ : ℝ) := by
+      have := Nat.lt_floor_add_one ((R : ℝ) ^ t); linarith
+    have hpos1 : (0 : ℝ) < (R : ℝ) ^ t - 1 := by linarith
+    have hfac : (R : ℝ) ^ t * (1 - (R : ℝ) ^ (-t)) = (R : ℝ) ^ t - 1 := by
+      rw [mul_sub, mul_one, ← Real.rpow_add hRpos]; simp
+    have hlogeq : t * Real.log (R : ℝ) + Real.log (1 - (R : ℝ) ^ (-t))
+        = Real.log ((R : ℝ) ^ t - 1) := by
+      rw [← Real.log_rpow hRpos t, ← Real.log_mul (ne_of_gt hRtpos) (ne_of_gt hRneg_pos), hfac]
+    have hlog_le : Real.log ((R : ℝ) ^ t - 1) ≤ Real.log (⌊(R : ℝ) ^ t⌋₊ : ℝ) :=
+      Real.log_le_log hpos1 hfloor_ge
+    have hcombine : t + Real.log (1 - (R : ℝ) ^ (-t)) / Real.log (R : ℝ)
+        = Real.log ((R : ℝ) ^ t - 1) / Real.log (R : ℝ) := by
+      rw [← hlogeq]; field_simp
+    rw [hcombine]
+    exact div_le_div_of_nonneg_right hlog_le (le_of_lt hlogRpos)
+  · filter_upwards [eventually_ge_atTop 2] with R hR2
+    have hR1 : (1 : ℝ) < (R : ℝ) := by exact_mod_cast (by omega : 1 < R)
+    have hRpos : (0 : ℝ) < (R : ℝ) := by linarith
+    have hlogRpos : 0 < Real.log (R : ℝ) := Real.log_pos hR1
+    have hRt1 : (1 : ℝ) < (R : ℝ) ^ t :=
+      (Real.one_lt_rpow_iff_of_pos hRpos).mpr (Or.inl ⟨hR1, ht⟩)
+    have hfloor_pos : (0 : ℝ) < (⌊(R : ℝ) ^ t⌋₊ : ℝ) := by
+      have h1 : 1 ≤ ⌊(R : ℝ) ^ t⌋₊ := Nat.le_floor (by exact_mod_cast le_of_lt hRt1)
+      exact_mod_cast Nat.lt_of_lt_of_le Nat.zero_lt_one h1
+    have hle : (⌊(R : ℝ) ^ t⌋₊ : ℝ) ≤ (R : ℝ) ^ t := Nat.floor_le (by linarith)
+    have hlog_le : Real.log (⌊(R : ℝ) ^ t⌋₊ : ℝ) ≤ Real.log ((R : ℝ) ^ t) :=
+      Real.log_le_log hfloor_pos hle
+    rw [Real.log_rpow hRpos] at hlog_le
+    rw [div_le_iff₀ hlogRpos]
+    linarith [hlog_le]
+
 /-- For `G ≥ 0`, `Ψ G R ·` is monotone on `[0,1]`: increasing `t` only enlarges the truncation
 `⌊R^t⌋`, adding nonnegative terms; division by `log R ≥ 0` preserves the order. For `R ≤ 1` the map
 is identically `0` (`log R = 0`), hence trivially monotone. -/
