@@ -1211,4 +1211,126 @@ theorem gpy_quadform_moebius_nonneg (T : Finset ℕ) (g : ℕ → ℝ) (hT : ∀
         (moebius d : ℝ) * g d * ((moebius e : ℝ) * g e) / (Nat.lcm d e : ℝ) :=
   gpy_quadform_nonneg T (fun d => (moebius d : ℝ) * g d) hT
 
+/-- **Bilinear GPY diagonalization.** The polarized version of `gpy_diagonalize`:
+for *two different* weights `w₁, w₂` on `T`, the bilinear Selberg form
+diagonalizes into a product of the two `y`-variables,
+`∑_{d,e} w₁(d) w₂(e)/[d,e] = ∑_r φ(r) (∑_{r∣d} w₁(d)/d)(∑_{r∣e} w₂(e)/e)`.
+This is the form the *cross terms* `j ≠ j'` of the full `selberg_nu`
+(`J`-term basis) heuristic main term require — `gpy_diagonalize` only covers the
+single-weight diagonal `j = j'`. Proof mirrors `gpy_diagonalize`
+(`Nat.sum_totient` divisor expansion of the gcd, swap `r` outward, factor the
+per-`r` slice as a product of two sums via `Finset.sum_mul_sum`). -/
+theorem gpy_diagonalize_bilinear (T R : Finset ℕ) (w₁ w₂ : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T, w₁ d * w₂ e / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R, (Nat.totient r : ℝ)
+          * ((∑ d ∈ T.filter (fun d => r ∣ d), w₁ d / (d : ℝ))
+             * (∑ e ∈ T.filter (fun e => r ∣ e), w₂ e / (e : ℝ))) := by
+  classical
+  have step1 : ∀ d ∈ T, ∀ e ∈ T,
+      w₁ d * w₂ e / (Nat.lcm d e : ℝ)
+        = ∑ r ∈ R, (if r ∣ d ∧ r ∣ e then (Nat.totient r : ℝ) else 0)
+            * (w₁ d / (d:ℝ)) * (w₂ e / (e:ℝ)) := by
+    intro d hd e he
+    have hd1 := hT d hd; have he1 := hT e he
+    have hd0 : (d:ℝ) ≠ 0 := by exact_mod_cast Nat.one_le_iff_ne_zero.mp hd1
+    have he0 : (e:ℝ) ≠ 0 := by exact_mod_cast Nat.one_le_iff_ne_zero.mp he1
+    have hgcd0 : Nat.gcd d e ≠ 0 := Nat.gcd_ne_zero_left (by omega)
+    have hgl : (Nat.gcd d e : ℝ) * (Nat.lcm d e : ℝ) = (d:ℝ) * (e:ℝ) := by
+      exact_mod_cast Nat.gcd_mul_lcm d e
+    have hlcm0 : (Nat.lcm d e : ℝ) ≠ 0 := by
+      have : Nat.lcm d e ≠ 0 := Nat.lcm_ne_zero (by omega) (by omega)
+      exact_mod_cast this
+    have hrw : w₁ d * w₂ e / (Nat.lcm d e : ℝ)
+        = (Nat.gcd d e : ℝ) * ((w₁ d / (d:ℝ)) * (w₂ e / (e:ℝ))) := by
+      field_simp
+      linear_combination (-(w₁ d * w₂ e)) * hgl
+    rw [hrw]
+    have htot : (Nat.gcd d e : ℝ) = ∑ r ∈ (Nat.gcd d e).divisors, (Nat.totient r : ℝ) := by
+      rw [← Nat.cast_sum]; exact_mod_cast (Nat.sum_totient _).symm
+    have hfilter : (Nat.gcd d e).divisors = R.filter (fun r => r ∣ d ∧ r ∣ e) := by
+      ext r
+      simp only [Nat.mem_divisors, Finset.mem_filter, Nat.dvd_gcd_iff]
+      constructor
+      · rintro ⟨⟨hrd, hre⟩, _⟩
+        exact ⟨hR d hd r hrd, hrd, hre⟩
+      · rintro ⟨_, hrd, hre⟩
+        exact ⟨⟨hrd, hre⟩, hgcd0⟩
+    rw [htot, hfilter, Finset.sum_filter, Finset.sum_mul]
+    refine Finset.sum_congr rfl (fun r _ => ?_)
+    ring
+  rw [Finset.sum_congr rfl (fun d hd => Finset.sum_congr rfl (fun e he => step1 d hd e he))]
+  rw [Finset.sum_congr rfl (fun d (_ : d ∈ T) => Finset.sum_comm), Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun r _ => ?_)
+  have key1 : ∑ d ∈ T.filter (fun d => r ∣ d), w₁ d / (d:ℝ)
+      = ∑ d ∈ T, (if r ∣ d then (1:ℝ) else 0) * (w₁ d / (d:ℝ)) := by
+    rw [Finset.sum_filter]
+    refine Finset.sum_congr rfl (fun d _ => ?_)
+    by_cases h : r ∣ d <;> simp [h]
+  have key2 : ∑ e ∈ T.filter (fun e => r ∣ e), w₂ e / (e:ℝ)
+      = ∑ e ∈ T, (if r ∣ e then (1:ℝ) else 0) * (w₂ e / (e:ℝ)) := by
+    rw [Finset.sum_filter]
+    refine Finset.sum_congr rfl (fun e _ => ?_)
+    by_cases h : r ∣ e <;> simp [h]
+  rw [key1, key2, Finset.sum_mul_sum, Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun d _ => ?_)
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun e _ => ?_)
+  by_cases h1 : r ∣ d <;> by_cases h2 : r ∣ e <;> simp [h1, h2, mul_assoc]
+
+/-- **Bilinear GPY diagonalization, Möbius-weighted.** With the two GPY weights
+`w₁(d) = μ(d)g₁(d)`, `w₂(e) = μ(e)g₂(e)` (the `lambdaTransform` summands for two
+different basis functions `g₁, g₂`), the cross Selberg form diagonalizes:
+`∑_{d,e} μ(d)g₁(d)·μ(e)g₂(e)/[d,e] = ∑_r φ(r) (∑_{r∣d}μ(d)g₁(d)/d)(∑_{r∣e}μ(e)g₂(e)/e)`.
+Direct instance of `gpy_diagonalize_bilinear`. The `j = j'` case (`g₁ = g₂`)
+recovers `gpy_diagonalize_moebius`. -/
+theorem gpy_diagonalize_moebius_bilinear (T R : Finset ℕ) (g₁ g₂ : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g₁ d * ((moebius e : ℝ) * g₂ e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R, (Nat.totient r : ℝ)
+          * ((∑ d ∈ T.filter (fun d => r ∣ d), (moebius d : ℝ) * g₁ d / (d : ℝ))
+             * (∑ e ∈ T.filter (fun e => r ∣ e), (moebius e : ℝ) * g₂ e / (e : ℝ))) :=
+  gpy_diagonalize_bilinear T R (fun d => (moebius d : ℝ) * g₁ d)
+    (fun e => (moebius e : ℝ) * g₂ e) hT hR
+
+/-- **Cross heuristic GPY main term, fully diagonalized** (general `J`-basis).
+The bilinear analogue of `heuristic_main_term_diagonalized`: the heuristic main
+term of one `(j, j')` cross block of `sieveSum_selberg_nu_eq_heuristic_add_correction`
+— weight `aᵢ(d,e) = μ(d)Gs₁ᵢ(log d/log R)·μ(e)Gs₂ᵢ(log e/log R)` with `Gs₁ = Fs j`,
+`Gs₂ = Fs j'` — equals
+`M · ∏ᵢ ∑_r φ(r) (∑_{d∈Dᵢ, r∣d} μ(d)Gs₁ᵢ/d)(∑_{e∈Dᵢ, r∣e} μ(e)Gs₂ᵢ/e)`,
+a product of `k` diagonalized bilinear Selberg forms. Combining this over the
+`∑_{j,j'} cⱼcⱼ'` linear combination gives the FULL `selberg_nu` heuristic main
+term in diagonalized form (the `j = j'` summands recover
+`heuristic_main_term_diagonalized`). This completes the algebraic diagonalization
+of the general (non-separable, `J`-term) GPY main term; only the per-factor
+*asymptotic* (sub-step (c) `R→∞`) and the off-diagonal count discrepancy remain. -/
+theorem heuristic_main_term_diagonalized_bilinear {k : ℕ} (D Rset : Fin k → Finset ℕ)
+    (Gs₁ Gs₂ : Fin k → ℝ → ℝ) (R M : ℝ)
+    (hD : ∀ i, ∀ d ∈ D i, 1 ≤ d)
+    (hR : ∀ i, ∀ d ∈ D i, ∀ r, r ∣ d → r ∈ Rset i) :
+    ∑ P ∈ Fintype.piFinset (fun i => D i ×ˢ D i),
+        (∏ i : Fin k,
+          ((moebius (P i).1 : ℝ) * Gs₁ i (Real.log (P i).1 / Real.log R))
+            * ((moebius (P i).2 : ℝ) * Gs₂ i (Real.log (P i).2 / Real.log R)))
+        * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))
+      = M * ∏ i : Fin k, ∑ r ∈ Rset i, (Nat.totient r : ℝ)
+          * ((∑ d ∈ (D i).filter (fun d => r ∣ d),
+                (moebius d : ℝ) * Gs₁ i (Real.log d / Real.log R) / (d : ℝ))
+             * (∑ e ∈ (D i).filter (fun e => r ∣ e),
+                (moebius e : ℝ) * Gs₂ i (Real.log e / Real.log R) / (e : ℝ))) := by
+  classical
+  rw [piFinset_lattice_main_factor (fun i => D i ×ˢ D i)
+      (fun i de => ((moebius de.1 : ℝ) * Gs₁ i (Real.log de.1 / Real.log R))
+        * ((moebius de.2 : ℝ) * Gs₂ i (Real.log de.2 / Real.log R))) M]
+  congr 1
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  rw [Finset.sum_product]
+  exact gpy_diagonalize_moebius_bilinear (D i) (Rset i)
+    (fun d => Gs₁ i (Real.log d / Real.log R))
+    (fun e => Gs₂ i (Real.log e / Real.log R)) (hD i) (hR i)
+
 end BoundedGaps.Sieve
