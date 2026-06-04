@@ -1203,4 +1203,12 @@ theorem correction_abs_bound {ι : Type*} (s : Finset ι) (w val main : ι → �
   gcongr
   exact diag_error_bound (s.filter diag) w val main herr
 
+/-- **The Möbius-weighted (Selberg) quadratic form is PSD.** Direct instance of
+`gpy_quadform_nonneg` at `w = μ·g` (the `lambdaTransform` summand): the
+per-coordinate GPY quadratic form `∑_{d,e} μ(d)g(d)·μ(e)g(e)/[d,e]` is `≥ 0`. -/
+theorem gpy_quadform_moebius_nonneg (T : Finset ℕ) (g : ℕ → ℝ) (hT : ∀ d ∈ T, 1 ≤ d) :
+    0 ≤ ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g d * ((moebius e : ℝ) * g e) / (Nat.lcm d e : ℝ) :=
+  gpy_quadform_nonneg T (fun d => (moebius d : ℝ) * g d) hT
+
 end BoundedGaps.Sieve
