@@ -299,3 +299,90 @@ theorem abs_logweighted_term_le (N : ℕ) :
       ≤ ∑ e ∈ Finset.Icc 1 N, |BSharp e / (e : ℝ)| * |Real.log e| := by
   refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
   exact Finset.sum_le_sum (fun e _ => le_of_eq (abs_mul _ _))
+
+/-! ## The main coefficient `P(N) = ∑_{e≤N} b(e) → 1` (signed Euler product)
+
+`b(e) = B(e)/e` as an `ArithmeticFunction ℝ` (`bAF`). It is multiplicative, and
+`∑'_e b(p^e) = 1 + b(p) + b(p²) = 1` at every prime (the local Euler factor is exactly
+`1`). So mathlib's Euler product `∏'_p (∑'_e b(p^e)) = ∑'_n b(n)` gives
+`∑'_n b(n) = ∏'_p 1 = 1`, hence the partial sums `P(N) → 1`. (Conditional on
+`Summable ‖b‖`, supplied by the absolute bound `∑|b(e)| ≤ 8`, Aristotle `830e5129`.) -/
+
+/-- `invR n = 1/n` as a (multiplicative) real arithmetic function. -/
+noncomputable def invR : ArithmeticFunction ℝ := ⟨fun n => 1 / (n : ℝ), by simp⟩
+
+@[simp] lemma invR_apply (n : ℕ) : invR n = 1 / (n : ℝ) := rfl
+
+lemma invR_isMultiplicative : invR.IsMultiplicative := by
+  refine ⟨by simp, ?_⟩
+  intro m n _
+  simp only [invR_apply]
+  push_cast
+  rw [one_div_mul_one_div]
+
+/-- `b(e) = B(e)/e` as a real arithmetic function. -/
+noncomputable def bAF : ArithmeticFunction ℝ := BSharp.pmul invR
+
+@[simp] lemma bAF_apply (n : ℕ) : bAF n = BSharp n / (n : ℝ) := by
+  rw [bAF, ArithmeticFunction.pmul_apply, invR_apply, mul_one_div]
+
+lemma bAF_isMultiplicative : bAF.IsMultiplicative :=
+  BSharp_isMultiplicative.pmul invR_isMultiplicative
+
+/-- **The local Euler factor is `1`.** For a prime `p`, `∑'_e b(p^e) = 1`
+(`= 1 + b(p) + b(p²) = 1 + 1/(p(p−1)) − 1/(p(p−1))`). -/
+lemma tsum_bAF_primePow {p : ℕ} (hp : p.Prime) : ∑' e : ℕ, bAF (p ^ e) = 1 := by
+  have hp1 : (1 : ℝ) < (p : ℝ) := by exact_mod_cast hp.one_lt
+  have hp0 : (p : ℝ) - 1 ≠ 0 := by linarith
+  have hpne : (p : ℝ) ≠ 0 := by linarith
+  have hsupp : ∀ e ∉ Finset.range 3, bAF (p ^ e) = 0 := by
+    intro e he
+    simp only [Finset.mem_range, not_lt] at he
+    rw [bAF_apply, BSharp_prime_pow_high hp he, zero_div]
+  rw [tsum_eq_sum hsupp]
+  rw [Finset.sum_range_succ, Finset.sum_range_succ, Finset.sum_range_one]
+  rw [bAF_apply, bAF_apply, bAF_apply, pow_zero, BSharp_one, BSharp_prime hp, BSharp_prime_sq hp]
+  push_cast
+  field_simp
+  ring
+
+/-- **The b-series sums to `1`** (given absolute summability). Euler product:
+`∑'_n b(n) = ∏'_p (∑'_e b(p^e)) = ∏'_p 1 = 1`. -/
+theorem tsum_bAF_eq_one (hsum : Summable (fun n => ‖bAF n‖)) : ∑' n, bAF n = 1 := by
+  have hep := bAF_isMultiplicative.eulerProduct_tprod hsum
+  rw [← hep]
+  have hone : (fun p : Nat.Primes => ∑' e : ℕ, bAF ((p : ℕ) ^ e)) = fun _ => (1 : ℝ) := by
+    funext p
+    exact tsum_bAF_primePow p.2
+  rw [hone, tprod_one]
+
+/-- **The main coefficient tends to `1`: `P(N) = ∑_{e≤N} B(e)/e → 1`.**
+The signed-b-series partial sums converge to `∑'_n b(n) = 1` (Euler product), the last
+piece of `sum_g_decomp`'s reduction. (Conditional on `Summable ‖b‖`, from `∑|b(e)| ≤ 8`,
+Aristotle `830e5129`.) -/
+theorem P_tendsto_one (hsum : Summable (fun n => ‖bAF n‖)) :
+    Filter.Tendsto (fun N : ℕ => ∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ))
+      Filter.atTop (nhds 1) := by
+  have hHS : HasSum bAF 1 := by
+    have h := hsum.of_norm.hasSum
+    rwa [tsum_bAF_eq_one hsum] at h
+  have htnat : Filter.Tendsto (fun M : ℕ => ∑ n ∈ Finset.range M, bAF n)
+      Filter.atTop (nhds 1) := hHS.tendsto_sum_nat
+  have hshift : Filter.Tendsto (fun N : ℕ => ∑ n ∈ Finset.range (N + 1), bAF n)
+      Filter.atTop (nhds 1) := by
+    have := htnat.comp (Filter.tendsto_add_atTop_nat 1)
+    simpa [Function.comp] using this
+  have hbridge : ∀ N : ℕ, ∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ)
+      = ∑ n ∈ Finset.range (N + 1), bAF n := by
+    intro N
+    rw [Finset.sum_range_succ', ArithmeticFunction.map_zero, add_zero]
+    refine Finset.sum_nbij' (fun e => e - 1) (fun i => i + 1) ?_ ?_ ?_ ?_ ?_
+    · intro e he; simp only [Finset.mem_Icc, Finset.mem_range] at *; omega
+    · intro i hi; simp only [Finset.mem_Icc, Finset.mem_range] at *; omega
+    · intro e he; simp only [Finset.mem_Icc] at he; show e - 1 + 1 = e; omega
+    · intro i _; show i + 1 - 1 = i; omega
+    · intro e he; simp only [Finset.mem_Icc] at he
+      have hee : e - 1 + 1 = e := by omega
+      show BSharp e / (e : ℝ) = bAF (e - 1 + 1)
+      rw [bAF_apply, hee]
+  simpa only [hbridge] using hshift
