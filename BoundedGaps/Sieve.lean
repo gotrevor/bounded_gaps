@@ -1793,15 +1793,35 @@ theorem exists_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
-/-- **Separable realisation of $M_k^{[\alpha]}$** (cited, Polymath8b §6,
-truncated variant). Sister of `exists_separable_F_of_Mk_gt` for the truncated
-simplex $\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$; same §6 polynomial-basis
-justification. -/
-axiom exists_separable_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
+/-- **Separable $L^2$-approximation, truncated variant** (pure analysis; the
+narrowed core of `exists_separable_F_truncated_of_Mk_truncated_gt`). Sister of
+`sep_approx` for the truncated simplex $\{t \in [0,\alpha]^k : \sum_i t_i \le 1\}$;
+same density+continuity content (box-bumps inside the open truncated simplex,
+`L²` continuity of `MkF`). -/
+axiom sep_approx_truncated (k : ℕ) (α : ℝ) (F : (Fin k → ℝ) → ℝ)
+    (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex_truncated k α)
+    (_hden : mkF_denominator k F > 0) (ε : ℝ) (_hε : 0 < ε) :
+    ∃ G : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex_truncated k α ∧
+      mkF_denominator k G > 0 ∧ |MkF k G - MkF k F| < ε
+
+/-- **Separable realisation of $M_k^{[\alpha]}$** (Polymath8b §6, truncated
+variant). **Now a theorem** (was a cited axiom): identical reduction to
+`exists_separable_F_of_Mk_gt`, via `exists_F_truncated_of_Mk_truncated_gt`
+and the pure-analysis `sep_approx_truncated`. -/
+theorem exists_separable_F_truncated_of_Mk_truncated_gt (k : ℕ) (hk : 2 ≤ k)
     (α : ℝ) (hα : 0 < α) (c : ℝ) (hc : c < Mk_truncated k α) :
     ∃ F : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable F ∧ ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex_truncated k α ∧
-      mkF_denominator k F > 0 ∧ c < MkF k F
+      mkF_denominator k F > 0 ∧ c < MkF k F := by
+  set c' : ℝ := (c + Mk_truncated k α) / 2 with hc'def
+  have hc'Mk : c' < Mk_truncated k α := by rw [hc'def]; linarith
+  obtain ⟨F, hSmooth, hSupp, hDen, hcF⟩ := exists_F_truncated_of_Mk_truncated_gt k hk α hα c' hc'Mk
+  obtain ⟨G, hGsep, hGsm, hGsupp, hGden, hGclose⟩ :=
+    sep_approx_truncated k α F hSmooth hSupp hDen (c' - c) (by linarith)
+  refine ⟨G, hGsep, hGsm, hGsupp, hGden, ?_⟩
+  have hlow := (abs_lt.mp hGclose).1
+  linarith
 
 /-! ### Selberg sieve data sub-lemmas (Polymath8b §3, decomposed)
 
@@ -2280,14 +2300,34 @@ theorem exists_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
   obtain ⟨F, hSmooth, hSupp, hDen, hvEq⟩ := hvMem
   exact ⟨F, hSmooth, hSupp, hDen, hvEq ▸ hcv⟩
 
-/-- **Separable realisation of $M_{k,\varepsilon}$** (cited, Polymath8b §6,
-ε variant). Sister of `exists_separable_F_of_Mk_gt` for the
-$(1+\varepsilon)$-enlarged simplex; same §6 polynomial-basis justification. -/
-axiom exists_separable_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
+/-- **Separable $L^2$-approximation, ε variant** (pure analysis; the narrowed
+core of `exists_separable_F_eps_of_Mk_eps_gt`). Sister of `sep_approx` for the
+$(1+\varepsilon)$-enlarged simplex, with the ε-flavored functionals
+`MkF_eps`/`mkF_eps_denominator`; same density+continuity content. -/
+axiom sep_approx_eps (k : ℕ) (ε : ℝ) (F : (Fin k → ℝ) → ℝ)
+    (_hF : ContDiff ℝ ∞ F) (_hsupp : Function.support F ⊆ simplex_eps k ε)
+    (_hden : mkF_eps_denominator k ε F > 0) (η : ℝ) (_hη : 0 < η) :
+    ∃ G : (Fin k → ℝ) → ℝ,
+      IsFiniteSeparable G ∧ ContDiff ℝ ∞ G ∧ Function.support G ⊆ simplex_eps k ε ∧
+      mkF_eps_denominator k ε G > 0 ∧ |MkF_eps k ε G - MkF_eps k ε F| < η
+
+/-- **Separable realisation of $M_{k,\varepsilon}$** (Polymath8b §6, ε variant).
+**Now a theorem** (was a cited axiom): identical reduction to
+`exists_separable_F_of_Mk_gt`, via `exists_F_eps_of_Mk_eps_gt` and the
+pure-analysis `sep_approx_eps`. -/
+theorem exists_separable_F_eps_of_Mk_eps_gt (k : ℕ) (hk : 2 ≤ k)
     (ε : ℝ) (hε : 0 < ε) (c : ℝ) (hc : c < Mk_eps k ε) :
     ∃ F : (Fin k → ℝ) → ℝ,
       IsFiniteSeparable F ∧ ContDiff ℝ ∞ F ∧ Function.support F ⊆ simplex_eps k ε ∧
-      mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F
+      mkF_eps_denominator k ε F > 0 ∧ c < MkF_eps k ε F := by
+  set c' : ℝ := (c + Mk_eps k ε) / 2 with hc'def
+  have hc'Mk : c' < Mk_eps k ε := by rw [hc'def]; linarith
+  obtain ⟨F, hSmooth, hSupp, hDen, hcF⟩ := exists_F_eps_of_Mk_eps_gt k hk ε hε c' hc'Mk
+  obtain ⟨G, hGsep, hGsm, hGsupp, hGden, hGclose⟩ :=
+    sep_approx_eps k ε F hSmooth hSupp hDen (c' - c) (by linarith)
+  refine ⟨G, hGsep, hGsm, hGsupp, hGden, ?_⟩
+  have hlow := (abs_lt.mp hGclose).1
+  linarith
 
 /-! ### Selberg sieve data sub-lemmas (ε-flavored, Polymath8b §5 `epsilon-trick`)
 
