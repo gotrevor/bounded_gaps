@@ -1152,4 +1152,86 @@ theorem mertens2_upper_of (N : ℕ) (hN : 3 ≤ N) (C : ℝ) (hC : 0 ≤ C)
     exact Real.log_le_log hloglt (Real.log_le_log (by linarith) hle1)
   linarith [hbig, hlead, hCtel, hloglogmono, hterm1]
 
+/-! ## The headline upper bound `∑_{n≤N} μ²(n)/φ(n) = O(log N)` (conditional)
+
+Final assembly of the upper half. `mertens_prod_upper` dominates `∑ μ²/φ` by the finite
+Euler product `∏_{p≤N}(1 + 1/(p−1))`; bounding `1 + x ≤ eˣ` termwise turns the product
+into `exp(∑_{p≤N} 1/(p−1))`; `∑ 1/(p−1) ≤ ∑ 1/p + 1` (telescoping) and the **sharp**
+Mertens 2nd `∑ 1/p ≤ log log N + O(1)` (coefficient 1) then give
+`∑ μ²/φ ≤ K · log N`. The coefficient-1 input is essential: a lossy `c·log log N` would
+exponentiate to `(log N)^c`, not `O(log N)`. Conditional on the sharp prime-log upper
+half (the in-flight prime-power tail bound). -/
+
+/-- The prime index sets agree: `{p prime : 2 ≤ p ≤ N} = {p prime : 1 ≤ p ≤ N}`
+(every prime is `≥ 2`). -/
+theorem prime_idx_eq (N : ℕ) :
+    (Finset.Icc 2 N).filter Nat.Prime = (Finset.Icc 1 N).filter Nat.Prime := by
+  ext p; simp only [Finset.mem_filter, Finset.mem_Icc]
+  constructor
+  · rintro ⟨⟨_, hN⟩, hp⟩; exact ⟨⟨by omega, hN⟩, hp⟩
+  · rintro ⟨⟨_, hN⟩, hp⟩; exact ⟨⟨hp.two_le, hN⟩, hp⟩
+
+/-- `∏_{p≤N}(1 + 1/(p−1)) ≤ exp(∑_{p≤N} 1/(p−1))` (termwise `1 + x ≤ eˣ`). -/
+theorem prod_euler_le_exp (N : ℕ) :
+    ∏ p ∈ (Finset.Icc 2 N).filter Nat.Prime, (1 + 1 / ((p : ℝ) - 1))
+      ≤ Real.exp (∑ p ∈ (Finset.Icc 2 N).filter Nat.Prime, 1 / ((p : ℝ) - 1)) := by
+  rw [Real.exp_sum]
+  apply Finset.prod_le_prod
+  · intro p hp
+    rw [Finset.mem_filter, Finset.mem_Icc] at hp
+    have hp2 : (2 : ℝ) ≤ p := by exact_mod_cast hp.1.1
+    have : (1 : ℝ) ≤ (p : ℝ) - 1 := by linarith
+    positivity
+  · intro p _
+    rw [add_comm]; exact Real.add_one_le_exp _
+
+/-- Euler exponent bound: `∑_{p≤N} 1/(p−1) ≤ ∑_{p≤N} 1/p + 1` (telescoping tail over
+`Icc 2 N`, restricted to primes). -/
+theorem euler_exponent_le (N : ℕ) :
+    ∑ p ∈ (Finset.Icc 2 N).filter Nat.Prime, 1 / ((p : ℝ) - 1)
+      ≤ (∑ p ∈ (Finset.Icc 2 N).filter Nat.Prime, 1 / (p : ℝ)) + 1 := by
+  have htail : ∑ p ∈ (Finset.Icc 2 N).filter Nat.Prime, (1 / ((p : ℝ) - 1) - 1 / (p : ℝ)) ≤ 1 := by
+    refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _) ?_)
+      (telescope_tail_le N)
+    intro p hp _
+    rw [Finset.mem_Icc] at hp
+    have hp2 : (2 : ℝ) ≤ p := by exact_mod_cast hp.1
+    have h1 : (0 : ℝ) < (p : ℝ) - 1 := by linarith
+    have h2 : (p : ℝ) - 1 ≤ p := by linarith
+    have : 1 / (p : ℝ) ≤ 1 / ((p : ℝ) - 1) := one_div_le_one_div_of_le h1 h2
+    linarith
+  rw [Finset.sum_sub_distrib] at htail
+  linarith
+
+/-- **Mertens upper bound `∑ μ²/φ = O(log N)` (coefficient 1), conditional on the sharp
+prime-log upper half.** Given `A n := ∑_{p≤n}(log p)/p ≤ log n + C` for all `n ≥ 1`
+(supplied by `mertens_prime_log_two_sided_of` with `C = log 4 + 5` once the prime-power
+tail bound lands), `∑_{n≤N} μ²(n)/φ(n) ≤ exp(1 + D)·log N`, where
+`D = 1 + 2C/log 2 + 1/(2 log 2) − log log 2` is the sharp Mertens-2nd constant.
+Together with `mertens_lower` this is the two-sided `∑ μ²/φ = Θ(log N)`. -/
+theorem mertens_upper_of (N : ℕ) (hN : 3 ≤ N) (C : ℝ) (hC : 0 ≤ C)
+    (hAupper : ∀ n, 1 ≤ n →
+        (∑ p ∈ (Finset.Icc 1 n).filter Nat.Prime, Real.log (p : ℝ) / (p : ℝ)) ≤ Real.log n + C) :
+    ∑ n ∈ Finset.Icc 1 N, mertensSummand n
+      ≤ Real.exp (1 + (1 + 2 * (C / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2)
+            - Real.log (Real.log 2))) * Real.log N := by
+  set D : ℝ := 1 + 2 * (C / Real.log 2) + 1 / ((2 : ℝ) * Real.log 2) - Real.log (Real.log 2) with hD
+  have hlogN : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast (by omega : 1 < N))
+  have hexp : ∑ p ∈ (Finset.Icc 2 N).filter Nat.Prime, 1 / ((p : ℝ) - 1)
+      ≤ Real.log (Real.log N) + D + 1 := by
+    have h1 := euler_exponent_le N
+    have h2 : ∑ p ∈ (Finset.Icc 2 N).filter Nat.Prime, 1 / (p : ℝ)
+        = ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, 1 / (p : ℝ) := by rw [prime_idx_eq N]
+    have h3 := mertens2_upper_of N hN C hC hAupper
+    rw [h2] at h1
+    rw [hD]; linarith
+  have heq : Real.exp (Real.log (Real.log N) + D + 1) = Real.exp (1 + D) * Real.log N := by
+    rw [show Real.log (Real.log N) + D + 1 = (1 + D) + Real.log (Real.log N) by ring,
+        Real.exp_add, Real.exp_log hlogN]
+  calc ∑ n ∈ Finset.Icc 1 N, mertensSummand n
+      ≤ ∏ p ∈ (Finset.Icc 2 N).filter Nat.Prime, (1 + 1 / ((p : ℝ) - 1)) := mertens_prod_upper N
+    _ ≤ Real.exp (∑ p ∈ (Finset.Icc 2 N).filter Nat.Prime, 1 / ((p : ℝ) - 1)) := prod_euler_le_exp N
+    _ ≤ Real.exp (Real.log (Real.log N) + D + 1) := Real.exp_le_exp.mpr hexp
+    _ = Real.exp (1 + D) * Real.log N := heq
+
 end BoundedGaps.Mertens
