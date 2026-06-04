@@ -208,13 +208,31 @@ The named flagships (`mk_54_witness_under_EH`, `mk_eps_50_witness`) need `k=50/5
 
 ---
 
-## C. Aristotle (status 2026-06-04)
-- **IN FLIGHT — `129257d7-52c7-444b-8952-7bb2c5ab9e6a`** (`aristotle-mertupper/MertUpper.lean`):
-  `mertens_prod_upper` — the Euler-product UPPER companion to the just-landed `mertens_lower`:
-  `∑_{n≤N} μ²(n)/φ(n) ≤ ∏_{p≤N}(1+1/(p-1))` (domination of the squarefree sum by the full Euler
-  product). Self-contained (def `mertensSummand` inlined; statement typechecks in our v4.29.1). On
-  return: `aristotle list` (one-shot) → download → verify in-kernel + `#print axioms` clean → port
-  into `BoundedGaps/Mertens.lean`. Then the next brick is the SHARP `∑μ²/φ = log N + O(1)`.
+## C. Aristotle (status 2026-06-04, lap ~19:40Z)
+- **IN FLIGHT — `32baa99f-5e4b-4c91-84b6-870366290522`** (`aristotle-abel/AbelDiv.lean`):
+  the pure-analysis **discrete Abel-summation bound** `abel_div_le`:
+  given `a k ≥ 0` with partial sums `∑_{k∈Icc 1 n} a k ≤ c·n`, then
+  `∑_{n∈Icc 1 N} a n / n ≤ c · ∑_{n∈Icc 1 N} 1/n`. Number-theory-free → low port-risk.
+  **CONSUMER ALREADY VALIDATED** in `scratch_mertens1.lean` (repo root): with `abel_div_le` as a
+  temporary `axiom`, the full `mertens_first_le : ∑_{p≤N}(log p)/p ≤ log 4·(1+log N)` typechecks
+  green (instantiate `a n = [n prime]·log n`, `c = log 4`; uses `chebyshev_theta_le'` + mathlib
+  `harmonic_le_one_add_log`). **On return**: `aristotle download 32baa99f --destination aristotle-abel-out`,
+  verify in-kernel + `#print axioms` clean, fix any v4.28→v4.29 `grind`/`simp` regressions, then
+  port `abel_div_le` + `mertens_first_le` into `BoundedGaps/Mertens.lean` and commit (axiom-clean).
+  (Mangled-prompt twin `35008d3a` was cancelled — ignore it.)
+- **DONE+LANDED this lap (commits on `path-a-selberg-nu`):**
+  - `a2e4c60` `mertens_prod_upper : ∑_{n≤N} μ²/φ ≤ ∏_{p≤N}(1+1/(p-1))` + `mertensSummand_eq_prod`
+    — proved LOCALLY (not via the old Aristotle `129257d7`, which I let finish→IDLE and did NOT
+    harvest, since the local proof is axiom-clean and v4.29-native). `129257d7` is now stale/IDLE.
+  - `5cfec21` `chebyshev_theta_le : θ(N) = ∑_{p≤N} log p ≤ N·log 4` (from mathlib `primorial_le_four_pow`).
+  - `4abc26d` `chebyshev_theta_le'` (the `Icc 1 n`/indicator partial-sum form — Abel hypothesis shape).
+- **NEXT bricks on the Mertens ladder** (after `mertens_first_le` lands):
+  (1) **Mertens 2nd** `∑_{p≤N} 1/p ≤ log log N + O(1)` — a SECOND Abel step from `∑(log p)/p`, but with
+      weight `1/log p` (NOT the `1/n` template of `abel_div_le`; needs a more general Abel lemma —
+      good next Aristotle brick). (2) `∑_{p≤N} 1/(p-1) ≤ ∑ 1/p + 1` via telescoping `∑ 1/(p(p-1)) ≤ 1`.
+      (3) `∏_{p≤N}(1+1/(p-1)) ≤ C·log N` via `1+x ≤ eˣ` + (1)+(2). (4) ⇒ `∑μ²/φ = O(log N)`, pairing
+      with `mertens_lower` for the two-sided `Θ(log N)`. Then the SHARP `= log N + O(1)` (Mertens const),
+      then the multidim singular-series → ∫F² (the real sub-step (c) nut).
 - **DONE+ported 2026-06-04 — `6c45fd6b` `mertens_crux`** (the analytic on-ramp's nut): returned
   sorry-free, verified + ported into `BoundedGaps/Mertens.lean` as part of `mertens_lower`
   (`log N ≤ ∑ μ²/φ`), `#print axioms = [propext, Classical.choice, Quot.sound]`. One `grind`
