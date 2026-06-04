@@ -1759,4 +1759,62 @@ theorem support_simplex_bounded {k : ℕ} (F : (Fin k → ℝ) → ℝ)
     rw [hF0, abs_zero]
     exact le_max_right _ _
 
+/-- **Diagonal weight `≤ C²·(hyperbola count)`** — the single-bound endpoint of
+analytic obligation #2. The reassembled diagonal weight
+`∑_d (∏ᵢμ(dᵢ)²)·F(log d/log R)²` (`selberg_nu_basis_diagonal_reassemble`) is
+bounded by `C²·#{d ∈ lattice : ∏ᵢdᵢ ≤ R}`, where `C = ‖F‖∞`. Two facts combine:
+(i) the summand vanishes off `∏ᵢdᵢ ≤ R` (`support_simplex_prod_le`), so the sum
+restricts to the hyperbola; (ii) on it each summand is `≤ 1·C² = C²` (Möbius
+squares `≤ 1`, `F² ≤ ‖F‖∞²`). So obligation #2 (`∑_{diag}|coeff| = o(main)`) is
+reduced to the **single** estimate `#{d : ∏ᵢdᵢ ≤ R} = o(main/C²)` — the `k`-dim
+Dirichlet divisor count `Dₖ(R) ≍ R(log R)^{k-1} = o(M·(log R)^k)` (since
+`R = x^{θ/2} ≪ x ≈ MW`). The bound on `Dₖ(R)` (iterate of
+`SingularSeries.dirichlet_hyperbola`) is the last missing analytic brick for #2. -/
+theorem diagonal_weight_le_count {k : ℕ} (D : Fin k → Finset ℕ) (F : (Fin k → ℝ) → ℝ)
+    (hsupp : Function.support F ⊆ simplex k) (R : ℝ) (hR : 1 < R)
+    (hD : ∀ i, ∀ d ∈ D i, 1 ≤ d) (C : ℝ) (hC : ∀ t, |F t| ≤ C) :
+    ∑ d ∈ Fintype.piFinset D,
+        (∏ i : Fin k, ((moebius (d i) : ℝ)) ^ 2)
+          * (F (fun i => Real.log (d i) / Real.log R)) ^ 2
+      ≤ C ^ 2 * (((Fintype.piFinset D).filter
+          (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R)).card : ℝ) := by
+  classical
+  have hmu1 : ∀ n : ℕ, ((moebius n : ℝ)) ^ 2 ≤ 1 := fun n => by
+    by_cases hsf : Squarefree n
+    · have heq : ((moebius n : ℝ)) ^ 2 = 1 := by
+        exact_mod_cast ArithmeticFunction.moebius_sq_eq_one_of_squarefree hsf
+      rw [heq]
+    · rw [ArithmeticFunction.moebius_eq_zero_of_not_squarefree hsf]; norm_num
+  rw [← Finset.sum_filter_add_sum_filter_not (Fintype.piFinset D)
+        (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R)]
+  have hnot : ∑ d ∈ (Fintype.piFinset D).filter
+        (fun d => ¬ (∏ i : Fin k, (d i : ℝ)) ≤ R),
+        (∏ i : Fin k, ((moebius (d i) : ℝ)) ^ 2)
+          * (F (fun i => Real.log (d i) / Real.log R)) ^ 2 = 0 := by
+    refine Finset.sum_eq_zero (fun d hd => ?_)
+    rw [Finset.mem_filter] at hd
+    have hd1 : ∀ i, 1 ≤ d i := fun i => hD i (d i) (Fintype.mem_piFinset.mp hd.1 i)
+    have hF0 : F (fun i => Real.log (d i) / Real.log R) = 0 := by
+      by_contra hne
+      exact hd.2 (support_simplex_prod_le F hsupp R hR d hd1 hne)
+    rw [hF0]; ring
+  rw [hnot, add_zero]
+  calc ∑ d ∈ (Fintype.piFinset D).filter (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R),
+          (∏ i : Fin k, ((moebius (d i) : ℝ)) ^ 2)
+            * (F (fun i => Real.log (d i) / Real.log R)) ^ 2
+      ≤ ∑ _d ∈ (Fintype.piFinset D).filter (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R), C ^ 2 := by
+        refine Finset.sum_le_sum (fun d _ => ?_)
+        have hmu : ∏ i : Fin k, ((moebius (d i) : ℝ)) ^ 2 ≤ 1 :=
+          Finset.prod_le_one (fun i _ => sq_nonneg _) (fun i _ => hmu1 (d i))
+        have hF2 : (F (fun i => Real.log (d i) / Real.log R)) ^ 2 ≤ C ^ 2 := by
+          rw [← sq_abs]
+          exact pow_le_pow_left₀ (abs_nonneg _) (hC _) 2
+        calc (∏ i : Fin k, ((moebius (d i) : ℝ)) ^ 2)
+                * (F (fun i => Real.log (d i) / Real.log R)) ^ 2
+            ≤ 1 * C ^ 2 := mul_le_mul hmu hF2 (sq_nonneg _) zero_le_one
+          _ = C ^ 2 := one_mul _
+    _ = C ^ 2 * (((Fintype.piFinset D).filter
+          (fun d => (∏ i : Fin k, (d i : ℝ)) ≤ R)).card : ℝ) := by
+        rw [Finset.sum_const, nsmul_eq_mul]; ring
+
 end BoundedGaps.Sieve
