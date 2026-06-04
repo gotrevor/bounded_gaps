@@ -643,4 +643,38 @@ theorem lattice_count_main_term {ι : Type*} (l : List ι) (q h : ι → ℕ)
   rw [hr]
   exact ap_interval_count_bound (Nat.mul_pos hW hQpos) r A B hAB
 
+/-- **Off-diagonal vanishing (the mechanism killing the non-coprime terms).** If a
+single modulus value `p` divides two of the GPY moduli `q i, q j` (`i ≠ j` indices
+in `l`) but the shifts satisfy `h i ≢ h j [MOD p]`, then *no* block element meets
+the sieve condition, so the lattice count is exactly `0`. Reason: `q i ∣ (m+h i)`
+and `q j ∣ (m+h j)` force `p ∣ (m+h i)` and `p ∣ (m+h j)`, whence `h i ≡ h j [MOD p]`.
+Primality of `p` is not needed. This is the elementary core of sub-step (b)'s
+off-diagonal: under the W-trick a shared prime factor `p > D₀ ≥ H` of two moduli
+satisfies `h i ≢ h j [MOD p]` (see `lattice_count_offdiag_vanish_of_lt`), so every
+off-diagonal `∑_P` term drops out and the diagonal main term dominates. -/
+theorem lattice_count_offdiag_vanish {ι : Type*} (l : List ι) (q h : ι → ℕ) (S : Finset ℕ)
+    {i j : ι} (hi : i ∈ l) (hj : j ∈ l) {p : ℕ}
+    (hpi : p ∣ q i) (hpj : p ∣ q j) (hne : ¬ (h i ≡ h j [MOD p])) :
+    (S.filter (fun m => ∀ k ∈ l, q k ∣ (m + h k))).card = 0 := by
+  rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+  intro m _ hm
+  apply hne
+  have h1 : p ∣ (m + h i) := hpi.trans (hm i hi)
+  have h2 : p ∣ (m + h j) := hpj.trans (hm j hj)
+  have e1 : m + h i ≡ 0 [MOD p] := (Nat.modEq_zero_iff_dvd).mpr h1
+  have e2 : m + h j ≡ 0 [MOD p] := (Nat.modEq_zero_iff_dvd).mpr h2
+  exact Nat.ModEq.add_left_cancel' m (e1.trans e2.symm)
+
+/-- **Off-diagonal vanishing, W-trick form.** A shared modulus value `p` exceeding
+both shifts (`h i, h j < p`) with `h i ≠ h j` forces `h i ≢ h j [MOD p]`, so the
+lattice count is `0`. In GPY, `p` is a shared prime factor `> D₀ ≥ H` of two
+moduli, and the shifts of an admissible tuple are distinct and `< H ≤ p`. -/
+theorem lattice_count_offdiag_vanish_of_lt {ι : Type*} (l : List ι) (q h : ι → ℕ)
+    (S : Finset ℕ) {i j : ι} (hi : i ∈ l) (hj : j ∈ l) {p : ℕ}
+    (hpi : p ∣ q i) (hpj : p ∣ q j) (hij : h i ≠ h j) (hip : h i < p) (hjp : h j < p) :
+    (S.filter (fun m => ∀ k ∈ l, q k ∣ (m + h k))).card = 0 := by
+  refine lattice_count_offdiag_vanish l q h S hi hj hpi hpj (fun hcon => hij ?_)
+  rw [Nat.ModEq, Nat.mod_eq_of_lt hip, Nat.mod_eq_of_lt hjp] at hcon
+  exact hcon
+
 end BoundedGaps.Sieve
