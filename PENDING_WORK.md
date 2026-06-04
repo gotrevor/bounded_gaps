@@ -383,3 +383,17 @@ correction bound `∑_P coeffₚ(countₚ−M/∏[Pᵢ])=o(main)` via the W-tric
 `WeightedMertens.lean`: `weighted_cesaro_tendsto_zero`, `weighted_avg_majorant_tendsto_zero`,
 `harmonic_div_log_tendsto_one`, `sum_log_mul_log_diff_le_sq`, `Bdisc`/`discrepancy_*`, `abel_tail_*`,
 `weighted_mertens_of_riemann`, `weighted_mertens_of_contDiff`.
+
+**UPDATE 2026-06-04 lap N+1 (commits `af0a3e6`…`e8dd497`, 8 axiom-clean, build green 8277):**
+The CROSS-TERM (`j≠j'`) algebra is now also done (prior lap was single-`F` diagonal only), and a
+**Cauchy–Schwarz collapse** reduced the main-term obligation to the DIAGONAL block alone. New in
+`SieveExpansion.lean`: `gpy_diagonalize_bilinear`/`_moebius_bilinear[_squarefree]`/
+`gpy_diagonal_asymptotic_form_bilinear` (cross diagonalization ladder); `sieveDivisors_pos`/
+`_dvd_closed`; `heuristic_main_selberg_nu_canonical` (FULL `selberg_nu` main term in canonical
+`∑_{j,j'}cⱼcⱼ'M∏ᵢ∑_{r sf}(φ/r²)z₁z₂` form); `correction_weight_factor[_split]` (correction weight →
+∏ of 1-D Möbius sums — but LOOSE, see burndown); **`gpy_bilinear_cauchy_schwarz`**
+(`B(g₁,g₂)²≤B(g₁,g₁)B(g₂,g₂)` ⟹ cross blocks auto-bounded by the diagonal). **Net: `s1` now needs
+only the SINGLE diagonal limit `∑_{r sf}(φ/r²)z_r²→I(F)` (Aristotle `weighted_riemann_2d`, in
+flight) + off-diag-main `o(main)` + `∑_{diag}|coeff|` size bound + `IsLittleO` glue.** Diagonal
+`O(1)` error already wired via `lattice_count_main_term` → `diag_error_bound`. Full map in
+`ANALYTIC_AXIOM_BURNDOWN.md` tail.

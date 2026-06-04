@@ -537,3 +537,56 @@ What remains for `s1_holds_from_nonprime_asym` is purely analytic:
    (`lattice_count_main_term`) summed against `∑|coeff|`, with `M=(B−A)/W`. This is where the GPY
    parameter plumbing (`W=∏_{p≤D₀}p`, admissible shifts `≤D₀`, squarefree moduli) enters.
 3. **Sub-step (d) `IsLittleO` glue** into `alphaBound`.
+
+## Sub-step (c) CROSS-TERM ladder + Cauchy–Schwarz COLLAPSE (2026-06-04, lap N+1)
+
+Continuation. 8 axiom-clean commits (`af0a3e6`…`e8dd497`), full build green (8277 jobs), every new
+decl `#print axioms = [propext, Classical.choice, Quot.sound]`. All in `SieveExpansion.lean`. This
+lap completed the **general (non-separable, `J`-basis) cross-term** algebra — the prior lap only
+covered the single-function `j = j'` diagonal — and, most importantly, proved a **Cauchy–Schwarz
+collapse** that reduces the whole main-term asymptotic to the *diagonal* block alone.
+
+**Cross-term diagonalization (the missing `j ≠ j'` piece):**
+- `gpy_diagonalize_bilinear` — polarized `gpy_diagonalize` for two weights:
+  `∑ w₁(d)w₂(e)/[d,e] = ∑_r φ(r)(∑_{r∣d}w₁/d)(∑_{r∣e}w₂/e)`.
+- `gpy_diagonalize_moebius_bilinear`, `gpy_diagonalize_moebius_bilinear_squarefree`,
+  `gpy_diagonal_asymptotic_form_bilinear` — the μ-weighted, squarefree-restricted, and canonical
+  (coprime-`z`) bilinear forms. The `g₁ = g₂` cases recover the prior diagonal lemmas.
+- `sieveDivisors_pos`, `sieveDivisors_dvd_closed` — the concrete sieve lattice is positive +
+  divisor-closed (supplies the `1 ≤ d` / `Rset = sieveDivisors` hypotheses).
+- `heuristic_main_term_diagonalized_bilinear[_canonical]`, `heuristic_main_selberg_nu_diagonalized`,
+  **`heuristic_main_selberg_nu_canonical`** — the FULL `selberg_nu` heuristic main term, at the
+  concrete lattice, in canonical form:
+  `∑_{j,j'} cⱼcⱼ'·M·∏ᵢ ∑_{r sf}(φ(r)/r²) z₁ᵢᵣ z₂ᵢᵣ`. The entire algebraic reduction of the
+  (non-separable, general) GPY main term to its asymptotic-ready form is now machine-checked.
+
+**Correction size reduction (analytic obligation #2):**
+- `piFinset_sum_abs_prod_factor`, `correction_weight_factor`, `sum_prod_abs_mul_factor`,
+  `correction_weight_factor_split` — the total correction weight `∑_P|coeffₚ|` factors into
+  `∏ᵢ (∑_{d∈Dᵢ}|μ(d)Fⱼᵢ|)·(∑_{e∈Dᵢ}|μ(e)Fⱼ'ᵢ|)`, a product of `2k` single-variable Möbius sums.
+  ⚠️ This per-`(j,j')`-block factorization is a valid identity but a **loose** bound: the simplex
+  support lives on the *joint* `F = ∑ⱼcⱼ∏ᵢFⱼᵢ`, not the individual `Fⱼᵢ`, so the naive product is
+  too weak for `k ≥ 2` (the handoff's known warning). Records why the naive path fails.
+
+**★ THE COLLAPSE — `gpy_bilinear_cauchy_schwarz`:** `B(g₁,g₂)² ≤ B(g₁,g₁)·B(g₂,g₂)` for the cross
+Selberg form `B(g₁,g₂) = ∑ μ(d)g₁(d)μ(e)g₂(e)/[d,e]`. Proof: diagonalize all three to the
+`φ`-weighted inner product `∑_r φ(r)y₁ᵣy₂ᵣ`, then discrete Cauchy–Schwarz
+(`Finset.sum_mul_sq_le_sq_mul_sq`, `f=√φ·y₁`). **Consequence — the main-term obligation is now ONE
+scalar limit, not `J²`:** every cross block `B(Fⱼᵢ,Fⱼ'ᵢ)` is bounded by `√(B(Fⱼᵢ,Fⱼᵢ)·B(Fⱼ'ᵢ,Fⱼ'ᵢ))`,
+so once the *diagonal* asymptotic `B(Fⱼᵢ,Fⱼᵢ) ~ cⱼᵢ·(main)` is known (sub-step (c)), the cross terms
+are automatically controlled and the `IsLittleO` glue needs only the diagonal limit.
+
+**Diagonal `O(1)` error is wired:** `lattice_count_main_term` gives exactly `|count − M/∏[Pᵢ]| ≤ 1`
+(with `M=(B−A)/W`, `∏[Pᵢ]=∏ lcm`) on the coprime diagonal — precisely the hypothesis
+`diag_error_bound` needs. So the diagonal half of the correction is reduced to the (factored)
+`∑_{diag}|coeff|` size bound.
+
+### Net state after this lap — `s1_holds_from_nonprime_asym` reduces to:
+1. **Diagonal asymptotic ONLY** (Cauchy–Schwarz killed the cross terms): the single scalar limit
+   `B(F,F) = ∑_{r sf}(φ(r)/r²) z_r² → I(F)`-const as `R→∞`. THE genuine GPY nut; smooth core =
+   Aristotle `3e2b6a8d` (`weighted_riemann_2d`, still in flight, slow ~22%).
+2. **Off-diagonal heuristic main = o(main)** (singular-series discrepancy): `∑_{¬diag}coeffₚ·main_P`,
+   restricted to tuples where two coordinates share a prime — needs the W-trick gain.
+3. **`∑_{diag}|coeff| = o(main)`** size bound (the simplex-coupled version; the factored 1-D form is
+   the substrate but the joint-support coupling must be used).
+4. **Sub-step (d) `IsLittleO` glue** into `alphaBound` — now only needs the diagonal limit + (2),(3).
