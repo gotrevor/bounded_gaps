@@ -37,3 +37,4 @@ import BoundedGaps.RiemannSumLogWeight
 import BoundedGaps.WeightedMertens
 import BoundedGaps.PolyaUniform
 import BoundedGaps.WeightedRiemann2D
+import BoundedGaps.InnerUniformReduction
