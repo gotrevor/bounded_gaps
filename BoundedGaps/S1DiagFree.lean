@@ -402,4 +402,49 @@ theorem abs_offDiagMass_le_sum_pairs {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H :
     (fun P _ => div_nonneg (abs_nonneg _)
       (Finset.prod_nonneg (fun i _ => Nat.cast_nonneg _)))
 
+/-- **The full y-space S1 limit, conditional ONLY on the `M`-free off-diagonal mass `offDiagMass/B^{+k}
+→ 0`** (the cleanest statement of the contour-free y-space `s1` programme's remaining obligation). The
+actual y-space sieve sum at a poly-large scale `x = x(N)`, `/(B^{+k}·M) → mkF_denominator`, given the
+W-trick admissibility (`hWdvd`/`hshift_le`/`hshift_ne`, which collapses the off-diagonal *count* to `0`)
+and the **single remaining analytic input** `offDiagMass/B^{+k} → 0`. Composes
+`yspace_s1_sieveSum_div_tendsto_diagFree` (diagonal half discharged, PNT-free) with
+`hoffdiag_of_offDiagMass` (the `M`-cancellation). So the entire contour-free y-space `s1` reduces to
+the `M`-free target `∑_{¬diag}(∏λλ)/∏[d,e] = o(B^{+k})` — the growing-`W` shared-prime singular-series
+tail (Leg 2; `PENDING_WORK.md`). -/
+theorem yspace_s1_sieveSum_div_tendsto_offDiagMass {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (C : ℝ) (D₀ : ℕ) (hW : 0 < W)
+    (hC : ∀ i, ∀ t, |Fs i t| ≤ C)
+    (hFs : ∀ i, ContDiff ℝ 1 (Fs i))
+    (hsupp : Function.support (fun t => ∏ i, Fs i (t i)) ⊆ Sieve.simplex k)
+    (hFsupp : ∀ i : Fin k, ∀ t : ℝ, 1 < t → Fs i t = 0)
+    (hWdvd : ∀ p, p.Prime → p ≤ D₀ → p ∣ W)
+    (hshift_le : ∀ i : Fin k, H.getD i.val 0 ≤ D₀)
+    (hshift_ne : ∀ i j : Fin k, i ≠ j → H.getD i.val 0 ≠ H.getD j.val 0)
+    (x : ℕ → ℝ) (hcov : ∀ N : ℕ, (W * N : ℝ) + 2 ≤ x N)
+    (hgrow : ∀ᶠ N : ℕ in atTop,
+      (N : ℝ) ^ (6 * k + 1)
+        ≤ ((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, BoundedGaps.WeightedMertens.gMuSqTotientCoprime W n)
+        / Real.log N) atTop (nhds ((W.totient : ℝ) / W)))
+    (hmass : Tendsto (fun N : ℕ =>
+        offDiagMass Fs H b W (x N) (Real.log (N : ℝ)) / Sieve.sieveB W (N : ℝ) ^ k)
+      atTop (nhds 0)) :
+    Tendsto (fun N : ℕ =>
+        BoundedGaps.Sieve.sieveSum (S1YSpace.selberg_nu_yr_sep k Fs H (N : ℝ)
+            (fun i => (BoundedGaps.Sieve.sieveDivisors H i.val b W (x N)).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W))) b W (x N)
+          / (Sieve.sieveB W (N : ℝ) ^ k
+              * (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))))
+      atTop (nhds (Sieve.mkF_denominator k (fun t => ∏ i, Fs i (t i)))) := by
+  have hMne : ∀ᶠ N : ℕ in atTop,
+      ((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ) ≠ 0 := by
+    filter_upwards [hgrow, eventually_ge_atTop 1] with N hgN hN1
+    have hN0 : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hN1
+    have hpow : (0 : ℝ) < (N : ℝ) ^ (6 * k + 1) := by positivity
+    exact ne_of_gt (lt_of_lt_of_le hpow hgN)
+  refine yspace_s1_sieveSum_div_tendsto_diagFree Fs H b W C hW hC hFs hsupp hFsupp x hcov hgrow
+    hBaseW ?_
+  exact hoffdiag_of_offDiagMass Fs H b W D₀ hWdvd hshift_le hshift_ne x hMne hmass
+
 end BoundedGaps.S1DiagFree
