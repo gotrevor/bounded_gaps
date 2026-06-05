@@ -647,4 +647,26 @@ theorem diag_weight_yLambda_le_poly {k : ℕ} (Fs : Fin k → ℝ → ℝ) (Rset
   refine le_trans (Finset.prod_le_prod (fun i _ => by positivity) hbnd) ?_
   rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
 
+/-- **Diagonal correction ≤ diagonal weight (the count-error glue).** If the per-tuple "error"
+`e P` (e.g. `count_P − M/∏[d,e]`) is `≤ 1` in absolute value on the diagonal filter
+(`yspace_diag_count_err`), the signed diagonal correction is bounded by the diagonal weight
+`∑_{diag}|∏λλ|`. Combined with `diag_weight_yLambda_le_poly` this confines the whole diagonal leg of
+the s1 correction to a fixed polynomial `((C·N³)²)^k` in the level `N` — then
+`S1DiagonalSize.poly_over_scale_tendsto_zero` (scale `x` polynomially large) sends its `B^{+k}·M`-
+normalised value to `0`, PNT-free. -/
+theorem abs_diag_correction_le_diag_weight {k : ℕ} (s : Fin k → Finset ℕ) (f : Fin k → ℕ → ℝ)
+    (diag : (Fin k → ℕ × ℕ) → Prop) [DecidablePred diag] (e : (Fin k → ℕ × ℕ) → ℝ)
+    (herr : ∀ P ∈ (Fintype.piFinset (fun i => s i ×ˢ s i)).filter diag, |e P| ≤ 1) :
+    |∑ P ∈ (Fintype.piFinset (fun i => s i ×ˢ s i)).filter diag,
+        (∏ i, f i (P i).1 * f i (P i).2) * e P|
+      ≤ ∑ P ∈ (Fintype.piFinset (fun i => s i ×ˢ s i)).filter diag,
+        |∏ i, f i (P i).1 * f i (P i).2| := by
+  refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+  refine Finset.sum_le_sum (fun P hP => ?_)
+  rw [abs_mul]
+  calc |∏ i, f i (P i).1 * f i (P i).2| * |e P|
+      ≤ |∏ i, f i (P i).1 * f i (P i).2| * 1 :=
+        mul_le_mul_of_nonneg_left (herr P hP) (abs_nonneg _)
+    _ = |∏ i, f i (P i).1 * f i (P i).2| := mul_one _
+
 end BoundedGaps.S1Correction
