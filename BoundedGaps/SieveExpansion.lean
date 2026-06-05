@@ -2237,4 +2237,118 @@ theorem diagonal_weight_le_hyperbola {k : ℕ} (hk : 1 ≤ k) (D : Fin k → Fin
   refine le_trans (diagonal_weight_le_count D F hsupp R hR hD C hC) ?_
   exact mul_le_mul_of_nonneg_left (lattice_count_le_hyperbola hk D hD R hR) (sq_nonneg C)
 
+/-! ### Möbius inversion over multiples (foundation for the contour-free Path-Y sieve `selberg_nu_yr`)
+
+The exact (non-asymptotic) duality between a finite divisor-closed family of GPY `y_r` values and
+the sieve coefficients `λ_d` realising them. With `λ_d = d·(∑_{s∈R, d∣s} μ(s/d)·Y s)`, the GPY
+variable `∑_{r∣d} λ_d/d` recovers exactly `Y r` — so feeding a SMOOTH `Y r = F(log r/log R)`
+produces a sieve whose diagonalised main term is `∑_r (μ²/φ) F²` directly
+(`WeightedMertens.weighted_mertens_coprime_sq`), with NO PNT-strength `z_r` evaluation. -/
+
+/-- `∑_{e ∣ m} μ(e) = [m = 1]` (the Möbius `μ ∗ ζ = δ` identity, ℝ-valued). -/
+theorem moebius_div_collapse (m : ℕ) :
+    (∑ e ∈ m.divisors, (moebius e : ℝ)) = if m = 1 then 1 else 0 := by
+  have h : (∑ e ∈ m.divisors, (moebius e : ℤ)) = if m = 1 then 1 else 0 := by
+    rw [← ArithmeticFunction.coe_mul_zeta_apply, ArithmeticFunction.moebius_mul_coe_zeta, ArithmeticFunction.one_apply]
+  calc (∑ e ∈ m.divisors, (moebius e : ℝ))
+      = ((∑ e ∈ m.divisors, (moebius e : ℤ) : ℤ) : ℝ) := by push_cast; rfl
+    _ = if m = 1 then 1 else 0 := by rw [h]; split <;> simp
+
+/-- Inner Möbius collapse: for `r ∣ s`, `s ≥ 1`, `∑_{d ∣ s, r ∣ d} μ(s/d) = [s = r]`. Proof: the
+complementary-divisor bijection `d ↦ d/r` maps the sum to `∑_{c ∣ (s/r)} μ((s/r)/c) = ∑_{c ∣ (s/r)} μ c
+= [s/r = 1]` (`Nat.sum_div_divisors` + `moebius_div_collapse`). -/
+theorem inner_moebius_collapse (r s : ℕ) (hs : 1 ≤ s) (hrs : r ∣ s) :
+    (∑ d ∈ s.divisors.filter (fun d => r ∣ d), (moebius (s / d) : ℝ))
+      = if s = r then 1 else 0 := by
+  have hr1 : 1 ≤ r := Nat.pos_of_dvd_of_pos hrs hs
+  have hsr0 : s / r ≠ 0 := by
+    have := Nat.div_pos (Nat.le_of_dvd hs hrs) hr1; omega
+  have hbij : (∑ d ∈ s.divisors.filter (fun d => r ∣ d), (moebius (s / d) : ℝ))
+      = ∑ c ∈ (s / r).divisors, (moebius ((s / r) / c) : ℝ) := by
+    refine Finset.sum_bij' (fun d _ => d / r) (fun c _ => c * r) ?_ ?_ ?_ ?_ ?_
+    · intro d hd
+      simp only [Finset.mem_filter, Nat.mem_divisors] at hd
+      obtain ⟨⟨hds, _⟩, j, hj⟩ := hd
+      obtain ⟨k, hk⟩ := hds
+      show d / r ∈ (s / r).divisors
+      rw [Nat.mem_divisors, hj, Nat.mul_div_cancel_left j hr1]
+      exact ⟨⟨k, by rw [hk, hj, mul_assoc, Nat.mul_div_cancel_left _ hr1]⟩, hsr0⟩
+    · intro c hc
+      simp only [Nat.mem_divisors] at hc
+      obtain ⟨⟨k, hk⟩, _⟩ := hc
+      show c * r ∈ s.divisors.filter (fun d => r ∣ d)
+      rw [Finset.mem_filter, Nat.mem_divisors]
+      refine ⟨⟨⟨k, ?_⟩, by omega⟩, ⟨c, by ring⟩⟩
+      have hsrr : s = r * (s / r) := (Nat.mul_div_cancel' hrs).symm
+      rw [hsrr, hk]; ring
+    · intro d hd
+      simp only [Finset.mem_filter] at hd
+      exact Nat.div_mul_cancel hd.2
+    · intro c hc
+      exact Nat.mul_div_cancel _ hr1
+    · intro d hd
+      simp only [Finset.mem_filter, Nat.mem_divisors] at hd
+      obtain ⟨⟨_, _⟩, hrd⟩ := hd
+      show (moebius (s / d) : ℝ) = (moebius ((s / r) / (d / r)) : ℝ)
+      rw [Nat.div_div_eq_div_mul, Nat.mul_div_cancel' hrd]
+  rw [hbij, Nat.sum_div_divisors (s / r) (fun e => (moebius e : ℝ)), moebius_div_collapse]
+  by_cases h : s = r
+  · simp [h, Nat.div_self hr1]
+  · rw [if_neg h, if_neg]
+    intro hc
+    exact h (by rw [← Nat.div_mul_cancel hrs, hc, one_mul])
+
+/-- **Möbius inversion over multiples in a divisor-closed finite set.**
+For `R` finite, divisor-closed (`d ∣ s ∈ R → d ∈ R`), all elements `≥ 1`, and any target
+`Y : ℕ → ℝ`, the weight `a(d) := ∑_{s∈R, d∣s} μ(s/d)·Y(s)` inverts the multiples-sum:
+`∑_{d∈R, r∣d} a(d) = Y(r)` for every `r ∈ R`. This is the exact (non-asymptotic) duality that
+realises a SMOOTH GPY `y_r = Y(r)` from an explicit sieve coefficient `λ_d = d·a(d)` — the
+foundation of the contour-free Path-Y sieve construction `selberg_nu_yr`. -/
+theorem moebius_inversion_multiples (R : Finset ℕ)
+    (hR0 : ∀ s ∈ R, 1 ≤ s)
+    (hRdc : ∀ s ∈ R, ∀ d, d ∣ s → d ∈ R)
+    (Y : ℕ → ℝ) (r : ℕ) (hr : r ∈ R) :
+    (∑ d ∈ R.filter (fun d => r ∣ d),
+        ∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y s) = Y r := by
+  classical
+  -- swap: ∑_{d∈R, r|d} ∑_{s∈R, d|s} = ∑_{s∈R} ∑_{d∈R, r|d ∧ d|s}
+  have hswap : (∑ d ∈ R.filter (fun d => r ∣ d),
+        ∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y s)
+      = ∑ s ∈ R, ∑ d ∈ R.filter (fun d => r ∣ d ∧ d ∣ s), (moebius (s / d) : ℝ) * Y s := by
+    refine Finset.sum_comm' ?_
+    intro d s
+    simp only [Finset.mem_filter]
+    constructor
+    · rintro ⟨⟨hd, hrd⟩, hs, hds⟩; exact ⟨⟨hd, hrd, hds⟩, hs⟩
+    · rintro ⟨⟨hd, hrd, hds⟩, hs⟩; exact ⟨⟨hd, hrd⟩, hs, hds⟩
+  rw [hswap]
+  -- inner sum over s
+  rw [Finset.sum_eq_single r]
+  · -- s = r term
+    have hset : R.filter (fun d => r ∣ d ∧ d ∣ r) = r.divisors.filter (fun d => r ∣ d) := by
+      ext d
+      simp only [Finset.mem_filter, Nat.mem_divisors]
+      constructor
+      · rintro ⟨_, hrd, hdr⟩; exact ⟨⟨hdr, by have := hR0 r hr; omega⟩, hrd⟩
+      · rintro ⟨⟨hdr, _⟩, hrd⟩; exact ⟨hRdc r hr d hdr, hrd, hdr⟩
+    rw [hset, ← Finset.sum_mul, inner_moebius_collapse r r (hR0 r hr) dvd_rfl, if_pos rfl, one_mul]
+  · -- s ≠ r terms vanish
+    intro s hs hsr
+    rw [← Finset.sum_mul]
+    by_cases hrs : r ∣ s
+    · have hset : R.filter (fun d => r ∣ d ∧ d ∣ s) = s.divisors.filter (fun d => r ∣ d) := by
+        ext d
+        simp only [Finset.mem_filter, Nat.mem_divisors]
+        constructor
+        · rintro ⟨_, hrd, hds⟩; exact ⟨⟨hds, by have := hR0 s hs; omega⟩, hrd⟩
+        · rintro ⟨⟨hds, _⟩, hrd⟩; exact ⟨hRdc s hs d hds, hrd, hds⟩
+      rw [hset, inner_moebius_collapse r s (hR0 s hs) hrs, if_neg hsr, zero_mul]
+    · -- r ∤ s: filter empty
+      have : R.filter (fun d => r ∣ d ∧ d ∣ s) = ∅ := by
+        rw [Finset.filter_eq_empty_iff]
+        intro d _ ⟨hrd, hds⟩
+        exact hrs (dvd_trans hrd hds)
+      rw [this, Finset.sum_empty, zero_mul]
+  · intro hrR; exact absurd hr hrR
+
 end BoundedGaps.Sieve
