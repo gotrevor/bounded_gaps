@@ -23,6 +23,7 @@ the **off-diagonal `o(main)` correction** (BV-gated, `SieveExpansion.correction_
 -/
 import BoundedGaps.S1YSpace
 import BoundedGaps.S1CandidateSet
+import BoundedGaps.S1KDBox
 
 open scoped BigOperators
 open ArithmeticFunction (moebius)
@@ -87,5 +88,35 @@ theorem yr_heuristic_main_eq_Icc_product (k : ℕ) (Fs : Fin k → ℝ → ℝ) 
   exact S1CandidateSet.coord_sum_restrict_to_Icc _ (Fs i) R N hR hNR (hFsupp i)
     (S1CandidateSet.filter_Icc_subset_filter_sieveDivisors H i.val b W N x hx hW hAB hlenN)
     (fun r hr => (Finset.mem_filter.mp hr).2)
+
+/-- **Capstone heuristic main = `M·∏ᵢ quadForm`** (the contour-free y-space S1 chain, fully
+connected). With the level `R = N`, the separable sieve's box-product heuristic main term
+(`S1YSpace.yr_heuristic_main_eq_muphi`) equals `M·∏ᵢ S1KDBox.quadForm W Fs_i Fs_i N` — the
+single-family input to `S1KDBox.yspace_kd_box_product_tendsto`. Composes the count→`M` candidate-set
+reconciliation (`yr_heuristic_main_eq_Icc_product`) with `S1KDBox.quadForm_eq_muphi_sum`. ⟹
+`heuristic main / (M·(log N)^k) → (φW/W)^k·mkF_denominator` — the contour-free y-space S1 main-term
+limit, end-to-end. Holds for `x ≥ W·N+2`, `N ≥ 2`, each `Fs_i` supported on `[0,1]`. (Only the
+`B^{±k}` normalisation convention — Trevor's call, see `PENDING_WORK.md` — and the BV-gated `o(main)`
+correction remain between this and `alphaBound`.) -/
+theorem yr_heuristic_main_eq_quadForm_product (k : ℕ) (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (x : ℝ) (M : ℝ) (N : ℕ)
+    (hx : 0 < x) (hW : 1 ≤ W) (hN : 2 ≤ N) (hcov : (W * N : ℝ) + 2 ≤ x)
+    (hFsupp : ∀ i : Fin k, ∀ t : ℝ, 1 < t → Fs i t = 0) :
+    (∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+          BoundedGaps.Sieve.sieveDivisors H i.val b W x
+            ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W x),
+        (∏ i : Fin k,
+          S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log (N : ℝ)) (P i).1
+            * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log (N : ℝ)) (P i).2)
+        * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      = M * ∏ i : Fin k, S1KDBox.quadForm W (Fs i) (Fs i) N := by
+  have hR : (1 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+  have hNR : (N : ℝ) < (N : ℝ) + 1 := by linarith
+  rw [yr_heuristic_main_eq_Icc_product k Fs H (N : ℝ) b W x M N hx hW hR hNR hcov hFsupp]
+  congr 1
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  rw [S1KDBox.quadForm_eq_muphi_sum]
 
 end BoundedGaps.S1CountReconcile
