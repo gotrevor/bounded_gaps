@@ -173,4 +173,23 @@ theorem coprime_geometric_inversion (p : ℕ) (hp : p.Prime) (N : ℕ) :
       have hrec := coprime_mertens_recursion p hp N
       linarith [hrec]
 
+/-- **The geometric target value** (`p ≥ 3`). The limit of the inverted series' coefficients:
+`∑_k (-1/(p-1))^k = (p-1)/p = φ(p)/p`. For `p ≥ 3` the ratio `1/(p-1) < 1`, so this is a convergent
+signed geometric series with sum `1/(1+1/(p-1)) = (p-1)/p`. This is the target constant of the
+single-prime `hBaseW` for odd primes: combined with `coprime_geometric_inversion` and a dominated-
+convergence interchange (`U(N/p^k)/log N → 1` per `k`, dominated by `(1/(p-1))^k·C` — summable since
+`1/(p-1) < 1`), `∑_{n≤N,(n,p)=1}μ²/φ / log N → (p-1)/p`. [The interchange for `p = 2` is genuinely
+different: `1/(p-1) = 1`, the limit series `∑(-1)^k` diverges, so DCT fails and the cancellation in the
+finite inverted sum must be used directly (Abel/telescoping) — the remaining nut.] -/
+theorem geom_value (p : ℕ) (hp : 3 ≤ p) :
+    ∑' k : ℕ, (- (1 / ((p:ℝ)-1)))^k = ((p:ℝ)-1)/p := by
+  have hpR : (3:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp
+  have hpos : (0:ℝ) < (p:ℝ) - 1 := by linarith
+  have hc : ‖(- (1 / ((p:ℝ)-1)))‖ < 1 := by
+    rw [norm_neg, Real.norm_eq_abs, abs_of_nonneg (le_of_lt (div_pos one_pos hpos))]
+    rw [div_lt_one hpos]; linarith
+  rw [tsum_geometric_of_norm_lt_one hc, sub_neg_eq_add]
+  rw [show (1:ℝ) + 1/((p:ℝ)-1) = (p:ℝ)/((p:ℝ)-1) by field_simp; ring]
+  rw [inv_div]
+
 end BoundedGaps.CoprimeMertens
