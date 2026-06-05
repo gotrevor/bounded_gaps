@@ -2,7 +2,46 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
-## ✅ PROGRESS 2026-06-05 — the `μ²/φ` `y_r`-space k-D Riemann ladder is DONE (axiom-clean)
+## ✅✅ PROGRESS 2026-06-05 (lap 2) — s1 ANALYTIC MAIN TERM PROVEN END-TO-END (general-J, axiom-clean)
+
+Four axiom-clean commits this lap (`bd35abf`…`37b42e6`), full build green (8288 jobs). The entire
+`s1` **main term** in `y_r`-space is now machine-checked for the actual sieve test-function shape.
+
+1. **Fubini bridge DONE** (`BoundedGaps/S1Fubini.lean`, `simplex_integral_prod_eq_nestedPhi`):
+   `∫_{simplex k} ∏ᵢ gᵢ = nestedPhi (ofFn g) 0` for continuous `g`. Proved locally (beating the
+   Aristotle `brick_fubini` job, which independently confirmed the same budget-induction strategy)
+   via a **head-outer** simplex fibration `simplex_scaled_fubini_head` over the budget simplex
+   `Sieve.simplex_scaled`. ⟹ discharged `hFubini` in
+   `S1ConnectionK1.s1_yr_mainTerm_eq_mkF_denominator_sep` (now UNCONDITIONAL).
+2. **Signed ladder DONE** (`BoundedGaps/WeightedRiemannSigned.lean`,
+   `weighted_riemann_kd_muphi_signed`): the k-D `(μ²/φ)` Riemann limit with **no nonnegativity
+   hypothesis**, via `signed_expand` (head split `g = g⁺ - g⁻` composes through cons because the
+   per-truncation identity holds at ALL `Q` simultaneously). Needed: the `s1` square has SIGNED cross
+   terms `∏(Fs_j·Fs_{j'})`.
+3. **General-J main term DONE** (`BoundedGaps/S1MainTermDecomp.lean`,
+   `s1_yr_mainTerm_eq_mkF_denominator_decomp`): for `F = ∑_j c_j ∏_i Fs_{j,i}`,
+   `(∑_{j,j'} c_j c_{j'}·nestedLogSumW(μ²/φ) R (ofFn(Fs_j·Fs_{j'})) R)/(log R)^k
+    → mkF_denominator k F = ∫_{simplex} F²`. **The s1 main term in the exact `hFdecomp` shape.**
+4. **Antiderivative + FTC bridge DONE** (`BoundedGaps/Antiderivative.lean`): `antideriv`,
+   `contDiff_antideriv`, `mkF_denominator_antideriv_sep`. Implements Trevor's settled antiderivative
+   convention (`𝔉' = F`, constant stays `∫F²`).
+
+### What REMAINS to discharge `s1_holds_from_nonprime_asym` (3 deep gaps, all need sieve context)
+- **(A) Diagonalization bridge**: connect literal `sieveSum (selberg_nu …) b W x` to the double-sum
+  `∑_{j,j'} c_j c_{j'}·nestedLogSumW(μ²/φ) R (ofFn(Fs_j·Fs_{j'})) R`. Algebra largely in
+  `SieveExpansion.lean` (`sieveSum_selberg_nu_expand`, `lattice_count_main_term`,
+  `gpy_diagonalize_moebius`, `gpy_yvar_substitution`). NEXT local step: trace `sieveSum_selberg_nu_expand`
+  → `1/[d,e]` lattice main term → `μ²/φ`-weighted `y_r` double sum.
+- **(B) Smoothing `y_r ≈ Fs(log r/log R)`** (Maynard `PartialSummation`/`S1Summation2`): the deep
+  analytic nut. 1-D Riemann-sum core ON ARISTOTLE (`678a9ed6`, `brick_smooth`).
+- **(C) `alphaMainTerm` normalization** + **o(1) correction** (case (ii) needs BV/EH).
+
+The landmine below is RESOLVED by Trevor's antiderivative decision (constant `∫F²`); see
+`archive/findings/ON-LINE-FINDINGS-2026-06-04-gpy-diagonal-asymptotic.md` top.
+
+---
+
+## ✅ PROGRESS 2026-06-05 (lap 1) — the `μ²/φ` `y_r`-space k-D Riemann ladder is DONE (axiom-clean)
 
 The Path-Y analytic engine for `s1` is now built end-to-end, unconditional & axiom-clean, in
 `BoundedGaps/WeightedRiemannGen.lean`. Rather than copy the 850-line bare ladder, the WHOLE ladder
