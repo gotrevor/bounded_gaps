@@ -204,4 +204,133 @@ theorem geom_value (p : ℕ) (hp : 3 ≤ p) :
   rw [show (1:ℝ) + 1/((p:ℝ)-1) = (p:ℝ)/((p:ℝ)-1) by field_simp; ring]
   rw [inv_div]
 
+/-- The unrestricted sharp Mertens, as the `gMoebiusSqTotient` partial-sum limit (= the repo's
+`SharpMertens.sharp_mertens_unconditional`). The base case of the single-prime limit. -/
+theorem U_div_log_tendsto_one :
+    Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) / Real.log N) atTop (𝓝 1) :=
+  BoundedGaps.SharpMertens.sharp_mertens_unconditional
+
+/-- `a / log N → 0` (a constant over a diverging `log`). -/
+theorem const_div_log_tendsto_zero (a : ℝ) :
+    Tendsto (fun N : ℕ => a / Real.log N) atTop (𝓝 0) := by
+  have h1 : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  exact Tendsto.div_atTop tendsto_const_nhds h1
+
+/-- `log(⌊N/c⌋) / log N → 1` (nat division by a fixed `c ≥ 1`). Squeeze:
+`1 - log(2c)/log N ≤ ratio ≤ 1`, using `⌊N/c⌋ ≥ N/(2c)` for `N ≥ 2c`. -/
+theorem log_div_ratio_tendsto_one (c : ℕ) (hc : 0 < c) :
+    Tendsto (fun N : ℕ => Real.log (↑(N / c)) / Real.log (N : ℝ)) atTop (𝓝 1) := by
+  have hcR : (0:ℝ) < c := by exact_mod_cast hc
+  have hlow : Tendsto (fun N : ℕ => 1 - Real.log (2 * c) / Real.log (N:ℝ)) atTop (𝓝 1) := by
+    have := const_div_log_tendsto_zero (Real.log (2 * c))
+    simpa using (tendsto_const_nhds.sub this)
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' hlow tendsto_const_nhds ?_ ?_
+  · filter_upwards [eventually_ge_atTop (2 * c), eventually_ge_atTop 2] with N hN hN2
+    have hlogN : (0:ℝ) < Real.log N := Real.log_pos (by exact_mod_cast hN2)
+    have key : N ≤ 2 * (c * (N / c)) := by
+      have h1 := Nat.div_add_mod N c
+      have h2 := Nat.mod_lt N hc
+      have hq1 : 1 ≤ N / c := (Nat.one_le_div_iff hc).mpr (by omega)
+      have hcq : c ≤ c * (N / c) := Nat.le_mul_of_pos_right c hq1
+      set m := c * (N / c) with hm
+      omega
+    have hfloor : (N:ℝ) / (2 * c) ≤ (↑(N / c) : ℝ) := by
+      rw [div_le_iff₀ (by positivity)]
+      have hcast : (N:ℝ) ≤ 2 * ((c:ℝ) * (↑(N/c):ℝ)) := by exact_mod_cast key
+      nlinarith [hcast]
+    have hpos2 : (0:ℝ) < (N:ℝ) / (2 * c) := by positivity
+    have hloglow : Real.log ((N:ℝ) / (2 * c)) ≤ Real.log (↑(N / c) : ℝ) :=
+      Real.log_le_log hpos2 hfloor
+    rw [Real.log_div (by positivity) (by positivity)] at hloglow
+    have hLHS : (1:ℝ) - Real.log (2 * c) / Real.log N
+        = (Real.log N - Real.log (2 * c)) / Real.log N := by field_simp
+    rw [hLHS]; gcongr
+  · filter_upwards [eventually_ge_atTop c, eventually_ge_atTop 2] with N hN hN2
+    have hlogN : (0:ℝ) < Real.log N := Real.log_pos (by exact_mod_cast hN2)
+    have hle : (↑(N / c) : ℝ) ≤ (N:ℝ) := by exact_mod_cast Nat.div_le_self N c
+    have h1 : (1:ℝ) ≤ (↑(N / c) : ℝ) := by
+      have : 1 ≤ N / c := (Nat.one_le_div_iff hc).mpr hN
+      exact_mod_cast this
+    rw [div_le_one hlogN]
+    exact Real.log_le_log (by linarith) hle
+
+/-- **The shifted unrestricted sum, `/log N → 1`.** For fixed `k`, `(∑_{n≤N/p^k}μ²/φ) / log N → 1`,
+via `U(M)/log M → 1` composed with `M = N/p^k → ∞`, times `log(N/p^k)/log N → 1`. The per-`k`
+ingredient of the dominated-convergence interchange. -/
+theorem U_shift_div_log_tendsto_one (p k : ℕ) (hp : p.Prime) :
+    Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 (N / p^k), gMoebiusSqTotient n) / Real.log (N:ℝ))
+      atTop (𝓝 1) := by
+  have hpk : 0 < p ^ k := pow_pos hp.pos k
+  have hdiv : Tendsto (fun N : ℕ => N / p ^ k) atTop atTop := by
+    apply tendsto_atTop_atTop_of_monotone
+    · intro a b hab; exact Nat.div_le_div_right hab
+    · intro b; exact ⟨b * p ^ k, by rw [Nat.mul_div_cancel _ hpk]⟩
+  have h1 := U_div_log_tendsto_one.comp hdiv
+  have h2 := log_div_ratio_tendsto_one (p^k) hpk
+  have hmul := h1.mul h2
+  rw [mul_one] at hmul
+  refine hmul.congr' ?_
+  filter_upwards [eventually_ge_atTop (2 * p^k), eventually_ge_atTop 2] with N hN hN2
+  have hge2 : 2 ≤ N / p^k := by rw [Nat.le_div_iff_mul_le hpk]; omega
+  have hlogpos : (0:ℝ) < Real.log (↑(N / p^k)) := Real.log_pos (by exact_mod_cast hge2)
+  simp only [Function.comp]
+  field_simp
+
+/-- **Single-prime coprime sharp Mertens (`p ≥ 3`), UNCONDITIONAL.** For an odd prime `p`,
+`(∑_{n≤N,(n,p)=1}μ²/φ) / log N → (p-1)/p = φ(p)/p`. The complete geometric route: the inverted series
+(`coprime_geometric_inversion`) `S(N)/log N = ∑'_k (-1/(p-1))^k·(U(N/p^k)/log N)` converges term-by-term
+(`U_shift_div_log_tendsto_one`) to `∑'_k(-1/(p-1))^k = (p-1)/p` (`geom_value`), the interchange
+justified by dominated convergence (`tendsto_tsum_of_dominated_convergence`, bound `(1/(p-1))^k·2`,
+summable since `1/(p-1) < 1` for `p ≥ 3`). No BV, no Euler product — only the repo's unrestricted sharp
+Mertens. [The `p = 2` case `1/(p-1) = 1` defeats this DCT and is the remaining nut.] The general `W`
+follows by induction over the primes of squarefree `W` (the relevant case has `W` odd-free? no — `W`
+includes `2`; the induction's `2`-step needs the `p=2` single-prime result). -/
+theorem single_prime_coprime_mertens (p : ℕ) (hpp : p.Prime) (hp3 : 3 ≤ p) :
+    Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime p n) / Real.log (N:ℝ))
+      atTop (𝓝 (((p:ℝ)-1)/p)) := by
+  have hpR : (3:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp3
+  have hpos : (0:ℝ) < (p:ℝ) - 1 := by linarith
+  set c : ℝ := 1/((p:ℝ)-1) with hcdef
+  set f : ℕ → ℕ → ℝ := fun N k =>
+    (-c)^k * ((∑ n ∈ Finset.Icc 1 (N / p^k), gMoebiusSqTotient n) / Real.log (N:ℝ)) with hf
+  have heq : ∀ N : ℕ, (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime p n) / Real.log (N:ℝ)
+      = ∑' k : ℕ, f N k := by
+    intro N
+    rw [coprime_geometric_inversion p hpp N, div_eq_mul_inv, ← tsum_mul_right]
+    apply tsum_congr; intro k
+    simp only [hf, div_eq_mul_inv]; ring
+  have hclt : c < 1 := by rw [hcdef, div_lt_one hpos]; linarith
+  have hcnn : 0 ≤ c := by rw [hcdef]; exact le_of_lt (div_pos one_pos hpos)
+  have hsum : Summable (fun k : ℕ => c^k * 2) :=
+    (summable_geometric_of_lt_one hcnn hclt).mul_right 2
+  have hab : ∀ k : ℕ, Tendsto (fun N => f N k) atTop (𝓝 ((-c)^k)) := by
+    intro k
+    have h := (tendsto_const_nhds (x := (-c)^k)).mul (U_shift_div_log_tendsto_one p k hpp)
+    rw [mul_one] at h
+    exact h
+  have hbound : ∀ᶠ N in atTop, ∀ k, ‖f N k‖ ≤ c^k * 2 := by
+    have hUbdd : ∀ᶠ N in atTop, (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n)/Real.log N ≤ 2 :=
+      (U_div_log_tendsto_one.eventually (eventually_lt_nhds (by norm_num : (1:ℝ) < 2))).mono
+        (fun N hN => le_of_lt hN)
+    filter_upwards [hUbdd, eventually_ge_atTop 2] with N hUN hN2
+    intro k
+    have hlogN : (0:ℝ) < Real.log N := Real.log_pos (by exact_mod_cast hN2)
+    have hUnn : 0 ≤ (∑ n ∈ Finset.Icc 1 (N/p^k), gMoebiusSqTotient n)/Real.log N :=
+      div_nonneg (Finset.sum_nonneg (fun n _ => gMoebiusSqTotient_nonneg n)) (le_of_lt hlogN)
+    have hmono : (∑ n ∈ Finset.Icc 1 (N/p^k), gMoebiusSqTotient n)/Real.log N
+        ≤ (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n)/Real.log N :=
+      (div_le_div_iff_of_pos_right hlogN).mpr (U_mono (Nat.div_le_self N (p^k)))
+    have hnf : ‖f N k‖ = c^k * ((∑ n ∈ Finset.Icc 1 (N/p^k), gMoebiusSqTotient n)/Real.log N) := by
+      rw [hf, norm_mul]
+      congr 1
+      · rw [norm_pow, norm_neg, Real.norm_eq_abs, abs_of_nonneg hcnn]
+      · rw [Real.norm_eq_abs, abs_of_nonneg hUnn]
+    rw [hnf]
+    exact mul_le_mul_of_nonneg_left (le_trans hmono hUN) (by positivity)
+  have hfinal := tendsto_tsum_of_dominated_convergence hsum hab hbound
+  have hgv : (∑' k : ℕ, (-c)^k) = ((p:ℝ)-1)/p := by rw [hcdef]; exact geom_value p hp3
+  rw [hgv] at hfinal
+  exact hfinal.congr (fun N => (heq N).symm)
+
 end BoundedGaps.CoprimeMertens
