@@ -2490,4 +2490,58 @@ theorem gpy_diagonalize_yform_muphi_bilinear (R : Finset ℕ)
     have := ArithmeticFunction.moebius_sq_eq_one_of_squarefree (hRsf r hr); exact_mod_cast this
   rw [hμ]; field_simp
 
+/-- **General Selberg sieve expansion** (the (sfg-1) opening for an ARBITRARY coefficient family).
+For any per-coordinate coefficient `lam : Fin k → ℕ → ℝ`, the block-sum of the squared product
+`ν(n) = (∏ᵢ ∑_{d ∣ n+hᵢ} lam i d)²` opens into the divisor-lattice form: a sum over tuples
+`P i = (dᵢ, eᵢ)` (ranging over `sieveDivisors ×ˢ sieveDivisors`) weighted by `∏ᵢ lam i dᵢ · lam i eᵢ`
+times the lattice-point count `#{m ∈ block : ∀i, dᵢ ∣ (m+hᵢ) ∧ eᵢ ∣ (m+hᵢ)}`. Generalises
+`sieveSum_selberg_nu_separable_expand` (hard-wired to `lam i d = μ(d)·Fs i (log d/log R)`) to any
+`lam` — in particular the y-space coefficient `S1YSpace.yLambda`, the structural bridge from the
+y-space `sieveSum` to the bilinear form that `gpy_diagonalize_yform_muphi` then diagonalises. Pure
+algebra (`sq` + `Finset.sum_mul_sum` + `prod_sum_active_expand`); the count → main-density reduction
+(the BV-gated correction) is downstream, shared with the d-space. -/
+theorem sieveSum_genProd_sq_expand (k : ℕ) (lam : Fin k → ℕ → ℝ)
+    (H : List ℕ) (b W : ℕ) (x : ℝ) (hx : 0 < x) :
+    (∑ n ∈ (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W),
+        (∏ i : Fin k, ∑ d ∈ (n + H.getD i.val 0).divisors, lam i d) ^ 2)
+      = ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k, lam i (P i).1 * lam i (P i).2)
+          * (((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+              (fun m => ∀ i : Fin k,
+                (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card := by
+  classical
+  set block := (Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W) with hblock
+  have hpos : ∀ m ∈ block, ∀ i : Fin k, 0 < m + H.getD i.val 0 := by
+    intro m hm i
+    have hm' : m ∈ Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊ := (Finset.mem_filter.mp hm).1
+    have hceil : 1 ≤ ⌈x⌉₊ := Nat.one_le_ceil_iff.mpr hx
+    have : ⌈x⌉₊ ≤ m := (Finset.mem_Icc.mp hm').1
+    omega
+  have stepA : ∀ m ∈ block,
+      (∏ i : Fin k, ∑ d ∈ (m + H.getD i.val 0).divisors, lam i d) ^ 2
+        = ∏ i : Fin k, ∑ x' ∈ (sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x).filter
+              (fun de => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0)),
+            lam i x'.1 * lam i x'.2 := by
+    intro m hm
+    rw [sq, ← Finset.prod_mul_distrib]
+    refine Finset.prod_congr rfl (fun i _ => ?_)
+    have hsub : (m + H.getD i.val 0).divisors ⊆ sieveDivisors H i.val b W x :=
+      Finset.subset_biUnion_of_mem (fun n => (n + H.getD i.val 0).divisors) hm
+    have hm0 : m + H.getD i.val 0 ≠ 0 := (hpos m hm i).ne'
+    have hset : (sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x).filter
+          (fun de => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
+        = (m + H.getD i.val 0).divisors ×ˢ (m + H.getD i.val 0).divisors := by
+      ext de
+      simp only [Finset.mem_filter, Finset.mem_product, Nat.mem_divisors]
+      refine ⟨fun ⟨_, hd1, hd2⟩ => ⟨⟨hd1, hm0⟩, hd2, hm0⟩, fun ⟨⟨hd1, _⟩, hd2, _⟩ => ?_⟩
+      exact ⟨⟨hsub (Nat.mem_divisors.mpr ⟨hd1, hm0⟩),
+              hsub (Nat.mem_divisors.mpr ⟨hd2, hm0⟩)⟩, hd1, hd2⟩
+    rw [hset, Finset.sum_mul_sum, Finset.sum_product]
+  rw [Finset.sum_congr rfl stepA]
+  convert prod_sum_active_expand block
+    (fun i => sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x)
+    (fun i de m => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
+    (fun i de => lam i de.1 * lam i de.2)
+
 end BoundedGaps.Sieve
