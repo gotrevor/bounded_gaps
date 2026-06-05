@@ -160,4 +160,27 @@ theorem sieveSum_selberg_nu_yr_sep_expand (k : ℕ) (Fs : Fin k → ℝ → ℝ)
   exact BoundedGaps.Sieve.sieveSum_genProd_sq_expand k
     (fun i => yLambda (Rset i) (Fs i) (Real.log R)) H b W x hx
 
+/-- **`yLambda` vanishes off a divisor-closed set.** If `R` is divisor-closed and `d ∉ R`, then
+`yLambda R F L d = 0` (the inner filter `{s∈R : d∣s}` is empty: `d∣s∈R ⟹ d∈R`). The algebraic
+key to the candidate-set reconciliation — `yLambda` is supported on `R`. -/
+theorem yLambda_eq_zero_of_not_mem (R : Finset ℕ) (hRdc : ∀ s ∈ R, ∀ d, d ∣ s → d ∈ R)
+    (F : ℝ → ℝ) (L : ℝ) {d : ℕ} (hd : d ∉ R) : yLambda R F L d = 0 := by
+  unfold yLambda
+  have hempty : R.filter (fun s => d ∣ s) = ∅ := by
+    rw [Finset.filter_eq_empty_iff]
+    intro s hs hds
+    exact hd (hRdc s hs d hds)
+  rw [hempty, Finset.sum_empty, mul_zero]
+
+/-- **Sum-over-superset reduction.** For `R ⊆ T` with `R` divisor-closed,
+`∑_{d∈T} yLambda R F L d · g d = ∑_{d∈R} yLambda R F L d · g d` (the `T∖R` terms vanish by
+`yLambda_eq_zero_of_not_mem`). Lets the sieve expansion's `∑_{d∈sieveDivisors}` collapse to the
+diagonalisation index set `R = sieveDivisors.filter(sf ∧ coprime)`. -/
+theorem sum_yLambda_eq_of_subset (R T : Finset ℕ) (hRT : R ⊆ T)
+    (hRdc : ∀ s ∈ R, ∀ d, d ∣ s → d ∈ R) (F : ℝ → ℝ) (L : ℝ) (g : ℕ → ℝ) :
+    ∑ d ∈ T, yLambda R F L d * g d = ∑ d ∈ R, yLambda R F L d * g d := by
+  rw [← Finset.sum_subset hRT]
+  intro d _ hdR
+  rw [yLambda_eq_zero_of_not_mem R hRdc F L hdR, zero_mul]
+
 end BoundedGaps.S1YSpace
