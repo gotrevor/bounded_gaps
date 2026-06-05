@@ -37,9 +37,18 @@ The full contour-free chain is machine-checked end-to-end (axiom-clean):
 - `S1YSpace.yspace_sieve_quadform_tendsto(_bilinear/_one)`: `(∑λλ/[d,e])/logN → (φ(W)/W)∫F²`. The
   `_one` (W=1) instance is **FULLY UNCONDITIONAL** (base = `sharp_mertens_unconditional`).
 
-### NEXT (fresh-lap work — the count→density reduction, then assemble)
-1. **Define `selberg_nu_yr`** `ν(n)=(∑_j c_j∏_i ∑_{d|n+hᵢ}yLambda R_N (Fs j i) (log R) d)²` (mirror
-   `selberg_nu_basis`); nonneg = `sq_nonneg`. Apply `sieveSum_genProd_sq_expand` per `(j,j')` block.
+### NEXT (the count→density reduction + final glue, then assemble) — ⬇ MUCH is now DONE
+**DONE this lap (`S1YSpace.lean`):** `selberg_nu_yr_sep` (the y-space sieve weight) + `_nonneg` +
+`sieveSum_selberg_nu_yr_sep_expand` (= `sieveSum_genProd_sq_expand` instance) +
+`sieveSum_selberg_nu_yr_sep_eq_heuristic_add_correction` (the `M`/[d,e] split) +
+`yLambda_eq_zero_of_not_mem`/`sum_yLambda_eq_of_subset`/`sum_yLambda_bilinear_eq_of_subset`
+(candidate-set restriction) + `yr_coord_factor_eq_muphi` (per-coord factor over
+`Rset = sieveDivisors.filter(sf∧coprime)` = `∑_{r∈Rset}(μ²/φ)F²`). **The remaining FINAL GLUE:**
+(a) `heuristic main = M·∏ᵢ ∑_{de∈sieveDiv²}λλ/[d,e]` (DIRECT `piFinset_lattice_main_factor`, coeff-general);
+(b) per coord, `∑_{de∈sieveDiv²}λλ/[d,e] = ∑_{de∈Rset²}` (a `Finset.sum_product`+`sum_yLambda_bilinear_eq_of_subset`
+massage) `= ∑_{r∈Rset}(μ²/φ)F²` (`yr_coord_factor_eq_muphi`). Just plumbing — ~1 lemma.
+1. ~~Define `selberg_nu_yr` + expand~~ **DONE** (separable; the general `∑_j c_j` opens to `(j,j')`
+   bilinear blocks via `gpy_diagonalize_yform_muphi_bilinear`, also done).
 2. **Count → main density**: connect the lattice `count(P) = #{m: dᵢ,eᵢ|m+hᵢ}` to `M/∏[dᵢ,eᵢ]`
    via the EXISTING `lattice_count_main_term` / `lattice_count_eq_modEq` (the CRT count, shared with
    d-space). The diagonal gives `M·∑λλ/[d,e]` → `gpy_diagonalize_yform_muphi` → `yspace_..._tendsto`.
