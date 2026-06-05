@@ -155,4 +155,44 @@ theorem piFinset_filter_prod_factor {k : ℕ} {α : Type*} [DecidableEq α] (s :
   · simp +contextual [funext_iff]
   · exact fun b hb => ⟨fun l => b l (Finset.mem_univ l), ⟨fun l => hb l |>.1, fun l => hb l |>.2⟩, rfl⟩
 
+/-- **The per-prime local factor of the singular-series majorant — the `1/(p-1)` reindex identity.**
+For a prime `p` not dividing `d` nor `e` (with `d,e ≥ 1`), the deterministic Selberg majorant
+`G(a,e) := (a/φ(a))·(e/φ(e))/lcm(a,e)` satisfies `G(p·d, e) = (1/(p-1))·G(d,e)`. This is the
+arithmetic core that makes the off-diagonal `p`-restricted mass a `1/(p-1)` fraction: under the
+reindex `a = p·d` on `{a : p ∣ a}`, every term picks up exactly the factor `1/(p-1)`, because
+`φ(p·d) = (p-1)·φ(d)` (Euler, `p` coprime to `d`) and `lcm(p·d, e) = p·lcm(d,e)` (`p` coprime to `e`),
+and the `p` in the numerator `p·d/φ(p·d) = p·d/((p-1)φ(d))` cancels the `p` in `lcm(p·d,e)`.
+**Fully elementary (PNT-free).** NB this controls the *majorant* `G`, not the actual weight
+`|yLambda_d·yLambda_e|/lcm`: the per-prime *mass-fraction* bound for the genuine off-diagonal
+correction additionally needs the smoothing estimate `|yLambda_d| ≲ (d/φ(d))/log R` (the Möbius-mean
+cancellation, PNT-strength) — the `abs_yLambda_le_sharp` majorant alone is lossy by `(log)²` per
+coordinate (it carries `∑μ²/φ ≈ log N` in place of the cancelling `∑μ(t)F/φ(t) ≈ 1/log R`). See
+`PENDING_WORK.md` (lap-11 head). -/
+theorem selberg_local_factor (p d e : ℕ) (hp : p.Prime) (hd : 1 ≤ d) (he : 1 ≤ e)
+    (hpd : ¬ p ∣ d) (hpe : ¬ p ∣ e) :
+    ((p * d : ℕ) : ℝ) / ((p * d).totient : ℝ) * ((e : ℝ) / (e.totient : ℝ))
+        / ((Nat.lcm (p * d) e : ℕ) : ℝ)
+      = (1 / ((p : ℝ) - 1))
+          * (((d : ℝ) / (d.totient : ℝ)) * ((e : ℝ) / (e.totient : ℝ))
+              / ((Nat.lcm d e : ℕ) : ℝ)) := by
+  have hcpd : Nat.Coprime p d := (hp.coprime_iff_not_dvd).mpr hpd
+  have hcpe : Nat.Coprime p e := (hp.coprime_iff_not_dvd).mpr hpe
+  have htot : (p * d).totient = (p - 1) * d.totient := by
+    rw [Nat.totient_mul hcpd, Nat.totient_prime hp]
+  have hlcm : Nat.lcm (p * d) e = p * Nat.lcm d e := by
+    have hg : Nat.gcd (p * d) e = Nat.gcd d e := hcpe.gcd_mul_left_cancel d
+    unfold Nat.lcm
+    rw [hg, Nat.mul_assoc, Nat.mul_div_assoc _ (Nat.gcd_dvd_left d e |>.mul_right e)]
+  have hp2 : 2 ≤ p := hp.two_le
+  have hφd : (0:ℝ) < (d.totient : ℝ) := by exact_mod_cast Nat.totient_pos.mpr hd
+  have hφe : (0:ℝ) < (e.totient : ℝ) := by exact_mod_cast Nat.totient_pos.mpr he
+  have hlcmde : (0:ℝ) < ((Nat.lcm d e : ℕ) : ℝ) := by
+    exact_mod_cast Nat.pos_of_ne_zero (Nat.lcm_ne_zero (by omega) (by omega))
+  have hpm1 : (0:ℝ) < (p:ℝ) - 1 := by
+    have : (2:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp2
+    linarith
+  rw [htot, hlcm]
+  push_cast [Nat.cast_sub (by omega : 1 ≤ p)]
+  field_simp
+
 end BoundedGaps.S1OffDiagSize
