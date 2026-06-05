@@ -922,4 +922,73 @@ theorem coprime_prod_limit (V₀ : ℕ) (c₀ : ℝ)
     rw [hconst] at hstep
     exact hstep
 
+/-! ## `hBaseW` DISCHARGED for primorial moduli (`W = ∏` over a prime set containing 2)
+
+Assembling the prime-by-prime induction with the squarefree-product totient identity yields the
+W-coprime sharp Mertens `(∑_{n≤N,(n,W)=1} μ²/φ)/log N → φ(W)/W` for any `W = ∏_{p∈T} p` over a
+finite set `T` of primes with `2 ∈ T` — in particular the sieve's primorial `∏_{p≤D₀} p`. This is
+the sole remaining analytic input `hBaseW` of `WeightedMertens.weighted_mertens_coprime(_sq)`, now
+**fully machine-checked and unconditional** (no BV, no PNT, no Euler products). -/
+
+/-- `φ(∏_{p∈T} p) = ∏_{p∈T}(p-1)` for a finite set `T` of primes (squarefree product). -/
+theorem prod_primes_totient (T : Finset ℕ) (hT : ∀ p ∈ T, p.Prime) :
+    Nat.totient (∏ p ∈ T, p) = ∏ p ∈ T, (p - 1) := by
+  induction T using Finset.induction_on with
+  | empty => simp
+  | insert p T' hp ih =>
+    have hpp : p.Prime := hT p (Finset.mem_insert_self p T')
+    have ihT' := ih (fun q hq => hT q (Finset.mem_insert_of_mem hq))
+    have hcop : Nat.Coprime p (∏ q ∈ T', q) := by
+      apply Nat.Coprime.prod_right
+      intro q hq
+      have hqp : q.Prime := hT q (Finset.mem_insert_of_mem hq)
+      exact (Nat.coprime_primes hpp hqp).mpr (fun h => hp (h ▸ hq))
+    rw [Finset.prod_insert hp, Finset.prod_insert hp, Nat.totient_mul hcop, ihT',
+      Nat.totient_prime hpp]
+
+/-- `φ(∏T)/∏T = ∏_{p∈T}((p-1)/p)` for a finite set `T` of primes. -/
+theorem totient_div_eq_prod (T : Finset ℕ) (hT : ∀ p ∈ T, p.Prime) :
+    (Nat.totient (∏ p ∈ T, p) : ℝ) / (∏ p ∈ T, p) = ∏ p ∈ T, (((p:ℝ) - 1) / p) := by
+  rw [prod_primes_totient T hT, Nat.cast_prod, Nat.cast_prod, ← Finset.prod_div_distrib]
+  apply Finset.prod_congr rfl
+  intro p hp
+  have h1 : 1 ≤ p := (hT p hp).one_lt.le
+  rw [Nat.cast_sub h1, Nat.cast_one]
+
+/-- **W-coprime sharp Mertens** for `W = ∏_{p∈T} p` (prime set `T` with `2 ∈ T`), in the
+`∏(p-1)/p` form: `(∑_{n≤N,(n,W)=1} μ²/φ)/log N → ∏_{p∈T}((p-1)/p)`. Base `S_2/log → 1/2`
+(`single_prime_coprime_mertens_two`) swept over the odd primes via `coprime_prod_limit`. -/
+theorem hBaseW_of_primes (T : Finset ℕ) (hT : ∀ p ∈ T, p.Prime) (h2 : 2 ∈ T) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (∏ p ∈ T, p) n) / Real.log N)
+      atTop (𝓝 (∏ p ∈ T, (((p:ℝ) - 1) / p))) := by
+  have hTodd := coprime_prod_limit 2 (1/2) single_prime_coprime_mertens_two (T.erase 2)
+    (fun p hp => hT p (Finset.mem_of_mem_erase hp))
+    (fun p hp => by
+      have hpp : p.Prime := hT p (Finset.mem_of_mem_erase hp)
+      have hp2 : p ≠ 2 := (Finset.mem_erase.mp hp).1
+      have := hpp.two_le; omega)
+    (fun p hp => by
+      have hpp : p.Prime := hT p (Finset.mem_of_mem_erase hp)
+      have hp2 : p ≠ 2 := (Finset.mem_erase.mp hp).1
+      exact (Nat.coprime_primes hpp Nat.prime_two).mpr hp2)
+  have hmod : 2 * ∏ p ∈ T.erase 2, p = ∏ p ∈ T, p :=
+    Finset.mul_prod_erase T (fun p => p) h2
+  have hconst : (1 / 2 : ℝ) * ∏ p ∈ T.erase 2, (((p:ℝ) - 1) / p)
+      = ∏ p ∈ T, (((p:ℝ) - 1) / p) := by
+    rw [← Finset.mul_prod_erase T (fun p => (((p:ℝ) - 1) / p)) h2]
+    norm_num
+  rw [hmod, hconst] at hTodd
+  exact hTodd
+
+/-- **`hBaseW`, discharged.** `(∑_{n≤N,(n,W)=1} μ²/φ)/log N → φ(W)/W` for `W = ∏_{p∈T} p`
+(`T` a finite set of primes, `2 ∈ T`) — exactly the hypothesis of
+`WeightedMertens.weighted_mertens_coprime`. UNCONDITIONAL. -/
+theorem hBaseW_of_primes_totient (T : Finset ℕ) (hT : ∀ p ∈ T, p.Prime) (h2 : 2 ∈ T) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (∏ p ∈ T, p) n) / Real.log N)
+      atTop (𝓝 ((Nat.totient (∏ p ∈ T, p) : ℝ) / (∏ p ∈ T, p))) := by
+  rw [totient_div_eq_prod T hT]
+  exact hBaseW_of_primes T hT h2
+
 end BoundedGaps.CoprimeMertens
