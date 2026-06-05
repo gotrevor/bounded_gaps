@@ -334,4 +334,148 @@ theorem single_prime_coprime_mertens (p : ℕ) (hpp : p.Prime) (hp3 : 3 ≤ p) :
   rw [hgv] at hfinal
   exact hfinal.congr (fun N => (heq N).symm)
 
+/-! ## The `p = 2` single-prime case (the DCT-defeating nut)
+
+For `p = 2` the geometric inversion coefficient `−1/(p−1) = −1` makes the inverted series
+`∑_k (−1)^k U(N/2^k)` an alternating series of a *diverging* sequence, so the `p ≥ 3` DCT
+route fails. The correct route uses the recursion `U N = T N + T⌊N/2⌋` directly, together with
+the **second-order** Mertens `SharpMertens.sum_g_second_order` (`U(N) − log N → β`, which the
+first-order `sharp_mertens_unconditional` cannot supply). Everything reduces to a single
+abstract analytic crux: a *halving recursion with bounded RHS-limit forces `o(log N)`*. -/
+
+/-- **CRUX (isolated; on Aristotle job `9c12cf7c`).** If `d : ℕ → ℝ` satisfies
+`d N + d⌊N/2⌋ → L` for some constant `L`, then `d N / log N → 0`.
+
+This is the one genuinely-hard analytic kernel of the `p = 2` W-coprime Mertens base. Roadmap
+(also in the Aristotle brick `brick_p2/Problem.lean`): unroll `d(N) = ∑_{k<K}(−1)^k V(⌊N/2^k⌋)
++ (−1)^K d(⌊N/2^K⌋)` with `V = d + d∘half → L` and `K = ⌊log₂ N⌋`; the `±L` contributions
+cancel to `O(1)` by alternation, the base term is bounded (`⌊N/2^K⌋ ∈ {0,1}`), and the
+`∑(−1)^k ε(⌊N/2^k⌋)` of the null part `ε = V − L` is `o(K) = o(log N)`. Disclosed as an
+`axiom` pending the Aristotle return; the rest of the `p = 2` case is fully reduced to it. -/
+axiom halving_recursion_o_log (d : ℕ → ℝ) (L : ℝ)
+    (hd : Tendsto (fun N : ℕ => d N + d (N / 2)) atTop (𝓝 L)) :
+    Tendsto (fun N : ℕ => d N / Real.log N) atTop (𝓝 0)
+
+/-- `log N − log⌊N/2⌋ → log 2`. Squeeze between `log 2` (from `⌊N/2⌋ ≤ N/2`) and
+`log(N/(N−1)) + log 2` (from `2⌊N/2⌋ ≥ N−1`). -/
+theorem log_sub_log_half_tendsto :
+    Tendsto (fun N : ℕ => Real.log N - Real.log (↑(N / 2))) atTop (𝓝 (Real.log 2)) := by
+  have hupp : Tendsto (fun N : ℕ => Real.log ((N : ℝ) / ((N : ℝ) - 1)) + Real.log 2) atTop
+      (𝓝 (Real.log 2)) := by
+    have hr : Tendsto (fun N : ℕ => (N : ℝ) / ((N : ℝ) - 1)) atTop (𝓝 1) := by
+      have h1 : Tendsto (fun N : ℕ => (1 : ℝ) / (1 - 1 / (N : ℝ))) atTop (𝓝 (1 / (1 - 0))) := by
+        apply Tendsto.div tendsto_const_nhds
+        · exact (tendsto_const_nhds.sub (tendsto_one_div_atTop_nhds_zero_nat))
+        · norm_num
+      simp only [sub_zero, div_one] at h1
+      refine h1.congr' ?_
+      filter_upwards [eventually_ge_atTop 2] with N hN
+      have hN0 : (N : ℝ) ≠ 0 := by positivity
+      have hN1 : (N : ℝ) - 1 ≠ 0 := by
+        have : (2 : ℝ) ≤ N := by exact_mod_cast hN
+        linarith
+      field_simp
+    have : Tendsto (fun N : ℕ => Real.log ((N : ℝ) / ((N : ℝ) - 1))) atTop (𝓝 (Real.log 1)) :=
+      (Real.continuousAt_log (by norm_num)).tendsto.comp hr
+    rw [Real.log_one] at this
+    simpa using this.add (tendsto_const_nhds (x := Real.log 2))
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds hupp ?_ ?_
+  · filter_upwards [eventually_ge_atTop 2] with N hN
+    have hhalf_pos : 1 ≤ N / 2 := (Nat.one_le_div_iff (by norm_num)).mpr hN
+    have hle : (↑(N / 2) : ℝ) ≤ (N : ℝ) / 2 := by exact_mod_cast Nat.cast_div_le
+    have hNpos : (0 : ℝ) < (N : ℝ) := by positivity
+    have hhpos : (0 : ℝ) < (↑(N / 2) : ℝ) := by exact_mod_cast hhalf_pos
+    have hlog : Real.log (↑(N / 2) : ℝ) ≤ Real.log ((N : ℝ) / 2) :=
+      Real.log_le_log hhpos hle
+    rw [Real.log_div (by positivity) (by norm_num)] at hlog
+    linarith
+  · filter_upwards [eventually_ge_atTop 3] with N hN
+    have hN3 : 3 ≤ N := hN
+    have hhalf_pos : 1 ≤ N / 2 := (Nat.one_le_div_iff (by norm_num)).mpr (by omega)
+    have hge : N - 1 ≤ 2 * (N / 2) := by omega
+    have hcast : ((N : ℝ) - 1) / 2 ≤ (↑(N / 2) : ℝ) := by
+      rw [div_le_iff₀ (by norm_num)]
+      have : ((N : ℝ) - 1) ≤ 2 * (↑(N / 2) : ℝ) := by
+        have : (N : ℝ) - 1 ≤ ((2 * (N / 2) : ℕ) : ℝ) := by
+          calc (N : ℝ) - 1 = ((N - 1 : ℕ) : ℝ) := by
+                rw [Nat.cast_sub (by omega)]; norm_num
+            _ ≤ ((2 * (N / 2) : ℕ) : ℝ) := by exact_mod_cast hge
+        push_cast at this ⊢; linarith
+      linarith
+    have hNm1pos : (0 : ℝ) < (N : ℝ) - 1 := by
+      have : (3 : ℝ) ≤ N := by exact_mod_cast hN3
+      linarith
+    have hhpos : (0 : ℝ) < (↑(N / 2) : ℝ) := by exact_mod_cast hhalf_pos
+    have hlog : Real.log (((N : ℝ) - 1) / 2) ≤ Real.log (↑(N / 2) : ℝ) :=
+      Real.log_le_log (by positivity) hcast
+    rw [Real.log_div (by positivity) (by norm_num)] at hlog
+    have hNpos : (0 : ℝ) < (N : ℝ) := by positivity
+    rw [Real.log_div (by positivity) (by positivity)]
+    linarith
+
+/-- Halving `N ↦ ⌊N/2⌋` tends to infinity. -/
+theorem tendsto_half_atTop : Tendsto (fun N : ℕ => N / 2) atTop atTop := by
+  apply tendsto_atTop_atTop_of_monotone
+  · intro a b hab; exact Nat.div_le_div_right hab
+  · intro K; exact ⟨2 * K, by rw [Nat.mul_div_cancel_left _ (by norm_num)]⟩
+
+/-- **Single-prime coprime sharp Mertens at `p = 2`** (modulo the isolated crux
+`halving_recursion_o_log`). `(∑_{n≤N,(n,2)=1} μ²/φ)/log N → 1/2 = (2−1)/2`, matching the
+`p ≥ 3` formula at `p = 2`.
+
+Reduction: with `T N = ∑_{(n,2)=1} μ²/φ`, `U N = ∑ μ²/φ`, the recursion
+`coprime_mertens_recursion 2` reads `U N = T N + T⌊N/2⌋`. Set `D N = T N − T⌊N/2⌋`; then
+`D N + D⌊N/2⌋ = U N − U⌊N/2⌋ → log 2` (via the **second-order** Mertens
+`SharpMertens.sum_g_second_order` and `log_sub_log_half_tendsto`). The crux gives
+`D N/log N → 0`, and since `T N = (U N + D N)/2`,
+`T N/log N = (U N/log N + D N/log N)/2 → (1+0)/2 = 1/2`. -/
+theorem single_prime_coprime_mertens_two :
+    Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime 2 n) / Real.log (N : ℝ))
+      atTop (𝓝 (1 / 2)) := by
+  set T : ℕ → ℝ := fun N => ∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime 2 n with hT
+  set U : ℕ → ℝ := fun N => ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n with hU
+  have hp2 : Nat.Prime 2 := Nat.prime_two
+  have hrec : ∀ N : ℕ, U N = T N + T (N / 2) := by
+    intro N
+    have h := coprime_mertens_recursion 2 hp2 N
+    rw [hT, hU]
+    simp only
+    norm_num at h
+    exact h
+  set D : ℕ → ℝ := fun N => T N - T (N / 2) with hD
+  have hDrec : ∀ N : ℕ, D N + D (N / 2) = U N - U (N / 2) := by
+    intro N
+    rw [hD]
+    simp only
+    rw [hrec N, hrec (N / 2)]
+    ring
+  have hsoU : Tendsto (fun N : ℕ => U N - Real.log N) atTop (𝓝
+      (Real.eulerMascheroniConstant - ∑' e : ℕ, BoundedGaps.SharpMertens.bAF e * Real.log e)) :=
+    BoundedGaps.SharpMertens.sum_g_second_order
+  have hsoUhalf : Tendsto (fun N : ℕ => U (N / 2) - Real.log (↑(N / 2))) atTop (𝓝
+      (Real.eulerMascheroniConstant - ∑' e : ℕ, BoundedGaps.SharpMertens.bAF e * Real.log e)) :=
+    hsoU.comp tendsto_half_atTop
+  have hV : Tendsto (fun N : ℕ => U N - U (N / 2)) atTop (𝓝 (Real.log 2)) := by
+    have hcomb := (hsoU.sub hsoUhalf).add log_sub_log_half_tendsto
+    have hval : (Real.eulerMascheroniConstant
+          - ∑' e : ℕ, BoundedGaps.SharpMertens.bAF e * Real.log e)
+        - (Real.eulerMascheroniConstant - ∑' e : ℕ, BoundedGaps.SharpMertens.bAF e * Real.log e)
+        + Real.log 2 = Real.log 2 := by ring
+    rw [hval] at hcomb
+    refine hcomb.congr (fun N => ?_)
+    ring
+  have hDsum : Tendsto (fun N : ℕ => D N + D (N / 2)) atTop (𝓝 (Real.log 2)) :=
+    hV.congr (fun N => (hDrec N).symm)
+  have hD0 : Tendsto (fun N : ℕ => D N / Real.log N) atTop (𝓝 0) :=
+    halving_recursion_o_log D (Real.log 2) hDsum
+  have hU1 : Tendsto (fun N : ℕ => U N / Real.log N) atTop (𝓝 1) := U_div_log_tendsto_one
+  have hcomb := (hU1.add hD0).div_const 2
+  rw [show ((1 : ℝ) + 0) / 2 = 1 / 2 by norm_num] at hcomb
+  refine hcomb.congr (fun N => ?_)
+  rw [hD]
+  simp only
+  rw [hrec N, ← add_div, show T N + T (N / 2) + (T N - T (N / 2)) = 2 * T N from by ring, div_div,
+    mul_comm (Real.log (N : ℝ)) 2]
+  exact mul_div_mul_left (T N) (Real.log N) two_ne_zero
+
 end BoundedGaps.CoprimeMertens
