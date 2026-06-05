@@ -206,6 +206,25 @@ noncomputable def Gmaj (a e : ℕ) : ℝ :=
 
 theorem Gmaj_nonneg (a e : ℕ) : 0 ≤ Gmaj a e := by unfold Gmaj; positivity
 
+/-- **Abstract weight → majorant bridge.** If two coefficients are dominated by their `(·/φ)`-envelopes
+times a common bound `B` (`|x| ≤ (d/φd)·B`, `|y| ≤ (e/φe)·B`), then the off-diagonal weight
+`|x·y|/lcm(d,e) ≤ B²·G d e`. This is the API-free core that lets `Gmaj_per_prime_le` apply to the actual
+off-diagonal weight `|yLambda_d·yLambda_e|/lcm`: feed `B = C·∑μ²/φ` from `S1Correction.abs_yLambda_le_sharp`
+(the elementary but `(log)²`-lossy bound), or `B = C_F/log R` from the smoothing estimate (the tight,
+PNT-strength bound that makes the closure bookkeeping balance — `PENDING_WORK.md` lap-11). PNF-free. -/
+theorem abs_mul_div_lcm_le_Gmaj (d e : ℕ) (x y B : ℝ) (hd : 1 ≤ d) (he : 1 ≤ e)
+    (hx : |x| ≤ (d:ℝ)/(d.totient:ℝ) * B) (hy : |y| ≤ (e:ℝ)/(e.totient:ℝ) * B) :
+    |x * y| / (Nat.lcm d e : ℝ) ≤ B^2 * Gmaj d e := by
+  unfold Gmaj
+  have hlcm : (0:ℝ) < (Nat.lcm d e : ℝ) := by
+    exact_mod_cast Nat.pos_of_ne_zero (Nat.lcm_ne_zero (by omega) (by omega))
+  have h1 : |x| * |y| ≤ ((d:ℝ)/(d.totient:ℝ) * B) * ((e:ℝ)/(e.totient:ℝ) * B) :=
+    mul_le_mul hx hy (abs_nonneg _) (le_trans (abs_nonneg _) hx)
+  calc |x * y| / (Nat.lcm d e : ℝ) = (|x| * |y|) / (Nat.lcm d e : ℝ) := by rw [abs_mul]
+    _ ≤ (((d:ℝ)/(d.totient:ℝ) * B) * ((e:ℝ)/(e.totient:ℝ) * B)) / (Nat.lcm d e : ℝ) :=
+        (div_le_div_iff_of_pos_right hlcm).mpr h1
+    _ = B^2 * ((d:ℝ)/(d.totient:ℝ) * ((e:ℝ)/(e.totient:ℝ)) / (Nat.lcm d e : ℝ)) := by ring
+
 /-- `selberg_local_factor` specialised to the named majorant `Gmaj`. -/
 theorem Gmaj_local_factor (p d e : ℕ) (hp : p.Prime) (hd : 1 ≤ d) (he : 1 ≤ e)
     (hpd : ¬ p ∣ d) (hpe : ¬ p ∣ e) :
