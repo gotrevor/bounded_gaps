@@ -698,4 +698,43 @@ theorem weighted_riemann_kd_muphi (Gs : List (ℝ → ℝ)) (hnn : ∀ g ∈ Gs,
   weighted_riemann_kd_w (fun n => gMoebiusSqTotient n) gMoebiusSqTotient_nonneg
     weighted1DLimit_muphi Gs hnn hcont
 
+/-! ### Validation: the bare `1/n` ladder is the generic ladder at `w = 1/n`.
+
+Recovering `WeightedRiemannKD.weighted_riemann_kd` as the instance `w n = 1/n` is kernel-checked
+evidence that the generic ladder is correct: the two `nestedLogSum` shapes agree
+(`nestedLogSumW_harmonic_eq`), the bare 1-D Riemann limit gives `Weighted1DLimit (1/·)`, and the
+resulting limit statement is *identical* to the established bare theorem. -/
+
+/-- The `1/n` weight satisfies `Weighted1DLimit` (via the bare `riemann_sum_log_weight`). -/
+theorem weighted1DLimit_harmonic : Weighted1DLimit (fun n => 1 / (n : ℝ)) := by
+  intro G hG
+  have h := BoundedGaps.WeightedMertens.riemann_sum_log_weight G hG
+  have heq : (fun N : ℕ =>
+        (∑ m ∈ Finset.Icc 2 N, G (Real.log m / Real.log N) * (1 / (m : ℝ))) / Real.log N)
+      = (fun N : ℕ =>
+        (∑ m ∈ Finset.Icc 2 N, G (Real.log m / Real.log N) / (m : ℝ)) / Real.log N) := by
+    funext N; congr 1
+    exact Finset.sum_congr rfl (fun m _ => by rw [mul_one_div])
+  rw [heq]; exact h
+
+/-- The generic `nestedLogSumW` at `w = 1/n` is the bare `nestedLogSum`. -/
+lemma nestedLogSumW_harmonic_eq (R : ℕ) :
+    ∀ (gs : List (ℝ → ℝ)) (Q : ℕ),
+      nestedLogSumW (fun n => 1 / (n : ℝ)) R gs Q = nestedLogSum R gs Q
+  | [], _ => rfl
+  | g :: gs, Q => by
+      rw [nestedLogSumW_cons, nestedLogSum_cons]
+      refine Finset.sum_congr rfl (fun n _ => ?_)
+      rw [nestedLogSumW_harmonic_eq R gs (Q / n)]; ring
+
+/-- **Bare `k`-D Riemann limit recovered from the generic ladder** (identical statement to
+`WeightedRiemannKD.weighted_riemann_kd`). -/
+theorem weighted_riemann_kd_harmonic (Gs : List (ℝ → ℝ)) (hnn : ∀ g ∈ Gs, ∀ x, 0 ≤ g x)
+    (hcont : ∀ g ∈ Gs, Continuous g) :
+    Tendsto (fun R : ℕ => nestedLogSum R Gs R / (Real.log R) ^ Gs.length) atTop
+      (nhds (nestedPhi Gs 0)) := by
+  have h := weighted_riemann_kd_w (fun n => 1 / (n : ℝ)) (fun n => by positivity)
+    weighted1DLimit_harmonic Gs hnn hcont
+  simpa only [nestedLogSumW_harmonic_eq] using h
+
 end BoundedGaps.WeightedRiemannGen
