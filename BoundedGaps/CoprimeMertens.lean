@@ -418,6 +418,110 @@ theorem U_shift_div_log_tendsto_one (p k : ℕ) (hp : p.Prime) :
   simp only [Function.comp]
   field_simp
 
+/-! ## Toward general `W`: nonneg / domination helpers and the abstract inductive step -/
+
+theorem gMuSqTotientCoprime_nonneg (V n : ℕ) : 0 ≤ gMuSqTotientCoprime V n := by
+  unfold gMuSqTotientCoprime
+  split_ifs with h
+  · exact gMoebiusSqTotient_nonneg n
+  · exact le_refl 0
+
+theorem SV_le_U (V M : ℕ) :
+    (∑ n ∈ Finset.Icc 1 M, gMuSqTotientCoprime V n)
+      ≤ ∑ n ∈ Finset.Icc 1 M, gMoebiusSqTotient n := by
+  apply Finset.sum_le_sum
+  intro n _
+  unfold gMuSqTotientCoprime
+  split_ifs with h
+  · exact le_refl _
+  · exact gMoebiusSqTotient_nonneg n
+
+theorem SV_mono (V : ℕ) {M M' : ℕ} (h : M ≤ M') :
+    (∑ n ∈ Finset.Icc 1 M, gMuSqTotientCoprime V n)
+      ≤ ∑ n ∈ Finset.Icc 1 M', gMuSqTotientCoprime V n :=
+  Finset.sum_le_sum_of_subset_of_nonneg (Finset.Icc_subset_Icc_right h)
+    (fun i _ _ => gMuSqTotientCoprime_nonneg V i)
+
+theorem SV_shift_div_log_tendsto (p k V : ℕ) (hp : p.Prime) (c : ℝ)
+    (hbase : Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime V n) / Real.log N)
+      atTop (𝓝 c)) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 (N / p^k), gMuSqTotientCoprime V n) / Real.log (N:ℝ)) atTop (𝓝 c) := by
+  have hpk : 0 < p ^ k := pow_pos hp.pos k
+  have hdiv : Tendsto (fun N : ℕ => N / p ^ k) atTop atTop := by
+    apply tendsto_atTop_atTop_of_monotone
+    · intro a b hab; exact Nat.div_le_div_right hab
+    · intro b; exact ⟨b * p ^ k, by rw [Nat.mul_div_cancel _ hpk]⟩
+  have h1 := hbase.comp hdiv
+  have h2 := log_div_ratio_tendsto_one (p^k) hpk
+  have hmul := h1.mul h2
+  rw [mul_one] at hmul
+  refine hmul.congr' ?_
+  filter_upwards [eventually_ge_atTop (2 * p^k), eventually_ge_atTop 2] with N hN hN2
+  have hge2 : 2 ≤ N / p^k := by rw [Nat.le_div_iff_mul_le hpk]; omega
+  have hlogpos : (0:ℝ) < Real.log (↑(N / p^k)) := Real.log_pos (by exact_mod_cast hge2)
+  simp only [Function.comp]
+  field_simp
+
+/-- **Abstract single-prime step** (`p ≥ 3`): from a base limit `S_V(N)/log N → c` derive
+`S_{pV}(N)/log N → c·(p-1)/p`. General inversion + DCT (bound `(1/(p-1))^k·2` via `S_V ≤ U` and
+`U/log → 1`), interchange via `geom_value`. The inductive step of `hBaseW` for odd primes: starting
+from `S_2/log → 1/2` (`single_prime_coprime_mertens_two`), repeatedly apply this for the odd primes
+of `W` to reach `S_W/log → φ(W)/W`. (The `p = 2` step needs the second-order route and is only used
+once, at the base `V = 1`.) -/
+theorem coprime_step (p V : ℕ) (hp : p.Prime) (hpV : Nat.Coprime p V) (hp3 : 3 ≤ p) (c : ℝ)
+    (hbase : Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime V n) / Real.log N)
+      atTop (𝓝 c)) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (p * V) n) / Real.log (N:ℝ))
+      atTop (𝓝 (c * (((p:ℝ)-1)/p))) := by
+  have hpR : (3:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp3
+  have hpos : (0:ℝ) < (p:ℝ) - 1 := by linarith
+  set cp : ℝ := 1/((p:ℝ)-1) with hcpdef
+  set f : ℕ → ℕ → ℝ := fun N k =>
+    (-cp)^k * ((∑ n ∈ Finset.Icc 1 (N / p^k), gMuSqTotientCoprime V n) / Real.log (N:ℝ)) with hf
+  have heq : ∀ N : ℕ,
+      (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (p * V) n) / Real.log (N:ℝ) = ∑' k : ℕ, f N k := by
+    intro N
+    rw [coprime_geometric_inversion_general p V hp hpV N, div_eq_mul_inv, ← tsum_mul_right]
+    apply tsum_congr; intro k
+    simp only [hf, div_eq_mul_inv]; ring
+  have hclt : cp < 1 := by rw [hcpdef, div_lt_one hpos]; linarith
+  have hcnn : 0 ≤ cp := by rw [hcpdef]; exact le_of_lt (div_pos one_pos hpos)
+  have hsum : Summable (fun k : ℕ => cp^k * 2) :=
+    (summable_geometric_of_lt_one hcnn hclt).mul_right 2
+  have hab : ∀ k : ℕ, Tendsto (fun N => f N k) atTop (𝓝 ((-cp)^k * c)) := by
+    intro k
+    exact (tendsto_const_nhds (x := (-cp)^k)).mul (SV_shift_div_log_tendsto p k V hp c hbase)
+  have hbound : ∀ᶠ N in atTop, ∀ k, ‖f N k‖ ≤ cp^k * 2 := by
+    have hUbdd : ∀ᶠ N in atTop, (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n)/Real.log N ≤ 2 :=
+      (U_div_log_tendsto_one.eventually (eventually_lt_nhds (by norm_num : (1:ℝ) < 2))).mono
+        (fun N hN => le_of_lt hN)
+    filter_upwards [hUbdd, eventually_ge_atTop 2] with N hUN hN2
+    intro k
+    have hlogN : (0:ℝ) < Real.log N := Real.log_pos (by exact_mod_cast hN2)
+    have hSVnn : 0 ≤ (∑ n ∈ Finset.Icc 1 (N/p^k), gMuSqTotientCoprime V n)/Real.log N :=
+      div_nonneg (Finset.sum_nonneg (fun n _ => gMuSqTotientCoprime_nonneg V n)) (le_of_lt hlogN)
+    have hle2 : (∑ n ∈ Finset.Icc 1 (N/p^k), gMuSqTotientCoprime V n)/Real.log N ≤ 2 := by
+      refine le_trans ?_ hUN
+      exact (div_le_div_iff_of_pos_right hlogN).mpr
+        (le_trans (SV_le_U V (N/p^k)) (U_mono (Nat.div_le_self N (p^k))))
+    have hnf : ‖f N k‖
+        = cp^k * ((∑ n ∈ Finset.Icc 1 (N/p^k), gMuSqTotientCoprime V n)/Real.log N) := by
+      rw [hf, norm_mul]
+      congr 1
+      · rw [norm_pow, norm_neg, Real.norm_eq_abs, abs_of_nonneg hcnn]
+      · rw [Real.norm_eq_abs, abs_of_nonneg hSVnn]
+    rw [hnf]
+    exact mul_le_mul_of_nonneg_left hle2 (by positivity)
+  have hfinal := tendsto_tsum_of_dominated_convergence hsum hab hbound
+  have hgv : (∑' k : ℕ, (-cp)^k * c) = c * (((p:ℝ)-1)/p) := by
+    rw [tsum_mul_right, hcpdef]
+    rw [show ∑' k : ℕ, (-(1/((p:ℝ)-1)))^k = ((p:ℝ)-1)/p from geom_value p hp3]
+    ring
+  rw [hgv] at hfinal
+  exact hfinal.congr (fun N => (heq N).symm)
+
 /-- **Single-prime coprime sharp Mertens (`p ≥ 3`), UNCONDITIONAL.** For an odd prime `p`,
 `(∑_{n≤N,(n,p)=1}μ²/φ) / log N → (p-1)/p = φ(p)/p`. The complete geometric route: the inverted series
 (`coprime_geometric_inversion`) `S(N)/log N = ∑'_k (-1/(p-1))^k·(U(N/p^k)/log N)` converges term-by-term
