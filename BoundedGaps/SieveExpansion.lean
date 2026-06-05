@@ -2351,4 +2351,36 @@ theorem moebius_inversion_multiples (R : Finset ℕ)
       rw [this, Finset.sum_empty, zero_mul]
   · intro hrR; exact absurd hr hrR
 
+/-- **Diagonalisation meets inversion — the contour-free y-space main term.** For `R` finite,
+divisor-closed, all `≥ 1`, and the inversion-defined sieve coefficient
+`λ_d := d·(∑_{s∈R, d∣s} μ(s/d)·Y s)`, the diagonalised Selberg form collapses to the SMOOTH sum
+`∑_{d,e∈R} λ_d λ_e / [d,e] = ∑_{r∈R} φ(r)·Y(r)²`. Composes `gpy_diagonalize` (general weight) with
+`moebius_inversion_multiples` (the inner GPY variable `∑_{r∣d} λ_d/d` evaluates to `Y r` exactly).
+This is the crux that makes Path-Y `s1` contour-free: with `R = {r ≤ N squarefree, (r,W)=1}` and
+`Y r = F(log r/log R)/φ(r)`, `φ(r)Y(r)² = (μ²/φ)(r)·F²`, so the main term is exactly the
+`WeightedMertens.weighted_mertens_coprime_sq` sum `→ (φ(W)/W)·∫F²` — NO PNT-strength `z_r`. -/
+theorem gpy_diagonalize_yform_smooth (R : Finset ℕ)
+    (hR0 : ∀ s ∈ R, 1 ≤ s)
+    (hRdc : ∀ s ∈ R, ∀ d, d ∣ s → d ∈ R)
+    (Y : ℕ → ℝ) :
+    (∑ d ∈ R, ∑ e ∈ R,
+        ((d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y s))
+          * ((e : ℝ) * (∑ s ∈ R.filter (fun s => e ∣ s), (moebius (s / e) : ℝ) * Y s))
+          / (Nat.lcm d e : ℝ))
+      = ∑ r ∈ R, (Nat.totient r : ℝ) * Y r ^ 2 := by
+  rw [gpy_diagonalize R R
+    (fun d => (d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y s))
+    hR0 (fun d hd r hr => hRdc d hd r hr)]
+  refine Finset.sum_congr rfl (fun r hr => ?_)
+  congr 1
+  have hinner : (∑ d ∈ R.filter (fun d => r ∣ d),
+        ((d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y s)) / (d : ℝ))
+      = Y r := by
+    rw [← moebius_inversion_multiples R hR0 hRdc Y r hr]
+    refine Finset.sum_congr rfl (fun d hd => ?_)
+    have hd1 : 1 ≤ d := hR0 d ((Finset.mem_filter.mp hd).1)
+    have : (d : ℝ) ≠ 0 := by positivity
+    field_simp
+  rw [hinner]
+
 end BoundedGaps.Sieve
