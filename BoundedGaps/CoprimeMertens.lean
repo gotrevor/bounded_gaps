@@ -274,6 +274,58 @@ theorem coprime_geometric_inversion (p : ℕ) (hp : p.Prime) (N : ℕ) :
       have hrec := coprime_mertens_recursion p hp N
       linarith [hrec]
 
+/-- **Summability of the general inverted series** (coprimality base `V`). Mirror of
+`inversion_summable`. -/
+theorem inversion_summable_general (p V : ℕ) (hp : p.Prime) (N : ℕ) :
+    Summable (fun k : ℕ =>
+      (- (1 / ((p:ℝ)-1)))^k * (∑ n ∈ Finset.Icc 1 (N / p^k), gMuSqTotientCoprime V n)) := by
+  refine summable_of_ne_finset_zero (s := Finset.range (N+1)) ?_
+  intro k hk
+  rw [Finset.mem_range, not_lt] at hk
+  have hpk : N < p ^ k := lt_of_lt_of_le (Nat.lt_pow_self hp.one_lt)
+    (Nat.pow_le_pow_right hp.pos (by omega))
+  rw [Nat.div_eq_of_lt hpk]; simp
+
+/-- **General geometric inversion** (the inductive step for `hBaseW`). Inverting
+`coprime_mertens_recursion_general` expresses the finer `pV`-coprime sum via the coarser
+`V`-coprime sums:
+  `∑_{n≤N,(n,pV)=1} μ²/φ = ∑_{k≥0} (-1/(p-1))^k · ∑_{n≤N/p^k,(n,V)=1} μ²/φ`,
+i.e. `S_{pV}(N) = ∑_k (-1/(p-1))^k S_V(N/p^k)`. Generalises `coprime_geometric_inversion`
+(`V = 1`, `S_1 = U`). With the base limit `S_V/log N → φ(V)/V`, taking `/log N` term-by-term
+(DCT for odd `p`; recursion + second-order for `p = 2`, only needed at `V = 1`) yields
+`S_{pV}/log N → (φ(V)/V)·(p-1)/p = φ(pV)/(pV)`. UNCONDITIONAL. -/
+theorem coprime_geometric_inversion_general (p V : ℕ) (hp : p.Prime) (hpV : Nat.Coprime p V)
+    (N : ℕ) :
+    (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (p * V) n)
+      = ∑' k : ℕ, (- (1 / ((p:ℝ)-1)))^k
+          * (∑ n ∈ Finset.Icc 1 (N / p^k), gMuSqTotientCoprime V n) := by
+  induction N using Nat.strong_induction_on with
+  | _ N ih =>
+    rcases Nat.eq_zero_or_pos N with hN | hN
+    · subst hN
+      have hz : ∀ k : ℕ, (- (1 / ((p:ℝ)-1)))^k
+          * (∑ n ∈ Finset.Icc 1 (0 / p^k), gMuSqTotientCoprime V n) = 0 := by
+        intro k; rw [Nat.zero_div]; simp
+      rw [tsum_congr hz, tsum_zero]; simp
+    · rw [(inversion_summable_general p V hp N).tsum_eq_zero_add]
+      have hterm0 : (- (1 / ((p:ℝ)-1)))^0
+          * (∑ n ∈ Finset.Icc 1 (N / p^0), gMuSqTotientCoprime V n)
+          = ∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime V n := by
+        rw [pow_zero, one_mul, pow_zero, Nat.div_one]
+      have htail : (∑' k : ℕ, (- (1 / ((p:ℝ)-1)))^(k+1)
+            * (∑ n ∈ Finset.Icc 1 (N / p^(k+1)), gMuSqTotientCoprime V n))
+          = (- (1 / ((p:ℝ)-1)))
+            * (∑' k : ℕ, (- (1 / ((p:ℝ)-1)))^k
+                * (∑ n ∈ Finset.Icc 1 ((N / p) / p^k), gMuSqTotientCoprime V n)) := by
+        rw [← tsum_mul_left]
+        apply tsum_congr; intro k
+        have hdiv : N / p^(k+1) = (N / p) / p^k := by
+          rw [pow_succ, Nat.div_div_eq_div_mul, Nat.mul_comm]
+        rw [hdiv, pow_succ]; ring
+      rw [hterm0, htail, ← ih (N / p) (Nat.div_lt_self hN hp.one_lt)]
+      have hrec := coprime_mertens_recursion_general p V hp hpV N
+      linarith [hrec]
+
 /-- **The geometric target value** (`p ≥ 3`). The limit of the inverted series' coefficients:
 `∑_k (-1/(p-1))^k = (p-1)/p = φ(p)/p`. For `p ≥ 3` the ratio `1/(p-1) < 1`, so this is a convergent
 signed geometric series with sum `1/(1+1/(p-1)) = (p-1)/p`. This is the target constant of the
