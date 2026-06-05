@@ -1,5 +1,24 @@
 # Online research requests — bounded_gaps
 
+## 2026-06-05 (lap 10) — UPDATE: diagonal leg DISCHARGED in-kernel; off-diagonal SOFT reductions + sharp coefficient bound done; narrowed open question
+
+Lap 10 wired the diagonal leg fully (`S1DiagCorrection.diag_correction_ratio_tendsto_zero`, PNT-free,
+axiom-clean) and reduced the WHOLE contour-free y-space s1 to the single M-free target
+`offDiagMass/B^{+k} → 0` (`S1DiagFree.yspace_s1_sieveSum_div_tendsto_offDiagMass`). The off-diagonal
+SOFT reduction chain is now machine-checked in-kernel: union over pairs
+(`S1OffDiagSize.offdiag_le_sum_pairs`), union over shared primes (`pair_offdiag_le_sum_primes`),
+per-coordinate factorization (`piFinset_filter_prod_factor`), and the `∑_{p>D₀}1/p²` tail (done).
+**The sharp coefficient bound `|yLambda d| ≤ (d/φ(d))·C·∑μ²/φ` is now PROVEN PNT-free in-kernel**
+(`S1Correction.abs_yLambda_le_sharp`) — so the lap-9 "open sub-question (elementary or needs sharp |λ|?)"
+is answered: the sharp bound IS elementary, and I've sketched the per-prime mass fraction's elementary
+proof (reindex `d = p·d'`: `φ(p d')=(p-1)φ(d')`, `lcm(p d',e)=p·lcm(d',e)` ⟹ a `1/(p-1)` factor;
+Aristotle brick `0e387e89` is proving the per-term core).
+
+**NARROWED remaining literature question:** confirm (1) the exact growth rate `D₀(N)` in Maynard's S1
+off-diagonal (e.g. `log log log N`?) and the precise inequality/Lemma number, and (2) that the
+elementary per-prime `1/(p-1)` route above matches the standard treatment (vs needing the singular
+series's exact Euler product). The PNT request below is fully MOOT.
+
 ## 2026-06-05 (lap 9) — REVISES the PNT request below: the real blocker is the off-diagonal S1 leg with a GROWING modulus `W`, not PNT
 
 **Context update.** Lap 9 re-analysed the s1 correction `hcorr` (see `PENDING_WORK.md` lap-9 head).
