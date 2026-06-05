@@ -1170,4 +1170,28 @@ theorem yspace_muphi_diagonal_tendsto {W : ℕ} {F : ℝ → ℝ} (hF : ContDiff
   refine h.congr (fun N => ?_)
   rw [gMuSqTotientCoprime_sum_eq_filter N W (fun n => F (Real.log n / Real.log N) ^ 2)]
 
+/-- **Bilinear (cross-term) Path-Y `s1` diagonal main term → `(φ(W)/W)·∫F₁F₂`.** The `j≠j'` analog
+of `yspace_muphi_diagonal_tendsto`: for `ContDiff ℝ 1 F₁, F₂`,
+`(∑_{r≤N, sf, (r,W)=1}(μ²/φ)·F₁(log r/logN)·F₂(log r/logN))/log N → (φ(W)/W)·∫₀¹F₁F₂`. Via
+`weighted_mertens_general_of_contDiff` on the `C¹` product `F₁·F₂` + the connector. Conditional only
+on `hBaseW`. -/
+theorem yspace_muphi_bilinear_tendsto {W : ℕ} {F₁ F₂ : ℝ → ℝ}
+    (hF₁ : ContDiff ℝ 1 F₁) (hF₂ : ContDiff ℝ 1 F₂)
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime W n) / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W))) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ r ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+            ((ArithmeticFunction.moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+              * (F₁ (Real.log r / Real.log N) * F₂ (Real.log r / Real.log N)))
+          / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W * ∫ u in (0 : ℝ)..1, F₁ u * F₂ u)) := by
+  have hF : ContDiff ℝ 1 (fun u => F₁ u * F₂ u) := hF₁.mul hF₂
+  have h := weighted_mertens_general_of_contDiff (g := gMuSqTotientCoprime W)
+    (c := (W.totient : ℝ) / W) (F := fun u => F₁ u * F₂ u) hF hBaseW
+  refine h.congr (fun N => ?_)
+  rw [gMuSqTotientCoprime_sum_eq_filter N W
+    (fun n => F₁ (Real.log n / Real.log N) * F₂ (Real.log n / Real.log N))]
+
 end BoundedGaps.WeightedMertens

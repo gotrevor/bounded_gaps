@@ -2437,4 +2437,57 @@ theorem sieveR_yspace_hyps (N W : ℕ) :
     have hdN : d ≤ N := le_trans (Nat.le_of_dvd (by omega) hds) hsN
     exact ⟨⟨hd1, hdN⟩, hsf.squarefree_of_dvd hds, Nat.Coprime.coprime_dvd_left hds hcop⟩
 
+/-- **Bilinear (cross-term `j≠j'`) y-space diagonalisation, smooth form.** The bilinear analog of
+`gpy_diagonalize_yform_smooth` (via `gpy_diagonalize_bilinear` + `moebius_inversion_multiples` on each
+factor): for inversion coefficients `λ^{(a)}_d = d·∑_{s∈R,d|s}μ(s/d)Y_a(s)`,
+`∑_{d,e∈R} λ^{(1)}_d λ^{(2)}_e/[d,e] = ∑_{r∈R} φ(r)·Y₁(r)·Y₂(r)`. -/
+theorem gpy_diagonalize_yform_smooth_bilinear (R : Finset ℕ)
+    (hR0 : ∀ s ∈ R, 1 ≤ s) (hRdc : ∀ s ∈ R, ∀ d, d ∣ s → d ∈ R) (Y₁ Y₂ : ℕ → ℝ) :
+    (∑ d ∈ R, ∑ e ∈ R,
+        ((d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y₁ s))
+          * ((e : ℝ) * (∑ s ∈ R.filter (fun s => e ∣ s), (moebius (s / e) : ℝ) * Y₂ s))
+          / (Nat.lcm d e : ℝ))
+      = ∑ r ∈ R, (Nat.totient r : ℝ) * (Y₁ r * Y₂ r) := by
+  rw [gpy_diagonalize_bilinear R R
+    (fun d => (d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y₁ s))
+    (fun e => (e : ℝ) * (∑ s ∈ R.filter (fun s => e ∣ s), (moebius (s / e) : ℝ) * Y₂ s))
+    hR0 (fun d hd r hr => hRdc d hd r hr)]
+  refine Finset.sum_congr rfl (fun r hr => ?_)
+  congr 1
+  have inv : ∀ (Y : ℕ → ℝ), (∑ d ∈ R.filter (fun d => r ∣ d),
+        ((d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s), (moebius (s / d) : ℝ) * Y s)) / (d : ℝ))
+      = Y r := by
+    intro Y
+    rw [← moebius_inversion_multiples R hR0 hRdc Y r hr]
+    refine Finset.sum_congr rfl (fun d hd => ?_)
+    have hd1 : 1 ≤ d := hR0 d ((Finset.mem_filter.mp hd).1)
+    have : (d : ℝ) ≠ 0 := by positivity
+    field_simp
+  rw [inv Y₁, inv Y₂]
+
+/-- **Bilinear y-space diagonalisation, `μ²/φ` form** (the cross-term `s1` shape). With
+`Y_a(s) = F_a(log s/L)/φ(s)` on squarefree divisor-closed `R`:
+`∑_{d,e∈R} λ^{(1)}_d λ^{(2)}_e/[d,e] = ∑_{r∈R}(μ²/φ)(r)·F₁(log r/L)·F₂(log r/L)`. -/
+theorem gpy_diagonalize_yform_muphi_bilinear (R : Finset ℕ)
+    (hR0 : ∀ s ∈ R, 1 ≤ s) (hRsf : ∀ s ∈ R, Squarefree s)
+    (hRdc : ∀ s ∈ R, ∀ d, d ∣ s → d ∈ R) (F₁ F₂ : ℝ → ℝ) (L : ℝ) :
+    (∑ d ∈ R, ∑ e ∈ R,
+        ((d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s),
+            (moebius (s / d) : ℝ) * (F₁ (Real.log s / L) / (Nat.totient s : ℝ))))
+          * ((e : ℝ) * (∑ s ∈ R.filter (fun s => e ∣ s),
+            (moebius (s / e) : ℝ) * (F₂ (Real.log s / L) / (Nat.totient s : ℝ))))
+          / (Nat.lcm d e : ℝ))
+      = ∑ r ∈ R, ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+          * (F₁ (Real.log r / L) * F₂ (Real.log r / L)) := by
+  rw [gpy_diagonalize_yform_smooth_bilinear R hR0 hRdc
+    (fun s => F₁ (Real.log s / L) / (Nat.totient s : ℝ))
+    (fun s => F₂ (Real.log s / L) / (Nat.totient s : ℝ))]
+  refine Finset.sum_congr rfl (fun r hr => ?_)
+  have hφ : (0 : ℝ) < (Nat.totient r : ℝ) := by
+    have : 0 < Nat.totient r := Nat.totient_pos.mpr (hR0 r hr)
+    exact_mod_cast this
+  have hμ : ((moebius r : ℝ)) ^ 2 = 1 := by
+    have := ArithmeticFunction.moebius_sq_eq_one_of_squarefree (hRsf r hr); exact_mod_cast this
+  rw [hμ]; field_simp
+
 end BoundedGaps.Sieve

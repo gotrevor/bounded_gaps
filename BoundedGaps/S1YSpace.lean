@@ -57,4 +57,37 @@ theorem yspace_sieve_quadform_tendsto {W : ℕ} {F : ℝ → ℝ} (hF : ContDiff
     ((Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W)) h0 hsf hdc F (Real.log N)]
   rfl
 
+/-- **The explicit y-space Selberg quadratic CROSS form → `(φ(W)/W)·∫F₁F₂`, contour-free.**
+The `j≠j'` analog of `yspace_sieve_quadform_tendsto` — the cross-term `s1` block. With the two
+inversion coefficients `yLambda R_N F₁ (log N)`, `yLambda R_N F₂ (log N)`,
+`(∑_{d,e∈R_N} λ^{(1)}_d λ^{(2)}_e/[d,e])/log N → (φ(W)/W)·∫₀¹F₁F₂`. Composes
+`SieveExpansion.gpy_diagonalize_yform_muphi_bilinear` with `WeightedMertens.yspace_muphi_bilinear_tendsto`.
+With `yspace_sieve_quadform_tendsto` this covers every block of the general
+`ν = (∑_j c_j ∏_i λ_{F_{j,i}})²` after opening the square. Conditional only on `hBaseW`. -/
+theorem yspace_sieve_quadform_bilinear_tendsto {W : ℕ} {F₁ F₂ : ℝ → ℝ}
+    (hF₁ : ContDiff ℝ 1 F₁) (hF₂ : ContDiff ℝ 1 F₂)
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, BoundedGaps.WeightedMertens.gMuSqTotientCoprime W n)
+        / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W))) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ d ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+          ∑ e ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+            yLambda ((Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W))
+                F₁ (Real.log N) d
+              * yLambda ((Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W))
+                F₂ (Real.log N) e
+              / (Nat.lcm d e : ℝ)) / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W * ∫ u in (0 : ℝ)..1, F₁ u * F₂ u)) := by
+  have hlim := BoundedGaps.WeightedMertens.yspace_muphi_bilinear_tendsto
+    (W := W) (F₁ := F₁) (F₂ := F₂) hF₁ hF₂ hBaseW
+  refine hlim.congr (fun N => ?_)
+  congr 1
+  obtain ⟨h0, hsf, hdc⟩ := BoundedGaps.Sieve.sieveR_yspace_hyps N W
+  rw [← BoundedGaps.Sieve.gpy_diagonalize_yform_muphi_bilinear
+    ((Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W)) h0 hsf hdc
+    F₁ F₂ (Real.log N)]
+  rfl
+
 end BoundedGaps.S1YSpace
