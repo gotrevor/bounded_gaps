@@ -611,6 +611,145 @@ theorem weighted_mertens_of_contDiff {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) :
     simpa [Real.norm_eq_abs] using h
   exact weighted_mertens hLip hCont
 
+/-- **μ²/φ-weighted Mertens for ALL continuous `F`** (drops the Lipschitz hypothesis of
+`weighted_mertens`). For `F` merely continuous on `[0,1]`,
+`(∑_{1≤n≤N} (μ²(n)/φ(n))·F(log n/log N)) / log N → ∫₀¹ F`.
+
+Proof: Weierstrass (`exists_polynomial_near_of_continuousOn`) supplies a polynomial `p` with
+`sup_{[0,1]} |p − F| < ε/4`; `p` is `C¹` so `weighted_mertens_of_contDiff` gives the limit for the
+`p`-weighted sum (`→ ∫₀¹ p`). The error between the `F`- and `p`-weighted sums is
+`≤ (ε/4)·(∑ μ²/φ)/log N`, and `(∑ μ²/φ)/log N → 1` (the `F≡1` case), while `|∫₀¹ (p−F)| ≤ ε/4`.
+A 3·ε argument closes it. This removes the Lipschitz wart so the generic `y_r`-space ladder
+(`WeightedRiemannGen`) can require only continuity, matching the bare `1/n` ladder. -/
+theorem weighted_mertens_continuous {F : ℝ → ℝ} (hCont : ContinuousOn F (Set.Icc (0 : ℝ) 1)) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) := by
+  -- total mass `(∑ μ²/φ)/log N → 1`.
+  have hmass : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * (1 : ℝ)) / Real.log N)
+      atTop (nhds 1) := by
+    have h := weighted_mertens_of_contDiff (F := fun _ : ℝ => (1 : ℝ)) contDiff_const
+    simpa using h
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  have hε4 : (0 : ℝ) < ε / 4 := by linarith
+  -- Weierstrass: polynomial `p` within `ε/4` of `F` on `[0,1]`.
+  obtain ⟨p, hp_near⟩ := exists_polynomial_near_of_continuousOn 0 1 F hCont (ε / 4) hε4
+  have hp_cd : ContDiff ℝ 1 (fun x : ℝ => p.eval x) := by
+    have h := Polynomial.contDiff_aeval (𝕜 := ℝ) p (1 : WithTop ℕ∞)
+    simpa [Polynomial.aeval_def, Polynomial.eval₂_eq_eval_map, Polynomial.map_id] using h
+  have hp_cont : ContinuousOn (fun x : ℝ => p.eval x) (Set.Icc (0 : ℝ) 1) :=
+    hp_cd.continuous.continuousOn
+  -- `p`-weighted sum `→ ∫₀¹ p`.
+  have hp_lim := weighted_mertens_of_contDiff (F := fun x => p.eval x) hp_cd
+  -- `|∫₀¹ p − ∫₀¹ F| ≤ ε/4`.
+  have hFi : IntervalIntegrable F MeasureTheory.volume 0 1 :=
+    (hCont.mono (by rw [Set.uIcc_of_le (zero_le_one)])).intervalIntegrable
+  have hpi : IntervalIntegrable (fun x : ℝ => p.eval x) MeasureTheory.volume 0 1 :=
+    (hp_cont.mono (by rw [Set.uIcc_of_le (zero_le_one)])).intervalIntegrable
+  have hint_close : |(∫ u in (0 : ℝ)..1, p.eval u) - ∫ u in (0 : ℝ)..1, F u| ≤ ε / 4 := by
+    rw [← intervalIntegral.integral_sub hpi hFi]
+    have hbnd : ‖∫ u in (0 : ℝ)..1, (p.eval u - F u)‖ ≤ (ε / 4) * |(1 : ℝ) - 0| := by
+      refine intervalIntegral.norm_integral_le_of_norm_le_const (fun u hu => ?_)
+      rw [Set.uIoc_of_le (zero_le_one)] at hu
+      have hu' : u ∈ Set.Icc (0 : ℝ) 1 := ⟨le_of_lt hu.1, hu.2⟩
+      rw [Real.norm_eq_abs]
+      exact le_of_lt (hp_near u hu')
+    rw [Real.norm_eq_abs] at hbnd
+    simpa using hbnd
+  -- eventually: `p`-sum within `ε/4` of `∫₀¹ p`.
+  obtain ⟨N1, hN1⟩ := (Metric.tendsto_atTop.1 hp_lim) (ε / 4) hε4
+  -- eventually: total mass `< 2`.
+  obtain ⟨N2, hN2⟩ := (Metric.tendsto_atTop.1 hmass) 1 one_pos
+  refine ⟨max (max N1 N2) 2, fun N hN => ?_⟩
+  have hN1' : N1 ≤ N := le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) hN
+  have hN2' : N2 ≤ N := le_trans (le_trans (le_max_right _ _) (le_max_left _ _)) hN
+  have hN2le : (2 : ℕ) ≤ N := le_trans (le_max_right _ _) hN
+  have hlogN : 0 < Real.log (N : ℝ) := Real.log_pos (by exact_mod_cast (by omega : 1 < N))
+  -- error term between F-sum and p-sum.
+  have herr : |(∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N))
+        / Real.log N
+        - (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * p.eval (Real.log n / Real.log N))
+          / Real.log N| < ε / 2 := by
+    rw [div_sub_div_same, ← Finset.sum_sub_distrib, abs_div, abs_of_pos hlogN]
+    have hterm : ∀ n ∈ Finset.Icc 1 N,
+        gMoebiusSqTotient n * F (Real.log n / Real.log N)
+          - gMoebiusSqTotient n * p.eval (Real.log n / Real.log N)
+        = gMoebiusSqTotient n * (F (Real.log n / Real.log N) - p.eval (Real.log n / Real.log N)) := by
+      intro n _; ring
+    rw [Finset.sum_congr rfl hterm]
+    have hg0 : ∀ n, 0 ≤ gMoebiusSqTotient n := fun n => by rw [gMoebiusSqTotient_apply]; positivity
+    have hmem : ∀ n ∈ Finset.Icc 1 N, Real.log (n : ℝ) / Real.log N ∈ Set.Icc (0 : ℝ) 1 := by
+      intro n hn
+      obtain ⟨hn1, hnN⟩ := Finset.mem_Icc.mp hn
+      have hlogn0 : 0 ≤ Real.log (n : ℝ) := Real.log_nonneg (by exact_mod_cast hn1)
+      have hlognN : Real.log (n : ℝ) ≤ Real.log (N : ℝ) :=
+        Real.log_le_log (by exact_mod_cast (by omega : 0 < n)) (by exact_mod_cast hnN)
+      exact ⟨div_nonneg hlogn0 hlogN.le, by rw [div_le_one hlogN]; exact hlognN⟩
+    have hnum : |∑ n ∈ Finset.Icc 1 N,
+          gMoebiusSqTotient n * (F (Real.log n / Real.log N) - p.eval (Real.log n / Real.log N))|
+        ≤ (ε / 4) * ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * (1 : ℝ) := by
+      calc |∑ n ∈ Finset.Icc 1 N,
+              gMoebiusSqTotient n * (F (Real.log n / Real.log N) - p.eval (Real.log n / Real.log N))|
+          ≤ ∑ n ∈ Finset.Icc 1 N,
+              |gMoebiusSqTotient n * (F (Real.log n / Real.log N)
+                - p.eval (Real.log n / Real.log N))| := Finset.abs_sum_le_sum_abs _ _
+        _ ≤ ∑ n ∈ Finset.Icc 1 N, (ε / 4) * (gMoebiusSqTotient n * (1 : ℝ)) := by
+            refine Finset.sum_le_sum (fun n hn => ?_)
+            rw [abs_mul, abs_of_nonneg (hg0 n)]
+            have hcl : |F (Real.log n / Real.log N) - p.eval (Real.log n / Real.log N)| ≤ ε / 4 := by
+              rw [abs_sub_comm]; exact le_of_lt (hp_near _ (hmem n hn))
+            have : gMoebiusSqTotient n
+                * |F (Real.log n / Real.log N) - p.eval (Real.log n / Real.log N)|
+                ≤ gMoebiusSqTotient n * (ε / 4) := mul_le_mul_of_nonneg_left hcl (hg0 n)
+            rw [mul_one]; rw [mul_comm (ε / 4)]; exact this
+        _ = (ε / 4) * ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * (1 : ℝ) := by rw [Finset.mul_sum]
+    have hmass_bnd : (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * (1 : ℝ)) / Real.log N < 2 := by
+      have := hN2 N hN2'
+      rw [Real.dist_eq] at this; linarith [(abs_lt.1 this).2]
+    have hmass_nn : 0 ≤ (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * (1 : ℝ)) :=
+      Finset.sum_nonneg (fun n _ => by rw [mul_one]; exact hg0 n)
+    calc |∑ n ∈ Finset.Icc 1 N,
+            gMoebiusSqTotient n * (F (Real.log n / Real.log N)
+              - p.eval (Real.log n / Real.log N))| / Real.log N
+        ≤ ((ε / 4) * ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * (1 : ℝ)) / Real.log N :=
+          div_le_div_of_nonneg_right hnum hlogN.le
+      _ = (ε / 4) * ((∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * (1 : ℝ)) / Real.log N) := by
+          rw [mul_div_assoc]
+      _ < (ε / 4) * 2 := by
+          apply mul_lt_mul_of_pos_left hmass_bnd hε4
+      _ = ε / 2 := by ring
+  -- assemble triangle inequality.
+  have hp_close := hN1 N hN1'
+  rw [Real.dist_eq] at hp_close ⊢
+  have htri : |(∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N))
+        / Real.log N - ∫ u in (0 : ℝ)..1, F u|
+      ≤ |(∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N)) / Real.log N
+          - (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * p.eval (Real.log n / Real.log N))
+            / Real.log N|
+        + |(∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * p.eval (Real.log n / Real.log N))
+            / Real.log N - ∫ u in (0 : ℝ)..1, p.eval u|
+        + |(∫ u in (0 : ℝ)..1, p.eval u) - ∫ u in (0 : ℝ)..1, F u| := by
+    have := abs_sub_le
+      ((∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N)) / Real.log N)
+      ((∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * p.eval (Real.log n / Real.log N)) / Real.log N)
+      (∫ u in (0 : ℝ)..1, F u)
+    have h2 := abs_sub_le
+      ((∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * p.eval (Real.log n / Real.log N)) / Real.log N)
+      (∫ u in (0 : ℝ)..1, p.eval u)
+      (∫ u in (0 : ℝ)..1, F u)
+    calc _ ≤ _ + _ := this
+      _ ≤ _ := by
+          have := add_le_add_left h2
+            |(∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N))
+              / Real.log N
+              - (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * p.eval (Real.log n / Real.log N))
+                / Real.log N|
+          linarith [this]
+  linarith [htri, herr, hp_close, hint_close]
+
 /-- **Path-Y leaf-1 analytic core (1-D, `W = 1`, singular series `𝔖 = 1`).** Maynard's diagonal
 Selberg main term in `y_r`-space (`S1Summation2`): for `F` of class `C¹`, the `(μ²/φ)`-weighted sum
 of `F²` over `r ≤ N` has the sharp asymptotic
