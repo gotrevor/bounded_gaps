@@ -2,6 +2,57 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## ✅✅✅✅✅✅ PROGRESS 2026-06-05 (lap 6) — y-space S1 crystallised to ONE conditional theorem + correction is UNCONDITIONAL (not BV-gated)
+
+Three axiom-clean commits (`648d461`, `e02d2cb`, `4643f46`), full build green (8296 jobs) at every
+gate. This lap (a) crystallised the whole contour-free y-space S1 chain into a single top-level limit
+about the **actual** sieve sum, (b) discharged the unconditional diagonal half of the correction, and
+(c) **corrected a strategic error in the handoffs**: the s1 correction is *not* BV-gated.
+
+### NEW files (all axiom-clean `[propext, Classical.choice, Quot.sound]`)
+- **`S1MainLimit.lean`** — the heuristic-main limit, B^{+k} normalisation:
+  - `yspace_box_quadform_div_tendsto` (J=1 instance of `yspace_kd_box_product_tendsto`):
+    `∏ᵢ quadForm/(log N)^k → (φW/W)^k·mkF_den`.
+  - **`yspace_s1_heuristic_main_div_sieveB_tendsto`**: with level `R=N`, scale `x=W·N+2`, the y-space
+    heuristic main `/ (sieveB W N ^ k · M) → mkF_denominator k (∏Fs)` — **α exactly `mkF_denominator`,
+    no leftover factor** (the (φW/W)^k singular series and (log N)^k all absorbed into B^{+k}). The
+    contour-free analog of `alphaBound`'s `(α+o(1))·B^{-k}·x/W`.
+- **`S1DiagonalSize.lean`** — the diagonal half of `correction = o(main)`, **unconditional**:
+  - `ratio_log_pow_tendsto_zero` (`(1+L)^{k-1}/L^k → 0`), `ratio_loglog_tendsto_zero`,
+    **`hyperbola_count_div_tendsto_zero`** (`Dₖ(N)/(N·(log N)^k) → 0`), `hyperbola_count_isLittleO`
+    (the `IsLittleO` form). Squeezes the k-D Dirichlet count (`Sieve.hyperbola_count_le`) against
+    `(1+log N)^{k-1}/(log N)^k`. Convention-independent (count is the same object d-/y-space).
+- **`S1FullLimit.lean`** — the honest top-level statement:
+  - **`yspace_s1_sieveSum_div_tendsto`**: the *actual* `sieveSum (selberg_nu_yr_sep …)` at scale
+    `x=W·N+2`, level `R=N`, `/ (sieveB W N ^ k · M) → mkF_denominator k (∏Fs)`, **conditional ONLY on
+    the correction `hcorr : correction/(sieveB^k·M) → 0`** + `hBaseW`. Composes the (unconditional)
+    heuristic-main limit with the exact algebraic split
+    (`S1YSpace.sieveSum_selberg_nu_yr_sep_eq_heuristic_add_correction`).
+
+### ⚠️⚠️ KEY STRATEGIC CORRECTION (lap 6): the s1 correction is UNCONDITIONAL, NOT BV-gated
+The lap-4/5 handoffs repeatedly call the s1 off-diagonal `o(main)` correction "BV-gated (gap C)".
+**This is wrong — it conflates s1 with s2.** Classically (Maynard, GPY) and per the repo's own
+`archive/findings/ON-LINE-FINDINGS-2026-06-04-gpy-diagonal-asymptotic.md` (line 121: the s1 sum "is
+the **unconditional** case, needs no EH"), **only S2 (the prime weight `θ`) needs EH/BV** for its
+level of distribution; **S1 (the non-prime weight) is elementary** — bounded by divisor sums +
+singular-series convergence. So the contour-free y-space S1 can be completed with **no analytic
+axioms** (only `hBaseW`, which Aristotle `65d11d89` is computing, + the architectural `B^{±k}` flip).
+
+**Concrete elementary attack for the off-diagonal correction (the `hcorr` of `S1FullLimit`):** with
+the W-trick (`W = ∏_{p≤D₀}p`, `D₀ ≥ all hᵢ`), `lattice_count_offdiag_vanish_Wtrick` gives `count_P=0`
+for every `¬diag` P (two coordinates sharing a prime `p>D₀`, incompatible shifts). So
+`correction = [diagonal O(1) error] − [off-diagonal main ∑_{¬diag}(∏λλ)·M/∏[dᵢ,eᵢ]]`.
+- **Diagonal O(1) error** `∑_{diag}|∏λλ|·1`: bounded by the diagonal weight `≤ C²·Dₖ(R)`
+  (`Sieve.diagonal_weight_le_count`) `= o(M·(log R)^k)` via **`S1DiagonalSize` (DONE this lap)** — once
+  the y-space coefficient `∏ yLambda²` is bounded `≤ C²·∏μ²·F²` (the remaining y-space coeff bound).
+- **Off-diagonal main** `M·∑_{¬diag P}|∏λλ|/∏[dᵢ,eᵢ]`: bound `∑_{¬diag} ≤ (∑_{i<j}∑_{p>D₀}1/p²)·∏ᵢQ'ᵢ`
+  where `Q'ᵢ = ∑_{d,e}|λλ|/[d,e] = O(log R)`; the shared-prime restriction gives the `∑_{p>D₀}1/p²`
+  factor `→ 0` as `D₀→∞` (Mertens-level, **in mathlib** — no BV). ⟹ `= o(M·(log R)^k) = o(main)`.
+
+So the next lap's S1 endgame is **two elementary, unconditional Lean lemmas** (the y-space coeff bound
++ the shared-prime singular-series `1/p²` tail), feeding `hcorr` → `S1FullLimit` becomes
+unconditional, then the architectural `B^{±k}` flip (Trevor) discharges `s1_holds_from_nonprime_asym`.
+
 ## ✅✅✅✅✅ PROGRESS 2026-06-05 (lap 5) — box→simplex assembly (gap A4) + count→M candidate-set inclusion DONE
 
 Four axiom-clean commits (`82debdc`…`823303b`), full build green (8292 jobs) at every gate. This lap
