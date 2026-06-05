@@ -768,4 +768,303 @@ theorem weighted_mertens_sq {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) :
       atTop (nhds (∫ u in (0 : ℝ)..1, F u ^ 2)) :=
   weighted_mertens_of_contDiff (hF.pow 2)
 
+/-! ## General weighted Mertens (arbitrary weight `g` with base log-density `c`)
+
+The `μ²/φ` weighted-Mertens machinery (`weighted_mertens`) abstracted over an arbitrary weight
+`g : ℕ → ℝ` whose **unweighted** log-density tends to a constant `c`
+(`(∑_{1≤n≤N} g n)/log N → c`, the input `hBase`). The smooth-weight upgrade
+`(∑_{1≤n≤N} g n · F(log n/log N))/log N → c · ∫₀¹ F` is then unconditional: only the base
+density `c` is an analytic input. Proof skeleton mirrors `weighted_mertens_of_riemann` with the
+harmonic model `1/n` replaced by `c/n`: split `g·F = (c/n)·F + (g − c/n)·F`; the model part is
+`c ·` the `1/n` Riemann sum (`riemann_sum_log_weight`), the discrepancy part vanishes via the
+general Abel-summation tail (`discrepancy_weighted_general`).
+
+This is the form the **W-trick singular series** needs: with `g(n) = (μ²/φ)(n)·[(n,W)=1]` and
+`c = φ(W)/W`, it is the Path-Y `s1` main term *including* the `φ(W)/W` factor (Maynard
+`S1Summation2` / GGPY Lemma 4),
+`(∑_{n≤N,(n,W)=1}(μ²/φ)·F(log n/log N))/log N → (φ(W)/W)·∫₀¹F`. The base density `c = φ(W)/W`
+is the (W-coprime) sharp Mertens (Aristotle brick `65d11d89`); here it is the hypothesis `hBase`.
+The original `weighted_mertens` is the `g = μ²/φ`, `c = 1` instance
+(`sharp_mertens_unconditional`); see the `example` after `weighted_mertens_general`. -/
+
+/-- **General discrepancy** of a weight `g` against the harmonic model `c/n`:
+`(∑_{1≤k≤n} g k) − c·harmonic n`, i.e. the partial sum of `g k − c/k`. Generalises `Bdisc`
+(the `g = μ²/φ`, `c = 1` case). -/
+noncomputable def BdiscG (g : ℕ → ℝ) (c : ℝ) (n : ℕ) : ℝ :=
+  (∑ k ∈ Finset.Icc 1 n, g k) - c * (harmonic n : ℝ)
+
+/-- The partial sum of `a_k = g k − c/k` is exactly the general discrepancy `BdiscG g c n`. -/
+lemma sum_sub_eq_BdiscG (g : ℕ → ℝ) (c : ℝ) (n : ℕ) :
+    (∑ k ∈ Finset.Icc 1 n, (g k - c / (k : ℝ))) = BdiscG g c n := by
+  rw [Finset.sum_sub_distrib, BdiscG]
+  congr 1
+  rw [harmonic_eq_sum_Icc]
+  push_cast
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl (fun k _ => ?_)
+  rw [div_eq_mul_inv]
+
+/-- **The general discrepancy is `o(log N)`.** From the base density `(∑g)/log N → c` and
+`harmonic N/log N → 1`: `BdiscG g c N / log N → c − c·1 = 0`. -/
+lemma BdiscG_div_log_tendsto_zero {g : ℕ → ℝ} {c : ℝ}
+    (hBase : Tendsto (fun N : ℕ => (∑ k ∈ Finset.Icc 1 N, g k) / Real.log N) atTop (nhds c)) :
+    Tendsto (fun N : ℕ => BdiscG g c N / Real.log N) atTop (nhds 0) := by
+  have h := hBase.sub (harmonic_div_log_tendsto_one.const_mul c)
+  rw [mul_one, sub_self] at h
+  refine h.congr (fun N => ?_)
+  rw [BdiscG, sub_div, mul_div_assoc]
+
+/-- **General Abel-tail majorant → 0.** `(∑_{n<N} |BdiscG g c n|·(log(n+1)−log n)) / (log N)² → 0`.
+Mirrors `abel_tail_majorant_tendsto_zero` via `weighted_avg_majorant_tendsto_zero` (`ε_n =
+|BdiscG g c n|/log n → 0`, weight `log n·(log(n+1)−log n)` majorised by `(log N)²`); the `n=1`
+boundary term (which need not vanish for general `g`, unlike `Bdisc 1 = 0`) is split off as a
+constant `/ (log N)² → 0`. -/
+lemma abel_tail_majorant_general {g : ℕ → ℝ} {c : ℝ}
+    (hBase : Tendsto (fun N : ℕ => (∑ k ∈ Finset.Icc 1 N, g k) / Real.log N) atTop (nhds c)) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.range N, |BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n))
+          / (Real.log N) ^ 2) atTop (nhds 0) := by
+  have hw : ∀ n : ℕ, 0 ≤ Real.log n * (Real.log ((n : ℝ) + 1) - Real.log n) := by
+    intro n
+    refine mul_nonneg (Real.log_natCast_nonneg n) ?_
+    rcases Nat.eq_zero_or_pos n with h0 | hpos
+    · subst h0; simp
+    · have : Real.log (n : ℝ) ≤ Real.log ((n : ℝ) + 1) :=
+        Real.log_le_log (by exact_mod_cast hpos) (by linarith)
+      linarith
+  have hε : Tendsto (fun n : ℕ => |BdiscG g c n / Real.log n|) atTop (nhds 0) := by
+    have h := (BdiscG_div_log_tendsto_zero hBase).abs
+    simpa using h
+  have hD : Tendsto (fun N : ℕ => (Real.log N) ^ 2) atTop atTop := by
+    have hlog : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+      Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+    have := hlog.atTop_mul_atTop₀ hlog
+    simpa [pow_two] using this
+  have hmaj : ∀ᶠ N : ℕ in atTop,
+      (∑ n ∈ Finset.range N, Real.log n * (Real.log ((n : ℝ) + 1) - Real.log n)) ≤ (Real.log N) ^ 2 :=
+    Filter.Eventually.of_forall sum_log_mul_log_diff_le_sq
+  have key := weighted_avg_majorant_tendsto_zero hw hε hD hmaj
+  have hconst : Tendsto (fun N : ℕ =>
+      |BdiscG g c 1| * (Real.log ((1 : ℝ) + 1) - Real.log 1) / (Real.log N) ^ 2)
+      atTop (nhds 0) := tendsto_const_nhds.div_atTop hD
+  have hsum := hconst.add key
+  rw [add_zero] at hsum
+  refine hsum.congr' ?_
+  filter_upwards [eventually_ge_atTop 2] with N hN
+  rw [← add_div]
+  congr 1
+  -- numerator: |BdiscG 1|·v_1 + ∑ εw = ∑ |BdiscG n|·v_n
+  have hpt : ∑ n ∈ Finset.range N,
+        (|BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n)
+          - |BdiscG g c n / Real.log n| * (Real.log n * (Real.log ((n : ℝ) + 1) - Real.log n)))
+      = |BdiscG g c 1| * (Real.log ((1 : ℝ) + 1) - Real.log 1) := by
+    rw [Finset.sum_eq_single 1]
+    · push_cast
+      rw [Real.log_one]
+      simp
+    · intro b _ hb1
+      rcases Nat.lt_or_ge b 2 with hlt | hge
+      · interval_cases b
+        · simp
+        · exact absurd rfl hb1
+      · have hlogpos : 0 < Real.log (b : ℝ) :=
+          Real.log_pos (by exact_mod_cast (by omega : (1 : ℕ) < b))
+        rw [abs_div, abs_of_pos hlogpos]
+        field_simp
+        ring
+    · intro h
+      exact absurd (Finset.mem_range.mpr (by omega)) h
+  rw [Finset.sum_sub_distrib] at hpt
+  linarith [hpt]
+
+/-- **General Abel tail → 0.** For `F` Lipschitz on `[0,1]`,
+`(∑_{1≤n≤N−1} BdiscG g c n·(F(log(n+1)/log N) − F(log n/log N))) / log N → 0`. Lipschitz bound on
+the `F`-increment + `abel_tail_majorant_general`, then squeeze. -/
+lemma abel_tail_general {g : ℕ → ℝ} {c : ℝ} {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|)
+    (hBase : Tendsto (fun N : ℕ => (∑ k ∈ Finset.Icc 1 N, g k) / Real.log N) atTop (nhds c)) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 (N - 1), BdiscG g c n *
+          (F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N))) / Real.log N)
+      atTop (nhds 0) := by
+  have hM : 0 ≤ M := by
+    have h := hLip 1 (by constructor <;> norm_num) 0 (by constructor <;> norm_num)
+    have h2 : (0 : ℝ) ≤ |F 1 - F 0| := abs_nonneg _
+    simp only [sub_zero, abs_one, mul_one] at h
+    linarith
+  have hvnn : ∀ n : ℕ, 0 ≤ Real.log ((n : ℝ) + 1) - Real.log n := by
+    intro n
+    rcases Nat.eq_zero_or_pos n with h0 | hpos
+    · subst h0; simp
+    · have : Real.log (n : ℝ) ≤ Real.log ((n : ℝ) + 1) :=
+        Real.log_le_log (by exact_mod_cast hpos) (by linarith)
+      linarith
+  have hMZ : Tendsto (fun N : ℕ =>
+      M * ((∑ n ∈ Finset.range N, |BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n))
+        / (Real.log N) ^ 2)) atTop (nhds 0) := by
+    have := (abel_tail_majorant_general hBase).const_mul M
+    simpa using this
+  refine squeeze_zero_norm' ?_ hMZ
+  filter_upwards [eventually_gt_atTop 1] with N hN
+  have hN1 : (1 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+  have hLpos : 0 < Real.log N := Real.log_pos hN1
+  have hDF : ∀ n ∈ Finset.Icc 1 (N - 1),
+      |F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N)|
+        ≤ M * (Real.log ((n : ℝ) + 1) - Real.log n) / Real.log N := by
+    intro n hn
+    obtain ⟨hn1, hn2⟩ := Finset.mem_Icc.mp hn
+    have hnpos : 0 < (n : ℝ) := by exact_mod_cast hn1
+    have hltN : n < N := by omega
+    have hsuccN : n + 1 ≤ N := by omega
+    have hnR : (n : ℝ) ≤ (N : ℝ) := by exact_mod_cast hltN.le
+    have hn1R : (n : ℝ) + 1 ≤ (N : ℝ) := by exact_mod_cast hsuccN
+    have hlogn0 : 0 ≤ Real.log n := Real.log_natCast_nonneg n
+    have hlogn10 : 0 ≤ Real.log ((n : ℝ) + 1) := by
+      have : Real.log n ≤ Real.log ((n : ℝ) + 1) := Real.log_le_log hnpos (by linarith)
+      linarith
+    have hb0 : 0 ≤ Real.log n / Real.log N := div_nonneg hlogn0 hLpos.le
+    have hb1 : Real.log n / Real.log N ≤ 1 := by
+      rw [div_le_one hLpos]; exact Real.log_le_log hnpos hnR
+    have ha0 : 0 ≤ Real.log ((n : ℝ) + 1) / Real.log N := div_nonneg hlogn10 hLpos.le
+    have ha1 : Real.log ((n : ℝ) + 1) / Real.log N ≤ 1 := by
+      rw [div_le_one hLpos]; exact Real.log_le_log (by linarith) hn1R
+    have habs : |Real.log ((n : ℝ) + 1) / Real.log N - Real.log n / Real.log N|
+        = (Real.log ((n : ℝ) + 1) - Real.log n) / Real.log N := by
+      rw [div_sub_div_same, abs_of_nonneg (div_nonneg (hvnn n) hLpos.le)]
+    calc |F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N)|
+        ≤ M * |Real.log ((n : ℝ) + 1) / Real.log N - Real.log n / Real.log N| :=
+          hLip _ ⟨ha0, ha1⟩ _ ⟨hb0, hb1⟩
+      _ = M * ((Real.log ((n : ℝ) + 1) - Real.log n) / Real.log N) := by rw [habs]
+      _ = M * (Real.log ((n : ℝ) + 1) - Real.log n) / Real.log N := by ring
+  have hbound : |∑ n ∈ Finset.Icc 1 (N - 1), BdiscG g c n *
+        (F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N))|
+      ≤ (M / Real.log N)
+          * ∑ n ∈ Finset.range N, |BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n) := by
+    calc |∑ n ∈ Finset.Icc 1 (N - 1), BdiscG g c n *
+            (F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N))|
+        ≤ ∑ n ∈ Finset.Icc 1 (N - 1), |BdiscG g c n *
+            (F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N))| :=
+          Finset.abs_sum_le_sum_abs _ _
+      _ = ∑ n ∈ Finset.Icc 1 (N - 1), |BdiscG g c n| *
+            |F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N)| := by
+          simp_rw [abs_mul]
+      _ ≤ ∑ n ∈ Finset.Icc 1 (N - 1), |BdiscG g c n|
+            * (M * (Real.log ((n : ℝ) + 1) - Real.log n) / Real.log N) := by
+          refine Finset.sum_le_sum (fun n hn => ?_)
+          exact mul_le_mul_of_nonneg_left (hDF n hn) (abs_nonneg _)
+      _ = (M / Real.log N)
+            * ∑ n ∈ Finset.Icc 1 (N - 1), |BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n) := by
+          rw [Finset.mul_sum]; refine Finset.sum_congr rfl (fun n _ => ?_); ring
+      _ ≤ (M / Real.log N)
+            * ∑ n ∈ Finset.range N, |BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n) := by
+          refine mul_le_mul_of_nonneg_left ?_ (div_nonneg hM hLpos.le)
+          refine Finset.sum_le_sum_of_subset_of_nonneg ?_ (fun i _ _ => ?_)
+          · intro x hx
+            obtain ⟨_, hx2⟩ := Finset.mem_Icc.mp hx
+            exact Finset.mem_range.mpr (by omega)
+          · exact mul_nonneg (abs_nonneg _) (hvnn i)
+  rw [Real.norm_eq_abs, abs_div, abs_of_pos hLpos, div_le_iff₀ hLpos]
+  calc |∑ n ∈ Finset.Icc 1 (N - 1), BdiscG g c n *
+          (F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N))|
+      ≤ (M / Real.log N)
+          * ∑ n ∈ Finset.range N, |BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n) := hbound
+    _ = M * ((∑ n ∈ Finset.range N, |BdiscG g c n| * (Real.log ((n : ℝ) + 1) - Real.log n))
+          / (Real.log N) ^ 2) * Real.log N := by field_simp
+
+/-- **The weighted `g`-vs-`c/n` discrepancy vanishes after `/ log N`.** For `F` Lipschitz on
+`[0,1]`, `(∑_{1≤n≤N} (g n − c/n)·F(log n/log N)) / log N → 0`. Abel summation with `a_k = g k −
+c/k` (partial sums `= BdiscG g c`) routes it to `F 1·(BdiscG/log N) − (Abel tail)/log N → 0`. -/
+lemma discrepancy_weighted_general {g : ℕ → ℝ} {c : ℝ} {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|)
+    (hBase : Tendsto (fun N : ℕ => (∑ k ∈ Finset.Icc 1 N, g k) / Real.log N) atTop (nhds c)) :
+    Tendsto (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, (g n - c / (n : ℝ)) * F (Real.log n / Real.log N))
+          / Real.log N) atTop (nhds 0) := by
+  have hlim : Tendsto (fun N : ℕ =>
+      F 1 * (BdiscG g c N / Real.log N)
+        - (∑ n ∈ Finset.Icc 1 (N - 1), BdiscG g c n *
+            (F (Real.log ((n : ℝ) + 1) / Real.log N) - F (Real.log n / Real.log N)))
+          / Real.log N) atTop (nhds 0) := by
+    have h1 := (BdiscG_div_log_tendsto_zero hBase).const_mul (F 1)
+    have h2 := abel_tail_general hLip hBase
+    have := h1.sub h2
+    simpa using this
+  refine hlim.congr' ?_
+  filter_upwards [eventually_gt_atTop 1] with N hN
+  have hN1 : (1 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+  have hLpos : 0 < Real.log N := Real.log_pos hN1
+  have hAbel := BoundedGaps.Mertens.abel_summation_identity N
+    (fun k => g k - c / (k : ℝ))
+    (fun m => F (Real.log m / Real.log N))
+  rw [hAbel]
+  simp only [div_self hLpos.ne']
+  rw [sum_sub_eq_BdiscG, sub_div, mul_comm (BdiscG g c N) (F 1), mul_div_assoc]
+  congr 1
+  congr 1
+  refine Finset.sum_congr rfl (fun k _ => ?_)
+  rw [sum_sub_eq_BdiscG]
+  push_cast
+  ring
+
+/-- **General weighted Mertens.** For `F` Lipschitz and continuous on `[0,1]` and a weight `g`
+with base log-density `(∑_{1≤n≤N} g n)/log N → c`,
+`(∑_{1≤n≤N} g n · F(log n/log N)) / log N → c · ∫₀¹ F`. See the section docstring for the
+W-trick singular-series application (`g = (μ²/φ)·[(·,W)=1]`, `c = φ(W)/W`). -/
+theorem weighted_mertens_general {g : ℕ → ℝ} {c : ℝ} {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|)
+    (hCont : ContinuousOn F (Set.Icc (0 : ℝ) 1))
+    (hBase : Tendsto (fun N : ℕ => (∑ k ∈ Finset.Icc 1 N, g k) / Real.log N) atTop (nhds c)) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, g n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (c * ∫ u in (0 : ℝ)..1, F u)) := by
+  have hlog : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have hF0 : Tendsto (fun N : ℕ => F 0 / Real.log N) atTop (nhds 0) :=
+    tendsto_const_nhds.div_atTop hlog
+  -- model average `(∑_{1≤n≤N} (1/n)·F)/log N → ∫₀¹ F`
+  have hModel : Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, 1 / (n : ℝ) * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) := by
+    have hsum := hF0.add (riemann_sum_log_weight F hCont)
+    rw [zero_add] at hsum
+    refine hsum.congr' ?_
+    filter_upwards [eventually_ge_atTop 1] with N hN1
+    have hins : Finset.Icc 1 N = insert 1 (Finset.Icc 2 N) := by
+      ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
+    rw [hins, Finset.sum_insert (by simp), add_div]
+    congr 1
+    · simp
+    · rw [Finset.sum_div, Finset.sum_div]
+      refine Finset.sum_congr rfl (fun n _ => ?_)
+      rw [one_div_mul_eq_div]
+  -- model × c → c · ∫F
+  have hModelC := hModel.const_mul c
+  -- discrepancy part → 0
+  have hDisc := discrepancy_weighted_general (g := g) (c := c) (F := F) (M := M) hLip hBase
+  have := hModelC.add hDisc
+  rw [add_zero] at this
+  refine this.congr (fun N => ?_)
+  rw [← mul_div_assoc, Finset.mul_sum, ← add_div, ← Finset.sum_add_distrib]
+  congr 1
+  · refine Finset.sum_congr rfl (fun n _ => ?_)
+    ring
+
+/-- **Cross-check: `weighted_mertens` is the `c = 1` instance of `weighted_mertens_general`.**
+With `g = μ²/φ` and base density `1` (`sharp_mertens_unconditional`), the general theorem recovers
+the original `μ²/φ`-weighted Mertens limit `∫₀¹ F` (`1 · ∫F = ∫F`). Confirms the abstraction is
+not vacuous and is consistent with the existing `weighted_mertens`. -/
+example {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|)
+    (hCont : ContinuousOn F (Set.Icc (0 : ℝ) 1)) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u)) := by
+  have h := weighted_mertens_general (g := fun n => gMoebiusSqTotient n) (c := 1) (M := M)
+    hLip hCont (by simpa using BoundedGaps.SharpMertens.sharp_mertens_unconditional)
+  simpa using h
+
+
 end BoundedGaps.WeightedMertens
