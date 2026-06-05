@@ -2,6 +2,47 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## 🎉🎉🎉 PROGRESS 2026-06-05 (lap 8) — `hBaseW` FULLY DISCHARGED (unconditional, axiom-clean)
+
+**10 axiom-clean commits (`675ebc8`…`1b9ce11`), full build green (8300 jobs) at every gate.** The
+entire W-coprime sharp Mertens base `hBaseW` — the sole remaining analytic *input* of the contour-free
+y-space `s1` MAIN TERM — is now machine-checked & unconditional (NO BV, NO PNT, NO Euler products).
+The lap-7 "remaining nut" (`p = 2`) is cracked and the prime-by-prime induction completed.
+
+### What landed (all in `BoundedGaps/CoprimeMertens.lean` + `SharpMertens.lean` + new `S1HBaseW.lean`)
+1. **Second-order Mertens** (`SharpMertens.sum_g_second_order`): `U(N) − log N → β = γ − ∑'b(e)log e`
+   (`γ = Real.eulerMascheroniConstant`), built on the existing `sum_g_decomp` (`U = P·log − Q + R`)
+   via three sub-limits `(P−1)log→0` / `Q→∑'b·log` / `R→γ` (the last a Tannery/DCT + Euler–Mascheroni
+   squeeze `r_e(N)→γ`). UNCONDITIONAL (both summability inputs already discharged). The p=2 unblocker.
+2. **`p = 2` single-prime** (`single_prime_coprime_mertens_two`): `(∑_{(n,2)=1}μ²/φ)/log N → 1/2`,
+   via the recursion `U=T+T∘half` + second-order. The crux **`halving_recursion_o_log`**
+   (`d N + d⌊N/2⌋ → L ⟹ d N/log N → 0`) is proved IN-KERNEL — key trick: the `L=0` reduction
+   (constant `L/2` solves `g+g∘half=L`) removes the alternation; then exact unrolling + triangle bound
+   + "bad-argument terms inject into `{1,…,M₀}`". (Aristotle bricks `9c12cf7c`/`571d06d1` now moot.)
+3. **General-W induction**: `coprime_mertens_recursion_general` / `coprime_geometric_inversion_general`
+   (base `V`), `coprime_step` (abstract p≥3: `S_V/log→c ⟹ S_{pV}/log→c(p-1)/p`), `coprime_prod_limit`
+   (Finset-induction over odd primes), `prod_primes_totient` (`φ(∏T)=∏(p-1)`).
+4. **`hBaseW_of_primes_totient`**: `(∑_{n≤N,(n,W)=1}μ²/φ)/log N → φ(W)/W` for `W = ∏_{p∈T} p`
+   (T primes, `2∈T`) — EXACTLY the hypothesis of `WeightedMertens.weighted_mertens_coprime(_sq)`.
+   Verified to compose: `weighted_mertens_coprime_sq hF (hBaseW_of_primes_totient T hT h2)` typechecks.
+   Order trick: add `2` first (base `U`, second-order), then odd primes (DCT, first-order).
+5. **`S1HBaseW.yspace_kd_box_product_tendsto_primorial`**: the k-D contour-free y-space `s1` MAIN TERM,
+   now UNCONDITIONAL (axiom-clean) for primorial `W` — `hBaseW` discharged in-kernel.
+
+### ⇒ Where `s1` stands now
+The contour-free y-space `s1` MAIN TERM rests on **no analytic axiom** for primorial `W`. The **only
+remaining `s1` input is `hcorr`** (the off-diagonal correction `correction = o(B^{+k}·M)`), itself
+two SIZE estimates both gated on the **smoothing estimate** `yLambda ≈ (d/φ(d))·C/log R` (Maynard
+`PartialSummation`, the `brick_smooth` content, Aristotle `678a9ed6` — the genuine deep nut). After
+`hcorr`, the `B^{±k}` flip + axiom restatement is Trevor's architectural call.
+
+### NEXT (for whoever continues)
+- **hcorr SIZE estimates** (the two `o(M(log R)^k)` bounds in `S1Correction`/`S1DiagonalSize`/
+  `S1OffDiagSize`), which require the **smoothing estimate** first. Re-architect `brick_smooth` for
+  Aristotle (its content: `∑_{r∈R,d∣r}μ(r)g(rs)/s ~ (d/φ(d))(−g'/log R)`, partial summation).
+- Optional cleanup: thread `hBaseW_of_primes_totient` up through `S1MainLimit`/`S1FullLimit` so the
+  `hBaseW` hypothesis disappears from the top y-space `s1` limit (leaving only `hcorr`).
+
 ## ✅✅✅✅✅✅✅ PROGRESS 2026-06-05 (lap 7) — the s1 correction COUNT-SIDE is fully discharged UNCONDITIONALLY; hBaseW geometric route found
 
 Six axiom-clean commits (`813f4eb`…`df28dd8`), full build green (8298) at every gate. This lap turned
