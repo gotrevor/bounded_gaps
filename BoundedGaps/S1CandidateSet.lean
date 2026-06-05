@@ -165,4 +165,37 @@ theorem coord_sum_restrict_to_Icc {W : ℕ} (Rset : Finset ℕ) (F : ℝ → ℝ
     rw [lt_div_iff₀ hlogR]; linarith
   rw [hFsupp _ hgt1]; ring
 
+/-- **Bilinear coordinate-sum restriction.** The cross-term version of `coord_sum_restrict_to_Icc`:
+the `μ²/φ`-weighted bilinear sum `∑ (μ²/φ)·F₁(log r/log R)·F₂(log r/log R)` over the candidate set
+`Rset` equals the sum over the clean index `{r≤N: sf∧(r,W)=1}`, when `F₁` vanishes above `1` (so the
+large divisors `r > N ≥ ⌊R⌋ ⟹ r > R` give `F₁(log r/log R)=0`). Needed for the general
+`F = ∑_j c_j ∏_i Fs_{j,i}` whose square expands into cross blocks `Fs_{j,i}·Fs_{j',i}`. -/
+theorem coord_sum_restrict_to_Icc_bilinear {W : ℕ} (Rset : Finset ℕ) (F₁ F₂ : ℝ → ℝ) (R : ℝ) (N : ℕ)
+    (hR : 1 < R) (hNR : R < (N : ℝ) + 1)
+    (hF₁supp : ∀ t : ℝ, 1 < t → F₁ t = 0)
+    (hsub : (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W) ⊆ Rset)
+    (hRsf : ∀ r ∈ Rset, Squarefree r ∧ Nat.Coprime r W) :
+    (∑ r ∈ Rset, ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+        * (F₁ (Real.log r / Real.log R) * F₂ (Real.log r / Real.log R)))
+      = ∑ r ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+          ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+            * (F₁ (Real.log r / Real.log R) * F₂ (Real.log r / Real.log R)) := by
+  symm
+  apply Finset.sum_subset hsub
+  intro r hrRset hrnotIcc
+  obtain ⟨hsf, hcop⟩ := hRsf r hrRset
+  have hr1 : 1 ≤ r := Nat.one_le_iff_ne_zero.mpr hsf.ne_zero
+  have hrN : N < r := by
+    by_contra h
+    exact hrnotIcc
+      (Finset.mem_filter.mpr ⟨Finset.mem_Icc.mpr ⟨hr1, Nat.le_of_not_lt h⟩, hsf, hcop⟩)
+  have hrR : R < (r : ℝ) := by
+    have : (N : ℝ) + 1 ≤ (r : ℝ) := by exact_mod_cast hrN
+    linarith
+  have hlogR : 0 < Real.log R := Real.log_pos hR
+  have hlogr : Real.log R < Real.log r := Real.log_lt_log (by linarith) hrR
+  have hgt1 : 1 < Real.log r / Real.log R := by
+    rw [lt_div_iff₀ hlogR]; linarith
+  rw [hF₁supp _ hgt1]; ring
+
 end BoundedGaps.S1CandidateSet
