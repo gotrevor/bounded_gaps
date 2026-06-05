@@ -79,4 +79,36 @@ theorem yspace_s1_sieveSum_div_tendsto {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H
   rw [hsplit]
   ring
 
+/-- **The y-space S1 sieve sum in `(α + o(1))·main` form** — the contour-free analog of the
+`s1_holds_from_nonprime_asym` conclusion. Given the ratio limit `htend` (the conclusion of
+`yspace_s1_sieveSum_div_tendsto`, so conditional on the same `hcorr`+`hBaseW`), the actual y-space
+sieve sum satisfies `sieveSum (selberg_nu_yr_sep …) = mkF_denominator·(B^{+k}·M) + o(B^{+k}·M)` — i.e.
+`α = mkF_denominator` exactly, against the y-space `B^{+k}` main term. This is the precise shape an
+eventual y-space `alphaBound` (after the architectural `B^{±k}` flip) is built from. Pure conversion
+via `S1MainLimit.isLittleO_of_div_tendsto`. -/
+theorem yspace_s1_sieveSum_isLittleO {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (M : ℝ) (hM : M ≠ 0) (hW : 1 ≤ W)
+    (htend : Tendsto (fun N : ℕ =>
+        BoundedGaps.Sieve.sieveSum (S1YSpace.selberg_nu_yr_sep k Fs H (N : ℝ)
+            (fun i => (BoundedGaps.Sieve.sieveDivisors H i.val b W ((W * N : ℝ) + 2)).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W))) b W ((W * N : ℝ) + 2)
+          / (Sieve.sieveB W (N : ℝ) ^ k * M))
+      atTop (nhds (Sieve.mkF_denominator k (fun t => ∏ i, Fs i (t i))))) :
+    Asymptotics.IsLittleO atTop
+      (fun N : ℕ =>
+        BoundedGaps.Sieve.sieveSum (S1YSpace.selberg_nu_yr_sep k Fs H (N : ℝ)
+            (fun i => (BoundedGaps.Sieve.sieveDivisors H i.val b W ((W * N : ℝ) + 2)).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W))) b W ((W * N : ℝ) + 2)
+          - Sieve.mkF_denominator k (fun t => ∏ i, Fs i (t i)) * (Sieve.sieveB W (N : ℝ) ^ k * M))
+      (fun N : ℕ => Sieve.sieveB W (N : ℝ) ^ k * M) := by
+  have hWpos : (0 : ℝ) < W := by exact_mod_cast hW
+  have hφpos : (0 : ℝ) < W.totient := by
+    have := Nat.totient_pos.mpr (by omega : 0 < W); exact_mod_cast this
+  refine S1MainLimit.isLittleO_of_div_tendsto ?_ htend
+  filter_upwards [eventually_ge_atTop 2] with N hN2
+  have hlogN : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast hN2)
+  have hB : (0 : ℝ) < Sieve.sieveB W (N : ℝ) := by
+    rw [Sieve.sieveB]; positivity
+  exact mul_ne_zero (ne_of_gt (pow_pos hB k)) hM
+
 end BoundedGaps.S1FullLimit
