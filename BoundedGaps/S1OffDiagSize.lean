@@ -383,4 +383,106 @@ theorem reindex_bound_both (R : Finset ℕ) (p : ℕ) (hp : p.Prime)
         Finset.sum_le_sum_of_subset_of_nonneg himg
           (fun d' _ _ => Finset.sum_nonneg (fun e' _ => Gmaj_nonneg d' e'))
 
+/-- **The per-prime singular-series mass fraction for the majorant (PNT-free capstone).** Over a
+squarefree, divisor-closed Finset `R`, the share of the total majorant mass `∑_{d,e∈R} G d e`
+carried by pairs whose lcm is divisible by a prime `p` is `≤ 6/(p-1)`:
+`∑_{d∈R} ∑_{e∈R, p∣lcm(d,e)} G d e ≤ (6/(p-1)) · ∑_{d∈R} ∑_{e∈R} G d e`.
+Decompose `p ∣ lcm(d,e) ⟺ p∣d ∨ p∣e` (union bound `≤ ∑_{p∣d} + ∑_{p∣e}`, equal by `Gmaj_symm`), then
+each `∑_{p∣d}∑_{e∈R}` splits over `p∤e` (`reindex_bound`, `1/(p-1)`) and `p∣e` (`reindex_bound_both`,
+`p/(p-1)²`); `2·(1/(p-1)+p/(p-1)²) = (4p-2)/(p-1)² ≤ 6/(p-1)` for `p≥2`. **Fully PNT-free.** This is
+the singular-series `O(1/(p-1))` per-prime fraction that, summed over the shared primes `p>D₀` (all
+`>D₀` by the W-trick), gives the `∑_{p>D₀}1/(p-1)²` tail (`recip_sq_tail_tendsto_zero`) driving the
+off-diagonal `→0` for growing `W`. (The genuine correction relates `Gmaj` to the actual weight
+`|yLambda·yLambda|/lcm` via the smoothing bound — `PENDING_WORK.md` lap-11.) -/
+theorem Gmaj_per_prime_le (R : Finset ℕ) (p : ℕ) (hp : p.Prime)
+    (hRsf : ∀ a ∈ R, Squarefree a) (hR1 : ∀ a ∈ R, 1 ≤ a)
+    (hRdc : ∀ a ∈ R, ∀ b, b ∣ a → 1 ≤ b → b ∈ R) :
+    ∑ d ∈ R, ∑ e ∈ R.filter (fun e => p ∣ Nat.lcm d e), Gmaj d e
+      ≤ (6 / ((p:ℝ) - 1)) * ∑ d ∈ R, ∑ e ∈ R, Gmaj d e := by
+  classical
+  set S := ∑ d ∈ R, ∑ e ∈ R, Gmaj d e with hSdef
+  have hSnn : 0 ≤ S := Finset.sum_nonneg (fun d _ => Finset.sum_nonneg (fun e _ => Gmaj_nonneg d e))
+  have hpm1 : (0:ℝ) < (p:ℝ) - 1 := by
+    have : (2:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp.two_le
+    linarith
+  have hp2R : (2:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp.two_le
+  have h1pm1 : (0:ℝ) ≤ 1 / ((p:ℝ) - 1) := by positivity
+  have hiff : ∀ d e, (p ∣ Nat.lcm d e) ↔ (p ∣ d ∨ p ∣ e) := by
+    intro d e
+    constructor
+    · intro h
+      exact (hp.dvd_mul).mp (h.trans (Nat.lcm_dvd (dvd_mul_right d e) (dvd_mul_left e d)))
+    · rintro (h|h)
+      · exact h.trans (Nat.dvd_lcm_left d e)
+      · exact h.trans (Nat.dvd_lcm_right d e)
+  set First := ∑ d ∈ R.filter (fun d => p ∣ d), ∑ e ∈ R, Gmaj d e with hFdef
+  have hFnn : 0 ≤ First :=
+    Finset.sum_nonneg (fun d _ => Finset.sum_nonneg (fun e _ => Gmaj_nonneg d e))
+  have hpiece1 : ∑ d ∈ R, ∑ e ∈ R, (if p ∣ d then Gmaj d e else 0) = First := by
+    rw [hFdef, Finset.sum_filter]
+    refine Finset.sum_congr rfl (fun d _ => ?_)
+    by_cases hd : p ∣ d <;> simp [hd]
+  have hpiece2 : ∑ d ∈ R, ∑ e ∈ R, (if p ∣ e then Gmaj d e else 0) = First := by
+    rw [Finset.sum_comm, hFdef, Finset.sum_filter]
+    refine Finset.sum_congr rfl (fun e _ => ?_)
+    by_cases he : p ∣ e
+    · simp only [he, if_true]
+      exact Finset.sum_congr rfl (fun d _ => Gmaj_symm d e)
+    · simp [he]
+  have hUB : ∑ d ∈ R, ∑ e ∈ R.filter (fun e => p ∣ Nat.lcm d e), Gmaj d e ≤ First + First := by
+    calc ∑ d ∈ R, ∑ e ∈ R.filter (fun e => p ∣ Nat.lcm d e), Gmaj d e
+        = ∑ d ∈ R, ∑ e ∈ R, (if p ∣ Nat.lcm d e then Gmaj d e else 0) := by
+          refine Finset.sum_congr rfl (fun d _ => ?_); rw [Finset.sum_filter]
+      _ ≤ ∑ d ∈ R, ∑ e ∈ R,
+            ((if p ∣ d then Gmaj d e else 0) + (if p ∣ e then Gmaj d e else 0)) := by
+          refine Finset.sum_le_sum (fun d _ => Finset.sum_le_sum (fun e _ => ?_))
+          have h1 : 0 ≤ (if p ∣ d then Gmaj d e else 0) := by
+            by_cases hd : p ∣ d <;> simp [hd, Gmaj_nonneg]
+          have h2 : 0 ≤ (if p ∣ e then Gmaj d e else 0) := by
+            by_cases he : p ∣ e <;> simp [he, Gmaj_nonneg]
+          by_cases hl : p ∣ Nat.lcm d e
+          · rw [if_pos hl]
+            rcases (hiff d e).mp hl with hd | he
+            · rw [if_pos hd]; linarith
+            · rw [if_pos he]; linarith
+          · rw [if_neg hl]; linarith
+      _ = First + First := by
+          nth_rewrite 1 [← hpiece1]
+          nth_rewrite 1 [← hpiece2]
+          simp only [Finset.sum_add_distrib]
+  have hFirst : First ≤ (1/((p:ℝ)-1) + (p:ℝ)/((p:ℝ)-1)^2) * S := by
+    have hsplit : First
+        = ∑ d ∈ R.filter (fun d => p ∣ d), ∑ e ∈ R.filter (fun e => p ∣ e), Gmaj d e
+          + ∑ d ∈ R.filter (fun d => p ∣ d), ∑ e ∈ R.filter (fun e => ¬ p ∣ e), Gmaj d e := by
+      rw [hFdef, ← Finset.sum_add_distrib]
+      refine Finset.sum_congr rfl (fun d _ => ?_)
+      exact (Finset.sum_filter_add_sum_filter_not R (fun e => p ∣ e) (Gmaj d)).symm
+    rw [hsplit, add_comm]
+    have hA : ∑ d ∈ R.filter (fun d => p ∣ d), ∑ e ∈ R.filter (fun e => ¬ p ∣ e), Gmaj d e
+        ≤ (1/((p:ℝ)-1)) * S := by
+      refine le_trans (reindex_bound R p hp hRsf hR1 hRdc) ?_
+      refine mul_le_mul_of_nonneg_left ?_ h1pm1
+      refine Finset.sum_le_sum (fun d _ => ?_)
+      exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+        (fun e _ _ => Gmaj_nonneg d e)
+    have hB : ∑ d ∈ R.filter (fun d => p ∣ d), ∑ e ∈ R.filter (fun e => p ∣ e), Gmaj d e
+        ≤ ((p:ℝ)/((p:ℝ)-1)^2) * S := reindex_bound_both R p hp hRsf hR1 hRdc
+    rw [add_mul]
+    linarith
+  have hcoef : 2 * (1/((p:ℝ)-1) + (p:ℝ)/((p:ℝ)-1)^2) ≤ 6/((p:ℝ)-1) := by
+    rw [← sub_nonneg]
+    have hid : 6/((p:ℝ)-1) - 2*(1/((p:ℝ)-1)+(p:ℝ)/((p:ℝ)-1)^2)
+            = (2*(p:ℝ)-4)/((p:ℝ)-1)^2 := by
+      field_simp; ring
+    rw [hid]
+    apply div_nonneg _ (by positivity)
+    linarith
+  calc ∑ d ∈ R, ∑ e ∈ R.filter (fun e => p ∣ Nat.lcm d e), Gmaj d e
+      ≤ First + First := hUB
+    _ = 2 * First := by ring
+    _ ≤ 2 * ((1/((p:ℝ)-1) + (p:ℝ)/((p:ℝ)-1)^2) * S) := by
+        apply mul_le_mul_of_nonneg_left hFirst (by norm_num)
+    _ = (2 * (1/((p:ℝ)-1) + (p:ℝ)/((p:ℝ)-1)^2)) * S := by ring
+    _ ≤ (6/((p:ℝ)-1)) * S := mul_le_mul_of_nonneg_right hcoef hSnn
+
 end BoundedGaps.S1OffDiagSize
