@@ -26,16 +26,38 @@ reduction) plus the W-coprime base (Aristotle).
   = the limit of `gpy_diagonalize_yform_muphi`'s output. **The Path-Y `s1` main term, contour-free.**
   Conditional only on `hBaseW` = W-coprime sharp Mertens (Aristotle brick `65d11d89`, in flight).
 
-### NEXT (the structural piece — fresh-lap work)
-1. **Define `selberg_nu_yr`**: `ν(n) = (∑_{d∣n+hᵢ} λ_{d,i})²` with the y-space coefficient
-   `λ_{d,i} = d·∑_{s∈R_N, d∣s} μ(s/d)·Fⱼᵢ(log s/logR)/φ(s)` (per coordinate, per `j`-term). Prove
-   nonneg.
-2. **Lattice expansion** for THIS `λ` via the GENERAL engine `prod_sum_active_expand` (NOT
-   `sieveSum_lambdaProd_expand`, which is hard-wired to `lambdaTransform`): `sieveSum ≈ (count)·∏ᵢ
-   ∑_{d,e}λλ/[d,e] + correction`. Then `∑λλ/[d,e] = gpy_diagonalize_yform_muphi → yspace_muphi_diagonal_tendsto`.
-3. k-D lift (per-coord product → `∫_simplex F²` = `mkF_denominator`) via the proven `weighted_riemann_kd_muphi`.
-4. The W-coprime base `hBaseW` (brick) ⟹ unconditional. Then Trevor flips the 3 `s1`/`s2` axioms +
-   `selberg_sieve_data_from_F` to `selberg_nu_yr` (witness layer untouched).
+### STRUCTURAL SKELETON — now COMPLETE (1-D, all blocks). 13 commits this lap.
+The full contour-free chain is machine-checked end-to-end (axiom-clean):
+- **`SieveExpansion.sieveSum_genProd_sq_expand`** (DONE this lap): general sieve opening for ANY
+  coefficient `lam : Fin k → ℕ → ℝ` — `∑_{n∈block}(∏ᵢ∑_{d|n+hᵢ}lam i d)² = ∑_P(∏ᵢ lam i dᵢ·lam i eᵢ)·count(P)`.
+  The structural bridge from a y-space `sieveSum` to the bilinear `∑λλ` form (instantiate `lam i =
+  yLambda R_N (Fs i) (log R)`). [Generalises the `lambdaTransform`-only `sieveSum_lambdaProd_expand`.]
+- `gpy_diagonalize_yform_muphi(_bilinear)`: `∑_{d,e∈R_N}λλ/[d,e] = ∑_{r∈R_N}(μ²/φ)F²` (after the
+  count→`M/[d,e]` density step).
+- `S1YSpace.yspace_sieve_quadform_tendsto(_bilinear/_one)`: `(∑λλ/[d,e])/logN → (φ(W)/W)∫F²`. The
+  `_one` (W=1) instance is **FULLY UNCONDITIONAL** (base = `sharp_mertens_unconditional`).
+
+### NEXT (fresh-lap work — the count→density reduction, then assemble)
+1. **Define `selberg_nu_yr`** `ν(n)=(∑_j c_j∏_i ∑_{d|n+hᵢ}yLambda R_N (Fs j i) (log R) d)²` (mirror
+   `selberg_nu_basis`); nonneg = `sq_nonneg`. Apply `sieveSum_genProd_sq_expand` per `(j,j')` block.
+2. **Count → main density**: connect the lattice `count(P) = #{m: dᵢ,eᵢ|m+hᵢ}` to `M/∏[dᵢ,eᵢ]`
+   via the EXISTING `lattice_count_main_term` / `lattice_count_eq_modEq` (the CRT count, shared with
+   d-space). The diagonal gives `M·∑λλ/[d,e]` → `gpy_diagonalize_yform_muphi` → `yspace_..._tendsto`.
+   ⚠️ the off-diagonal `correction = o(main)` is **BV-gated** (gap C, shared w/ d-space; infra exists:
+   `correction_abs_bound`, `hyperbola_count_le`, `diagonal_weight_le_count`). So even y-space `s1`
+   needs BV for the correction — but the MAIN TERM is now contour-free & done.
+3. **k-D lift** (per-coord product → `∫_simplex F²` = `mkF_denominator`): the box→simplex coupling
+   (gap A4) via `weighted_riemann_kd_muphi`. NB the count ties coords to the simplex `∏rᵢ≤R`.
+4. **W-coprime base `hBaseW`** (Aristotle brick `65d11d89`, still RUNNING ~1h) ⟹ general-`W`
+   unconditional. Then Trevor flips the 3 `s1`/`s2` axioms + `selberg_sieve_data_from_F` to
+   `selberg_nu_yr` (witness layer `mkF_denominator`/`Mk_200_gt_4` UNTOUCHED).
+
+### Reusable lemmas added this lap (for the assembly)
+`WeightedMertens`: `weighted_mertens_general(_of_contDiff)`, `gMuSqTotientCoprime`,
+`weighted_mertens_coprime(_sq)`, `gMuSqTotientCoprime_sum_eq_filter`, `yspace_muphi_diagonal_tendsto`,
+`yspace_muphi_bilinear_tendsto`. `SieveExpansion`: `moebius_div_collapse`, `inner_moebius_collapse`,
+`moebius_inversion_multiples`, `gpy_diagonalize_yform_smooth(_bilinear)`, `gpy_diagonalize_yform_muphi(_bilinear)`,
+`sieveR_yspace_hyps`, `sieveSum_genProd_sq_expand`. New file `S1YSpace.lean` (`yLambda` + the capstones).
 
 ### What landed (`WeightedMertens.lean`) — the abstraction layer
 Abstracted the `μ²/φ` weighted-Mertens machinery over an **arbitrary weight `g` with base
