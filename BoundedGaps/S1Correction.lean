@@ -182,6 +182,96 @@ theorem yLambda_factor (R : Finset ℕ) (F : ℝ → ℝ) (L : ℝ) (d : ℕ) (h
   push_cast
   field_simp
 
+/-- **Sharp (PNT-FREE) coefficient bound** `|yLambda R F (log N) d| ≤ (d/φ(d))·C·∑_{t≤N} μ²(t)/φ(t)`.
+For `R` squarefree, `|F| ≤ C`, `F` cut off above `1`, this is the Selberg-type sharp bound: the
+multiplicative `d/φ(d)` prefactor (from `yLambda_factor`, squarefreeness ⟹ `φ(s) = φ(d)φ(s/d)`) times
+a bounded `μ²/φ` residual (`t = s/d ≤ N` squarefree, `|μ(t)| = μ²(t) = 1`, injecting into `[1,N]`).
+**Elementary — NO PNT**: uses only `yLambda_factor` + `moebius_sq_eq_one_of_squarefree`, NOT the deep
+smoothing asymptotic. This resolves the lap-9 "open sub-question" — the sharp `|λ_d| ≤ C·(d/φ(d))·log R`
+bound IS PNT-free, since the residual `∑_{t≤N} μ²/φ` is `O(log N)` (repo Mertens). It is the
+coefficient input for the off-diagonal per-prime singular-series mass fraction (Leg 2,
+`PENDING_WORK.md`: `∑_{p|lcm}|λλ|/[d,e] ≤ (C/p)·Q`). -/
+theorem abs_yLambda_le_sharp (R : Finset ℕ) (F : ℝ → ℝ) (N d : ℕ) (C : ℝ)
+    (hd : 1 ≤ d) (hN : 2 ≤ N) (hC : ∀ t, |F t| ≤ C) (hFcut : ∀ t, 1 < t → F t = 0)
+    (hRsf : ∀ s ∈ R, Squarefree s) :
+    |S1YSpace.yLambda R F (Real.log N) d|
+      ≤ ((d : ℝ) / (Nat.totient d : ℝ)) * C
+          * ∑ t ∈ Finset.Icc 1 N, ((moebius t : ℝ) ^ 2 / (Nat.totient t : ℝ)) := by
+  classical
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  have hlogN : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast (by omega : 1 < N))
+  have hdφ : (0 : ℝ) ≤ (d : ℝ) / (Nat.totient d : ℝ) := by positivity
+  rw [yLambda_factor R F (Real.log N) d hd hRsf, abs_mul, abs_of_nonneg hdφ, mul_assoc]
+  refine mul_le_mul_of_nonneg_left ?_ hdφ
+  set Fil := R.filter (fun s => d ∣ s) with hFil
+  set S := Fil.filter (fun s => s ≤ N) with hSdef
+  have hdrop : (∑ s ∈ Fil,
+        |(moebius (s / d) : ℝ) * F (Real.log s / Real.log N) / (Nat.totient (s / d) : ℝ)|)
+      = ∑ s ∈ S,
+        |(moebius (s / d) : ℝ) * F (Real.log s / Real.log N) / (Nat.totient (s / d) : ℝ)| := by
+    refine (Finset.sum_subset (Finset.filter_subset _ _) ?_).symm
+    intro s hsFil hsS
+    have hsR : s ∈ R := (Finset.mem_filter.mp hsFil).1
+    have hs1 : 1 ≤ s := Nat.one_le_iff_ne_zero.mpr (hRsf s hsR).ne_zero
+    have hsgt : N < s := by
+      by_contra h
+      exact hsS (Finset.mem_filter.mpr ⟨hsFil, by omega⟩)
+    have hsN : (N : ℝ) < (s : ℝ) := by exact_mod_cast hsgt
+    have hlogs : Real.log N < Real.log s :=
+      Real.log_lt_log (by exact_mod_cast (by omega : 0 < N)) hsN
+    have hgt1 : 1 < Real.log s / Real.log N := by rw [lt_div_iff₀ hlogN]; linarith
+    rw [hFcut _ hgt1]; simp
+  have hinj : ∀ a ∈ S, ∀ b ∈ S, a / d = b / d → a = b := by
+    intro a ha b hb hab
+    have hda : d ∣ a := (Finset.mem_filter.mp (Finset.mem_filter.mp ha).1).2
+    have hdb : d ∣ b := (Finset.mem_filter.mp (Finset.mem_filter.mp hb).1).2
+    rw [← Nat.div_mul_cancel hda, ← Nat.div_mul_cancel hdb, hab]
+  calc |∑ s ∈ Fil,
+          (moebius (s / d) : ℝ) * F (Real.log s / Real.log N) / (Nat.totient (s / d) : ℝ)|
+      ≤ ∑ s ∈ Fil,
+          |(moebius (s / d) : ℝ) * F (Real.log s / Real.log N) / (Nat.totient (s / d) : ℝ)| :=
+        Finset.abs_sum_le_sum_abs _ _
+    _ = ∑ s ∈ S,
+          |(moebius (s / d) : ℝ) * F (Real.log s / Real.log N) / (Nat.totient (s / d) : ℝ)| := hdrop
+    _ ≤ ∑ s ∈ S, C * ((moebius (s / d) : ℝ) ^ 2 / (Nat.totient (s / d) : ℝ)) := by
+        refine Finset.sum_le_sum (fun s hs => ?_)
+        have hsFil : s ∈ Fil := (Finset.mem_filter.mp hs).1
+        have hsR : s ∈ R := (Finset.mem_filter.mp hsFil).1
+        have hsf : Squarefree s := hRsf s hsR
+        have hds : d ∣ s := (Finset.mem_filter.mp hsFil).2
+        have hs1 : 1 ≤ s := Nat.one_le_iff_ne_zero.mpr hsf.ne_zero
+        have hsd1 : 1 ≤ s / d := Nat.one_le_div_iff (by omega) |>.mpr (Nat.le_of_dvd (by omega) hds)
+        have hsddvd : s / d ∣ s := ⟨d, (Nat.div_mul_cancel hds).symm⟩
+        have hsdsf : Squarefree (s / d) := hsf.squarefree_of_dvd hsddvd
+        have hφsd : (0 : ℝ) < (Nat.totient (s / d) : ℝ) := by
+          exact_mod_cast Nat.totient_pos.mpr (by omega)
+        have hmu2 : ((moebius (s / d) : ℝ)) ^ 2 = 1 := by
+          exact_mod_cast ArithmeticFunction.moebius_sq_eq_one_of_squarefree hsdsf
+        have hmu : |(moebius (s / d) : ℝ)| ≤ 1 := by exact_mod_cast ArithmeticFunction.abs_moebius_le_one
+        have hFle : |F (Real.log s / Real.log N)| ≤ C := hC _
+        calc |(moebius (s / d) : ℝ) * F (Real.log s / Real.log N) / (Nat.totient (s / d) : ℝ)|
+            = |(moebius (s / d) : ℝ)| * |F (Real.log s / Real.log N)| / (Nat.totient (s / d) : ℝ) := by
+              rw [abs_div, abs_mul, abs_of_pos hφsd]
+          _ ≤ 1 * C / (Nat.totient (s / d) : ℝ) := by gcongr
+          _ = C * ((moebius (s / d) : ℝ) ^ 2 / (Nat.totient (s / d) : ℝ)) := by rw [hmu2]; ring
+    _ = C * ∑ s ∈ S, ((moebius (s / d) : ℝ) ^ 2 / (Nat.totient (s / d) : ℝ)) := by
+        rw [Finset.mul_sum]
+    _ = C * ∑ t ∈ S.image (fun s => s / d), ((moebius t : ℝ) ^ 2 / (Nat.totient t : ℝ)) := by
+        rw [Finset.sum_image hinj]
+    _ ≤ C * ∑ t ∈ Finset.Icc 1 N, ((moebius t : ℝ) ^ 2 / (Nat.totient t : ℝ)) := by
+        refine mul_le_mul_of_nonneg_left ?_ hC0
+        refine Finset.sum_le_sum_of_subset_of_nonneg ?_ (fun t _ _ => by positivity)
+        intro t ht
+        rw [Finset.mem_image] at ht
+        obtain ⟨s, hs, rfl⟩ := ht
+        have hsFil : s ∈ Fil := (Finset.mem_filter.mp hs).1
+        have hsR : s ∈ R := (Finset.mem_filter.mp hsFil).1
+        have hds : d ∣ s := (Finset.mem_filter.mp hsFil).2
+        have hsleN : s ≤ N := (Finset.mem_filter.mp hs).2
+        have hs1 : 1 ≤ s := Nat.one_le_iff_ne_zero.mpr (hRsf s hsR).ne_zero
+        have hsd1 : 1 ≤ s / d := Nat.one_le_div_iff (by omega) |>.mpr (Nat.le_of_dvd (by omega) hds)
+        exact Finset.mem_Icc.mpr ⟨hsd1, le_trans (Nat.div_le_self s d) hsleN⟩
+
 /-- **Closed-form bound on the y-space coefficient.** With `|F| ≤ C` and `R` consisting of positive
 integers, the y-space sieve coefficient is bounded by `|yLambda R F L d| ≤ d·C·∑_{s∈R, d∣s} 1/φ(s)`
 (triangle inequality + `|μ| ≤ 1` + `|F| ≤ C`). The first reduction toward the diagonal SIZE bound
