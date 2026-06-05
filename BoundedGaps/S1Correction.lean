@@ -147,6 +147,41 @@ theorem coprime_lcm_of_coprime {a b W : ℕ} (ha : Nat.Coprime a W) (hb : Nat.Co
   Nat.Coprime.coprime_dvd_left (Nat.lcm_dvd (dvd_mul_right a b) (dvd_mul_left b a))
     (Nat.Coprime.mul_left ha hb)
 
+/-- **Smoothing, elementary step: factor out the multiplicative `d/φ(d)` prefactor.** For `R`
+consisting of squarefree integers and `d ≥ 1`,
+`yLambda R F L d = (d/φ(d)) · ∑_{s∈R, d∣s} μ(s/d)·F(log s/L)/φ(s/d)`.
+This is Maynard's first reduction (`PartialSummation`): squarefreeness gives `φ(s) = φ(d)·φ(s/d)`
+for `d ∣ s`, so the `d/φ(d)` multiplicative factor splits off cleanly. The residual sum (reindexed
+`t = s/d`) is `∑_{t} μ(t)·F(log(dt)/L)/φ(t)`, whose `≈ −F′(·)/log R` asymptotic is the
+genuinely-deep Möbius-mean / PNT-strength step (no in-kernel route in this mathlib). This lemma
+ISOLATES the elementary multiplicative factor from that deep residual — narrowing the smoothing. -/
+theorem yLambda_factor (R : Finset ℕ) (F : ℝ → ℝ) (L : ℝ) (d : ℕ) (hd : 1 ≤ d)
+    (hRsf : ∀ s ∈ R, Squarefree s) :
+    S1YSpace.yLambda R F L d = ((d : ℝ) / (Nat.totient d : ℝ))
+      * ∑ s ∈ R.filter (fun s => d ∣ s),
+          (moebius (s / d) : ℝ) * F (Real.log s / L) / (Nat.totient (s / d) : ℝ) := by
+  unfold S1YSpace.yLambda
+  rw [Finset.mul_sum, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro s hs
+  rw [Finset.mem_filter] at hs
+  have hsf : Squarefree s := hRsf s hs.1
+  have hds : d ∣ s := hs.2
+  have hsne : s ≠ 0 := hsf.ne_zero
+  have hcop : Nat.Coprime d (s / d) := by
+    have hs' : d * (s / d) = s := Nat.mul_div_cancel' hds
+    rw [← hs'] at hsf
+    exact (Nat.squarefree_mul_iff.mp hsf).1
+  have hphi : Nat.totient s = Nat.totient d * Nat.totient (s / d) := by
+    conv_lhs => rw [← Nat.mul_div_cancel' hds]
+    exact Nat.totient_mul hcop
+  have hφd : (0 : ℝ) < (Nat.totient d : ℝ) := by exact_mod_cast Nat.totient_pos.mpr hd
+  have hsd1 : 1 ≤ s / d := Nat.one_le_div_iff hd |>.mpr (Nat.le_of_dvd (by omega) hds)
+  have hφsd : (0 : ℝ) < (Nat.totient (s / d) : ℝ) := by exact_mod_cast Nat.totient_pos.mpr hsd1
+  rw [hphi]
+  push_cast
+  field_simp
+
 /-- **Closed-form bound on the y-space coefficient.** With `|F| ≤ C` and `R` consisting of positive
 integers, the y-space sieve coefficient is bounded by `|yLambda R F L d| ≤ d·C·∑_{s∈R, d∣s} 1/φ(s)`
 (triangle inequality + `|μ| ≤ 1` + `|F| ≤ C`). The first reduction toward the diagonal SIZE bound
