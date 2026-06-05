@@ -611,4 +611,22 @@ theorem weighted_mertens_of_contDiff {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) :
     simpa [Real.norm_eq_abs] using h
   exact weighted_mertens hLip hCont
 
+/-- **Path-Y leaf-1 analytic core (1-D, `W = 1`, singular series `𝔖 = 1`).** Maynard's diagonal
+Selberg main term in `y_r`-space (`S1Summation2`): for `F` of class `C¹`, the `(μ²/φ)`-weighted sum
+of `F²` over `r ≤ N` has the sharp asymptotic
+`(∑_{r≤N} (μ²(r)/φ(r))·F(log r/log N)²) / log N → ∫₀¹ F²`.
+
+This is the **`∫₀¹ F²` constant** the `s1` axiom advertises (`mkF_denominator` at `k = 1`), obtained
+**contour-free** by `weighted_mertens` (itself `SharpMertens.sharp_mertens_unconditional` ⊗ the
+`1/n`-Riemann model) applied to the `C¹` weight `F²`. Per the harvested GPY findings (Path Y), the
+`(r,W)=1` restriction / `φ(W)/W` factor of the general `W`-trick is sieve-normalisation bookkeeping
+(folded into `B = (φ(W)/W)·log x`), NOT part of this analytic core. The `y_r`-space `∫F²` (vs the
+`d`-space `∫F'²`) is exactly the convention under which the `s1` constant is correct as stated. -/
+theorem weighted_mertens_sq {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n * F (Real.log n / Real.log N) ^ 2) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u ^ 2)) :=
+  weighted_mertens_of_contDiff (hF.pow 2)
+
 end BoundedGaps.WeightedMertens

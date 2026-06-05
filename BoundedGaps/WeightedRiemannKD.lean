@@ -838,4 +838,18 @@ theorem weighted_riemann_kd (Gs : List (ℝ → ℝ)) (hnn : ∀ g ∈ Gs, ∀ x
       (nhds (nestedPhi Gs 0)) :=
   weighted_riemann_kd_aux Gs.length Gs rfl hnn hcont
 
+/-- **`k`-D weighted Riemann limit with a relaxed head** (mirrors `weighted_riemann_3d`: the OUTER
+function needs only continuity — it feeds `perturbed_riemann`, which is sign-agnostic — while the
+inner `gs` need nonnegativity for the Pólya monotonicity). For `g` continuous and `gs` nonnegative
+continuous, `nestedLogSum R (g::gs) R / (log R)^|g::gs| → nestedPhi (g::gs) 0`. -/
+theorem weighted_riemann_kd_head (g : ℝ → ℝ) (gs : List (ℝ → ℝ))
+    (hg : Continuous g) (hgs_nn : ∀ f ∈ gs, ∀ x, 0 ≤ f x) (hgs_cont : ∀ f ∈ gs, Continuous f) :
+    Tendsto (fun R : ℕ => nestedLogSum R (g :: gs) R / (Real.log R) ^ (g :: gs).length) atTop
+      (nhds (nestedPhi (g :: gs) 0)) := by
+  refine weighted_riemann_cons_of_inner g gs hg.continuousOn
+    (nestedPhi_continuous gs hgs_cont).continuousOn ?_
+  exact inner_uniform_kd_of_pointwise gs hgs_nn hgs_cont
+    (fun t ht => psi_k_pointwise gs hgs_nn hgs_cont
+      (fun hs _ hnn' hcont' => weighted_riemann_kd hs hnn' hcont') t ht)
+
 end BoundedGaps.WeightedRiemannKD
