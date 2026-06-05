@@ -1694,6 +1694,40 @@ theorem heuristic_main_selberg_nu_yform (k J : ℕ) (c : Fin J → ℝ)
     (fun _ _ hd => sieveDivisors_pos hd)
     (fun _ _ hd r hr => sieveDivisors_dvd_closed hd hr)]
 
+/-- **`sieveSum = Path-Y `y_r`-form main term + correction`** (gap (A) capstone). Composing
+`sieveSum_selberg_nu_eq_heuristic_add_correction` (the exact `heuristic_main + correction` split, any
+chosen main value `M`) with `heuristic_main_selberg_nu_yform` (heuristic main in the Path-Y `μ²/φ`
+`y`-variable form), the literal Selberg sieve sum equals
+`∑_{j,j'} cⱼcⱼ'·M·∏ᵢ ∑_r (μ²(r)/φ(r))·y₁ᵢᵣ·y₂ᵢᵣ + correction`,
+with `y_{a,i,r} = φ(r)·∑_{d∈Dᵢ, r∣d} μ(d)F_{a,i}(log d/log R)/d` the GPY `y`-variables and the
+correction `∑_{j,j',P} cⱼcⱼ'·coeff·(count − M/∏ᵢ[Pᵢ])` the analytic obligation. **This is the entire
+algebraic content of gap (A)** in the `y_r`-space convention: the main term is now in EXACTLY the
+`μ²/φ` shape the Path-Y Riemann ladder consumes. The two remaining obligations are purely analytic —
+(B) the smoothing `y_{a,i,r} ≈ (μ(r)/log R)·F_{a,i}(log r/log R)` (with the antiderivative convention)
+feeding the `nestedLogSumW(μ²/φ)` ladder (`S1MainTermDecomp`, DONE), and (C) `correction = o(main)`. -/
+theorem sieveSum_selberg_nu_yform_add_correction (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (hx : 0 < x) (M : ℝ) :
+    sieveSum (selberg_nu k J c Fs H R) b W x
+      = (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          (M * ∏ i : Fin k, ∑ r ∈ sieveDivisors H i.val b W x,
+            ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+            * (((Nat.totient r : ℝ) * ∑ d ∈ (sieveDivisors H i.val b W x).filter (fun d => r ∣ d),
+                  (moebius d : ℝ) * Fs j i (Real.log d / Real.log R) / (d : ℝ))
+               * ((Nat.totient r : ℝ) * ∑ e ∈ (sieveDivisors H i.val b W x).filter (fun e => r ∣ e),
+                  (moebius e : ℝ) * Fs j' i (Real.log e / Real.log R) / (e : ℝ)))))
+      + (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+              sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+            (∏ i : Fin k,
+              ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+                * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+            * ((((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+                  (fun m => ∀ i : Fin k,
+                    (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+                - M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))) := by
+  rw [sieveSum_selberg_nu_eq_heuristic_add_correction k J c Fs H R b W x hx M,
+    heuristic_main_selberg_nu_yform k J c Fs H R b W x M]
+
 /-- **Lattice weight, absolute value, factorizes over coordinates.** For a
 product weight `∏ᵢ aᵢ(Pᵢ)` over the lattice `∏ᵢ Dset i`, the sum of absolute
 values factors:
