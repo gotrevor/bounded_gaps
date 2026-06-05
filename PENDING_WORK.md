@@ -43,6 +43,18 @@ The full contour-free chain is machine-checked end-to-end (axiom-clean):
 2. **Count → main density**: connect the lattice `count(P) = #{m: dᵢ,eᵢ|m+hᵢ}` to `M/∏[dᵢ,eᵢ]`
    via the EXISTING `lattice_count_main_term` / `lattice_count_eq_modEq` (the CRT count, shared with
    d-space). The diagonal gives `M·∑λλ/[d,e]` → `gpy_diagonalize_yform_muphi` → `yspace_..._tendsto`.
+   ⚠️ **CANDIDATE-SET CRUX (worked out lap 4, the delicate bit):** `sieveSum_selberg_nu_yr_sep_expand`
+   sums over `d,e ∈ sieveDivisors` (= `⋃ₙ (n+hᵢ).divisors`), but the diagonalization
+   `gpy_diagonalize_yform_muphi` is over `R_N` (squarefree, coprime, divisor-closed). RECONCILE by
+   choosing **`Rset i := (sieveDivisors H i b W x).filter (Squarefree · ∧ Coprime · W)`** — this IS
+   divisor-closed (sieveDivisors is, filters preserve it) and `yLambda (Rset i) … d = 0` for
+   `d ∉ Rset i` (the filter `{s∈Rset: d∣s}` is empty unless `d` squarefree-coprime-`∣`-something∈Rset,
+   i.e. `d∈Rset` since divisor-closed). So `∑_{d,e∈sieveDivisors} = ∑_{d,e∈Rset}` (extra terms vanish)
+   — apply `gpy_diagonalize_yform_muphi` to `Rset`. BUT then the `tendsto` (`yspace_muphi_diagonal_tendsto`)
+   is over `(Icc 1 N).filter(sf∧coprime)` ⊋ `Rset` (only `r` dividing some `n+hᵢ`); the gap between
+   "all `r≤R`" and "`r` appearing in the sieve" is precisely what `M`/the count absorbs (the level
+   `R = x^{θ/2}`, `M = (B−A)/W`). That main-term equivalence + the `o(main)` correction is gap (C),
+   **BV-gated** (`correction_abs_bound`, `hyperbola_count_le`, `diagonal_weight_le_count` exist).
    ⚠️ the off-diagonal `correction = o(main)` is **BV-gated** (gap C, shared w/ d-space; infra exists:
    `correction_abs_bound`, `hyperbola_count_le`, `diagonal_weight_le_count`). So even y-space `s1`
    needs BV for the correction — but the MAIN TERM is now contour-free & done.
