@@ -2,6 +2,55 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## ✅✅✅✅✅✅✅ PROGRESS 2026-06-05 (lap 7) — the s1 correction COUNT-SIDE is fully discharged UNCONDITIONALLY; hBaseW geometric route found
+
+Six axiom-clean commits (`813f4eb`…`df28dd8`), full build green (8298) at every gate. This lap turned
+the lap-6 `hcorr` "elementary, not BV-gated" claim into machine-checked reality for the **count side**:
+both the off-diagonal vanishing AND the diagonal `O(1)` error are now proven, leaving ONLY the two
+analytic SIZE estimates.
+
+### The correction reduction is now `yspace_correction_abs_bound_explicit` (S1Correction.lean)
+`|correction|  ≤  ∑_{diag}|∏λλ|  +  ∑_{¬diag}|∏λλ|·(M/∏[dᵢ,eᵢ])`, with `M = (⌊2x⌋−(⌈x⌉−1))/W` the
+exact lattice density, **no `herr`/count hypothesis, no BV** — only W-trick admissibility
+(`hWdvd : p≤D₀ ⟹ p∣W`, `hshift_le : hᵢ≤D₀`, `hshift_ne : i≠j ⟹ hᵢ≠hⱼ`, `hAB : ⌈x⌉−1≤⌊2x⌋`). Built from:
+- **`lattice_count_pair_offdiag_vanish_Wtrick`** — pair-form W-trick off-diagonal vanishing
+  (`¬coprime(lcm(P i),lcm(P j))` ⟹ shared prime `p>D₀` ⟹ incompatible shifts ⟹ count `=0`). No BV.
+- **`piFinset_prod_pair_sum_restrict`** — restrict the correction to the divisor-closed candidate set
+  `Rset` (off-`Rset` terms have a zero `yLambda` factor), so every modulus is `W`-coprime.
+- **`yspace_correction_abs_bound`** — `correction_abs_bound_offdiag` instantiated; `hvanish` proven via
+  the W-trick, `herr` still a hypothesis.
+- **`yspace_diag_count_err`** — discharges `herr`: `|count_P − M/∏[lcm]| ≤ 1` for diagonal `P`, via
+  `sieve_count_eq_lattice_count` + `lattice_count_main_term` (CRT). UNCONDITIONAL. (NB: close the final
+  count match with `convert … using 6`, NOT `exact` — `exact` whnf-loops on the `Finset.filter`
+  `DecidablePred` instance unification; `convert` at depth 6 sidesteps it.)
+
+### The two remaining SIZE estimates for `hcorr` (`correction = o(B^{+k}·M)`) — both elementary, no BV
+- **Diagonal** `∑_{diag}|∏λλ| = o(M(log R)^k)`. New brick `abs_yLambda_le`:
+  `|yLambda R F L d| ≤ d·C·∑_{s∈R,d∣s}1/φ(s)`. STILL NEEDED: control the `d`-factor via the smoothing
+  `yLambda ≈ (d/φ(d))·C/log R` (Maynard `PartialSummation`, the `brick_smooth` content `678a9ed6`) — the
+  naive `d·C·∑1/φ` is too lossy (gives ~`R` per coord). The count side is `S1DiagonalSize` (DONE).
+  ⚠ NOTE the "diag" here is CROSS-coordinate coprimality (`∀i≠j, coprime(lcm(P i),lcm(P j))`), NOT the
+  within-coord `dᵢ=eᵢ` GPY diagonal — so `diagonal_weight_le_count` (d-space, `dᵢ=eᵢ`) does NOT directly
+  apply; the bound must keep the cross-coprimality + the `[dᵢ,eᵢ]≤R` support.
+- **Off-diagonal** `∑_{¬diag}|∏λλ|·M/∏[dᵢ,eᵢ] = o(M(log R)^k)`. New file `S1OffDiagSize.lean` has the
+  analytic engine: `recip_sq_tail_tendsto_zero` (`∑_{k}1/(k+D₀)²→0`) + `sum_finset_recip_sq_le_tail`
+  (any finite recip-sq sum over naturals `>D₀` ≤ the tail). STILL NEEDED: assemble
+  `∑_{¬diag} ≤ (∑_{i<j}∑_{p>D₀}1/p²)·∏Q'ᵢ` with `Q'ᵢ=∑|λλ|/[d,e]=O(log R)` (the shared-prime factor →0).
+
+### hBaseW (W-coprime sharp Mertens `∑gMuSqTotientCoprime/log → φ(W)/W`) — CLEAN ELEMENTARY ROUTE FOUND
+Aristotle brick `65d11d89` (lap-6) returned COMPLETE_WITH_ERRORS: it tried to prove the *unrestricted*
+sharp Mertens `∑μ²/φ = log N + O(1)` **from scratch** (its sole remaining `sorry`) — but the repo
+ALREADY has `SharpMertens.sharp_mertens_unconditional` (the tendsto). Its complete by-product
+`coprime_harmonic_bounded` (Möbius-inversion of `∑_{(n,d)=1}1/n`) is saved at
+`/tmp/aristotle_dl/brick_coprime_mertens_aristotle/` if the bounded-difference route is ever needed.
+**The clean route (no Euler products): geometric Möbius inversion per prime.** For squarefree `W`, `p∣W`:
+the two-term recursion `S_{W/p}(N) = S_W(N) + (1/(p-1))·S_W(N/p)` (split `∑_{(n,W/p)=1}` by `p∤n` / `p∣n`,
+squarefree ⟹ `n=p·m`) inverts to the **finite geometric** `S_W(N) = ∑_{k≥0}(-1/(p-1))^k S_{W/p}(N/p^k)`
+(terminates: `S_{W/p}(N/p^k)=0` once `p^k>N`). Then `S_W(N)/log N → L_{W/p}·∑_k(-1/(p-1))^k =
+L_{W/p}·(p-1)/p = φ(W)/W`. Induct over the primes of `W`; base `W=1` is `sharp_mertens_unconditional`.
+**Aristotle brick `dd98b9c1` (brick_singleprime, RUNNING)** = the single-prime case with
+`sharp_mertens_base` inlined as an axiom (`/tmp/brick_singleprime/Problem.lean`).
+
 ## ✅✅✅✅✅✅ PROGRESS 2026-06-05 (lap 6) — y-space S1 crystallised to ONE conditional theorem + correction is UNCONDITIONAL (not BV-gated)
 
 Three axiom-clean commits (`648d461`, `e02d2cb`, `4643f46`), full build green (8296 jobs) at every
