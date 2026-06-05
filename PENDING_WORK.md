@@ -70,6 +70,31 @@ All four results are `[propext, Classical.choice, Quot.sound]`, no `sorry`, no P
    `N` vs `x` via `R = x^{θ/2}`; do NOT hand-wave the `(φW/W)`-power and `log` bookkeeping). Then feed
    `alphaBound_of_heuristic_correction`; the off-diagonal `o(main)` correction is the **BV-gated** half.
 
+   ⚠️⚠️ **KEY FINDING this lap (lap 5): step 3d is NOT mere bookkeeping — it is entangled with the
+   d-space↔y-space convention flip (Trevor's architectural call), and the `alphaMainTerm` in
+   `Sieve.lean` is the WRONG normalisation for the y-space chain.** Worked through honestly:
+   - The reconciled y-space heuristic main is `M·∏ᵢ∑_{r≤N}(μ²/φ)Fᵢ²` with `M = (B−A)/W = x/W` the
+     lattice density (`lattice_count_main_term`). Each coordinate sum `~ log N·(φW/W)∫Fᵢ²`
+     (`yspace_kd_box_product_tendsto`), so the **y-space S1 `~ (x/W)·(log R)^k·(φW/W)^k·∫F²`** — the
+     `(log R)^k` grows (matches Maynard/GGPY `S1 ~ (N/W)(log R)^k I_k(F)·𝔖`).
+   - But `alphaMainTerm k W x = sieveB^{−k}·(x/W) = (φW/W·log x)^{−k}·(x/W)` carries `(log x)^{−k}`,
+     which DECAYS. So `α·alphaMainTerm` has `(log x)^{−k}` while the y-space S1 has `(log R)^{+k}` —
+     opposite powers. They cannot match for any constant `α`.
+   - **Diagnosis:** `alphaMainTerm = B^{−k}·x/W` is the **d-space** main term (it pairs with the
+     d-space `λ_F` whose constant is `∫(F')²` — the off-by-a-derivative landmine; the `B^{−k}` and the
+     derivative are two faces of the SAME convention). The y-space construction's main term is
+     `B^{+k}·x/W·∫F²` (no derivative, growing `log` power). So flipping `ν → selberg_nu_yr` is NOT
+     enough — **`alphaMainTerm` (and `betaMainTerm`) must ALSO be restated to the y-space `B^{+k}`
+     normalisation**, or `alphaBound`/`betaBound` rephrased. This is a flagship-touching convention
+     change = Trevor's call (consistent with the handoff's "Trevor flips the axioms").
+   - **⟹ Concrete recommendation for the flip:** when Trevor re-targets `s1`, introduce
+     `alphaMainTerm_yspace k W x := sieveB^{(k:ℤ)}·(x/W)` (note `+k`) and prove
+     `alphaBound k (selberg_nu_yr …) b W x (mkF_denominator k F)` against THAT. The machine-checked
+     y-space chain (capstone → `yr_heuristic_main_eq_Icc_product` → `yspace_kd_box_product_tendsto` →
+     `box_product_eq_mkF_denominator`) then lands `~ (x/W)(log R)^k(φW/W)^k∫F²` directly, with `M`
+     genuinely `= x/W` and NO fudge factor. Everything feeding this is now machine-checked; only the
+     `B^{±k}` normalisation choice (architectural) + the BV-gated `o(main)` correction remain.
+
 ## ✅✅✅✅ PROGRESS 2026-06-05 (lap 4) — contour-free Path-Y `s1` ANALYTIC MAIN TERM FULLY ASSEMBLED + FIRM `s1` verdict
 
 Eight axiom-clean commits (`4bf8830`…`bc6317e`), full build green (8288 jobs) at every gate. The
