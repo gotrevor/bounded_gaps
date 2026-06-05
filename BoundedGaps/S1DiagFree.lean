@@ -150,4 +150,72 @@ theorem fullCorr_eq_diag_add_offdiag {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H :
   rw [S1DiagCorrection.diagCorr, offdiagCorr]
   exact (Finset.sum_filter_add_sum_filter_not _ _ _).symm
 
+/-- **The full y-space S1 sieve-sum limit, conditional ONLY on the OFF-DIAGONAL correction.** The
+*actual* separable y-space sieve sum `sieveSum (selberg_nu_yr_sep …)` at a poly-large sieve scale
+`x = x(N)` (decoupled from the level `N`), level `R = N`, normalised by the y-space main term
+`B^{+k}·M` with `M = (⌊2x⌋−(⌈x⌉−1))/W` the exact lattice density, converges to the Maynard Rayleigh
+denominator `mkF_denominator k (∏ᵢ Fs i)` — **provided only the OFF-DIAGONAL correction is
+`o(B^{+k}·M)`** (`hoffdiag`).
+
+This strengthens `S1FullLimit.yspace_s1_sieveSum_div_tendsto` by discharging the *diagonal* half of
+the correction `hcorr` in-kernel (PNT-free, via `S1DiagCorrection.diag_correction_ratio_tendsto_zero`
+— the scale-trick), leaving the genuine remaining nut (the off-diagonal leg, which needs a growing
+modulus `W = W(N)`). Composes the scale-general heuristic-main limit
+(`yspace_s1_heuristic_main_div_sieveB_tendsto_scale`), the correction split
+(`fullCorr_eq_diag_add_offdiag`), and Leg 1. No PNT, no contour, no BV; conditional on `hBaseW` +
+`hoffdiag`. -/
+theorem yspace_s1_sieveSum_div_tendsto_diagFree {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (C : ℝ) (hW : 0 < W)
+    (hC : ∀ i, ∀ t, |Fs i t| ≤ C)
+    (hFs : ∀ i, ContDiff ℝ 1 (Fs i))
+    (hsupp : Function.support (fun t => ∏ i, Fs i (t i)) ⊆ Sieve.simplex k)
+    (hFsupp : ∀ i : Fin k, ∀ t : ℝ, 1 < t → Fs i t = 0)
+    (x : ℕ → ℝ) (hcov : ∀ N : ℕ, (W * N : ℝ) + 2 ≤ x N)
+    (hgrow : ∀ᶠ N : ℕ in atTop,
+      (N : ℝ) ^ (6 * k + 1)
+        ≤ ((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, BoundedGaps.WeightedMertens.gMuSqTotientCoprime W n)
+        / Real.log N) atTop (nhds ((W.totient : ℝ) / W)))
+    (hoffdiag : Tendsto (fun N : ℕ =>
+        offdiagCorr Fs H b W (x N) (Real.log (N : ℝ))
+            (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+          / (Sieve.sieveB W (N : ℝ) ^ k
+              * (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ)))) atTop (nhds 0)) :
+    Tendsto (fun N : ℕ =>
+        BoundedGaps.Sieve.sieveSum (S1YSpace.selberg_nu_yr_sep k Fs H (N : ℝ)
+            (fun i => (BoundedGaps.Sieve.sieveDivisors H i.val b W (x N)).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W))) b W (x N)
+          / (Sieve.sieveB W (N : ℝ) ^ k
+              * (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))))
+      atTop (nhds (Sieve.mkF_denominator k (fun t => ∏ i, Fs i (t i)))) := by
+  have hW1 : 1 ≤ W := hW
+  have hMne : ∀ᶠ N : ℕ in atTop,
+      ((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ) ≠ 0 := by
+    filter_upwards [hgrow, eventually_ge_atTop 1] with N hgN hN1
+    have hN0 : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hN1
+    have hpow : (0 : ℝ) < (N : ℝ) ^ (6 * k + 1) := by positivity
+    exact ne_of_gt (lt_of_lt_of_le hpow hgN)
+  have hheur := yspace_s1_heuristic_main_div_sieveB_tendsto_scale Fs H b W x
+    (fun N => ((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+    hW1 hMne hcov hFs hsupp hFsupp hBaseW
+  have hdiag := S1DiagCorrection.diag_correction_ratio_tendsto_zero Fs H b W C hW hC hFsupp x hcov hgrow
+  have hcomb := hheur.add (hdiag.add hoffdiag)
+  simp only [add_zero] at hcomb
+  refine hcomb.congr' ?_
+  filter_upwards [eventually_gt_atTop 0] with N hN
+  have hxN : 0 < x N := by
+    have h0 : (0 : ℝ) ≤ (W : ℝ) * (N : ℝ) := by positivity
+    have hcN := hcov N
+    push_cast at hcN
+    linarith
+  rw [S1YSpace.sieveSum_selberg_nu_yr_sep_eq_heuristic_add_correction k Fs H (N : ℝ)
+      (fun i => (BoundedGaps.Sieve.sieveDivisors H i.val b W (x N)).filter
+        (fun r => Squarefree r ∧ Nat.Coprime r W)) b W (x N) hxN
+      (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))]
+  rw [fullCorr_eq_diag_add_offdiag Fs H b W (x N) (Real.log (N : ℝ))
+      (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))]
+  beta_reduce
+  ring
+
 end BoundedGaps.S1DiagFree
