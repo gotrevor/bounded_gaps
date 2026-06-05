@@ -184,4 +184,89 @@ theorem weighted_riemann_2d_of_inner (F G : ℝ → ℝ)
   rw [funext (fun R => two_d_factor F G R)]
   exact hgoal
 
+/-- **Abstract-weight perturbed Riemann limit** (the reusable engine behind both the bare `1/n`
+ladder and the `μ²/φ` `y_r`-space ladder). For a nonnegative per-term weight `w R m`, GIVEN the two
+weighted 1-D limits — the main `(∑ F·Φ·w)/log R → ∫F·Φ` and the absolute majorant `(∑ |F|·w)/log R →
+A` — and the uniform convergence `a R m → Φ(log m/log R)`, the `a`-weighted sum has the same limit
+`∫F·Φ`. The error `∑ F·(a−Φ)·w` is squeezed by `ε₀·(A+1)`. This isolates the only weight-specific
+inputs (the two 1-D limits) so the `μ²/φ` engine reuses `WeightedMertens.weighted_mertens` exactly
+where the `1/n` engine uses `riemann_sum_log_weight`. -/
+theorem perturbed_riemann_gen (F Φ : ℝ → ℝ) (a w : ℕ → ℕ → ℝ) (A : ℝ)
+    (hw0 : ∀ R : ℕ, ∀ m ∈ Finset.Icc 2 R, 0 ≤ w R m)
+    (hmain : Tendsto (fun R : ℕ =>
+        (∑ m ∈ Finset.Icc 2 R,
+            F (Real.log m / Real.log R) * Φ (Real.log m / Real.log R) * w R m) / Real.log R)
+      atTop (nhds (∫ x in (0 : ℝ)..1, F x * Φ x)))
+    (habsf : Tendsto (fun R : ℕ =>
+        (∑ m ∈ Finset.Icc 2 R, |F (Real.log m / Real.log R)| * w R m) / Real.log R)
+      atTop (nhds A))
+    (hA0 : 0 ≤ A)
+    (huni : ∀ ε > 0, ∀ᶠ R : ℕ in atTop, ∀ m ∈ Finset.Icc 2 R,
+        |a R m - Φ (Real.log m / Real.log R)| ≤ ε) :
+    Tendsto (fun R : ℕ =>
+        (∑ m ∈ Finset.Icc 2 R, F (Real.log m / Real.log R) * a R m * w R m) / Real.log R)
+      atTop (nhds (∫ x in (0 : ℝ)..1, F x * Φ x)) := by
+  have herr : Tendsto (fun R : ℕ =>
+      (∑ m ∈ Finset.Icc 2 R, F (Real.log m / Real.log R) * a R m * w R m) / Real.log R
+        - (∑ m ∈ Finset.Icc 2 R,
+            F (Real.log m / Real.log R) * Φ (Real.log m / Real.log R) * w R m) / Real.log R)
+      atTop (nhds 0) := by
+    rw [Metric.tendsto_atTop]
+    intro ε hε
+    have hAp : (0 : ℝ) < A + 1 := by linarith
+    set ε₀ : ℝ := ε / (2 * (A + 1)) with hε₀
+    have hε₀p : 0 < ε₀ := by positivity
+    have e2 : ∀ᶠ R : ℕ in atTop,
+        (∑ m ∈ Finset.Icc 2 R, |F (Real.log m / Real.log R)| * w R m) / Real.log R < A + 1 := by
+      have h1 : ∀ᶠ R : ℕ in atTop,
+          |(∑ m ∈ Finset.Icc 2 R, |F (Real.log m / Real.log R)| * w R m) / Real.log R - A| < 1 :=
+        habsf (Metric.ball_mem_nhds A one_pos)
+      filter_upwards [h1] with R hR
+      rw [abs_lt] at hR; linarith [hR.2]
+    obtain ⟨N, hN⟩ := eventually_atTop.mp ((huni ε₀ hε₀p).and (e2.and (eventually_ge_atTop 2)))
+    refine ⟨N, fun R hR => ?_⟩
+    obtain ⟨hu, habs_lt, h2R⟩ := hN R hR
+    have hRpos : (1 : ℝ) < (R : ℝ) := by exact_mod_cast (by omega : 1 < R)
+    have hlogR : 0 < Real.log R := Real.log_pos hRpos
+    rw [Real.dist_eq, sub_zero, div_sub_div_same, ← Finset.sum_sub_distrib]
+    have hterm_eq : ∀ m ∈ Finset.Icc 2 R,
+        F (Real.log m / Real.log R) * a R m * w R m
+          - F (Real.log m / Real.log R) * Φ (Real.log m / Real.log R) * w R m
+        = F (Real.log m / Real.log R) * (a R m - Φ (Real.log m / Real.log R)) * w R m := by
+      intro m _; ring
+    rw [Finset.sum_congr rfl hterm_eq, abs_div, abs_of_pos hlogR]
+    have hnum : |∑ m ∈ Finset.Icc 2 R,
+        F (Real.log m / Real.log R) * (a R m - Φ (Real.log m / Real.log R)) * w R m|
+        ≤ ε₀ * ∑ m ∈ Finset.Icc 2 R, |F (Real.log m / Real.log R)| * w R m := by
+      calc |∑ m ∈ Finset.Icc 2 R,
+              F (Real.log m / Real.log R) * (a R m - Φ (Real.log m / Real.log R)) * w R m|
+          ≤ ∑ m ∈ Finset.Icc 2 R,
+              |F (Real.log m / Real.log R) * (a R m - Φ (Real.log m / Real.log R)) * w R m| :=
+            Finset.abs_sum_le_sum_abs _ _
+        _ ≤ ∑ m ∈ Finset.Icc 2 R, ε₀ * (|F (Real.log m / Real.log R)| * w R m) := by
+            refine Finset.sum_le_sum (fun m hm => ?_)
+            rw [abs_mul, abs_mul, abs_of_nonneg (hw0 R m hm)]
+            have hrw : ε₀ * (|F (Real.log m / Real.log R)| * w R m)
+                = |F (Real.log m / Real.log R)| * ε₀ * w R m := by ring
+            rw [hrw]
+            exact mul_le_mul_of_nonneg_right
+              (mul_le_mul_of_nonneg_left (hu m hm) (abs_nonneg _)) (hw0 R m hm)
+        _ = ε₀ * ∑ m ∈ Finset.Icc 2 R, |F (Real.log m / Real.log R)| * w R m := by
+            rw [Finset.mul_sum]
+    calc |∑ m ∈ Finset.Icc 2 R,
+            F (Real.log m / Real.log R) * (a R m - Φ (Real.log m / Real.log R)) * w R m|
+            / Real.log R
+        ≤ (ε₀ * ∑ m ∈ Finset.Icc 2 R, |F (Real.log m / Real.log R)| * w R m) / Real.log R :=
+          div_le_div_of_nonneg_right hnum hlogR.le
+      _ = ε₀ * ((∑ m ∈ Finset.Icc 2 R, |F (Real.log m / Real.log R)| * w R m) / Real.log R) := by
+          rw [mul_div_assoc]
+      _ ≤ ε₀ * (A + 1) := by
+          apply mul_le_mul_of_nonneg_left _ hε₀p.le
+          exact le_of_lt habs_lt
+      _ = ε / 2 := by rw [hε₀]; field_simp
+      _ < ε := by linarith
+  have hcomb := hmain.add herr
+  rw [add_zero] at hcomb
+  exact hcomb.congr (fun R => by ring)
+
 end BoundedGaps.WeightedRiemann2D
