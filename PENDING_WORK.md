@@ -2,6 +2,66 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## ✅✅✅✅✅ PROGRESS 2026-06-05 (lap 5) — box→simplex assembly (gap A4) + count→M candidate-set inclusion DONE
+
+Four axiom-clean commits (`82debdc`…`823303b`), full build green (8292 jobs) at every gate. This lap
+discharged the **analytic core of gap A4** (the box→simplex assembly — the second of the two named
+`s1` gaps) AND the **candidate-set inclusion** half of count→`M` (the handoff-flagged "delicate bit").
+All four results are `[propext, Classical.choice, Quot.sound]`, no `sorry`, no PNT, no BV.
+
+### NEW files / theorems (all axiom-clean)
+- **`S1BoxSimplex.lean`** — the box→simplex bridge (gap A4 analytic core):
+  - `simplex_subset_box` (`simplex k ⊆ [0,1]^k`), `setIntegral_box_prod` (box Fubini
+    `∫_box ∏ᵢgᵢ = ∏ᵢ∫₀¹gᵢ` via `Measure.restrict_pi_pi` + `integral_fintype_prod_eq_prod`),
+    `mkF_denominator_eq_box` (`∫_simplex F² = ∫_box F²` for simplex-supported `F`).
+  - **`box_product_eq_mkF_denominator`**: `∑_{j,j'}cⱼcⱼ'∏ᵢ∫₀¹Fs_{j,i}Fs_{j',i} = mkF_denominator k F`.
+    The separable sieve's box-product main constant **IS** the Maynard simplex denominator (because the
+    witness `F` is simplex-supported, so `∫_box F² = ∫_simplex F²`). Pure analysis, unconditional.
+- **`S1KDBox.lean`** — the full k-D box-product `s1` main-term limit:
+  - `quadForm` (the 1-D y-space bilinear Selberg form over `R_N`), `quadForm_div_log_tendsto`
+    (wraps `yspace_sieve_quadform_bilinear_tendsto`), `intervalIntegral_eq_setIntegral_Icc`
+    (`∫ 0..1 = ∫ in Icc 0 1`, reconciling the interval/set integral forms).
+  - **`yspace_kd_box_product_tendsto`**: `(∑_{j,j'}cⱼcⱼ'∏ᵢ quadForm W Fs_{j,i} Fs_{j',i} N)/(log N)^k
+    → (φW/W)^k · mkF_denominator k F`. The COMPLETE contour-free k-D `s1` main-term limit for the
+    separable y-space sieve, over the clean index `R_N = {r≤N: sf ∧ (r,W)=1}`. Assembled from the
+    per-coordinate bilinear tendsto (`tendsto_finset_prod` over coords, `tendsto_finset_sum` over
+    `(j,j')`) + the box→simplex bridge. Conditional only on `hBaseW` (Aristotle `65d11d89`).
+- **`S1CandidateSet.lean`** — the count→`M` candidate-set inclusion (the "delicate bit"):
+  - **`exists_n_interval_crt`**: for `(W,r)=1` and an interval `≥ W·r` long, ∃ `n` in residue class
+    `b (mod W)` with `r ∣ n+h` (Chinese remainder `Nat.chineseRemainder` + representative landing).
+  - **`mem_sieveDivisors_of_coprime`**: hence every small sf `W`-coprime `r ∈ sieveDivisors`.
+  - **`filter_Icc_subset_filter_sieveDivisors`**: `{r≤N: sf ∧ (r,W)=1} ⊆ Rset_i` when the interval is
+    `≥ W·N` long — the inclusion the count→`M` reconciliation consumes. Pure NT, unconditional.
+
+### Where `s1` stands NOW (refined map — TWO of the named gaps advanced this lap)
+- **Gap A4 (box→simplex assembly) — analytic core DONE.** `box_product_eq_mkF_denominator` +
+  `yspace_kd_box_product_tendsto` land the separable-sieve box-product main term on
+  `(φW/W)^k·mkF_denominator`. (Earlier lap's `s1_yr_mainTerm_eq_mkF_denominator_decomp` is the
+  *simplex-nested* analog; this lap's is the *box-product* form the capstone
+  `yr_heuristic_main_eq_muphi` actually produces.)
+- **Count→`M` — main density EXISTS, candidate-set inclusion DONE.** The CRT lattice count main term
+  `|count − (B−A)/(W·∏q)| ≤ 1` is ALREADY proven (`SieveExpansion.lattice_count_main_term`,
+  axiom-clean). This lap added the candidate-set inclusion (`filter_Icc_subset_filter_sieveDivisors`).
+  **What's LEFT in count→`M`:** (a) the NORMALISATION glue — match `M·(box product)/(log R)^k` to
+  `α·alphaMainTerm = mkF_denominator·B^{-k}·x/W` (the `M`, `B = φW/W·logx`, `(log R)^k`, `(φW/W)^k`
+  bookkeeping — careful, do NOT hand-wave; tie `R = x^{θ/2}`, `M = (⌊2x⌋−⌈x⌉)/W`); (b) the
+  off-diagonal `correction = o(main)` — **BV-gated** (gap C; `correction_abs_bound` exists).
+- **`hBaseW`** (Aristotle brick `65d11d89`, still RUNNING ~1.5h+) ⟹ general-`W` unconditional.
+- Then Trevor flips the 3 `s1`/`s2` axioms + `selberg_sieve_data_from_F` to `selberg_nu_yr` (witness
+  layer `mkF_denominator`/`Mk_200_gt_4` UNTOUCHED).
+
+### NEXT concrete sub-steps (for whoever continues count→`M`)
+1. **Eventually-long-interval**: a `∀ᶠ x` lemma giving `W·R(x) ≤ ⌊2x⌋−⌈x⌉+1` and `⌈x⌉≤⌊2x⌋` for the
+   sieve level `R = x^{θ/2}` (so `filter_Icc_subset_filter_sieveDivisors` fires for large `x`). Clean
+   floor/ceil real-analysis; ties the candidate-set inclusion to the `x→∞` regime.
+2. **Coordinate-sum equality**: `∑_{r∈Rset_i}(μ²/φ)F² = ∑_{r∈(Icc 1 R).filter}(μ²/φ)F²` using (1) the
+   subset inclusion (small `r` appear) and (2) the `F`-level cutoff (`F(log r/log R)=0` for `r>R`
+   kills the extra large divisors in `Rset_i`). Bridges the capstone (over `Rset_i`) to the
+   `yspace_kd_box_product_tendsto` (over `(Icc 1 R).filter`).
+3. **Normalisation assembly**: with (1)+(2) and `lattice_count_main_term`, write the heuristic-main
+   limit `Aheur − α·alphaMainTerm = o(alphaMainTerm)` and feed `alphaBound_of_heuristic_correction`
+   (the BV-gated correction is the remaining `o(main)` half).
+
 ## ✅✅✅✅ PROGRESS 2026-06-05 (lap 4) — contour-free Path-Y `s1` ANALYTIC MAIN TERM FULLY ASSEMBLED + FIRM `s1` verdict
 
 Eight axiom-clean commits (`4bf8830`…`bc6317e`), full build green (8288 jobs) at every gate. The

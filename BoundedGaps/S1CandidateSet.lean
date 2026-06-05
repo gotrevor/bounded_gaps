@@ -98,4 +98,37 @@ theorem filter_Icc_subset_filter_sieveDivisors (H : List ℕ) (i b W N : ℕ) (x
   calc W * r ≤ W * N := by gcongr
     _ ≤ ⌊2 * x⌋₊ - ⌈x⌉₊ + 1 := hlenN
 
+/-- **Sieve interval length bound.** For `x ≥ 2`, the sieve interval `[⌈x⌉, ⌊2x⌋]` is nonempty and at
+least `x - 2` long (`⌈x⌉ < x+1`, `2x < ⌊2x⌋+1`). -/
+theorem sieve_interval_lower_bound (x : ℝ) (hx : 2 ≤ x) :
+    ⌈x⌉₊ ≤ ⌊2 * x⌋₊ ∧ x - 2 ≤ (⌊2 * x⌋₊ : ℝ) - ⌈x⌉₊ := by
+  have hx0 : (0:ℝ) ≤ x := by linarith
+  have hceil : (⌈x⌉₊ : ℝ) < x + 1 := Nat.ceil_lt_add_one hx0
+  have hfloor : 2 * x < (⌊2 * x⌋₊ : ℝ) + 1 := Nat.lt_floor_add_one (2 * x)
+  have hlt : (⌈x⌉₊ : ℝ) < (⌊2 * x⌋₊ : ℝ) := by linarith
+  refine ⟨?_, by linarith⟩
+  exact_mod_cast le_of_lt hlt
+
+/-- **Sieve interval covers `[1,N]` for `x` large.** For `x ≥ W·N + 2`, the interval `[⌈x⌉, ⌊2x⌋]` is
+nonempty and `≥ W·N` long — exactly the `(hAB, hlenN)` hypotheses of
+`filter_Icc_subset_filter_sieveDivisors`. So for `x` large the clean diagonalisation index
+`{r ≤ N : sf ∧ (r,W)=1}` sits inside `Rset_i`; this ties the candidate-set inclusion to the `x→∞`
+regime the sieve asymptotic runs in (with the sieve level `N = R(x)`). -/
+theorem sieve_interval_covers (x : ℝ) (W N : ℕ) (hx : (W * N : ℝ) + 2 ≤ x) :
+    ⌈x⌉₊ ≤ ⌊2 * x⌋₊ ∧ W * N ≤ ⌊2 * x⌋₊ - ⌈x⌉₊ + 1 := by
+  have hWN : (0:ℝ) ≤ (W * N : ℕ) := by positivity
+  have hx2 : (2:ℝ) ≤ x := by
+    have : ((W * N : ℕ) : ℝ) = (W * N : ℝ) := by push_cast; ring
+    linarith [hx, hWN]
+  obtain ⟨hAB, hlen⟩ := sieve_interval_lower_bound x hx2
+  refine ⟨hAB, ?_⟩
+  have hcast : ((⌊2 * x⌋₊ - ⌈x⌉₊ : ℕ) : ℝ) = (⌊2 * x⌋₊ : ℝ) - ⌈x⌉₊ := by
+    rw [Nat.cast_sub hAB]
+  have hreal : ((W * N : ℕ) : ℝ) ≤ ((⌊2 * x⌋₊ - ⌈x⌉₊ : ℕ) : ℝ) := by
+    rw [hcast]
+    have : ((W * N : ℕ) : ℝ) = (W * N : ℝ) := by push_cast; ring
+    linarith [hx, hlen]
+  have hN : W * N ≤ ⌊2 * x⌋₊ - ⌈x⌉₊ := by exact_mod_cast hreal
+  omega
+
 end BoundedGaps.S1CandidateSet
