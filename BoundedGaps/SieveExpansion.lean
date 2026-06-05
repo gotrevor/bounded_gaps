@@ -2383,4 +2383,36 @@ theorem gpy_diagonalize_yform_smooth (R : Finset ℕ)
     field_simp
   rw [hinner]
 
+/-- **The y-space sieve diagonal main term IS `∑(μ²/φ)F²`** (the exact `weighted_mertens_coprime_sq`
+shape). Specialising `gpy_diagonalize_yform_smooth` to `Y s = F(log s/L)/φ(s)` on a squarefree,
+divisor-closed `R`: since `μ(r)²=1` there, `φ(r)Y(r)² = (μ²/φ)(r)·F(log r/L)²`. So the explicit
+y-space coefficient `λ_d = d·∑_{s∈R,d|s}μ(s/d)·F(log s/L)/φ(s)` gives
+`∑_{d,e∈R} λ_d λ_e/[d,e] = ∑_{r∈R}(μ²/φ)(r)·F(log r/L)²` — which (over `R = {r≤N sf, (r,W)=1}`,
+`L = log N`) is exactly `WeightedMertens.gMuSqTotientCoprime`-weighted, hence `→ (φ(W)/W)·∫F²` by
+`weighted_mertens_coprime_sq`. The full contour-free Path-Y `s1` main term, modulo the lattice-count
+reduction `sieveSum ≈ (count)·∑λλ/[d,e]` (the `selberg_nu_yr` wiring + correction, next). -/
+theorem gpy_diagonalize_yform_muphi (R : Finset ℕ)
+    (hR0 : ∀ s ∈ R, 1 ≤ s)
+    (hRsf : ∀ s ∈ R, Squarefree s)
+    (hRdc : ∀ s ∈ R, ∀ d, d ∣ s → d ∈ R)
+    (F : ℝ → ℝ) (L : ℝ) :
+    (∑ d ∈ R, ∑ e ∈ R,
+        ((d : ℝ) * (∑ s ∈ R.filter (fun s => d ∣ s),
+            (moebius (s / d) : ℝ) * (F (Real.log s / L) / (Nat.totient s : ℝ))))
+          * ((e : ℝ) * (∑ s ∈ R.filter (fun s => e ∣ s),
+            (moebius (s / e) : ℝ) * (F (Real.log s / L) / (Nat.totient s : ℝ))))
+          / (Nat.lcm d e : ℝ))
+      = ∑ r ∈ R, ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ)) * F (Real.log r / L) ^ 2 := by
+  rw [gpy_diagonalize_yform_smooth R hR0 hRdc
+    (fun s => F (Real.log s / L) / (Nat.totient s : ℝ))]
+  refine Finset.sum_congr rfl (fun r hr => ?_)
+  have hφ : (0 : ℝ) < (Nat.totient r : ℝ) := by
+    have : 0 < Nat.totient r := Nat.totient_pos.mpr (hR0 r hr)
+    exact_mod_cast this
+  have hμ : ((moebius r : ℝ)) ^ 2 = 1 := by
+    have := ArithmeticFunction.moebius_sq_eq_one_of_squarefree (hRsf r hr)
+    exact_mod_cast this
+  rw [hμ]
+  field_simp
+
 end BoundedGaps.Sieve
