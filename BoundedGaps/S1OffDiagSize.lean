@@ -92,4 +92,50 @@ theorem offdiag_le_sum_pairs {k : ℕ} (T : Finset (Fin k → ℕ × ℕ))
   rw [Finset.sum_comm, Finset.sum_congr rfl]
   intro i hi; rw [Finset.sum_comm]; simp +decide [Finset.sum_ite]
 
+/-- **Shared-prime union bound for one coordinate pair.** Given a finite prime cover `Ps` such that
+every `¬coprime` tuple of the pair `(i,j)` has a shared prime in `Ps` (`hcover`), the pair-restricted
+nonnegative-weight sum is bounded by the sum over `p ∈ Ps` of the "both `i,j` moduli divisible by `p`"
+restricted sums. The second reduction of the y-space S1 off-diagonal estimate (after
+`offdiag_le_sum_pairs`): each shared prime `p > D₀` (W-trick) then carries a `1/p²` singular-series
+weight, and `∑_{p>D₀}1/p² → 0`. Pure `Finset` union bound. -/
+theorem pair_offdiag_le_sum_primes {k : ℕ} (T : Finset (Fin k → ℕ × ℕ)) (i j : Fin k)
+    (w : (Fin k → ℕ × ℕ) → ℝ) (hw : ∀ P ∈ T, 0 ≤ w P) (Ps : Finset ℕ)
+    (hcover : ∀ P ∈ T, ¬ Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2) →
+      ∃ p ∈ Ps, p ∣ Nat.lcm (P i).1 (P i).2 ∧ p ∣ Nat.lcm (P j).1 (P j).2) :
+    ∑ P ∈ T.filter (fun P => ¬ Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)), w P
+      ≤ ∑ p ∈ Ps, ∑ P ∈ T.filter
+          (fun P => p ∣ Nat.lcm (P i).1 (P i).2 ∧ p ∣ Nat.lcm (P j).1 (P j).2), w P := by
+  classical
+  have key : ∑ P ∈ T.filter
+        (fun P => ¬ Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)), w P
+      ≤ ∑ P ∈ T, ∑ p ∈ Ps,
+          (if p ∣ Nat.lcm (P i).1 (P i).2 ∧ p ∣ Nat.lcm (P j).1 (P j).2 then w P else 0) := by
+    have hterm : ∀ P ∈ T,
+        (¬ Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)) →
+        w P ≤ ∑ p ∈ Ps,
+          (if p ∣ Nat.lcm (P i).1 (P i).2 ∧ p ∣ Nat.lcm (P j).1 (P j).2 then w P else 0) := by
+      intro P hP hnc
+      obtain ⟨p, hpPs, hpa, hpb⟩ := hcover P hP hnc
+      have hnn : ∀ q ∈ Ps, (0 : ℝ) ≤
+          (if q ∣ Nat.lcm (P i).1 (P i).2 ∧ q ∣ Nat.lcm (P j).1 (P j).2 then w P else 0) := by
+        intro q _
+        by_cases hc : q ∣ Nat.lcm (P i).1 (P i).2 ∧ q ∣ Nat.lcm (P j).1 (P j).2
+        · rw [if_pos hc]; exact hw P hP
+        · rw [if_neg hc]
+      have hsingle := Finset.single_le_sum hnn hpPs
+      beta_reduce at hsingle
+      rwa [if_pos ⟨hpa, hpb⟩] at hsingle
+    refine le_trans (Finset.sum_le_sum fun P hP =>
+        hterm P (Finset.mem_filter.mp hP).1 (Finset.mem_filter.mp hP).2) ?_
+    refine Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _) ?_
+    intro P _ _
+    refine Finset.sum_nonneg (fun q _ => ?_)
+    by_cases hc : q ∣ Nat.lcm (P i).1 (P i).2 ∧ q ∣ Nat.lcm (P j).1 (P j).2
+    · rw [if_pos hc]; exact hw P ‹_›
+    · rw [if_neg hc]
+  refine le_trans key (le_of_eq ?_)
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl (fun p _ => ?_)
+  rw [Finset.sum_filter]
+
 end BoundedGaps.S1OffDiagSize
