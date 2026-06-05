@@ -195,4 +195,96 @@ theorem selberg_local_factor (p d e : ℕ) (hp : p.Prime) (hd : 1 ≤ d) (he : 1
   push_cast [Nat.cast_sub (by omega : 1 ≤ p)]
   field_simp
 
+/-- The deterministic Selberg singular-series majorant `G(a,e) = (a/φa)·(e/φe)/lcm(a,e)`. The sharp
+coefficient bound `S1Correction.abs_yLambda_le_sharp` gives `|yLambda_a · yLambda_e|/lcm(a,e) ≤
+(C·∑μ²/φ)²·G(a,e)`, so `G` is the deterministic upper envelope of the off-diagonal Selberg weight.
+**NB (lap-11):** this majorant alone is lossy by `(log)²` per coordinate (it carries `∑μ²/φ ≈ log N`
+where the truth is `1/log R`); the off-diagonal closure needs the smoothing bound — see the
+`PENDING_WORK.md` lap-11 head. `G` + `reindex_bound` are the PNT-free combinatorial scaffold. -/
+noncomputable def Gmaj (a e : ℕ) : ℝ :=
+  (a : ℝ) / (a.totient : ℝ) * ((e : ℝ) / (e.totient : ℝ)) / ((Nat.lcm a e : ℕ) : ℝ)
+
+theorem Gmaj_nonneg (a e : ℕ) : 0 ≤ Gmaj a e := by unfold Gmaj; positivity
+
+/-- `selberg_local_factor` specialised to the named majorant `Gmaj`. -/
+theorem Gmaj_local_factor (p d e : ℕ) (hp : p.Prime) (hd : 1 ≤ d) (he : 1 ≤ e)
+    (hpd : ¬ p ∣ d) (hpe : ¬ p ∣ e) :
+    Gmaj (p * d) e = (1 / ((p : ℝ) - 1)) * Gmaj d e := by
+  unfold Gmaj
+  exact selberg_local_factor p d e hp hd he hpd hpe
+
+/-- **The per-prime reindex bound for the singular-series majorant.** Over a squarefree,
+divisor-closed Finset `R`, the `p∣d` part of the double majorant sum is a `1/(p-1)` fraction of the
+whole:
+`∑_{d∈R, p∣d} ∑_{e∈R, p∤e} G d e ≤ (1/(p-1)) · ∑_{d∈R} ∑_{e∈R, p∤e} G d e`.
+Reindex the outer sum by `d ↦ d/p` on `{d∈R : p∣d}` (injective; image `⊆ R` by divisor-closure;
+squarefreeness gives `p∤(d/p)`), where each term picks up the `1/(p-1)` factor via
+`Gmaj_local_factor`/`selberg_local_factor`. **Fully PNT-free** (pure `Finset` combinatorics + the
+elementary local factor). This is the multiplicative heart of the off-diagonal per-prime mass
+fraction: combined with the symmetric `p∣e` part it gives `∑_{p∣lcm} G ≤ (κ/(p-1))·∑ G`, and the
+`∑_{p>D₀}1/(p-1)²` tail (`recip_sq_tail_tendsto_zero`) then drives the off-diagonal `→ 0` for growing
+`W`. (The genuine off-diagonal correction further needs the smoothing bound to control `G` vs the
+actual weight — `PENDING_WORK.md` lap-11.) -/
+theorem reindex_bound (R : Finset ℕ) (p : ℕ) (hp : p.Prime)
+    (hRsf : ∀ a ∈ R, Squarefree a) (hR1 : ∀ a ∈ R, 1 ≤ a)
+    (hRdc : ∀ a ∈ R, ∀ b, b ∣ a → 1 ≤ b → b ∈ R) :
+    ∑ d ∈ R.filter (fun d => p ∣ d), ∑ e ∈ R.filter (fun e => ¬ p ∣ e), Gmaj d e
+      ≤ (1 / ((p : ℝ) - 1))
+          * ∑ d ∈ R, ∑ e ∈ R.filter (fun e => ¬ p ∣ e), Gmaj d e := by
+  classical
+  set inner : ℕ → ℝ := fun d => ∑ e ∈ R.filter (fun e => ¬ p ∣ e), Gmaj d e with hinner
+  have hinner_nonneg : ∀ d, 0 ≤ inner d := fun d =>
+    Finset.sum_nonneg (fun e _ => Gmaj_nonneg d e)
+  have hpm1 : (0:ℝ) < (p:ℝ) - 1 := by
+    have : (2:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp.two_le
+    linarith
+  have hp1 : (0:ℝ) ≤ 1 / ((p:ℝ) - 1) := by positivity
+  have hd'pos : ∀ d, d ∈ R → p ∣ d → 1 ≤ d / p := by
+    intro d hdR hpdvd
+    have hd1 : 1 ≤ d := hR1 d hdR
+    rcases Nat.eq_zero_or_pos (d / p) with h | h
+    · exfalso; have := Nat.mul_div_cancel' hpdvd; rw [h, Nat.mul_zero] at this; omega
+    · exact h
+  have hstep1 : ∑ d ∈ R.filter (fun d => p ∣ d), inner d
+      = (1 / ((p:ℝ) - 1)) * ∑ d ∈ R.filter (fun d => p ∣ d), inner (d / p) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl (fun d hd => ?_)
+    rw [Finset.mem_filter] at hd
+    obtain ⟨hdR, hpdvd⟩ := hd
+    have hdsf : Squarefree d := hRsf d hdR
+    have hdeq : p * (d / p) = d := Nat.mul_div_cancel' hpdvd
+    have hd'1 : 1 ≤ d / p := hd'pos d hdR hpdvd
+    have hpd' : ¬ p ∣ (d / p) := by
+      intro hdvd
+      have hpp : p * p ∣ d := by rw [← hdeq]; exact Nat.mul_dvd_mul_left p hdvd
+      exact hp.ne_one (Nat.isUnit_iff.mp (hdsf p hpp))
+    simp only [hinner, Finset.mul_sum]
+    refine Finset.sum_congr rfl (fun e he => ?_)
+    rw [Finset.mem_filter] at he
+    have he1 : 1 ≤ e := hR1 e he.1
+    calc Gmaj d e = Gmaj (p * (d/p)) e := by rw [hdeq]
+      _ = (1/((p:ℝ)-1)) * Gmaj (d/p) e :=
+          Gmaj_local_factor p (d/p) e hp hd'1 he1 hpd' he.2
+  rw [hstep1]
+  have himg : (R.filter (fun d => p ∣ d)).image (fun d => d / p) ⊆ R := by
+    intro y hy
+    simp only [Finset.mem_image, Finset.mem_filter] at hy
+    obtain ⟨d, ⟨hdR, hpdvd⟩, rfl⟩ := hy
+    exact hRdc d hdR (d/p) (Nat.div_dvd_of_dvd hpdvd) (hd'pos d hdR hpdvd)
+  have hinj : ∀ x ∈ R.filter (fun d => p ∣ d), ∀ y ∈ R.filter (fun d => p ∣ d),
+      x / p = y / p → x = y := by
+    intro a ha b hb hab
+    rw [Finset.mem_filter] at ha hb
+    have : p * (a/p) = p * (b/p) := by rw [hab]
+    rwa [Nat.mul_div_cancel' ha.2, Nat.mul_div_cancel' hb.2] at this
+  have hmono : ∑ d ∈ R.filter (fun d => p ∣ d), inner (d / p) ≤ ∑ d ∈ R, inner d := by
+    calc ∑ d ∈ R.filter (fun d => p ∣ d), inner (d / p)
+        = ∑ y ∈ (R.filter (fun d => p ∣ d)).image (fun d => d / p), inner y :=
+          (Finset.sum_image hinj).symm
+      _ ≤ ∑ d ∈ R, inner d :=
+          Finset.sum_le_sum_of_subset_of_nonneg himg (fun d _ _ => hinner_nonneg d)
+  calc (1/((p:ℝ)-1)) * ∑ d ∈ R.filter (fun d => p ∣ d), inner (d / p)
+      ≤ (1/((p:ℝ)-1)) * ∑ d ∈ R, inner d := mul_le_mul_of_nonneg_left hmono hp1
+    _ = _ := rfl
+
 end BoundedGaps.S1OffDiagSize
