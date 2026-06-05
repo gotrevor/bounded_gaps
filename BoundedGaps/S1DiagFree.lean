@@ -24,6 +24,7 @@ and the off-diagonal correction.
 -/
 import BoundedGaps.S1DiagCorrection
 import BoundedGaps.S1FullLimit
+import BoundedGaps.S1OffDiagSize
 
 open MeasureTheory Filter Topology
 open scoped BigOperators
@@ -345,5 +346,60 @@ theorem hoffdiag_of_offDiagMass {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List
     mul_comm (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
       (offDiagMass Fs H b W (x N) (Real.log (N : ℝ))),
     mul_div_mul_right _ _ hMN]
+
+/-- **The off-diagonal mass is union-bounded by per-pair shared-prime sums.** `|offDiagMass|` is
+bounded by the double sum over ordered pairs of distinct coordinates `(i,j)` of the absolute Selberg
+mass restricted to tuples whose `i,j` moduli are NOT coprime. Triangle inequality
+(`|∑| ≤ ∑|·|`, and `|(∏λλ)/∏[d,e]| = |∏λλ|/∏[d,e]` since `∏[d,e] ≥ 0`) + the Aristotle-verified union
+bound `S1OffDiagSize.offdiag_le_sum_pairs`. This is the first reduction of the Leg-2 target
+`offDiagMass = o(B^{+k})`: each pair term `∑_{P : p|lcm(P i),lcm(P j)} |∏λλ|/∏[d,e]` carries a shared
+prime `p > D₀` (W-trick), contributing the singular-series `∑_{p>D₀}1/p²` factor
+(`S1OffDiagSize.sum_finset_recip_sq_le_tail` / `recip_sq_tail_tendsto_zero`) — the remaining
+per-prime mass-fraction step (the open growing-`W` sub-question, `PENDING_WORK.md`). -/
+theorem abs_offDiagMass_le_sum_pairs {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (b W : ℕ) (x L : ℝ) :
+    |offDiagMass Fs H b W x L|
+      ≤ ∑ i : Fin k, ∑ j ∈ Finset.univ.filter (fun j => j ≠ i),
+          ∑ P ∈ (Fintype.piFinset (fun i : Fin k =>
+                ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                    (fun r => Squarefree r ∧ Nat.Coprime r W))
+                  ×ˢ ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                    (fun r => Squarefree r ∧ Nat.Coprime r W)))).filter
+                (fun P => ¬ Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)),
+            |∏ i : Fin k,
+              S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                  (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).1
+                * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                  (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).2|
+              / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ) := by
+  classical
+  unfold offDiagMass
+  refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+  have heq : ∀ P : Fin k → ℕ × ℕ,
+      |(∏ i : Fin k,
+          S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).1
+            * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).2)
+        / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)|
+      = |∏ i : Fin k,
+          S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).1
+            * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).2|
+        / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ) := by
+    intro P
+    have hpos : (0 : ℝ) ≤ ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ) :=
+      Finset.prod_nonneg (fun i _ => Nat.cast_nonneg _)
+    rw [abs_div, abs_of_nonneg hpos]
+  simp_rw [heq]
+  exact S1OffDiagSize.offdiag_le_sum_pairs _ (fun i P => Nat.lcm (P i).1 (P i).2)
+    (fun P => |∏ i : Fin k,
+        S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).1
+          * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).2|
+      / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))
+    (fun P _ => div_nonneg (abs_nonneg _)
+      (Finset.prod_nonneg (fun i _ => Nat.cast_nonneg _)))
 
 end BoundedGaps.S1DiagFree

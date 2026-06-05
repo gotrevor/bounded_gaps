@@ -59,4 +59,37 @@ theorem sum_finset_recip_sq_le_tail (D₀ : ℕ) (s : Finset ℕ) (hs : ∀ n �
   refine (summable_recip_sq_shift (D₀ + 1)).sum_le_tsum _ (fun j _ => ?_)
   rw [hg]; positivity
 
+/-- **Off-diagonal union-bound reduction.** With nonnegative weights `w`, the sum over the
+non-diagonal tuples (whose coordinate moduli `q i P` are NOT pairwise coprime) is bounded by the
+double sum over ordered pairs of distinct coordinates `(i,j)` of the pair-non-coprime restricted
+sums. The first step of the y-space S1 off-diagonal size estimate: a `¬diag` tuple has some pair
+`i ≠ j` sharing a prime (`> D₀` by the W-trick), and we union-bound over those pairs; each pair then
+carries the singular-series `1/p²` factor (the next step). Proved by Aristotle (`c459c135`), verified
+in-kernel + axiom-clean. -/
+theorem offdiag_le_sum_pairs {k : ℕ} (T : Finset (Fin k → ℕ × ℕ))
+    (q : Fin k → (Fin k → ℕ × ℕ) → ℕ) (w : (Fin k → ℕ × ℕ) → ℝ)
+    (hw : ∀ P ∈ T, 0 ≤ w P) :
+    ∑ P ∈ T.filter (fun P => ¬ ∀ i j : Fin k, i ≠ j → Nat.Coprime (q i P) (q j P)), w P
+      ≤ ∑ i : Fin k, ∑ j ∈ Finset.univ.filter (fun j => j ≠ i),
+          ∑ P ∈ T.filter (fun P => ¬ Nat.Coprime (q i P) (q j P)), w P := by
+  have h_lhs : ∑ P ∈ T with ¬∀ i j, i ≠ j → Nat.Coprime (q i P) (q j P), w P
+      ≤ ∑ P ∈ T, ∑ i, ∑ j with j ≠ i,
+          (if ¬Nat.Coprime (q i P) (q j P) then w P else 0) := by
+    have h_lhs : ∀ P ∈ T, (¬∀ i j, i ≠ j → Nat.Coprime (q i P) (q j P)) →
+        w P ≤ ∑ i, ∑ j with j ≠ i, (if ¬Nat.Coprime (q i P) (q j P) then w P else 0) := by
+      intro P hP hP'; simp_all +decide [Finset.sum_ite]
+      obtain ⟨i, j, hij, h⟩ := hP'
+      refine' le_trans _ (Finset.single_le_sum
+        (fun x _ => mul_nonneg (Nat.cast_nonneg _) (hw P hP)) (Finset.mem_univ i))
+      simp +decide [*, Finset.filter_ne']
+      exact le_mul_of_one_le_left (hw P hP) (mod_cast Finset.card_pos.mpr ⟨j, by aesop⟩)
+    exact le_trans (Finset.sum_le_sum fun P hP =>
+        h_lhs P (Finset.mem_filter.mp hP |>.1) (Finset.mem_filter.mp hP |>.2))
+      (Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+        fun _ _ _ => Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => by
+          split_ifs <;> linarith [hw _ ‹_›])
+  convert h_lhs using 1
+  rw [Finset.sum_comm, Finset.sum_congr rfl]
+  intro i hi; rw [Finset.sum_comm]; simp +decide [Finset.sum_ite]
+
 end BoundedGaps.S1OffDiagSize
