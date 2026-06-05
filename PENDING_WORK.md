@@ -51,16 +51,24 @@ All four results are `[propext, Classical.choice, Quot.sound]`, no `sorry`, no P
   layer `mkF_denominator`/`Mk_200_gt_4` UNTOUCHED).
 
 ### NEXT concrete sub-steps (for whoever continues count→`M`)
-1. **Eventually-long-interval**: a `∀ᶠ x` lemma giving `W·R(x) ≤ ⌊2x⌋−⌈x⌉+1` and `⌈x⌉≤⌊2x⌋` for the
-   sieve level `R = x^{θ/2}` (so `filter_Icc_subset_filter_sieveDivisors` fires for large `x`). Clean
-   floor/ceil real-analysis; ties the candidate-set inclusion to the `x→∞` regime.
-2. **Coordinate-sum equality**: `∑_{r∈Rset_i}(μ²/φ)F² = ∑_{r∈(Icc 1 R).filter}(μ²/φ)F²` using (1) the
-   subset inclusion (small `r` appear) and (2) the `F`-level cutoff (`F(log r/log R)=0` for `r>R`
-   kills the extra large divisors in `Rset_i`). Bridges the capstone (over `Rset_i`) to the
-   `yspace_kd_box_product_tendsto` (over `(Icc 1 R).filter`).
-3. **Normalisation assembly**: with (1)+(2) and `lattice_count_main_term`, write the heuristic-main
-   limit `Aheur − α·alphaMainTerm = o(alphaMainTerm)` and feed `alphaBound_of_heuristic_correction`
-   (the BV-gated correction is the remaining `o(main)` half).
+1. ✅ **DONE** (`S1CandidateSet.sieve_interval_lower_bound`/`sieve_interval_covers`): for `x ≥ W·N+2`
+   the interval `[⌈x⌉,⌊2x⌋]` is `≥ W·N` long (`⌈x⌉<x+1`, `2x<⌊2x⌋+1`) — fires
+   `filter_Icc_subset_filter_sieveDivisors` for large `x`.
+2. ✅ **DONE** (`S1CandidateSet.coord_sum_restrict_to_Icc`/`_bilinear` +
+   `S1CountReconcile.yr_coord_factor_eq_Icc_sum`): `∑_{r∈Rset_i}(μ²/φ)F² =
+   ∑_{r∈(Icc 1 N).filter}(μ²/φ)F²` via the inclusion (small `r` appear) + the `F`-level cutoff
+   (`F(log r/log R)=0` for `r>N≥⌊R⌋ ⟹ r>R` kills the extra large divisors). The assembled
+   `yr_coord_factor_eq_Icc_sum` is the exact per-coordinate bridge from the capstone
+   `yr_heuristic_main_eq_muphi` to `yspace_kd_box_product_tendsto` (both single-F and bilinear forms).
+3. **Normalisation assembly** (the remaining count→`M` content). With (1)+(2) and
+   `lattice_count_main_term` (`|count − (B−A)/(W·∏q)| ≤ 1`, already proven): (a) set the level `R = N`
+   (a nat) so the capstone scaling `log R` matches the tendsto scaling `log N`, and `x = x(N)` tied
+   `≥ W·N+2`; (b) rewrite the k-D heuristic main `= M·∏ᵢ ∑_{r≤N: sf,coprime}(μ²/φ)Fᵢ²` (capstone +
+   `yr_coord_factor_eq_Icc_sum` per coord); (c) divide by `M·(log N)^k` ⟹
+   `→ (φW/W)^k·mkF_denominator` (`yspace_kd_box_product_tendsto`); (d) the **careful** bit — match
+   `M·(log N)^k·(φW/W)^k` to `alphaMainTerm = (φW/W·log x)^{−k}·(x/W)` (identify `M = (⌊2x⌋−⌈x⌉)/W` and
+   `N` vs `x` via `R = x^{θ/2}`; do NOT hand-wave the `(φW/W)`-power and `log` bookkeeping). Then feed
+   `alphaBound_of_heuristic_correction`; the off-diagonal `o(main)` correction is the **BV-gated** half.
 
 ## ✅✅✅✅ PROGRESS 2026-06-05 (lap 4) — contour-free Path-Y `s1` ANALYTIC MAIN TERM FULLY ASSEMBLED + FIRM `s1` verdict
 
