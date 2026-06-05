@@ -49,4 +49,34 @@ theorem sieve_count_eq_lcm_count (k : ℕ) (H : List ℕ) (b W : ℕ) (x : ℝ) 
   intro i
   rw [Nat.lcm_dvd_iff]
 
+/-- **Sieve count = lattice-count framework count** (the full bridge). Composing
+`sieve_count_eq_lcm_count` with the `Icc → Ioc` index shift (`A = ⌈x⌉₊-1`, `B = ⌊2x⌋₊`; valid since
+`x>0 ⟹ ⌈x⌉₊≥1`) and the filter merge, the sieve's correction count is put in the **exact** shape
+`SieveExpansion.lattice_count_main_term` / `lattice_count_offdiag_vanish_Wtrick` consume:
+`#{m ∈ Ioc A B : m ≡ b [MOD W] ∧ ∀ i ∈ finRange k, q i ∣ (m+hᵢ)}` with the single modulus
+`q i = lcm (P i).1 (P i).2`, index list `l = List.finRange k`, shifts `h i = H.getD i.val 0`. Feeds
+`herr` (`lattice_count_main_term`, given pairwise-coprime `q` + `W`-coprimality) and `hvanish`
+(`lattice_count_offdiag_vanish_Wtrick`) of `correction_abs_bound_offdiag`. -/
+theorem sieve_count_eq_lattice_count (k : ℕ) (H : List ℕ) (b W : ℕ) (x : ℝ) (hx : 0 < x)
+    (P : Fin k → ℕ × ℕ) :
+    (((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+        (fun m => ∀ i : Fin k,
+          (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+      = ((Finset.Ioc (⌈x⌉₊ - 1) ⌊2 * x⌋₊).filter
+          (fun m => m ≡ b [MOD W] ∧ ∀ i ∈ List.finRange k,
+            Nat.lcm (P i).1 (P i).2 ∣ (m + H.getD i.val 0))).card := by
+  rw [sieve_count_eq_lcm_count, Finset.filter_filter]
+  have hceil : 1 ≤ ⌈x⌉₊ := Nat.one_le_ceil_iff.mpr hx
+  have hIcc : Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊ = Finset.Ioc (⌈x⌉₊ - 1) ⌊2 * x⌋₊ := by
+    ext m; simp only [Finset.mem_Icc, Finset.mem_Ioc]; omega
+  rw [hIcc]
+  congr 1
+  apply Finset.filter_congr
+  intro m _
+  constructor
+  · rintro ⟨hmod, hdvd⟩
+    exact ⟨hmod, fun i _ => hdvd i⟩
+  · rintro ⟨hmod, hdvd⟩
+    exact ⟨hmod, fun i => hdvd i (List.mem_finRange i)⟩
+
 end BoundedGaps.S1Correction
