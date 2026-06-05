@@ -64,8 +64,8 @@ theorem exists_n_interval_crt (A B W r h b : ℕ) (hW : 1 ≤ W) (hr : 1 ≤ r)
 
 /-- **Candidate-set membership.** Every `r ≥ 1` coprime to `W`, with `W·r` no larger than the
 interval length `⌊2x⌋ - ⌈x⌉ + 1`, divides some `n+hᵢ` in the residue class `b (mod W)` of the sieve
-interval `[⌈x⌉, ⌊2x⌋]` — hence `r ∈ sieveDivisors H i b W x`. So `{r : sf ∧ (r,W)=1 ∧ small} ⊆ Rset`:
-every small modulus genuinely appears in the y-space sieve (the candidate-set inclusion half of the
+interval `[⌈x⌉, ⌊2x⌋]` — hence `r ∈ sieveDivisors H i b W x`. So every small modulus genuinely
+appears in the y-space sieve: it is the candidate-set inclusion half of the
 count→`M` reconciliation). -/
 theorem mem_sieveDivisors_of_coprime (H : List ℕ) (i b W : ℕ) (x : ℝ) (r : ℕ)
     (hx : 0 < x) (hr : 1 ≤ r) (hW : 1 ≤ W) (hcop : Nat.Coprime r W)
@@ -78,5 +78,24 @@ theorem mem_sieveDivisors_of_coprime (H : List ℕ) (i b W : ℕ) (x : ℝ) (r :
   refine ⟨n, ?_, ?_⟩
   · rw [Finset.mem_filter]; exact ⟨Finset.mem_Icc.mpr ⟨hAn, hnB⟩, hnW⟩
   · rw [Nat.mem_divisors]; exact ⟨hdvd, by omega⟩
+
+/-- **Candidate-set inclusion (subset form).** When the sieve interval is at least `W·N` long, the
+clean diagonalisation index `{r ≤ N : sf ∧ (r,W)=1}` is contained in the actual candidate set
+`Rset_i = sieveDivisors_i.filter (sf ∧ (·,W)=1)`. This is the inclusion the count→`M` reconciliation
+consumes: it lets the y-space coordinate sum over the appearing divisors be compared term-by-term to
+the contour-free limit's sum over all small `r` (`S1YSpace.yspace_sieve_quadform_tendsto`). -/
+theorem filter_Icc_subset_filter_sieveDivisors (H : List ℕ) (i b W N : ℕ) (x : ℝ)
+    (hx : 0 < x) (hW : 1 ≤ W) (hAB : ⌈x⌉₊ ≤ ⌊2 * x⌋₊)
+    (hlenN : W * N ≤ ⌊2 * x⌋₊ - ⌈x⌉₊ + 1) :
+    ((Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W))
+      ⊆ (BoundedGaps.Sieve.sieveDivisors H i b W x).filter
+          (fun r => Squarefree r ∧ Nat.Coprime r W) := by
+  intro r hr
+  rw [Finset.mem_filter, Finset.mem_Icc] at hr
+  obtain ⟨⟨hr1, hrN⟩, hsf, hcop⟩ := hr
+  rw [Finset.mem_filter]
+  refine ⟨mem_sieveDivisors_of_coprime H i b W x r hx hr1 hW hcop hAB ?_, hsf, hcop⟩
+  calc W * r ≤ W * N := by gcongr
+    _ ≤ ⌊2 * x⌋₊ - ⌈x⌉₊ + 1 := hlenN
 
 end BoundedGaps.S1CandidateSet
