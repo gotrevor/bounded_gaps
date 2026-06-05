@@ -127,4 +127,37 @@ theorem yspace_sieve_quadform_tendsto_one {F : ℝ → ℝ} (hF : ContDiff ℝ 1
   have h := yspace_sieve_quadform_tendsto (W := 1) (F := F) hF base_one
   simpa using h
 
+/-- **The (separable) y-space Selberg sieve weight.** `ν(n) = (∏ᵢ ∑_{d∣n+hᵢ} λ_{d,i})²` with the
+inversion-defined coefficient `λ_{d,i} = yLambda (Rset i) (Fs i) (log R) d`. The contour-free
+analog of `Sieve.selberg_nu_separable` (which uses `lambdaTransform`, the PNT-gated `d`-space). -/
+noncomputable def selberg_nu_yr_sep (k : ℕ) (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ)
+    (Rset : Fin k → Finset ℕ) (n : ℕ) : ℝ :=
+  (∏ i : Fin k, ∑ d ∈ (n + H.getD i.val 0).divisors,
+    yLambda (Rset i) (Fs i) (Real.log R) d) ^ 2
+
+/-- The y-space weight is non-negative (a square), matching the Selberg requirement `ν ≥ 0`. -/
+theorem selberg_nu_yr_sep_nonneg (k : ℕ) (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ)
+    (Rset : Fin k → Finset ℕ) (n : ℕ) : 0 ≤ selberg_nu_yr_sep k Fs H R Rset n :=
+  sq_nonneg _
+
+/-- **Expansion of the y-space sieve sum** (instance of `sieveSum_genProd_sq_expand`).
+`sieveSum (selberg_nu_yr_sep …) = ∑_P (∏ᵢ λ_{(P i).1,i}·λ_{(P i).2,i})·count(P)`. The structural
+bridge from the y-space `sieveSum` to the bilinear `∑λλ` form; composing with `lattice_count_main_term`
+(count → `M/∏[dᵢ,eᵢ]`, shared with the `d`-space) and `gpy_diagonalize_yform_muphi` lands the
+contour-free main term `M·∑_{r}(μ²/φ)F²` → `yspace_..._tendsto`. -/
+theorem sieveSum_selberg_nu_yr_sep_expand (k : ℕ) (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ)
+    (Rset : Fin k → Finset ℕ) (b W : ℕ) (x : ℝ) (hx : 0 < x) :
+    BoundedGaps.Sieve.sieveSum (selberg_nu_yr_sep k Fs H R Rset) b W x
+      = ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            BoundedGaps.Sieve.sieveDivisors H i.val b W x
+              ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W x),
+          (∏ i : Fin k, yLambda (Rset i) (Fs i) (Real.log R) (P i).1
+            * yLambda (Rset i) (Fs i) (Real.log R) (P i).2)
+          * (((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+              (fun m => ∀ i : Fin k,
+                (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card := by
+  rw [BoundedGaps.Sieve.sieveSum]
+  exact BoundedGaps.Sieve.sieveSum_genProd_sq_expand k
+    (fun i => yLambda (Rset i) (Fs i) (Real.log R)) H b W x hx
+
 end BoundedGaps.S1YSpace
