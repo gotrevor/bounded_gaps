@@ -1,5 +1,21 @@
 # ON-LINE FINDINGS — GPY/Maynard diagonal asymptotic of `∑_r (φ(r)/r²) z_r²`
 
+> ## ✅ DECISION (Trevor, 2026-06-04): **Path Y + antiderivative convention — SETTLED.**
+> The s1/s2 discharge commits to **Path Y** (y_r-space, positive `μ²/φ`, contour-free) with the
+> **antiderivative convention**: feed `lambdaTransform`/`selberg_nu` the antiderivative `𝔉` of the
+> variational `F` (`𝔉' = F`), keeping the s1 constant `∫F²` and the entire `M_k`/witness layer
+> (incl. `mk_eps_50_witness`, `narrowness_*`) **UNTOUCHED**.
+> - ❌ Do NOT restate the constant as `∫(F')²` (Option B — would re-key the near-done witness thread).
+> - ❌ Do NOT take Path D / evaluate the signed `z_r` (imports a PNT-strength axiom `∑μ(s)/s→0`,
+>   which works *against* the "rely only on BV" goal).
+> - ✅ Build order: (1) antiderivative operator at the sieve-weight boundary + the FTC bridge
+>   `∫₀¹ 𝔉'(x)² dx = ∫₀¹ F(x)² dx`; (2) the `μ²/φ` k-D ladder (mirror of the bare ladder, using
+>   `perturbed_riemann_muphi`); (3) compose with Maynard `S1Summation2` / the `gpy_diagonal_asymptotic_form`
+>   algebraic bridge to land `s1` (then `s2` as its sister). Reuses the already-axiom-clean
+>   `sharp_mertens_unconditional` + `riemann_sum_log_weight` + `weighted_riemann_2d_of_inner`.
+> Rationale + trade-offs: this doc's §(c) (Path Y vs D) + the LANDMINE section below. The bare k-D
+> ladder + the `μ²/φ` engine that already landed are Path-Y machinery, not wasted. KB: `[[s1-derivative-landmine]]`, decisions.md.
+
 Fulfils the 2026-06-04 request in `ON-LINE-REQUEST.md` (the "GPY port", leaf 1's last
 piece). Sources read directly from `papers/src/` (LaTeX, not the web): Polymath8b
 (`polymath8b-1407.4897/newergap-submitted.tex`), Maynard "Small gaps between primes"
