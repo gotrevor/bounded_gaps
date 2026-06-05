@@ -585,4 +585,66 @@ theorem yspace_correction_abs_bound_explicit {k : ℕ} (Fs : Fin k → ℝ → �
     exact coprime_lcm_of_coprime hc1 hc2
   exact yspace_diag_count_err k H b W x hx hW hAB P hpos hcopW hdiagP
 
+/-- **Diagonal-weight product factorization (abstract).** A filtered `k`-fold product index sum of
+absolute pair-weight products is bounded by the product over coordinates of the squared `ℓ¹`-mass:
+`∑_{P} |∏_i f_i(P_i.1)·f_i(P_i.2)| ≤ ∏_i (∑_d |f_i d|)²`. Drop the filter (subset, nonneg terms),
+factorize the `piFinset` sum (`Finset.prod_univ_sum`), and split each coordinate
+(`Finset.sum_mul_sum`). The combinatorial core of the diagonal leg of the s1 off-diagonal correction
+bound. -/
+theorem diag_weight_le_prod {k : ℕ} (s : Fin k → Finset ℕ) (f : Fin k → ℕ → ℝ)
+    (diag : (Fin k → ℕ × ℕ) → Prop) [DecidablePred diag] :
+    ∑ P ∈ (Fintype.piFinset (fun i => s i ×ˢ s i)).filter diag,
+        |∏ i, f i (P i).1 * f i (P i).2|
+      ≤ ∏ i, (∑ d ∈ s i, |f i d|) ^ 2 := by
+  classical
+  have h1 : ∑ P ∈ (Fintype.piFinset (fun i => s i ×ˢ s i)).filter diag,
+        |∏ i, f i (P i).1 * f i (P i).2|
+      ≤ ∑ P ∈ Fintype.piFinset (fun i => s i ×ˢ s i),
+        |∏ i, f i (P i).1 * f i (P i).2| :=
+    Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+      (fun P _ _ => abs_nonneg _)
+  refine le_trans h1 ?_
+  have h2 : ∀ P : Fin k → ℕ × ℕ, |∏ i, f i (P i).1 * f i (P i).2|
+      = ∏ i, |f i (P i).1| * |f i (P i).2| := by
+    intro P
+    rw [Finset.abs_prod]
+    exact Finset.prod_congr rfl (fun i _ => abs_mul _ _)
+  simp_rw [h2]
+  rw [← Finset.prod_univ_sum (fun i => s i ×ˢ s i) (fun i q => |f i q.1| * |f i q.2|)]
+  refine Finset.prod_le_prod (fun i _ => ?_) (fun i _ => ?_)
+  · positivity
+  · rw [sq, Finset.sum_mul_sum]
+    exact le_of_eq (Finset.sum_product (s i) (s i) (fun j => |f i j.1| * |f i j.2|))
+
+/-- **The s1 diagonal weight is bounded by a fixed polynomial in the level `N`, INDEPENDENT of the
+sieve scale `x`.** Combining `diag_weight_le_prod` (product factorization) with
+`sum_abs_yLambda_le_level` (`∑_{d∈Rset}|yLambda| ≤ C·N³`, PNT-free), the cross-coordinate diagonal
+weight of the y-space correction is `≤ ((C·N³)²)^k`. Because the bound does NOT grow with `x` (which
+controls `|Rset_i|`), taking the sieve scale `x` polynomially large in `N` makes the *diagonal* leg of
+the correction (count error `≤1`, no `M` factor) vanish in the `B^{+k}·M` normalisation — **with no
+Möbius cancellation, no PNT**. (The off-diagonal leg, where the `M` factor cancels against the main
+term, is the genuine remaining obligation; it needs the singular-series `∑_{p>D₀}1/p²` tail with
+`D₀ = D₀(N) → ∞`, i.e. a growing modulus `W`.) -/
+theorem diag_weight_yLambda_le_poly {k : ℕ} (Fs : Fin k → ℝ → ℝ) (Rset : Fin k → Finset ℕ)
+    (N : ℕ) (C : ℝ) (hN : 2 ≤ N)
+    (hC : ∀ i, ∀ t, |Fs i t| ≤ C) (hFcut : ∀ i, ∀ t, 1 < t → Fs i t = 0)
+    (hR1 : ∀ i, ∀ s ∈ Rset i, 1 ≤ s)
+    (diag : (Fin k → ℕ × ℕ) → Prop) [DecidablePred diag] :
+    ∑ P ∈ (Fintype.piFinset (fun i => Rset i ×ˢ Rset i)).filter diag,
+        |∏ i, S1YSpace.yLambda (Rset i) (Fs i) (Real.log N) (P i).1
+              * S1YSpace.yLambda (Rset i) (Fs i) (Real.log N) (P i).2|
+      ≤ ((C * (N : ℝ) ^ 3) ^ 2) ^ k := by
+  refine le_trans (diag_weight_le_prod Rset
+      (fun i => S1YSpace.yLambda (Rset i) (Fs i) (Real.log N)) diag) ?_
+  have hbnd : ∀ i ∈ (Finset.univ : Finset (Fin k)),
+      (∑ d ∈ Rset i, |S1YSpace.yLambda (Rset i) (Fs i) (Real.log N) d|) ^ 2
+        ≤ (C * (N : ℝ) ^ 3) ^ 2 := by
+    intro i _
+    have hsum := sum_abs_yLambda_le_level (Rset i) (Fs i) N C hN (hC i) (hFcut i) (hR1 i)
+    have hsum0 : 0 ≤ ∑ d ∈ Rset i, |S1YSpace.yLambda (Rset i) (Fs i) (Real.log N) d| :=
+      Finset.sum_nonneg (fun _ _ => abs_nonneg _)
+    exact pow_le_pow_left₀ hsum0 hsum 2
+  refine le_trans (Finset.prod_le_prod (fun i _ => by positivity) hbnd) ?_
+  rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+
 end BoundedGaps.S1Correction
