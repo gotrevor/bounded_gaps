@@ -43,10 +43,23 @@ The full contour-free chain is machine-checked end-to-end (axiom-clean):
 `sieveSum_selberg_nu_yr_sep_eq_heuristic_add_correction` (the `M`/[d,e] split) +
 `yLambda_eq_zero_of_not_mem`/`sum_yLambda_eq_of_subset`/`sum_yLambda_bilinear_eq_of_subset`
 (candidate-set restriction) + `yr_coord_factor_eq_muphi` (per-coord factor over
-`Rset = sieveDivisors.filter(sf∧coprime)` = `∑_{r∈Rset}(μ²/φ)F²`). **The remaining FINAL GLUE:**
-(a) `heuristic main = M·∏ᵢ ∑_{de∈sieveDiv²}λλ/[d,e]` (DIRECT `piFinset_lattice_main_factor`, coeff-general);
-(b) per coord, `∑_{de∈sieveDiv²}λλ/[d,e] = ∑_{de∈Rset²}` (a `Finset.sum_product`+`sum_yLambda_bilinear_eq_of_subset`
-massage) `= ∑_{r∈Rset}(μ²/φ)F²` (`yr_coord_factor_eq_muphi`). Just plumbing — ~1 lemma.
+`Rset = sieveDivisors.filter(sf∧coprime)` = `∑_{r∈Rset}(μ²/φ)F²`). **FINAL GLUE — ✅ DONE this lap** (`yr_coord_sieveDiv_factor` + **`yr_heuristic_main_eq_muphi`**):
+the y-space heuristic main `= M·∏ᵢ ∑_{r≤level, sf, (r,W)=1}(μ²/φ)(r)·Fᵢ(log r/log R)²`, fully
+diagonalised & contour-free. **⟹ the entire contour-free `s1` MAIN-TERM core is COMPLETE.** Each
+factor `/log R → (φ(W)/W)∫Fᵢ²` (`yspace_muphi_diagonal_tendsto`).
+
+**What's LEFT for `s1` (all BV-gated or simplex-assembly — a fresh structural lap):**
+- (i) **count → `M`**: pick `M` = the lattice main density and bound `sieveSum_…_correction` =
+  `o(main)` (gap C, **BV-gated**; infra `lattice_count_main_term`, `correction_abs_bound`,
+  `hyperbola_count_le`, `diagonal_weight_le_count` exist).
+- (ii) **simplex assembly** (gap A4): the heuristic main is `M·∏ᵢ(1-D factor) → (φ(W)/W)^k ∏ᵢ∫Fᵢ²`
+  (product of marginals), but `s1`'s constant is `∫_simplex F²`. The simplex (`∏rᵢ≤R`) enters via the
+  count `M`/the `n∈[x,2x]` constraint, NOT the diagonalisation — so this couples (i) with the box→simplex
+  reconciliation (`weighted_riemann_kd_muphi` consumes the simplex-nested sum). The `j`-sum cross terms
+  (`F=∑c∏Fs`) use `gpy_diagonalize_yform_muphi_bilinear`/`yspace_..._bilinear_tendsto` (done).
+- (iii) **W-coprime base** `hBaseW` (Aristotle brick `65d11d89`) ⟹ general-`W` unconditional.
+- Then Trevor flips the 3 `s1`/`s2` axioms + `selberg_sieve_data_from_F` to `selberg_nu_yr` (witness
+  layer `mkF_denominator`/`Mk_200_gt_4` UNTOUCHED).
 1. ~~Define `selberg_nu_yr` + expand~~ **DONE** (separable; the general `∑_j c_j` opens to `(j,j')`
    bilinear blocks via `gpy_diagonalize_yform_muphi_bilinear`, also done).
 2. **Count → main density**: connect the lattice `count(P) = #{m: dᵢ,eᵢ|m+hᵢ}` to `M/∏[dᵢ,eᵢ]`
