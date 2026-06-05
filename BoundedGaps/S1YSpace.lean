@@ -183,4 +183,33 @@ theorem sum_yLambda_eq_of_subset (R T : Finset ℕ) (hRT : R ⊆ T)
   intro d _ hdR
   rw [yLambda_eq_zero_of_not_mem R hRdc F L hdR, zero_mul]
 
+/-- **y-space `sieveSum = heuristic main + correction`** (pure algebra; `M` = any chosen lattice
+main density). Splits `count = M/∏[dᵢ,eᵢ] + (count − M/∏[dᵢ,eᵢ])` termwise on
+`sieveSum_selberg_nu_yr_sep_expand`. The heuristic main `∑_P(∏λλ)·M/∏[dᵢ,eᵢ]` factors over
+coordinates (`piFinset`) to `M·∏ᵢ ∑_{d,e}λλ/[d,e]` → `gpy_diagonalize_yform_muphi` → the contour-free
+`(φ(W)/W)∫F²`; the correction `∑_P(∏λλ)·(count − M/∏[dᵢ,eᵢ])` is the BV-gated `o(main)` obligation
+(gap C, shared with the d-space `sieveSum_selberg_nu_eq_heuristic_add_correction`). -/
+theorem sieveSum_selberg_nu_yr_sep_eq_heuristic_add_correction
+    (k : ℕ) (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (Rset : Fin k → Finset ℕ)
+    (b W : ℕ) (x : ℝ) (hx : 0 < x) (M : ℝ) :
+    BoundedGaps.Sieve.sieveSum (selberg_nu_yr_sep k Fs H R Rset) b W x
+      = (∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            BoundedGaps.Sieve.sieveDivisors H i.val b W x
+              ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W x),
+          (∏ i : Fin k, yLambda (Rset i) (Fs i) (Real.log R) (P i).1
+            * yLambda (Rset i) (Fs i) (Real.log R) (P i).2)
+          * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      + (∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            BoundedGaps.Sieve.sieveDivisors H i.val b W x
+              ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W x),
+          (∏ i : Fin k, yLambda (Rset i) (Fs i) (Real.log R) (P i).1
+            * yLambda (Rset i) (Fs i) (Real.log R) (P i).2)
+          * ((((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+                (fun m => ∀ i : Fin k,
+                  (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+              - M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))) := by
+  rw [sieveSum_selberg_nu_yr_sep_expand k Fs H R Rset b W x hx, ← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun P _ => ?_)
+  ring
+
 end BoundedGaps.S1YSpace
