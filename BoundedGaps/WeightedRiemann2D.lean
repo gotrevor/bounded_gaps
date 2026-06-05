@@ -269,4 +269,81 @@ theorem perturbed_riemann_gen (F Φ : ℝ → ℝ) (a w : ℕ → ℕ → ℝ) (
   rw [add_zero] at hcomb
   exact hcomb.congr (fun R => by ring)
 
+open BoundedGaps.WeightedMertens BoundedGaps.SingularSeries in
+/-- **`(μ²/φ)`-weighted Mertens over `Icc 2`** (`y_r`-space, reordered to weight-on-the-right). Drops
+the `n=1` term (`= G 0`, whose `/log N → 0`) from `WeightedMertens.weighted_mertens` (`Icc 1`). The
+`Icc 2` form matches the `perturbed_riemann_gen` weight shape `… * w N m`. -/
+theorem weighted_mertens_Icc2 {G : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |G x - G y| ≤ M * |x - y|)
+    (hCont : ContinuousOn G (Set.Icc (0 : ℝ) 1)) :
+    Tendsto (fun N : ℕ =>
+        (∑ m ∈ Finset.Icc 2 N, G (Real.log m / Real.log N) * gMoebiusSqTotient m) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, G u)) := by
+  have hwm := weighted_mertens hLip hCont
+  have hlog : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have hconst : Tendsto (fun N : ℕ => G 0 / Real.log N) atTop (nhds 0) :=
+    (tendsto_const_nhds (x := G 0)).div_atTop hlog
+  have hcomb := hwm.sub hconst
+  rw [sub_zero] at hcomb
+  refine hcomb.congr' ?_
+  filter_upwards [eventually_ge_atTop 1] with N hN
+  have hins : Finset.Icc 1 N = insert 1 (Finset.Icc 2 N) := by
+    ext x; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
+  have h1 : gMoebiusSqTotient 1 * G (Real.log ((1 : ℕ) : ℝ) / Real.log N) = G 0 := by
+    rw [gMoebiusSqTotient_apply]; simp
+  have hcomm : (∑ m ∈ Finset.Icc 2 N, gMoebiusSqTotient m * G (Real.log m / Real.log N))
+      = ∑ m ∈ Finset.Icc 2 N, G (Real.log m / Real.log N) * gMoebiusSqTotient m :=
+    Finset.sum_congr rfl (fun m _ => mul_comm _ _)
+  rw [hins, Finset.sum_insert (by simp), h1, hcomm]
+  ring
+
+open BoundedGaps.WeightedMertens BoundedGaps.SingularSeries in
+/-- **`(μ²/φ)`-weighted perturbed Riemann limit** (`y_r`-space engine — the `μ²/φ` analog of
+`perturbed_riemann`). The weight `1/m` is replaced by `gMoebiusSqTotient m = μ²(m)/φ(m)`: if
+`a R m → Φ(log m/log R)` uniformly, the `(μ²/φ)`-weighted `a`-sum converges to `∫₀¹ F·Φ`. Built from
+`perturbed_riemann_gen` with the two weighted 1-D limits from `weighted_mertens_Icc2` (for `F·Φ` and
+`|F|`). Requires `F, Φ` Lipschitz with nonnegative constants (the `weighted_mertens` discrepancy
+hypothesis); satisfied by smooth GPY cutoffs. The 2-D/k-D `y_r`-space ladder mirrors the bare ladder
+one cons up, replacing `perturbed_riemann` by this. -/
+theorem perturbed_riemann_muphi (F Φ : ℝ → ℝ) (a : ℕ → ℕ → ℝ) {MF MΦ : ℝ}
+    (hMF0 : 0 ≤ MF) (hMΦ0 : 0 ≤ MΦ)
+    (hFLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ MF * |x - y|)
+    (hΦLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |Φ x - Φ y| ≤ MΦ * |x - y|)
+    (hF : ContinuousOn F (Set.Icc (0 : ℝ) 1)) (hΦ : ContinuousOn Φ (Set.Icc (0 : ℝ) 1))
+    (huni : ∀ ε > 0, ∀ᶠ R : ℕ in atTop, ∀ m ∈ Finset.Icc 2 R,
+        |a R m - Φ (Real.log m / Real.log R)| ≤ ε) :
+    Tendsto (fun R : ℕ =>
+        (∑ m ∈ Finset.Icc 2 R,
+            F (Real.log m / Real.log R) * a R m * gMoebiusSqTotient m) / Real.log R)
+      atTop (nhds (∫ x in (0 : ℝ)..1, F x * Φ x)) := by
+  obtain ⟨BF, hBF⟩ := isCompact_Icc.exists_bound_of_continuousOn hF
+  obtain ⟨BΦ, hBΦ⟩ := isCompact_Icc.exists_bound_of_continuousOn hΦ
+  have hBF' : ∀ x ∈ Set.Icc (0 : ℝ) 1, |F x| ≤ BF := fun x hx => hBF x hx
+  have hBΦ' : ∀ x ∈ Set.Icc (0 : ℝ) 1, |Φ x| ≤ BΦ := fun x hx => hBΦ x hx
+  have hBF0 : 0 ≤ BF := le_trans (abs_nonneg _) (hBF' 0 ⟨le_refl _, zero_le_one⟩)
+  -- `F·Φ` is Lipschitz on `[0,1]` with constant `BF·MΦ + MF·BΦ`.
+  have hFΦLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1,
+      |F x * Φ x - F y * Φ y| ≤ (BF * MΦ + MF * BΦ) * |x - y| := by
+    intro x hx y hy
+    have e1 : |F x| * |Φ x - Φ y| ≤ BF * (MΦ * |x - y|) :=
+      mul_le_mul (hBF' x hx) (hΦLip x hx y hy) (abs_nonneg _) hBF0
+    have e2 : |F x - F y| * |Φ y| ≤ (MF * |x - y|) * BΦ :=
+      mul_le_mul (hFLip x hx y hy) (hBΦ' y hy) (abs_nonneg _) (mul_nonneg hMF0 (abs_nonneg _))
+    calc |F x * Φ x - F y * Φ y|
+        = |F x * (Φ x - Φ y) + (F x - F y) * Φ y| := by congr 1; ring
+      _ ≤ |F x * (Φ x - Φ y)| + |(F x - F y) * Φ y| := abs_add_le _ _
+      _ = |F x| * |Φ x - Φ y| + |F x - F y| * |Φ y| := by rw [abs_mul, abs_mul]
+      _ ≤ BF * (MΦ * |x - y|) + (MF * |x - y|) * BΦ := add_le_add e1 e2
+      _ = (BF * MΦ + MF * BΦ) * |x - y| := by ring
+  have hw0 : ∀ R : ℕ, ∀ m ∈ Finset.Icc 2 R, 0 ≤ gMoebiusSqTotient m := by
+    intro R m _
+    rw [gMoebiusSqTotient_apply]; positivity
+  refine perturbed_riemann_gen F Φ a (fun _ m => gMoebiusSqTotient m)
+    (∫ u in (0 : ℝ)..1, |F u|) (fun R m hm => hw0 R m hm)
+    ?_ ?_ (intervalIntegral.integral_nonneg zero_le_one (fun _ _ => abs_nonneg _)) huni
+  · exact weighted_mertens_Icc2 (G := fun x => F x * Φ x) hFΦLip (hF.mul hΦ)
+  · exact weighted_mertens_Icc2 (G := fun x => |F x|)
+      (fun x hx y hy => (abs_abs_sub_abs_le_abs_sub (F x) (F y)).trans (hFLip x hx y hy)) hF.abs
+
 end BoundedGaps.WeightedRiemann2D
