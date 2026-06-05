@@ -1127,4 +1127,47 @@ theorem weighted_mertens_coprime_sq {W : ℕ} {F : ℝ → ℝ} (hF : ContDiff �
   weighted_mertens_general_of_contDiff (hF.pow 2) hBaseW
 
 
+/-- **Connector: the `gMuSqTotientCoprime`-sum is the `(μ²/φ)`-sum over the squarefree, `W`-coprime
+filter.** `∑_{n≤N} g_W(n)·G n = ∑_{r≤N, sf, (r,W)=1} (μ²/φ)(r)·G r` — `g_W` vanishes off the coprime
+locus, and `μ²/φ = 0` off the squarefree locus. This matches the output of
+`SieveExpansion.gpy_diagonalize_yform_muphi` to the input of `weighted_mertens_coprime_sq`. -/
+theorem gMuSqTotientCoprime_sum_eq_filter (N W : ℕ) (G : ℕ → ℝ) :
+    (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime W n * G n)
+      = ∑ r ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+          ((ArithmeticFunction.moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ)) * G r := by
+  rw [Finset.sum_filter]
+  refine Finset.sum_congr rfl (fun n _ => ?_)
+  unfold gMuSqTotientCoprime
+  by_cases hcop : Nat.Coprime n W
+  · by_cases hsf : Squarefree n
+    · rw [if_pos hcop, if_pos ⟨hsf, hcop⟩]
+      simp [BoundedGaps.SingularSeries.gMoebiusSqTotient_apply]
+    · rw [if_pos hcop, if_neg (by tauto)]
+      rw [BoundedGaps.SingularSeries.gMoebiusSqTotient_apply,
+        ArithmeticFunction.moebius_eq_zero_of_not_squarefree hsf]
+      simp
+  · rw [if_neg hcop, if_neg (by tauto)]
+    ring
+
+/-- **Path-Y `s1` diagonal main term over the real sieve index set → `(φ(W)/W)·∫F²`.** Combining
+`weighted_mertens_coprime_sq` with the connector: for `ContDiff ℝ 1 F`,
+`(∑_{r≤N, sf, (r,W)=1} (μ²/φ)(r)·F(log r/log N)²)/log N → (φ(W)/W)·∫₀¹F²`. This is EXACTLY the limit
+of `SieveExpansion.gpy_diagonalize_yform_muphi`'s output (the diagonalised y-space sieve main term)
+— so the contour-free Path-Y `s1` main term is fully assembled on the analytic side. Conditional
+only on the W-coprime sharp Mertens base `hBaseW` (Aristotle brick `65d11d89`). -/
+theorem yspace_muphi_diagonal_tendsto {W : ℕ} {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F)
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime W n) / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W))) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ r ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+            ((ArithmeticFunction.moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+              * F (Real.log r / Real.log N) ^ 2)
+          / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W * ∫ u in (0 : ℝ)..1, F u ^ 2)) := by
+  have h := weighted_mertens_coprime_sq (W := W) (F := F) hF hBaseW
+  refine h.congr (fun N => ?_)
+  rw [gMuSqTotientCoprime_sum_eq_filter N W (fun n => F (Real.log n / Real.log N) ^ 2)]
+
 end BoundedGaps.WeightedMertens
