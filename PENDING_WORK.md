@@ -53,12 +53,16 @@ with the odd-prime single-prime case fully discharged in-kernel.
   `U_div_log_tendsto_one`. **No BV, no Euler product — only `SharpMertens.sharp_mertens_unconditional`.**
 
 **REMAINING for full hBaseW (two pieces):**
-1. **`p = 2` single-prime.** DCT fails (`1/(p-1)=1`, limit series `∑(-1)^k` diverges). Needs EITHER
-   the **bounded-difference** form `U(M)=log M+O(1)` (then pair the finite inverted sum:
-   `U(N/2^{2j})−U(N/2^{2j+1}) ~ log 2`, ~`(log₂N)/2` pairs ⟹ `S(N)~½log N`), OR a signed Abel
-   argument on `coprime_geometric_inversion`'s finite sum (the `|·|`-bound loses the needed
-   cancellation — verified the crude Toeplitz bound is insufficient). The repo's `sharp_mertens_tendsto`
-   comes from partial-sum bounds — check whether the bounded form is extractable from them.
+1. **`p = 2` single-prime — needs the SECOND-ORDER Mertens, not just bounded-difference.** DCT fails
+   (`1/(p-1)=1`, limit series `∑(-1)^k` diverges). Worked through honestly this lap: even the
+   bounded-difference form `U(M)=log M+O(1)` is INSUFFICIENT — pairing the finite inverted sum gives
+   `S(N) = (#pairs)·log2 + ∑_j[b(N/4^j)−b(N/(2·4^j))]` with `~log₄N` error terms each `O(C)`, so the
+   `b`-error is `O(log N)` = SAME order as `S(N)~½log N` (no `o(log N)` gain). The cancellation needs
+   `b(M)=U(M)−log M` to actually **converge** (`U(M)=log M+β+o(1)`, the second-order μ²/φ Mertens
+   constant) so that `b(N/4^j)−b(N/(2·4^j))→0`. So `p=2` requires the convergent second-order
+   asymptotic — a genuinely deeper input than the repo's first-order `U/log→1`. (Equivalently: Abel-sum
+   the inverted series using `a_k=U(N/2^k)/log N ≈ 1−k·log2/logN`; the linear-in-`k` correction is what
+   the second-order form supplies.) Check if `sharp_mertens`'s `bAF` partial-sum bounds yield it.
 2. **General-`W` induction.** With single-prime for ALL primes `p∣W`: induct over primes of squarefree
    `W` via the general recursion `S_V(N)=S_{pV}(N)+(1/(p-1))S_{pV}(N/p)` (the `V=1` case is
    `coprime_mertens_recursion`); limit ⟹ `L_W = ∏_{p∣W}(p-1)/p = φ(W)/W`. Since `W=∏_{p≤D₀}p` includes
