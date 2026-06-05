@@ -287,4 +287,100 @@ theorem reindex_bound (R : Finset ℕ) (p : ℕ) (hp : p.Prime)
       ≤ (1/((p:ℝ)-1)) * ∑ d ∈ R, inner d := mul_le_mul_of_nonneg_left hmono hp1
     _ = _ := rfl
 
+/-- `Gmaj` is symmetric (`lcm` is commutative). -/
+theorem Gmaj_symm (a e : ℕ) : Gmaj a e = Gmaj e a := by
+  unfold Gmaj; rw [Nat.lcm_comm]; ring
+
+/-- **The both-divisible per-term local factor:** `G(p·d, p·e) = (p/(p-1)²)·G(d,e)` for prime `p ∤ d,e`.
+The companion to `selberg_local_factor` for the diagonal-in-`p` part (`p ∣ d ∧ p ∣ e`): both
+coordinates contribute a `1/(p-1)` from `φ(p·) = (p-1)φ(·)`, while `lcm(p·d, p·e) = p·lcm(d,e)`
+(`Nat.lcm_mul_left`) supplies only one `1/p`, leaving the net `p/(p-1)²`. Elementary, PNT-free. -/
+theorem Gmaj_local_factor_both (p d e : ℕ) (hp : p.Prime) (hd : 1 ≤ d) (he : 1 ≤ e)
+    (hpd : ¬ p ∣ d) (hpe : ¬ p ∣ e) :
+    Gmaj (p * d) (p * e) = ((p:ℝ) / ((p:ℝ) - 1)^2) * Gmaj d e := by
+  unfold Gmaj
+  have hcpd : Nat.Coprime p d := (hp.coprime_iff_not_dvd).mpr hpd
+  have hcpe : Nat.Coprime p e := (hp.coprime_iff_not_dvd).mpr hpe
+  have htotd : (p * d).totient = (p - 1) * d.totient := by
+    rw [Nat.totient_mul hcpd, Nat.totient_prime hp]
+  have htote : (p * e).totient = (p - 1) * e.totient := by
+    rw [Nat.totient_mul hcpe, Nat.totient_prime hp]
+  have hlcm : Nat.lcm (p * d) (p * e) = p * Nat.lcm d e := by rw [Nat.lcm_mul_left]
+  have hp2 : 2 ≤ p := hp.two_le
+  have hφd : (0:ℝ) < (d.totient : ℝ) := by exact_mod_cast Nat.totient_pos.mpr hd
+  have hφe : (0:ℝ) < (e.totient : ℝ) := by exact_mod_cast Nat.totient_pos.mpr he
+  have hlcmde : (0:ℝ) < ((Nat.lcm d e : ℕ) : ℝ) := by
+    exact_mod_cast Nat.pos_of_ne_zero (Nat.lcm_ne_zero (by omega) (by omega))
+  have hpm1 : (0:ℝ) < (p:ℝ) - 1 := by
+    have : (2:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp2
+    linarith
+  have hppos : (0:ℝ) < (p:ℝ) := by exact_mod_cast hp.pos
+  rw [htotd, htote, hlcm]
+  push_cast [Nat.cast_sub (by omega : 1 ≤ p)]
+  field_simp
+
+/-- **The both-divisible 2D reindex bound:** `∑_{d∈R,p∣d} ∑_{e∈R,p∣e} G d e ≤ (p/(p-1)²) ∑_R ∑_R G`.
+The diagonal-in-`p` analogue of `reindex_bound`: reindex BOTH coordinates by `·/p` (the product map on
+`{d:p∣d}×{e:p∣e}`, injective, image `⊆ R×R`), each term picking up the `p/(p-1)²` factor of
+`Gmaj_local_factor_both`. Pure `Finset` combinatorics, PNT-free. -/
+theorem reindex_bound_both (R : Finset ℕ) (p : ℕ) (hp : p.Prime)
+    (hRsf : ∀ a ∈ R, Squarefree a) (hR1 : ∀ a ∈ R, 1 ≤ a)
+    (hRdc : ∀ a ∈ R, ∀ b, b ∣ a → 1 ≤ b → b ∈ R) :
+    ∑ d ∈ R.filter (fun d => p ∣ d), ∑ e ∈ R.filter (fun e => p ∣ e), Gmaj d e
+      ≤ ((p:ℝ) / ((p:ℝ) - 1)^2) * ∑ d ∈ R, ∑ e ∈ R, Gmaj d e := by
+  classical
+  set Rp := R.filter (fun d => p ∣ d) with hRp
+  have hpm1 : (0:ℝ) < (p:ℝ) - 1 := by
+    have : (2:ℝ) ≤ (p:ℝ) := by exact_mod_cast hp.two_le
+    linarith
+  have hcoef : (0:ℝ) ≤ (p:ℝ) / ((p:ℝ) - 1)^2 := by positivity
+  have hd'pos : ∀ d, d ∈ R → p ∣ d → 1 ≤ d / p := by
+    intro d hdR hpdvd
+    have hd1 : 1 ≤ d := hR1 d hdR
+    rcases Nat.eq_zero_or_pos (d / p) with h | h
+    · exfalso; have := Nat.mul_div_cancel' hpdvd; rw [h, Nat.mul_zero] at this; omega
+    · exact h
+  have hpd' : ∀ d, d ∈ R → p ∣ d → ¬ p ∣ (d / p) := by
+    intro d hdR hpdvd hdvd
+    have hdeq : p * (d / p) = d := Nat.mul_div_cancel' hpdvd
+    have hpp : p * p ∣ d := by rw [← hdeq]; exact Nat.mul_dvd_mul_left p hdvd
+    exact hp.ne_one (Nat.isUnit_iff.mp ((hRsf d hdR) p hpp))
+  have hstep1 : ∑ d ∈ Rp, ∑ e ∈ Rp, Gmaj d e
+      = ((p:ℝ)/((p:ℝ)-1)^2) * ∑ d ∈ Rp, ∑ e ∈ Rp, Gmaj (d/p) (e/p) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl (fun d hd => ?_)
+    rw [Finset.mul_sum]
+    rw [hRp, Finset.mem_filter] at hd
+    refine Finset.sum_congr rfl (fun e he => ?_)
+    rw [hRp, Finset.mem_filter] at he
+    have hdeq : p * (d/p) = d := Nat.mul_div_cancel' hd.2
+    have heeq : p * (e/p) = e := Nat.mul_div_cancel' he.2
+    calc Gmaj d e = Gmaj (p*(d/p)) (p*(e/p)) := by rw [hdeq, heeq]
+      _ = ((p:ℝ)/((p:ℝ)-1)^2) * Gmaj (d/p) (e/p) :=
+          Gmaj_local_factor_both p (d/p) (e/p) hp (hd'pos d hd.1 hd.2) (hd'pos e he.1 he.2)
+            (hpd' d hd.1 hd.2) (hpd' e he.1 he.2)
+  rw [hstep1]
+  refine mul_le_mul_of_nonneg_left ?_ hcoef
+  have hinj : ∀ x ∈ Rp, ∀ y ∈ Rp, x / p = y / p → x = y := by
+    intro a ha b hb hab
+    rw [hRp, Finset.mem_filter] at ha hb
+    have : p * (a/p) = p * (b/p) := by rw [hab]
+    rwa [Nat.mul_div_cancel' ha.2, Nat.mul_div_cancel' hb.2] at this
+  have himg : Rp.image (fun d => d / p) ⊆ R := by
+    intro y hy
+    simp only [Finset.mem_image, hRp, Finset.mem_filter] at hy
+    obtain ⟨d, ⟨hdR, hpdvd⟩, rfl⟩ := hy
+    exact hRdc d hdR (d/p) (Nat.div_dvd_of_dvd hpdvd) (hd'pos d hdR hpdvd)
+  calc ∑ d ∈ Rp, ∑ e ∈ Rp, Gmaj (d/p) (e/p)
+      = ∑ d' ∈ Rp.image (fun d => d/p), ∑ e' ∈ Rp.image (fun e => e/p), Gmaj d' e' := by
+        rw [Finset.sum_image hinj]
+        refine Finset.sum_congr rfl (fun d _ => ?_)
+        rw [Finset.sum_image hinj]
+    _ ≤ ∑ d' ∈ Rp.image (fun d => d/p), ∑ e' ∈ R, Gmaj d' e' := by
+        refine Finset.sum_le_sum (fun d' _ => ?_)
+        exact Finset.sum_le_sum_of_subset_of_nonneg himg (fun e' _ _ => Gmaj_nonneg d' e')
+    _ ≤ ∑ d' ∈ R, ∑ e' ∈ R, Gmaj d' e' :=
+        Finset.sum_le_sum_of_subset_of_nonneg himg
+          (fun d' _ _ => Finset.sum_nonneg (fun e' _ => Gmaj_nonneg d' e'))
+
 end BoundedGaps.S1OffDiagSize
