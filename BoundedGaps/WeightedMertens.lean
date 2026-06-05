@@ -1066,5 +1066,65 @@ example {F : ℝ → ℝ} {M : ℝ}
     hLip hCont (by simpa using BoundedGaps.SharpMertens.sharp_mertens_unconditional)
   simpa using h
 
+/-- **General weighted Mertens for a `C¹` weight `F`** (drops the explicit Lipschitz hypothesis of
+`weighted_mertens_general`; the Lipschitz constant is the sup of `F'` on the compact `[0,1]`). For
+`ContDiff ℝ 1 F` and a weight `g` with base log-density `c`,
+`(∑_{1≤n≤N} g n · F(log n/log N)) / log N → c · ∫₀¹ F`. -/
+theorem weighted_mertens_general_of_contDiff {g : ℕ → ℝ} {c : ℝ} {F : ℝ → ℝ}
+    (hF : ContDiff ℝ 1 F)
+    (hBase : Tendsto (fun N : ℕ => (∑ k ∈ Finset.Icc 1 N, g k) / Real.log N) atTop (nhds c)) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, g n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds (c * ∫ u in (0 : ℝ)..1, F u)) := by
+  have hCont : ContinuousOn F (Set.Icc (0 : ℝ) 1) := hF.continuous.continuousOn
+  obtain ⟨C, hC⟩ :=
+    isCompact_Icc.exists_bound_of_continuousOn (hF.continuous_deriv_one.continuousOn)
+  have hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ C * |x - y| := by
+    intro x hx y hy
+    have h := Convex.norm_image_sub_le_of_norm_deriv_le (f := F) (s := Set.Icc (0 : ℝ) 1) (C := C)
+      (fun z _ => (hF.differentiable (by norm_num)).differentiableAt) hC (convex_Icc 0 1) hy hx
+    simpa [Real.norm_eq_abs] using h
+  exact weighted_mertens_general hLip hCont hBase
+
+/-- The `μ²/φ` Selberg weight restricted to the **`W`-coprime** locus,
+`g_W(n) = (μ²(n)/φ(n))·[(n,W)=1]`. The weight appearing in the `W`-trick sieve main term. -/
+noncomputable def gMuSqTotientCoprime (W n : ℕ) : ℝ :=
+  if Nat.Coprime n W then gMoebiusSqTotient n else 0
+
+/-- **W-coprime weighted Mertens** — the Path-Y `s1` main term **with the singular series**
+`𝔖 = φ(W)/W` (Maynard `S1Summation2` / GGPY Lemma 4). For `F` Lipschitz and continuous on `[0,1]`,
+`(∑_{n≤N,(n,W)=1}(μ²/φ)·F(log n/log N)) / log N → (φ(W)/W)·∫₀¹F`. The base density
+`(∑_{n≤N,(n,W)=1}μ²/φ)/log N → φ(W)/W` is the (W-coprime) sharp Mertens (`hBaseW`), supplied by the
+Aristotle brick `65d11d89`; once it lands this is unconditional. (The `W = 1` case is the plain
+`weighted_mertens`, since `φ(1)/1 = 1` and `(·,1)=1` always.) -/
+theorem weighted_mertens_coprime {W : ℕ} {F : ℝ → ℝ} {M : ℝ}
+    (hLip : ∀ x ∈ Set.Icc (0 : ℝ) 1, ∀ y ∈ Set.Icc (0 : ℝ) 1, |F x - F y| ≤ M * |x - y|)
+    (hCont : ContinuousOn F (Set.Icc (0 : ℝ) 1))
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime W n) / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W))) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime W n * F (Real.log n / Real.log N)) / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W * ∫ u in (0 : ℝ)..1, F u)) :=
+  weighted_mertens_general hLip hCont hBaseW
+
+/-- **W-coprime weighted Mertens, squared form** — the exact `s1` constant in `y_r`-space:
+`(∑_{n≤N,(n,W)=1}(μ²/φ)·F(log n/log N)²) / log N → (φ(W)/W)·∫₀¹F²`. This is `(φ(W)/W)·mkF_denominator`
+at `k = 1` — the per-coordinate factor of the `k`-D Path-Y `s1` main term including the `φ(W)/W`
+singular series (cf. `weighted_mertens_sq`, the `W = 1` core). Conditional on the same base
+`hBaseW`. -/
+theorem weighted_mertens_coprime_sq {W : ℕ} {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F)
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime W n) / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W))) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime W n * F (Real.log n / Real.log N) ^ 2)
+          / Real.log N)
+      atTop (nhds ((W.totient : ℝ) / W * ∫ u in (0 : ℝ)..1, F u ^ 2)) :=
+  weighted_mertens_general_of_contDiff (hF.pow 2) hBaseW
+
 
 end BoundedGaps.WeightedMertens
