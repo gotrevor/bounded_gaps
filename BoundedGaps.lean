@@ -59,3 +59,4 @@ import BoundedGaps.S1DiagCorrection
 import BoundedGaps.S1OffDiagSize
 import BoundedGaps.CoprimeMertens
 import BoundedGaps.S1HBaseW
+import BoundedGaps.S1DiagFree
