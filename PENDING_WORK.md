@@ -4,9 +4,13 @@ Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
 ## 🔴🟡🟢 LAP 11 (2026-06-05) — COURSE CORRECTION: crux (B) is NOT elementary. The off-diagonal leg genuinely needs the **smoothing estimate** (PNT-strength), vindicating lap-4 over lap-9. `selberg_local_factor` landed; closure roadmap (one PNT axiom + Mertens products) mapped.
 
-**1 axiom-clean commit (`379488d`), full build green (8302).** Fresh-mind review re-examined the lap-9/10
-claim that crux (B) (the per-prime mass fraction) is "elementary / PNT-free". **It is not.** Decisive
-evidence, all PNT-free reasoning:
+**5 axiom-clean commits (`379488d`…`d0c9660`), full build green (8302) at every gate.** Fresh-mind review
+re-examined the lap-9/10 claim that crux (B) (the per-prime mass fraction) is "elementary / PNT-free".
+**It is not** (decisive evidence below). BUT the entire PNT-free combinatorial off-diagonal scaffold is now
+COMPLETE in-kernel: `selberg_local_factor`, `reindex_bound`, `reindex_bound_both`, and the capstone
+**`Gmaj_per_prime_le`** (`∑_{p|lcm(d,e)} G ≤ (6/(p-1))·∑G` for the deterministic majorant `Gmaj`). The
+SOLE remaining input is the smoothing bound (PNT-strength) relating `Gmaj` to the actual weight. Evidence
+crux (B) is not elementary, all PNT-free reasoning:
 
 ### ⚠️ THE FINDING — crux (B) ratio-to-`Q` is FALSE without the smooth structure of `yLambda`
 * **Counterexample (structure-free).** For *general* nonneg weights `|λ_d|`, the per-prime mass fraction
