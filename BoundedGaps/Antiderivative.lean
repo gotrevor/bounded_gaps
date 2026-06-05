@@ -76,4 +76,24 @@ theorem mkF_denominator_antideriv_sep (k : ℕ) (Fs : Fin k → ℝ → ℝ)
   refine Finset.prod_congr rfl (fun i _ => ?_)
   rw [deriv_antideriv (hFs i)]
 
+/-- **k-D general finite-separable FTC bridge.** For the actual sieve test function shape
+`F = ∑_j c_j ∏_i Fs_{j,i}`, feeding `selberg_nu` the per-coordinate antiderivatives and forming the
+mixed partials recovers `F`, so the Rayleigh denominator is unchanged:
+`∫_{simplex k} (∑_j c_j ∏_i 𝔉_{j,i}'(tᵢ))² = mkF_denominator k (∑_j c_j ∏_i Fs_{j,i})`. This is the
+denominator identity behind the antiderivative convention at the `s1` axiom's `hFdecomp` shape; the
+right-hand side is the limit of `S1MainTermDecomp.s1_yr_mainTerm_eq_mkF_denominator_decomp`. -/
+theorem mkF_denominator_antideriv_decomp (k J : ℕ) (c : Fin J → ℝ) (Fs : Fin J → Fin k → ℝ → ℝ)
+    (hFs : ∀ j i, Continuous (Fs j i)) :
+    (∫ t in Sieve.simplex k, (∑ j, c j * ∏ i, deriv (antideriv (Fs j i)) (t i)) ^ 2)
+      = Sieve.mkF_denominator k (fun t => ∑ j, c j * ∏ i, Fs j i (t i)) := by
+  rw [show Sieve.mkF_denominator k (fun t => ∑ j, c j * ∏ i, Fs j i (t i))
+        = ∫ t in Sieve.simplex k, (∑ j, c j * ∏ i, Fs j i (t i)) ^ 2 from rfl]
+  refine MeasureTheory.setIntegral_congr_fun (Sieve.isClosed_simplex k).measurableSet
+    (fun t _ => ?_)
+  congr 1
+  refine Finset.sum_congr rfl (fun j _ => ?_)
+  congr 1
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  rw [deriv_antideriv (hFs j i)]
+
 end BoundedGaps.Antiderivative
