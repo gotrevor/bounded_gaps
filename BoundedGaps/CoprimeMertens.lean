@@ -874,4 +874,52 @@ theorem single_prime_coprime_mertens_two :
     mul_comm (Real.log (N : ℝ)) 2]
   exact mul_div_mul_left (T N) (Real.log N) two_ne_zero
 
+/-! ## The general-`W` induction over primes -/
+
+/-- **Prime-by-prime product limit** (odd primes). From a base limit `S_{V₀}(N)/log N → c₀`,
+multiplying the modulus by a finite set `T` of *odd* primes (each coprime to `V₀`) scales the limit
+by `∏_{p∈T}(p-1)/p`:
+  `S_{V₀·∏T}(N)/log N → c₀·∏_{p∈T}((p-1)/p)`.
+Finset-induction applying `coprime_step` once per prime. The engine of `hBaseW`: start from
+`S_2/log → 1/2` (`single_prime_coprime_mertens_two`) or `S_1 = U/log → 1`, then sweep the odd
+primes of `W`. UNCONDITIONAL. -/
+theorem coprime_prod_limit (V₀ : ℕ) (c₀ : ℝ)
+    (hbase : Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime V₀ n) / Real.log N)
+      atTop (𝓝 c₀)) :
+    ∀ T : Finset ℕ, (∀ p ∈ T, p.Prime) → (∀ p ∈ T, 3 ≤ p) → (∀ p ∈ T, Nat.Coprime p V₀) →
+      Tendsto (fun N : ℕ =>
+          (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (V₀ * ∏ p ∈ T, p) n) / Real.log N)
+        atTop (𝓝 (c₀ * ∏ p ∈ T, (((p:ℝ) - 1) / p))) := by
+  intro T
+  induction T using Finset.induction_on with
+  | empty =>
+    intro _ _ _
+    simpa using hbase
+  | insert p T' hpT' ih =>
+    intro hprime h3 hcop
+    have hp_prime : p.Prime := hprime p (Finset.mem_insert_self p T')
+    have hp3 : 3 ≤ p := h3 p (Finset.mem_insert_self p T')
+    have ihT' := ih (fun q hq => hprime q (Finset.mem_insert_of_mem hq))
+      (fun q hq => h3 q (Finset.mem_insert_of_mem hq))
+      (fun q hq => hcop q (Finset.mem_insert_of_mem hq))
+    -- coprimality of p with V₀ * ∏T'
+    have hcopV₀ : Nat.Coprime p V₀ := hcop p (Finset.mem_insert_self p T')
+    have hcopProd : Nat.Coprime p (∏ q ∈ T', q) := by
+      apply Nat.Coprime.prod_right
+      intro q hq
+      have hq_prime : q.Prime := hprime q (Finset.mem_insert_of_mem hq)
+      have hpq : p ≠ q := fun h => hpT' (h ▸ hq)
+      exact (Nat.coprime_primes hp_prime hq_prime).mpr hpq
+    have hcopAll : Nat.Coprime p (V₀ * ∏ q ∈ T', q) := hcopV₀.mul_right hcopProd
+    have hstep := coprime_step p (V₀ * ∏ q ∈ T', q) hp_prime hcopAll hp3
+      (c₀ * ∏ q ∈ T', (((q:ℝ) - 1) / q)) ihT'
+    -- rewrite the modulus and the constant via prod_insert
+    rw [Finset.prod_insert hpT', Finset.prod_insert hpT']
+    have hmod : V₀ * (p * ∏ q ∈ T', q) = p * (V₀ * ∏ q ∈ T', q) := by ring
+    rw [hmod]
+    have hconst : (c₀ * ∏ q ∈ T', (((q:ℝ) - 1) / q)) * (((p:ℝ) - 1) / p)
+        = c₀ * ((((p:ℝ) - 1) / p) * ∏ q ∈ T', (((q:ℝ) - 1) / q)) := by ring
+    rw [hconst] at hstep
+    exact hstep
+
 end BoundedGaps.CoprimeMertens
