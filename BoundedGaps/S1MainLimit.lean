@@ -50,6 +50,40 @@ theorem yspace_box_quadform_div_tendsto {k : ℕ} {W : ℕ} (Fs : Fin k → ℝ 
     (by simpa using hsupp) hBaseW
   simpa using h
 
+/-- **From a ratio limit to `IsLittleO`.** If `f n / g n → c` and `g` is eventually nonzero, then
+`f n - c·g n = o(g)`. The generic bridge from the `tendsto` capstones of this file to the
+`Asymptotics.IsLittleO` shape (`(α + o(1))·main`) the `s1` assembly consumes. -/
+theorem isLittleO_of_div_tendsto {ι : Type*} {l : Filter ι} {f g : ι → ℝ} {c : ℝ}
+    (hg : ∀ᶠ n in l, g n ≠ 0) (h : Tendsto (fun n => f n / g n) l (nhds c)) :
+    Asymptotics.IsLittleO l (fun n => f n - c * g n) g := by
+  rw [Asymptotics.isLittleO_iff_tendsto']
+  · have h0 : Tendsto (fun n => f n / g n - c) l (nhds 0) := by
+      have := h.sub_const c; simpa using this
+    refine h0.congr' ?_
+    filter_upwards [hg] with n hgn
+    field_simp
+  · filter_upwards [hg] with n hgn hcon
+    exact absurd hcon hgn
+
+/-- **Box quadratic-form asymptotic (`IsLittleO` form).** `∏ᵢ quadForm = (φW/W)^k·mkF_den·(log N)^k
++ o((log N)^k)`. The `o`-form of `yspace_box_quadform_div_tendsto`, the consumable shape for the
+`s1` main-term leg of an eventual y-space `alphaBound`. -/
+theorem yspace_box_quadform_isLittleO {k : ℕ} {W : ℕ} (Fs : Fin k → ℝ → ℝ)
+    (hFs : ∀ i, ContDiff ℝ 1 (Fs i))
+    (hsupp : Function.support (fun t => ∏ i, Fs i (t i)) ⊆ Sieve.simplex k)
+    (hBaseW : Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, BoundedGaps.WeightedMertens.gMuSqTotientCoprime W n)
+        / Real.log N) atTop (nhds ((W.totient : ℝ) / W))) :
+    Asymptotics.IsLittleO atTop
+      (fun N : ℕ => (∏ i, S1KDBox.quadForm W (Fs i) (Fs i) N)
+        - (((W.totient : ℝ) / W) ^ k * Sieve.mkF_denominator k (fun t => ∏ i, Fs i (t i)))
+          * (Real.log N) ^ k)
+      (fun N : ℕ => (Real.log N) ^ k) := by
+  refine isLittleO_of_div_tendsto ?_ (yspace_box_quadform_div_tendsto Fs hFs hsupp hBaseW)
+  filter_upwards [eventually_ge_atTop 2] with N hN2
+  have hlogN : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast hN2)
+  positivity
+
 /-- **The y-space S1 heuristic main term limit (capstone, B^{+k} normalisation).** Setting the
 level `R = N` and the sieve scale `x = W·N+2` (so the candidate set covers `[1,N]`), the separable
 y-space sieve's heuristic main term, normalised by the y-space main term `B^{+k}·M` (with
