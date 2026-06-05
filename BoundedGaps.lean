@@ -46,3 +46,4 @@ import BoundedGaps.S1Fubini
 import BoundedGaps.S1ConnectionK1
 import BoundedGaps.S1MainTermDecomp
 import BoundedGaps.Antiderivative
+import BoundedGaps.S1YSpace
