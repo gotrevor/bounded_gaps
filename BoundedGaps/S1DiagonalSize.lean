@@ -148,4 +148,25 @@ theorem poly_over_scale_tendsto_zero (K c : ℝ) (p k : ℕ) (hc : 0 < c) (hK : 
                 mul_le_mul_of_nonneg_right hlogk (div_nonneg (le_of_lt hMpos) (le_of_lt hNpos))
         _ = K * (Real.log N) ^ k * (M N / (N : ℝ)) := rfl
 
+/-- **Leg-1 ratio engine (usable form).** If the diagonal correction `g N` is bounded by a fixed
+polynomial `|g N| ≤ K·N^p` (independent of the sieve scale `x`) and the lattice density `M N`
+dominates `N^{p+1}` (a polynomially-large scale `x`), then the `B^{+k}·M`-normalised correction
+`g N / (c·(log N)^k·M N) → 0`. Squeezes `‖g N / D‖ ≤ K·N^p / D` against `poly_over_scale_tendsto_zero`.
+This is the analytic capstone of the **PNT-free diagonal leg** of `hcorr`: instantiate `g` with the
+diagonal correction sum (`|g| ≤ ((C·N³)²)^k` via `S1Correction.abs_diag_correction_le_diag_weight` +
+`diag_weight_yLambda_le_poly`, `p = 6k`), `c = (φW/W)^k`, and `M N = (⌊2x⌋−(⌈x⌉−1))/W ≥ N^{6k+1}`. No
+PNT, no Möbius cancellation. (The off-diagonal leg, where `M` cancels, needs a growing modulus `W`.) -/
+theorem diag_ratio_tendsto_zero (K c : ℝ) (p k : ℕ) (hc : 0 < c) (hK : 0 ≤ K)
+    {g M : ℕ → ℝ}
+    (hg : ∀ᶠ N : ℕ in atTop, |g N| ≤ K * (N : ℝ) ^ p)
+    (hM : ∀ᶠ N : ℕ in atTop, (N : ℝ) ^ (p + 1) ≤ M N) :
+    Tendsto (fun N : ℕ => g N / (c * (Real.log N) ^ k * M N)) atTop (nhds 0) := by
+  refine squeeze_zero_norm' ?_ (poly_over_scale_tendsto_zero K c p k hc hK hM)
+  filter_upwards [hg, hM, eventually_ge_atTop 3] with N hgN hMN hN3
+  have hMpos : (0 : ℝ) < M N := lt_of_lt_of_le (by positivity) hMN
+  have hlogpos : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast (by omega : 1 < N))
+  have hDpos : (0 : ℝ) < c * (Real.log N) ^ k * M N := by positivity
+  rw [Real.norm_eq_abs, abs_div, abs_of_pos hDpos]
+  gcongr
+
 end BoundedGaps.S1DiagonalSize
