@@ -138,4 +138,21 @@ theorem pair_offdiag_le_sum_primes {k : ℕ} (T : Finset (Fin k → ℕ × ℕ))
   refine Finset.sum_congr rfl (fun p _ => ?_)
   rw [Finset.sum_filter]
 
+/-- **Per-coordinate factorization of a filtered `piFinset` product-sum.** A sum of coordinate-product
+weights `∏ l, g l (P l)` over the `piFinset`, restricted by a per-coordinate predicate
+`∀ l, pred l (P l)`, factorizes as the product over coordinates of the per-coordinate restricted sums.
+The multiplicative core of the y-space S1 off-diagonal estimate: after fixing a shared prime `p` at
+the pair `(i,j)`, the restriction `p ∣ lcm(P i) ∧ p ∣ lcm(P j)` is per-coordinate, so the Selberg
+mass factors into `(∑_{P_i : p|lcm} g_i)·(∑_{P_j : p|lcm} g_j)·∏_{l≠i,j} Q_l`. Proved by Aristotle
+(`3de9feb2`), verified in-kernel + axiom-clean (`Finset.prod_sum` + `Finset.sum_bij`). -/
+theorem piFinset_filter_prod_factor {k : ℕ} {α : Type*} [DecidableEq α] (s : Fin k → Finset α)
+    (g : Fin k → α → ℝ) (pred : Fin k → α → Prop) [∀ l, DecidablePred (pred l)] :
+    ∑ P ∈ (Fintype.piFinset s).filter (fun P => ∀ l, pred l (P l)), ∏ l : Fin k, g l (P l)
+      = ∏ l : Fin k, ∑ d ∈ (s l).filter (pred l), g l d := by
+  rw [Finset.prod_sum]
+  refine Finset.sum_bij (fun P hP => fun l _ => P l) ?_ ?_ ?_ ?_ <;> simp +decide
+  · exact fun a ha₁ ha₂ l => ⟨ha₁ l, ha₂ l⟩
+  · simp +contextual [funext_iff]
+  · exact fun b hb => ⟨fun l => b l (Finset.mem_univ l), ⟨fun l => hb l |>.1, fun l => hb l |>.2⟩, rfl⟩
+
 end BoundedGaps.S1OffDiagSize
