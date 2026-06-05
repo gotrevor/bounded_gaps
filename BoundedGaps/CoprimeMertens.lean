@@ -343,18 +343,169 @@ the **second-order** Mertens `SharpMertens.sum_g_second_order` (`U(N) − log N 
 first-order `sharp_mertens_unconditional` cannot supply). Everything reduces to a single
 abstract analytic crux: a *halving recursion with bounded RHS-limit forces `o(log N)`*. -/
 
-/-- **CRUX (isolated; on Aristotle job `9c12cf7c`).** If `d : ℕ → ℝ` satisfies
-`d N + d⌊N/2⌋ → L` for some constant `L`, then `d N / log N → 0`.
+/-! ## Discharging the crux `halving_recursion_o_log` (UNCONDITIONAL)
 
-This is the one genuinely-hard analytic kernel of the `p = 2` W-coprime Mertens base. Roadmap
-(also in the Aristotle brick `brick_p2/Problem.lean`): unroll `d(N) = ∑_{k<K}(−1)^k V(⌊N/2^k⌋)
-+ (−1)^K d(⌊N/2^K⌋)` with `V = d + d∘half → L` and `K = ⌊log₂ N⌋`; the `±L` contributions
-cancel to `O(1)` by alternation, the base term is bounded (`⌊N/2^K⌋ ∈ {0,1}`), and the
-`∑(−1)^k ε(⌊N/2^k⌋)` of the null part `ε = V − L` is `o(K) = o(log N)`. Disclosed as an
-`axiom` pending the Aristotle return; the rest of the `p = 2` case is fully reduced to it. -/
-axiom halving_recursion_o_log (d : ℕ → ℝ) (L : ℝ)
+A halving recursion with bounded RHS-limit forces `o(log N)`. Proved in-kernel via the
+`L = 0` reduction (the constant `L/2` solves `g + g∘half = L`, killing the alternation): then
+`V = d + d∘half → 0` and the naive triangle bound on the exact unrolling already gives `o(log N)`,
+the only content being `∑_{k<K}|V⌊N/2^k⌋| ≤ ε·K + C` (good terms `≤ ε`; bad-argument terms inject
+into `{1,…,M₀}`). This replaces the lap-7 disclosed `axiom`. -/
+
+theorem halving_unroll (d : ℕ → ℝ) (N m : ℕ) :
+    d N = (∑ k ∈ Finset.range m, (-1 : ℝ) ^ k * (d (N / 2 ^ k) + d (N / 2 ^ k / 2)))
+      + (-1) ^ m * d (N / 2 ^ m) := by
+  induction m with
+  | zero => simp
+  | succ m ih =>
+    have hdiv : N / 2 ^ m / 2 = N / 2 ^ (m + 1) := by rw [Nat.div_div_eq_div_mul, ← pow_succ]
+    rw [Finset.sum_range_succ, hdiv]; linear_combination ih
+
+theorem natlog_mul_log_two_le (N : ℕ) (hN : 1 ≤ N) :
+    (Nat.log 2 N : ℝ) * Real.log 2 ≤ Real.log N := by
+  have h2N : (2 : ℝ) ^ (Nat.log 2 N) ≤ (N : ℝ) := by
+    have : (2 : ℕ) ^ (Nat.log 2 N) ≤ N := Nat.pow_log_le_self 2 (by omega)
+    exact_mod_cast this
+  have := Real.log_le_log (by positivity) h2N
+  rwa [Real.log_pow] at this
+
+theorem halving_o_log_zero (d : ℕ → ℝ)
+    (hd0 : Tendsto (fun N : ℕ => d N + d (N / 2)) atTop (𝓝 0)) :
+    Tendsto (fun N : ℕ => d N / Real.log N) atTop (𝓝 0) := by
+  set a : ℕ → ℝ := fun M => |d M + d (M / 2)| with hadef
+  have ha0 : Tendsto a atTop (𝓝 0) := by have := hd0.abs; simpa [hadef] using this
+  have hanneg : ∀ M, 0 ≤ a M := fun M => abs_nonneg _
+  have hdbound : ∀ N : ℕ, 1 ≤ N →
+      |d N| ≤ (∑ k ∈ Finset.range (Nat.log 2 N + 1), a (N / 2 ^ k)) + |d 0| := by
+    intro N hN
+    have hzero : N / 2 ^ (Nat.log 2 N + 1) = 0 :=
+      Nat.div_eq_of_lt (Nat.lt_pow_succ_log_self (by norm_num) N)
+    have hun := halving_unroll d N (Nat.log 2 N + 1)
+    rw [hzero] at hun
+    rw [hun]
+    refine le_trans (abs_add_le _ _) ?_
+    refine add_le_add ?_ ?_
+    · refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+      apply Finset.sum_le_sum
+      intro k _
+      rw [abs_mul, abs_pow, abs_neg, abs_one, one_pow, one_mul, hadef]
+    · rw [abs_mul, abs_pow, abs_neg, abs_one, one_pow, one_mul]
+  have hsumbound : ∀ ε : ℝ, 0 < ε → ∃ C : ℝ, ∀ N : ℕ, 1 ≤ N →
+      (∑ k ∈ Finset.range (Nat.log 2 N + 1), a (N / 2 ^ k))
+        ≤ ε * ((Nat.log 2 N : ℝ) + 1) + C := by
+    intro ε hε
+    obtain ⟨M₀, hM₀⟩ := (Metric.tendsto_atTop.mp ha0 ε hε)
+    refine ⟨∑ M ∈ Finset.Ico 1 M₀, a M, fun N hN => ?_⟩
+    have hargpos : ∀ k ∈ Finset.range (Nat.log 2 N + 1), 1 ≤ N / 2 ^ k := by
+      intro k hk
+      rw [Finset.mem_range] at hk
+      have : 2 ^ k ≤ N := le_trans (Nat.pow_le_pow_right (by norm_num) (by omega))
+        (Nat.pow_log_le_self 2 (by omega))
+      exact (Nat.one_le_div_iff (by positivity)).mpr this
+    rw [← Finset.sum_filter_add_sum_filter_not (Finset.range (Nat.log 2 N + 1))
+      (fun k => M₀ ≤ N / 2 ^ k)]
+    gcongr ?_ + ?_
+    · -- good ≤ ε*(↑(Nat.log2N)+1)
+      refine le_trans (Finset.sum_le_sum (g := fun _ => ε) ?_) ?_
+      · intro k hk
+        rw [Finset.mem_filter] at hk
+        have := hM₀ (N / 2 ^ k) hk.2
+        rw [Real.dist_eq, sub_zero, abs_of_nonneg (hanneg _)] at this
+        exact this.le
+      · rw [Finset.sum_const, nsmul_eq_mul]
+        have hcard : (((Finset.range (Nat.log 2 N + 1)).filter
+            (fun k => M₀ ≤ N / 2 ^ k)).card : ℝ) ≤ (Nat.log 2 N : ℝ) + 1 := by
+          have : ((Finset.range (Nat.log 2 N + 1)).filter (fun k => M₀ ≤ N / 2 ^ k)).card
+              ≤ Nat.log 2 N + 1 :=
+            le_trans (Finset.card_filter_le _ _) (le_of_eq (Finset.card_range _))
+          calc (((Finset.range (Nat.log 2 N + 1)).filter (fun k => M₀ ≤ N / 2 ^ k)).card : ℝ)
+                ≤ ((Nat.log 2 N + 1 : ℕ) : ℝ) := by exact_mod_cast this
+            _ = (Nat.log 2 N : ℝ) + 1 := by push_cast; ring
+        calc (((Finset.range (Nat.log 2 N + 1)).filter (fun k => M₀ ≤ N / 2 ^ k)).card : ℝ) * ε
+              ≤ ((Nat.log 2 N : ℝ) + 1) * ε := by gcongr
+          _ = ε * ((Nat.log 2 N : ℝ) + 1) := by ring
+    · -- bad ≤ ∑_{Ico 1 M₀} a M
+      have hstrict : ∀ x y : ℕ, x < y → 1 ≤ N / 2 ^ x → N / 2 ^ y < N / 2 ^ x := by
+        intro x y hlt hpos
+        have he : x + (y - x) = y := by omega
+        rw [show N / 2 ^ y = N / 2 ^ x / 2 ^ (y - x) by rw [Nat.div_div_eq_div_mul, ← pow_add, he]]
+        apply Nat.div_lt_self (by omega)
+        calc 1 < 2 ^ 1 := by norm_num
+          _ ≤ 2 ^ (y - x) := Nat.pow_le_pow_right (by norm_num) (by omega)
+      have hinj : Set.InjOn (fun k => N / 2 ^ k)
+          ((Finset.range (Nat.log 2 N + 1)).filter (fun k => ¬ M₀ ≤ N / 2 ^ k) : Finset ℕ) := by
+        intro k₁ hk₁ k₂ hk₂ heq
+        simp only [Finset.coe_filter, Set.mem_setOf_eq, Finset.mem_range] at hk₁ hk₂
+        simp only at heq
+        by_contra hne
+        rcases Nat.lt_or_ge k₁ k₂ with h | h
+        · exact absurd heq.symm (hstrict k₁ k₂ h (hargpos k₁ (Finset.mem_range.mpr hk₁.1))).ne
+        · exact absurd heq (hstrict k₂ k₁ (by omega) (hargpos k₂ (Finset.mem_range.mpr hk₂.1))).ne
+      rw [← Finset.sum_image hinj]
+      apply Finset.sum_le_sum_of_subset_of_nonneg
+      · intro M hM
+        rw [Finset.mem_image] at hM
+        obtain ⟨k, hk, rfl⟩ := hM
+        rw [Finset.mem_filter, not_le] at hk
+        rw [Finset.mem_Ico]
+        exact ⟨hargpos k hk.1, hk.2⟩
+      · intro M _ _; exact hanneg M
+  -- assemble
+  rw [Metric.tendsto_atTop]
+  intro δ hδ
+  set ε := δ * Real.log 2 / 2 with hεdef
+  have hlog2pos : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  have hε : 0 < ε := by rw [hεdef]; positivity
+  obtain ⟨C, hC⟩ := hsumbound ε hε
+  have hlogtop : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have hsmall : ∀ᶠ N : ℕ in atTop, (ε + C + |d 0|) / Real.log N < δ / 2 := by
+    have h := (tendsto_const_nhds (x := ε + C + |d 0|)).div_atTop hlogtop
+    exact h.eventually (eventually_lt_nhds (by positivity : (0 : ℝ) < δ / 2))
+  obtain ⟨N₀, hN₀⟩ := (hsmall.and ((hlogtop.eventually_gt_atTop 0).and
+    (eventually_ge_atTop 1))).exists_forall_of_atTop
+  refine ⟨N₀, fun N hNN₀ => ?_⟩
+  obtain ⟨hsm, hlog0, hN1⟩ := hN₀ N hNN₀
+  rw [Real.dist_eq, sub_zero, abs_div, abs_of_pos hlog0]
+  have hb := hdbound N hN1
+  have hsb := hC N hN1
+  have hexp : ε * ((Nat.log 2 N : ℝ) + 1) = ε * (Nat.log 2 N : ℝ) + ε := by ring
+  have hdb' : |d N| ≤ ε * (Nat.log 2 N : ℝ) + (ε + C + |d 0|) := by
+    rw [hexp] at hsb; linarith [hb]
+  have hstep : ε * (Nat.log 2 N : ℝ) / Real.log N ≤ δ / 2 := by
+    rw [div_le_iff₀ hlog0]
+    have heq : ε * (Nat.log 2 N : ℝ) = (δ / 2) * ((Nat.log 2 N : ℝ) * Real.log 2) := by
+      rw [hεdef]; ring
+    rw [heq]
+    calc (δ / 2) * ((Nat.log 2 N : ℝ) * Real.log 2)
+          ≤ (δ / 2) * Real.log N :=
+          mul_le_mul_of_nonneg_left (natlog_mul_log_two_le N hN1) (by positivity)
+      _ = δ / 2 * Real.log N := rfl
+  have h1 : |d N| / Real.log N
+      ≤ ε * (Nat.log 2 N : ℝ) / Real.log N + (ε + C + |d 0|) / Real.log N := by
+    rw [← add_div]
+    exact (div_le_div_iff_of_pos_right hlog0).mpr hdb'
+  linarith [hstep, hsm, h1]
+
+theorem halving_recursion_o_log (d : ℕ → ℝ) (L : ℝ)
     (hd : Tendsto (fun N : ℕ => d N + d (N / 2)) atTop (𝓝 L)) :
-    Tendsto (fun N : ℕ => d N / Real.log N) atTop (𝓝 0)
+    Tendsto (fun N : ℕ => d N / Real.log N) atTop (𝓝 0) := by
+  have hd0 : Tendsto (fun N : ℕ => (d N - L / 2) + ((fun M => d M - L / 2) (N / 2))) atTop (𝓝 0) := by
+    have h := hd.sub (tendsto_const_nhds (x := L))
+    rw [sub_self] at h
+    refine h.congr (fun N => ?_)
+    simp only; ring
+  have hcore := halving_o_log_zero (fun M => d M - L / 2) hd0
+  have hconst : Tendsto (fun N : ℕ => (L / 2) / Real.log N) atTop (𝓝 0) := by
+    have hlogtop : Tendsto (fun N : ℕ => Real.log N) atTop atTop :=
+      Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+    exact Tendsto.div_atTop tendsto_const_nhds hlogtop
+  have hsum := hcore.add hconst
+  rw [add_zero] at hsum
+  refine hsum.congr (fun N => ?_)
+  simp only
+  rw [← add_div]
+  ring_nf
+
 
 /-- `log N − log⌊N/2⌋ → log 2`. Squeeze between `log 2` (from `⌊N/2⌋ ≤ N/2`) and
 `log(N/(N−1)) + log 2` (from `2⌊N/2⌋ ≥ N−1`). -/
