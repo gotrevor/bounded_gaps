@@ -1,6 +1,26 @@
 # PENDING WORK — open axioms, attack paths, and the numerical-endgame diagnosis
 
-Last updated: 2026-06-04. Branch `path-a-selberg-nu`.
+Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
+
+## ✅ PROGRESS 2026-06-05 — the `μ²/φ` `y_r`-space k-D Riemann ladder is DONE (axiom-clean)
+
+The Path-Y analytic engine for `s1` is now built end-to-end, unconditional & axiom-clean, in
+`BoundedGaps/WeightedRiemannGen.lean`. Rather than copy the 850-line bare ladder, the WHOLE ladder
+was abstracted over an arbitrary nonneg weight `w : ℕ → ℝ` (`weighted_riemann_kd_w`, parametrised by
+`0 ≤ w` + `Weighted1DLimit w`), reusing the weight-independent limit side (`nestedPhi`, Pólya, …)
+from `WeightedRiemannKD`. Instances landed:
+- `weighted_riemann_kd_muphi`: `(∑_{∏rᵢ≤R} ∏Gs_i(log rᵢ/log R)·∏(μ²/φ)(rᵢ))/(logR)^k → ∫_simplex ∏Gs`.
+- `weighted_riemann_kd_muphi_sep`: the SQUARED/separable form → `nestedPhi (ofFn Fs²) 0` (the s1 const).
+- `weighted_riemann_kd_harmonic`: bare 1/n recovered (validation = identical to `weighted_riemann_kd`).
+- 1-D input `weighted1DLimit_muphi` from NEW `WeightedMertens.weighted_mertens_continuous` (μ²/φ
+  Mertens extended Lipschitz→continuous via Weierstrass + 3ε; axiom-clean).
+
+**REMAINING to connect to `s1`:** the simplex-Fubini bridge `∫_{simplex k} ∏gᵢ = nestedPhi (ofFn g) 0`
+(connects `nestedPhi (ofFn Fs²) 0` to `mkF_denominator k F = ∫_simplex F²` for separable F). The repo
+already has `SievePolynomial.simplex_fubini` (one-coordinate peel) + `nestedPhi_eq_simplexPhi`; the
+bridge is a k-induction with ONE Fubini order-swap. **ON ARISTOTLE 2026-06-05** (job
+`58f76560-3dbb-46be-98ee-2bdf4325079c`, brick `/tmp/brick_fubini/Fubini.lean`). After it: re-target
+s1's `selberg_nu` main term to y_r-space (the antiderivative convention) and apply the ladder.
 
 ## ⚠️ CORRECTNESS RISK (recorded 2026-06-04, from `ON-LINE-FINDINGS-2026-06-04-gpy-diagonal-asymptotic.md`)
 
