@@ -2,6 +2,67 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## 🔴🟡🟢 LAP 11 (2026-06-05) — COURSE CORRECTION: crux (B) is NOT elementary. The off-diagonal leg genuinely needs the **smoothing estimate** (PNT-strength), vindicating lap-4 over lap-9. `selberg_local_factor` landed; closure roadmap (one PNT axiom + Mertens products) mapped.
+
+**1 axiom-clean commit (`379488d`), full build green (8302).** Fresh-mind review re-examined the lap-9/10
+claim that crux (B) (the per-prime mass fraction) is "elementary / PNT-free". **It is not.** Decisive
+evidence, all PNT-free reasoning:
+
+### ⚠️ THE FINDING — crux (B) ratio-to-`Q` is FALSE without the smooth structure of `yLambda`
+* **Counterexample (structure-free).** For *general* nonneg weights `|λ_d|`, the per-prime mass fraction
+  `∑_{(d,e):p|lcm}|λ_dλ_e|/[d,e] ≤ (κ/p)·∑_{(d,e)}|λ_dλ_e|/[d,e]` is **false**: take `λ` supported on a
+  single `d₀` with `p∣d₀` — then LHS `= |λ_{d₀}|²/d₀ =` the whole `Q`, ratio `= 1`, not `1/p`. So crux
+  (B) **must** use the specific structure of `yLambda`; no purely-combinatorial route exists.
+* **The `abs_yLambda_le_sharp` majorant is lossy by `(log)²` per coordinate.** `yLambda R F L d =
+  d·∑_{s∈R,d∣s}μ(s/d)F(log s/L)/φ(s)`; reindex `s=dt` ⟹ `= (d/φ(d))·∑_t μ(t)F(log(dt)/L)/φ(t)`. The
+  inner sum is a **cancelling** Möbius/φ mean `≈ (−F'/L) ≈ 1/log R` (the y-variables are `O(1/log R)`,
+  confirmed by the archived findings `(★)`: `∑μμ/[d,e]FF ~ (1/log R)∫F'²`). `abs_yLambda_le_sharp`
+  replaces that cancelling sum by the **non-cancelling** `∑_t μ²/φ ≈ log N`, so it overestimates
+  `|yLambda_d|` by a factor `≈ (log N)²`. Two coordinates get majorant-bounded in each pair term ⟹
+  `(log)⁴` of loss vs only `(log)²` provided by `B²` ⟹ the elementary route **cannot close** for any
+  sieve-admissible (poly-bounded) `W`. (Confirmed against the size budget: `sieveB W x = (φW/W)·log x`.)
+* **Conclusion:** lap-9's "off-diagonal is elementary, not PNT" was over-optimistic. **Lap-4's
+  `[[s1-derivative-landmine]]` verdict (off-diagonal/smoothing is PNT-strength) is CORRECT.** The
+  contour-free y-space `s1` is **PNT-free for the diagonal** (main term + diagonal correction, both
+  machine-checked) but the **off-diagonal correction needs the smoothing estimate** — a single,
+  cleanly-isolable, PNT-strength `axiom`.
+
+### ✅ What landed: `selberg_local_factor` (`S1OffDiagSize`, `379488d`, axiom-clean)
+The per-term local factor of the deterministic majorant `G(a,e):=(a/φa)(e/φe)/lcm(a,e)`:
+`G(p·d,e) = G(d,e)/(p-1)` for prime `p ∤ d,e` (Euler `φ(pd)=(p-1)φd` + `lcm(pd,e)=p·lcm(d,e)`). PNT-free,
+route-agnostic (used by BOTH the majorant reindex and the smoothing-based closure). This is exactly what
+Aristotle brick `0e387e89` was computing — proved locally instead (1-shot `field_simp`).
+
+### 🗺️ THE CLOSURE ROADMAP (the off-diagonal leg, modulo ONE PNT axiom) — now precise
+The off-diagonal `offDiagMass/B^{+k} → 0` DOES close with **growing `W=W(N)`** given:
+1. **`[PNT axiom] yLambda_smoothing_bound`**: `|yLambda R F (log N) d| ≤ (d/φ(d))·C_F/log N` (the sharp
+   `1/log` bound; `C_F` from `‖F‖_∞,‖F'‖_∞`). This is the Möbius-mean cancellation `∑_t μ(t)/φ(t)·(…) =
+   O(1/log)` — genuinely PNT-strength (qualitative `∑μ(n)/n→0` is PNT-equivalent; this mathlib has only
+   `Chebyshev`/`VonMangoldt`, NO PNT). **The narrowest core to axiomatize.**
+2. **`selberg_local_factor`** (DONE) ⟹ **`reindex_bound`** (`∑_{(d,e):p∣d}G ≤ (1/(p-1))∑G`, pure Finset,
+   PNT-free — **Aristotle `17b8559c` RUNNING**) ⟹ the per-prime majorant mass fraction `≤ (κ/(p-1))𝒢`.
+3. **Mertens-product size of `𝒢_l := ∑_{(d,e)∈R×R}G(d,e)`**: Euler product `∏_{D₀<q≤R}(1+2/(q-1)+
+   q/(q-1)²) ≈ (log R/log D₀)³` (the shared-prime `>D₀` regime; W-trick removes `q≤D₀`). NOT in mathlib
+   (no Mertens 3rd thm / `∏(1-1/p)`); a second real brick. With it, `(C_F/log)²𝒢_l ≈ Q_l ≈ B`
+   (self-consistent: `∏Q_l ≈ B^k = (φW/W)^k(log)^k`).
+4. **The tail bookkeeping CLOSES**: pair term `≤ (C_F/log)^{2k}κ²/(p-1)²·∏𝒢_l`; `/B^{+k}` and
+   `φW/W=∏_{p≤D₀}(1-1/p)≈1/log D₀` (Mertens) give per-pair `≈ (log D₀)^k·∑_{p>D₀}1/(p-1)² ≈
+   (log D₀)^k/(D₀ log D₀) = (log D₀)^{k-1}/D₀ → 0` as `D₀=D₀(N)→∞`. **The `∑_{p>D₀}1/p²` engine
+   (`recip_sq_tail_tendsto_zero`) is already proven; growing `W` makes `D₀→∞`.**
+
+### 🧭 REVISED priorities (supersede lap-10's "build crux (B) elementarily")
+1. **Land `reindex_bound`** (Aristotle `17b8559c`) — the pure-Finset bridge, no PNT. Harvest+port.
+2. **State `yLambda_smoothing_bound` as the single PNT axiom** + prove `abs_yLambda_le_smoothing`
+   (balanced `(d/φd)C_F/log` majorant) from it. This REPLACES the lossy `abs_yLambda_le_sharp` path and
+   makes the bookkeeping balance. (The smoothing estimate = Maynard `PartialSummation`; a multi-lap deep
+   nut — advance, don't expect to discharge without importing PNT, e.g. `PrimeNumberTheoremAnd`.)
+3. **Mertens-product size estimates** for `𝒢_l` and `φW/W` — a self-contained analytic sub-project
+   (needs `∑_{p≤x}1/p = loglog+O(1)` / `∏(1-1/p)`; partly in our `CoprimeMertens`/`SharpMertens`?).
+4. **Growing-`W` restate** of the final limit (`yspace_s1_sieveSum_div_tendsto_offDiagMass` with
+   `W=W(N),D₀=D₀(N)`) — needs the uniform-in-`W` hBaseW (a double-limit; the hardest bookkeeping).
+5. **ON-LINE-REQUEST sharpened**: is PNT now in mathlib master / should we import `PrimeNumberTheoremAnd`
+   for the smoothing? Is there an elementary (Selberg-symmetry / large-sieve) `1/log` smoothing bound?
+
 ## 🟢🟢🟢 LAP 10 (2026-06-05) — Leg 1 DISCHARGED in-kernel; full y-space s1 now conditional ONLY on the off-diagonal; Leg 2 isolated to `offDiagMass/B^{+k} → 0`
 
 **8 axiom-clean commits, full build green (8302) at every gate.** This lap WIRED the lap-9 toolkit

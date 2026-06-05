@@ -1,6 +1,42 @@
 # Online research requests — bounded_gaps
 
-## 2026-06-05 (lap 10) — UPDATE: diagonal leg DISCHARGED in-kernel; off-diagonal SOFT reductions + sharp coefficient bound done; narrowed open question
+## 2026-06-05 (lap 11) — COURSE CORRECTION: the off-diagonal leg is NOT elementary; it needs the SMOOTHING ESTIMATE (PNT-strength). What I need: PNT availability / smoothing import.
+
+Lap 11's fresh-mind review found the lap-9/10 claim "crux (B) (the per-prime mass fraction) is elementary
+/ PNT-free" is **wrong**. Two PNT-free arguments settle it: (i) **counterexample** — for general nonneg
+weights `|λ|`, `∑_{(d,e):p|lcm}|λλ|/[d,e] / ∑|λλ|/[d,e]` can be `1` (λ on one `d₀` with `p∣d₀`), not
+`1/p`, so crux (B) MUST use the smooth structure of `yLambda`; (ii) the lap-10 "sharp" bound
+`abs_yLambda_le_sharp` carries `∑μ²/φ ≈ log N` where the truth is the **cancelling** Möbius/φ mean
+`∑_t μ(t)F/φ(t) ≈ 1/log R` — lossy by `(log)²` per coordinate, `(log)⁴` per pair vs `(log)²` from `B²`, so
+the elementary majorant route CANNOT close for any poly-bounded `W`. **Conclusion:** the off-diagonal S1
+correction needs the smoothing estimate `|yLambda_d| ≤ (d/φ(d))·C/log R` (= Maynard `PartialSummation` /
+the Möbius-mean cancellation), which is genuinely PNT-strength. This vindicates the lap-4
+`s1-derivative-landmine` verdict. **The whole off-diagonal CLOSES modulo this ONE PNT axiom** (roadmap in
+`PENDING_WORK.md` lap-11 head: smoothing axiom + `reindex_bound` (pure Finset, on Aristotle) +
+Mertens-product size of `𝒢=∑(d/φd)(e/φe)/lcm ≈ (log R/log D₀)³` + growing `W`).
+
+**What I need now (any of):**
+1. **Is the Prime Number Theorem (or a quantitative Möbius-mean `∑_{n≤x}μ(n)/n = O(1/log x)` or
+   `∑μ(n)/φ(n)` with rate) in CURRENT mathlib master?** Our pinned mathlib (v4.29.1) has only
+   `Mathlib/NumberTheory/Chebyshev.lean` and `…/VonMangoldt.lean` — NO `PrimeNumberTheorem`. Name the
+   declaration + file if master has it, so we can bump and import to discharge the smoothing axiom.
+2. **`PrimeNumberTheoremAnd`** (Kontorovich et al.) — does it contain the PNT in a form
+   (`ψ(x)~x` / Möbius mean / `∑μ(n)/n→0` with `O(1/log)` rate) portable to discharge a smoothing bound
+   `|∑_{t≤T}μ(t)F(log(dt)/L)/φ(t)| ≤ C/L`? Repo path + theorem name + whether it builds against
+   Lean v4.29/4.30.
+3. **The Mertens-product piece** (independent of PNT): does mathlib master have **Mertens' 3rd theorem**
+   `∏_{p≤x}(1-1/p) ~ e^{-γ}/log x` or `∑_{p≤x}1/p = loglog x + M + o(1)`? We need the SIZE
+   `𝒢_l = ∑_{(d,e)∈R²}(d/φd)(e/φe)/lcm(d,e) ≈ (log R/log D₀)³` and `φ(W)/W = ∏_{p≤D₀}(1-1/p) ≈ 1/log D₀`
+   for the growing-`W` bookkeeping. Name declarations.
+4. **Elementary escape hatch (lap-8 #3, still live):** is there a Selberg-symmetry / large-sieve
+   majorant giving the `o(M(log R)^k)` off-diagonal bound WITHOUT the sharp `1/log` smoothing constant —
+   e.g. a second-moment bound for `∑_{d,e}|λ_dλ_e|/[d,e]` exploiting the W-coprimality? Cite the precise
+   inequality + source.
+
+**Why it unblocks:** (1)/(2) discharge the single remaining PNT axiom of the contour-free y-space `s1`
+off-diagonal; (3) supplies the elementary growing-`W` size estimates; (4) might avoid PNT entirely.
+
+## 2026-06-05 (lap 10, SUPERSEDED by lap-11) — UPDATE: diagonal leg DISCHARGED in-kernel; off-diagonal SOFT reductions + sharp coefficient bound done; narrowed open question
 
 Lap 10 wired the diagonal leg fully (`S1DiagCorrection.diag_correction_ratio_tendsto_zero`, PNT-free,
 axiom-clean) and reduced the WHOLE contour-free y-space s1 to the single M-free target
