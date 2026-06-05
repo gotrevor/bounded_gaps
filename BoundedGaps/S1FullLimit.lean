@@ -19,6 +19,7 @@ diagonal half is already `o(main)` unconditionally (`S1DiagonalSize`), leaving t
 BV-gated singular-series discrepancy.
 -/
 import BoundedGaps.S1MainLimit
+import BoundedGaps.CoprimeMertens
 
 open MeasureTheory Filter Topology
 open scoped BigOperators
@@ -110,5 +111,46 @@ theorem yspace_s1_sieveSum_isLittleO {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H :
   have hB : (0 : ℝ) < Sieve.sieveB W (N : ℝ) := by
     rw [Sieve.sieveB]; positivity
   exact mul_ne_zero (ne_of_gt (pow_pos hB k)) hM
+
+/-- **The full y-space S1 sieve-sum limit for primorial `W`, conditional ONLY on the correction.**
+Specialises `yspace_s1_sieveSum_div_tendsto` to a primorial modulus `W = ∏_{p∈T} p` (`T` a finite
+set of primes with `2 ∈ T` — exactly the sieve's `W = ∏_{p≤D₀} p`), discharging the W-coprime sharp
+Mertens base `hBaseW` IN-KERNEL via `CoprimeMertens.hBaseW_of_primes_totient` (unconditional, no PNT,
+no Euler products). So for the actual sieve modulus the contour-free y-space `s1` main term rests on
+**no analytic axiom whatsoever** — the *only* remaining input is the off-diagonal correction `hcorr`
+(itself the architectural `B^{±k}` flip aside). This is the honest top-level statement of where the
+contour-free y-space `s1` programme stands after `hBaseW` was fully discharged (lap 8). -/
+theorem yspace_s1_sieveSum_div_tendsto_primorial {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (T : Finset ℕ) (hT : ∀ p ∈ T, p.Prime) (h2 : 2 ∈ T)
+    (hWeq : W = ∏ p ∈ T, p) (M : ℝ) (hM : M ≠ 0)
+    (hFs : ∀ i, ContDiff ℝ 1 (Fs i))
+    (hsupp : Function.support (fun t => ∏ i, Fs i (t i)) ⊆ Sieve.simplex k)
+    (hFsupp : ∀ i : Fin k, ∀ t : ℝ, 1 < t → Fs i t = 0)
+    (hcorr : Tendsto (fun N : ℕ =>
+        (∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+              BoundedGaps.Sieve.sieveDivisors H i.val b W ((W * N : ℝ) + 2)
+                ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W ((W * N : ℝ) + 2)),
+            (∏ i : Fin k,
+              S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W ((W * N : ℝ) + 2)).filter
+                  (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log (N : ℝ)) (P i).1
+                * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W ((W * N : ℝ) + 2)).filter
+                  (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log (N : ℝ)) (P i).2)
+            * ((((Finset.Icc ⌈(W * N : ℝ) + 2⌉₊ ⌊2 * ((W * N : ℝ) + 2)⌋₊).filter
+                    (fun n => n % W = b % W)).filter
+                  (fun m => ∀ i : Fin k,
+                    (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+                - M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+          / (Sieve.sieveB W (N : ℝ) ^ k * M)) atTop (nhds 0)) :
+    Tendsto (fun N : ℕ =>
+        BoundedGaps.Sieve.sieveSum (S1YSpace.selberg_nu_yr_sep k Fs H (N : ℝ)
+            (fun i => (BoundedGaps.Sieve.sieveDivisors H i.val b W ((W * N : ℝ) + 2)).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W))) b W ((W * N : ℝ) + 2)
+          / (Sieve.sieveB W (N : ℝ) ^ k * M))
+      atTop (nhds (Sieve.mkF_denominator k (fun t => ∏ i, Fs i (t i)))) := by
+  have hW : 1 ≤ W := by
+    rw [hWeq]; exact Finset.one_le_prod' (fun p hp => (hT p hp).one_lt.le)
+  refine yspace_s1_sieveSum_div_tendsto Fs H b W M hM hW hFs hsupp hFsupp ?_ hcorr
+  rw [hWeq]
+  exact BoundedGaps.CoprimeMertens.hBaseW_of_primes_totient T hT h2
 
 end BoundedGaps.S1FullLimit
