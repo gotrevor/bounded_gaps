@@ -2544,4 +2544,37 @@ theorem sieveSum_genProd_sq_expand (k : ℕ) (lam : Fin k → ℕ → ℝ)
     (fun i de m => de.1 ∣ (m + H.getD i.val 0) ∧ de.2 ∣ (m + H.getD i.val 0))
     (fun i de => lam i de.1 * lam i de.2)
 
+/-- **`S.filter(sf ∧ coprime W)` satisfies the y-space diagonalisation hypotheses**, for ANY `S`
+that is `≥ 1` and divisor-closed (generalises `sieveR_yspace_hyps` from `Icc 1 N` to any such `S`).
+The filtered set is `≥ 1`, squarefree, and divisor-closed (a divisor of a squarefree `W`-coprime
+`s∈S` is squarefree, `W`-coprime, and in `S`). This is the lemma producing the CORRECT `Rset` for
+the y-space sieve: `Rset = sieveDivisors.filter(sf ∧ coprime W)` (see `sieveDivisors_yspace_hyps`),
+the index set on which `S1YSpace.yLambda` is supported AND `gpy_diagonalize_yform_muphi` applies. -/
+theorem filter_sf_coprime_hyps (S : Finset ℕ) (W : ℕ)
+    (hS1 : ∀ s ∈ S, 1 ≤ s) (hSdc : ∀ s ∈ S, ∀ d, d ∣ s → d ∈ S) :
+    (∀ s ∈ S.filter (fun r => Squarefree r ∧ Nat.Coprime r W), 1 ≤ s)
+    ∧ (∀ s ∈ S.filter (fun r => Squarefree r ∧ Nat.Coprime r W), Squarefree s)
+    ∧ (∀ s ∈ S.filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+        ∀ d, d ∣ s → d ∈ S.filter (fun r => Squarefree r ∧ Nat.Coprime r W)) := by
+  refine ⟨?_, ?_, ?_⟩
+  · intro s hs; exact hS1 s (Finset.mem_filter.mp hs).1
+  · intro s hs; exact (Finset.mem_filter.mp hs).2.1
+  · intro s hs d hds
+    rw [Finset.mem_filter] at hs ⊢
+    obtain ⟨hsS, hsf, hcop⟩ := hs
+    exact ⟨hSdc s hsS d hds, hsf.squarefree_of_dvd hds, Nat.Coprime.coprime_dvd_left hds hcop⟩
+
+/-- **The sieve candidate set's `sf ∧ coprime` filter satisfies the y-space hypotheses.** The
+`sieveDivisors`-specific instance of `filter_sf_coprime_hyps` (`sieveDivisors` is `≥ 1` and
+divisor-closed by `sieveDivisors_pos`/`sieveDivisors_dvd_closed`). So `gpy_diagonalize_yform_muphi`
+applies to `Rset = (sieveDivisors H i b W x).filter(sf ∧ coprime W)` — the correct y-space index. -/
+theorem sieveDivisors_yspace_hyps (H : List ℕ) (i b W : ℕ) (x : ℝ) :
+    (∀ s ∈ (sieveDivisors H i b W x).filter (fun r => Squarefree r ∧ Nat.Coprime r W), 1 ≤ s)
+    ∧ (∀ s ∈ (sieveDivisors H i b W x).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+        Squarefree s)
+    ∧ (∀ s ∈ (sieveDivisors H i b W x).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+        ∀ d, d ∣ s → d ∈ (sieveDivisors H i b W x).filter (fun r => Squarefree r ∧ Nat.Coprime r W)) :=
+  filter_sf_coprime_hyps (sieveDivisors H i b W x) W
+    (fun _ hs => sieveDivisors_pos hs) (fun _ hs d hd => sieveDivisors_dvd_closed hs hd)
+
 end BoundedGaps.Sieve
