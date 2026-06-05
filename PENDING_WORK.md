@@ -2,6 +2,44 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## 🟢🟢🟢 LAP 10 (2026-06-05) — Leg 1 DISCHARGED in-kernel; full y-space s1 now conditional ONLY on the off-diagonal; Leg 2 isolated to `offDiagMass/B^{+k} → 0`
+
+**8 axiom-clean commits, full build green (8302) at every gate.** This lap WIRED the lap-9 toolkit
+into the milestone and pushed into Leg 2:
+
+1. **`S1DiagCorrection.diag_correction_ratio_tendsto_zero`** — the **DIAGONAL half of `hcorr` is now
+   machine-checked discharged, PNT-free** (scale trick: `x=x(N)` poly-large ⟹ `M≥N^{6k+1}` ⟹ the
+   fixed-poly diagonal weight `((C·N³)²)^k`-bound vanishes in the `B^{+k}·M` normalisation).
+   `diagCorr` is an opaque `def` (dodges the giant-goal `DecidablePred` whnf loop). The diagonal leg
+   needs NO W-trick admissibility — only candidate-set coprimality.
+2. **`S1DiagFree.yspace_s1_sieveSum_div_tendsto_diagFree`(`_primorial`)** — the actual y-space sieve
+   sum at poly-large scale, `/(B^{+k}·M) → mkF_denominator`, **conditional ONLY on the OFF-DIAGONAL
+   correction `hoffdiag`**. Composes the scale-general heuristic main
+   (`yspace_s1_heuristic_main_div_sieveB_tendsto_scale`, x & M both free), the correction split
+   (`fullCorr_eq_diag_add_offdiag`), and Leg 1. The primorial version discharges `hBaseW` in-kernel ⟹
+   **for the actual sieve modulus the contour-free y-space s1 rests on NO analytic axiom and ONLY the
+   off-diagonal leg.**
+3. **Leg 2 ISOLATED & STARTED.** `S1DiagFree.offdiagCorr_eq_neg_mul_offDiagMass`: under the W-trick the
+   off-diagonal COUNT vanishes, so `offdiagCorr = −M·offDiagMass` — the `M`-cancellation made explicit
+   in-kernel (confirms the scale trick is useless off-diagonal). `hoffdiag_of_offDiagMass`: hence the
+   off-diagonal obligation reduces to the clean **`M`-free target `offDiagMass/B^{+k} → 0`**, where
+   `offDiagMass = ∑_{¬diag}(∏λλ)/∏[d,e]`.
+4. **Union bound landed** (Aristotle `c459c135`, verified in-kernel + ported):
+   `S1OffDiagSize.offdiag_le_sum_pairs` + `S1DiagFree.abs_offDiagMass_le_sum_pairs`:
+   `|offDiagMass| ≤ ∑_{ordered pairs i≠j} ∑_{P: lcm(P i),lcm(P j) not coprime} |∏λλ|/∏[d,e]`.
+
+### ⇒ The remaining Leg-2 chain (the genuine deep nut), in order:
+* **(A) factorization** [Aristotle `3de9feb2` RUNNING]: `piFinset_filter_prod_factor` — the per-pair
+  shared-prime sum factors over coordinates (the weight `|∏λλ|/∏[d,e] = ∏_l(|yL·yL|/lcm)` is a
+  coordinate product). After fixing a shared prime `p`, `∑_{P: p|lcm(P i)∧p|lcm(P j)} w = (∑_{P_i:
+  p|lcm}g_i)(∑_{P_j: p|lcm}g_j)∏_{l≠i,j}Q_l`.
+* **(B) per-prime mass fraction** [THE OPEN CRUX]: `∑_{P_i: p|lcm(P_i)} (|yL·yL|/lcm) ≤ (C/p)·Q_i`
+  where `Q_i = ∑(|yL·yL|/lcm)`. Open whether elementary (W-coprimality) or needs sharp `|λ_d|≤C d/φ(d)`.
+* **(C) shared-prime union** + **(D) `∑_{p>D₀}1/p²` tail** (`S1OffDiagSize.recip_sq_tail_tendsto_zero`,
+  `sum_finset_recip_sq_le_tail` — DONE) ⟹ `offDiagMass/B^{+k} ≤ (C²·∑_{p>D₀}1/p²)·(∏Q_l/B^{+k})`.
+  Needs **growing `W=W(N)`** so `D₀(N)→∞` and the tail →0; `∏Q_l/B^{+k}` is `O(1)` (each `Q_l=O(log N)`,
+  `B^{+k}=(φW/W)^k(log N)^k`). This is where the architectural growing-`W` restate enters.
+
 ## 🧭🧭🧭 STRATEGIC CORRECTION 2026-06-05 (lap 9) — `hcorr` is NOT "all PNT"; it splits into a PNT-FREE diagonal leg + an off-diagonal leg that needs a GROWING modulus `W`
 
 **4 axiom-clean commits this lap, full build green (8300) at every gate.** This lap did the
