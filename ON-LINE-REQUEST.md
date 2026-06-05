@@ -1,6 +1,40 @@
 # Online research requests — bounded_gaps
 
-## 2026-06-05 — The y-space smoothing residual (Möbius-mean / PNT-strength)
+## 2026-06-05 (lap 9) — REVISES the PNT request below: the real blocker is the off-diagonal S1 leg with a GROWING modulus `W`, not PNT
+
+**Context update.** Lap 9 re-analysed the s1 correction `hcorr` (see `PENDING_WORK.md` lap-9 head).
+The correction's bound (`S1Correction.yspace_correction_abs_bound_explicit`) splits into:
+* a **diagonal leg** (count error `≤1`, no `M` factor) — now shown **PNT-FREE**: the y-space
+  coefficient `ℓ¹`-mass is bounded by a fixed polynomial in the level `N` independent of the sieve
+  scale `x` (`S1Correction.sum_abs_yLambda_le_level` / `diag_weight_yLambda_le_poly`), so taking `x`
+  polynomially large in `N` (the main-term chain already permits any `x ≥ W·N+2`) kills it. No
+  Möbius cancellation needed. The lap-8 PNT request below is therefore **moot for the diagonal leg.**
+* an **off-diagonal leg** that scales with `M` (cancels vs the main term, so the scale trick is
+  useless). Its size is `≈ ε(D₀)·main` with `ε(D₀) = ∑_{p>D₀}1/(p−1)²` — a fixed positive constant
+  for **fixed** modulus `W = ∏_{p≤D₀}p`, hence `Θ(main)`, so `hcorr` is effectively **false for fixed
+  `W`**. The classical fix is a **growing** `D₀ = D₀(N) → ∞` (so `W = W(N) → ∞`, `ε(D₀(N)) → 0`).
+
+**What I now need (any of):**
+1. In Maynard "Small gaps between primes" (and GPY), the S1 sum is computed with `W = ∏_{p≤D₀}p` and
+   `D₀ → ∞` slowly. **Confirm the exact growth rate `D₀(N)` used** (e.g. `log log log N`?), how the
+   off-diagonal/error term is bounded there (Lemma number + the inequality), and whether that bound is
+   elementary (no PNT) given the W-coprimality. This tells me the target `W(N)` regime to re-state the
+   y-space limit theorems against.
+2. Is there an **existing Lean formalization** (PrimeNumberTheoremAnd, Kontorovich et al., any public
+   repo) of the Maynard/GPY S1 *off-diagonal* error bound, or of the **per-prime singular-series mass
+   bound** `∑_{d,e: p|[d,e]} |λ_d λ_e|/[d,e] ≤ (C/p)·∑_{d,e}|λλ|/[d,e]` for Selberg-type `λ`? Repo +
+   theorem name.
+3. Does current mathlib (master) have any **average/maximal order bound** usable here:
+   `∑_{n≤N} σ(n)/φ(n) = O(N·polylog)`, `n/φ(n) = O(log log n)`, or `∑_{n≤N} 1/φ(n) = O(log N)`? (These
+   would let me sharpen the crude `λ`-mass bound from `C·N³` toward the true `O(N·polylog)`, useful
+   but NOT required for the diagonal leg.) Name the declaration(s).
+
+**Why it unblocks:** (1)+(2) give the off-diagonal leg with growing `W` — the sole remaining
+contour-free y-space s1 obligation after the diagonal leg (PNT-free) is wired.
+
+---
+
+## 2026-06-05 (lap 8, SUPERSEDED by the lap-9 note above) — The y-space smoothing residual (Möbius-mean / PNT-strength)
 
 **Context.** As of lap 8 the contour-free y-space `s1` MAIN TERM is fully machine-checked and
 unconditional for primorial `W` (`hBaseW` discharged in `CoprimeMertens.lean`; see

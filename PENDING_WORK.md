@@ -2,6 +2,76 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## 🧭🧭🧭 STRATEGIC CORRECTION 2026-06-05 (lap 9) — `hcorr` is NOT "all PNT"; it splits into a PNT-FREE diagonal leg + an off-diagonal leg that needs a GROWING modulus `W`
+
+**4 axiom-clean commits this lap, full build green (8300) at every gate.** This lap did the
+fresh-mind review and found the lap-8 "the whole `hcorr` is PNT-blocked, genuine deep wall" framing is
+**wrong**. The off-diagonal correction's binding constraint is NOT the prime-number theorem — it is
+(a) the sieve **scale `x` being tied to the level `R = N`** (so effectively level of distribution
+`θ ≈ 2 ≫ 1`), and (b) the **modulus `W` being held fixed**. Both are fixable; neither needs PNT.
+
+### What `hcorr` actually is (`S1Correction.yspace_correction_abs_bound_explicit`)
+`hcorr` ⟺ `correction / (B^{+k}·M) → 0` where `correction = ∑_P (∏λλ)(count_P − M/∏[d,e])`.
+`yspace_correction_abs_bound_explicit` bounds `|correction|` by **two legs** (both count-side already
+discharged unconditionally lap 7 — W-trick off-diag vanishing + diagonal `O(1)` error):
+* **Diagonal leg** `∑_{diag}|∏λλ|·1` — cross-coprime tuples, count error `≤ 1`, **NO `M` factor**.
+* **Off-diagonal leg** `∑_{¬diag}|∏λλ|·M/∏[d,e]` — count `= 0` (W-trick), so this is spurious density
+  mass; it **scales with `M`** (cancels against the main term's `M`).
+
+### ⇒ Leg 1 (DIAGONAL) — PNT-FREE, dischargeable by SCALE DECOUPLING. (Landed the core this lap.)
+The diagonal weight is bounded by a **fixed polynomial in the level `N`, independent of the scale `x`**
+(which controls `|Rset_i|`):
+* `S1Correction.sum_abs_yLambda_le_level`: `∑_{d∈R}|yLambda R F (log N) d| ≤ C·N³`. The `F`-support
+  cutoff kills every `s > N`, so `≤ N` terms survive each `≤ C`; NO Möbius cancellation.
+  (+ `abs_yLambda_le_level` `|yLambda d| ≤ d·C·N`, `yLambda_eq_zero_of_gt_level` vanish for `d>N`.)
+* `S1Correction.diag_weight_le_prod` (+ Aristotle cross-check `8681a6f0`): `∑_P |∏λλ| ≤ ∏_i(∑|λ|)²`.
+* `S1Correction.diag_weight_yLambda_le_poly`: **diagonal weight `≤ ((C·N³)²)^k`** — fixed poly, no `x`.
+
+**The decoupling that finishes Leg 1:** `S1CountReconcile.yr_heuristic_main_eq_quadForm_product` (and
+the whole main-term chain) takes the scale `x` as a FREE parameter (`hcov : (W·N)+2 ≤ x`); the level
+`R = N` is pinned only by `F`'s cutoff. So take `x = x(N) ≥ W·N^{6k+2}` (decoupled from `N`). Then
+`M ≈ x/W ≥ N^{6k+1}` and the diagonal ratio
+`((C·N³)²)^k / ((φW/W)^k(log N)^k·M) ≤ C^{2k}N^{6k}/(c·(log N)^k·N^{6k+1}) → 0`. **No PNT.**
+*Remaining to wire (next lap):* (i) re-state `S1MainLimit`/`S1FullLimit` with a general scale
+`x : ℕ → ℝ`, `hcov : ∀ N, (W·N)+2 ≤ x N` (proofs only use `hcov`, so this is threading); (ii) a lemma
+`diag_correction_ratio_tendsto_zero` (fixed poly / super-poly `M` → 0); (iii) bound the
+diagonal-correction SUM `∑_{diag}(∏λλ)(count−M/∏lcm)` by `(diag weight)·1` via `|count−M/∏lcm|≤1`
+(`yspace_diag_count_err`) and `diag_weight_yLambda_le_poly`.
+
+### ⇒ Leg 2 (OFF-DIAGONAL) — the genuine remaining nut; needs a GROWING modulus `W = W(N)`, NOT (only) PNT.
+The scale trick does NOT help: the off-diagonal leg scales with `M`, exactly like the main term, so
+`M` cancels. Its size (separable factorization, `Q_i = ∑_r(μ²/φ)y_r² = O(log R)` via `hBaseW`):
+`∑_{¬diag}∏λλ/∏[d,e] = ∏_i Q_i − ∑_{diag}∏λλ/∏[d,e] ≈ (∑_{i<j}∑_{p>D₀} 1/(p−1)²)·∏_i Q_i`. The
+prefactor `ε(D₀) = ∑_{p>D₀}1/(p−1)²` is the fraction of singular-series mass shared between two
+coordinates at a prime `p > D₀` (every shared prime exceeds `D₀` by the W-trick, since `p≤D₀ ⟹ p|W`).
+* **For FIXED `D₀` (fixed `W`), `ε(D₀)` is a fixed positive constant ⟹ the off-diagonal leg is
+  `Θ(main)`, NOT `o(main)` ⟹ `hcorr` (the hypothesis of `yspace_s1_sieveSum_div_tendsto`) is
+  effectively FALSE as stated.** The contour-free y-space *main term* is correct & unconditional
+  (lap 8), but the FULL s1 = main + correction needs more.
+* **The fix is the classical Maynard/GPY device:** let `D₀ = D₀(N) → ∞` slowly (e.g.
+  `D₀ = log log log N`) so `W = W(N) = ∏_{p≤D₀(N)} p → ∞` and `ε(D₀(N)) → 0`. Then the off-diagonal
+  leg is genuinely `o(main)`. (`S1OffDiagSize.recip_sq_tail_tendsto_zero` is exactly the `∑_{p>D₀}1/p²
+  → 0` engine, already proven — it was built expecting `D₀ → ∞`, but the current limit theorems hold
+  `W` fixed, which is the mismatch.)
+
+**This is an ARCHITECTURAL change:** every current y-space limit theorem fixes `W = ∏_{p∈T} p` (finite
+`T`). To discharge Leg 2 they must be re-stated with `W = W(N)` growing — then the per-coordinate
+`Q_i(N)` and the singular-series `(φW/W)^k` bookkeeping change (`W → ∞ ⟹ φW/W → 0` like `1/log D₀`,
+absorbed into `B^{+k}`). Whether the per-prime shared-mass bound `∑_{p|[d,e]}|λλ|/[d,e] ≤ (C/p)·Q`
+needs the sharp `|λ_d| ≤ C·d/φ(d)` (PNT) or admits an elementary W-coprime bound is the open
+sub-question (likely elementary — the W-trick already removes small primes).
+
+### Revised priorities (supersede lap-8's "discharge hcorr / harvest PNT findings")
+1. **Wire Leg 1** (PNT-free, in reach): scale-decouple `S1MainLimit`/`S1FullLimit`, prove
+   `diag_correction_ratio_tendsto_zero`, assemble diagonal-correction-→0. Discharges HALF of `hcorr`
+   with zero analytic input — a concrete, verifiable milestone.
+2. **Re-architect to growing `W = W(N)`** for Leg 2 (the off-diagonal). The real remaining
+   mathematical content of contour-free y-space s1; NOT PNT but the standard growing-primorial device
+   + a per-prime singular-series mass bound. Coordinate the `W`-regime with what
+   `Sieve.s1_holds_from_nonprime_asym` actually expects (check its statement before re-architecting).
+3. The lap-8 `ON-LINE-REQUEST` (PNT/Möbius-mean) is largely MOOT — revised this lap to ask instead
+   about the standard off-diagonal S1 treatment with growing `W` and any per-prime mass-bound infra.
+
 ## 🎉🎉🎉 PROGRESS 2026-06-05 (lap 8) — `hBaseW` FULLY DISCHARGED (unconditional, axiom-clean)
 
 **10 axiom-clean commits (`675ebc8`…`1b9ce11`), full build green (8300 jobs) at every gate.** The
