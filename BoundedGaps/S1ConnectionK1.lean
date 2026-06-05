@@ -1,6 +1,7 @@
 import BoundedGaps.Sieve
 import BoundedGaps.WeightedMertens
 import BoundedGaps.WeightedRiemannGen
+import BoundedGaps.S1Fubini
 
 /-!
 # `s1` Path-Y main term ↔ `mkF_denominator`, the `k = 1` end-to-end connection.
@@ -77,20 +78,17 @@ theorem s1_yr_mainTerm_eq_mkF_denominator_one (F : (Fin 1 → ℝ) → ℝ) (hF 
 open BoundedGaps.WeightedRiemannKD (nestedPhi)
 open BoundedGaps.WeightedRiemannGen (nestedLogSumW weighted_riemann_kd_muphi_sep)
 
-/-- **`s1` Path-Y main term = `mkF_denominator`, all `k`, modulo the simplex-Fubini bridge.** For a
+/-- **`s1` Path-Y main term = `mkF_denominator`, all `k`** (axiom-clean, end-to-end). For a
 **separable** smooth cutoff `F t = ∏ᵢ Fs i (t i)`, the `(μ²/φ)` `y_r`-space simplex sum of the
 squared coordinate weights converges to `mkF_denominator k F = ∫_{simplex k} F²`:
 `(∑_{∏rᵢ≤R} ∏ᵢ (μ²/φ)(rᵢ)·Fs i (log rᵢ/log R)²)/(log R)^k → mkF_denominator k (∏ Fs)`.
 
-Composes `weighted_riemann_kd_muphi_sep` (PROVEN: → `nestedPhi (ofFn Fs²) 0`) with the
-simplex-Fubini bridge `hFubini : ∫_{simplex k} ∏gᵢ = nestedPhi (ofFn g) 0` (the only remaining gap,
-applied to `g = Fs²`; this `hFubini` is the precise statement on Aristotle, and the `k = 1` instance
-above is `s1_yr_mainTerm_eq_mkF_denominator_one`, which discharges it for `k = 1`). When the bridge
-lands, drop it in — the k-D `s1` analytic main term is then PROVEN end-to-end. -/
+Composes `weighted_riemann_kd_muphi_sep` (PROVEN: → `nestedPhi (ofFn Fs²) 0`) with the now-discharged
+simplex-Fubini bridge `S1Fubini.simplex_integral_prod_eq_nestedPhi` (`∫_{simplex k} ∏gᵢ =
+nestedPhi (ofFn g) 0`, applied to `g = Fs²`). This is the k-D generalisation of
+`s1_yr_mainTerm_eq_mkF_denominator_one`; the whole `s1` analytic **main term** is now PROVEN. -/
 theorem s1_yr_mainTerm_eq_mkF_denominator_sep (k : ℕ) (Fs : Fin k → ℝ → ℝ)
-    (hcont : ∀ i, Continuous (Fs i))
-    (hFubini : ∀ (g : Fin k → ℝ → ℝ), (∀ i, Continuous (g i)) →
-        (∫ t in Sieve.simplex k, ∏ i, g i (t i)) = nestedPhi (List.ofFn g) 0) :
+    (hcont : ∀ i, Continuous (Fs i)) :
     Tendsto (fun R : ℕ =>
         nestedLogSumW (fun n => gMoebiusSqTotient n) R
             (List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2)) R / (Real.log R) ^ k)
@@ -102,6 +100,7 @@ theorem s1_yr_mainTerm_eq_mkF_denominator_sep (k : ℕ) (Fs : Fin k → ℝ → 
       = nestedPhi (List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2)) 0 := by
     show (∫ t in Sieve.simplex k, (∏ i, Fs i (t i)) ^ 2) = _
     rw [h1]
-    exact hFubini (fun i => fun x => (Fs i x) ^ 2) (fun i => (hcont i).pow 2)
+    exact S1Fubini.simplex_integral_prod_eq_nestedPhi k
+      (fun i => fun x => (Fs i x) ^ 2) (fun i => (hcont i).pow 2)
   rw [hden]
   exact weighted_riemann_kd_muphi_sep k Fs hcont
