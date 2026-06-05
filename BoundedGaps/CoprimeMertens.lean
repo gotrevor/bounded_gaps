@@ -23,7 +23,8 @@ import BoundedGaps.WeightedMertens
 
 open scoped BigOperators
 open ArithmeticFunction (moebius)
-open BoundedGaps.SingularSeries
+open BoundedGaps.SingularSeries Filter Topology
+open BoundedGaps.WeightedMertens (gMuSqTotientCoprime)
 
 namespace BoundedGaps.CoprimeMertens
 
@@ -115,5 +116,61 @@ theorem coprime_mertens_recursion (p : ℕ) (hp : p.Prime) (N : ℕ) :
       rw [Finset.mem_filter] at ha
       rw [← per_term p (a / p) hp, Nat.mul_div_cancel' ha.2]
   rw [← hsplit, hA, hB, add_comm]
+
+/-- The unrestricted `μ²/φ` partial sum vanishes at `N = 0` (empty range). -/
+theorem U_zero : (∑ n ∈ Finset.Icc 1 0, gMoebiusSqTotient n) = 0 := by simp
+
+/-- **Summability of the geometric-inversion series.** For each `N`, only finitely many terms
+`(-1/(p-1))^k·(∑_{n≤N/p^k}μ²/φ)` are nonzero (`N/p^k = 0` once `p^k > N`), so the series is summable. -/
+theorem inversion_summable (p : ℕ) (hp : p.Prime) (N : ℕ) :
+    Summable (fun k : ℕ =>
+      (- (1 / ((p:ℝ)-1)))^k * (∑ n ∈ Finset.Icc 1 (N / p^k), gMoebiusSqTotient n)) := by
+  refine summable_of_ne_finset_zero (s := Finset.range (N+1)) ?_
+  intro k hk
+  rw [Finset.mem_range, not_lt] at hk
+  have hpk : N < p ^ k := lt_of_lt_of_le (Nat.lt_pow_self hp.one_lt)
+    (Nat.pow_le_pow_right hp.pos (by omega))
+  rw [Nat.div_eq_of_lt hpk, U_zero, mul_zero]
+
+/-- **The geometric inversion of the single-prime recursion.** Inverting the two-term recursion
+`coprime_mertens_recursion` gives the `p`-coprime `μ²/φ` partial sum as the (finite, convergent)
+geometric series of the *unrestricted* partial sums:
+  `∑_{n≤N,(n,p)=1} μ²/φ  =  ∑_{k≥0} (-1/(p-1))^k · ∑_{n≤N/p^k} μ²/φ`.
+Proved by strong induction on `N` (split off `k=0`, reindex `k↦k+1` to `N/p`, apply the IH and the
+recursion). This is the second pillar of the geometric route to `hBaseW`: with the unrestricted sum's
+limit (`SharpMertens.sharp_mertens_unconditional`, `∑/log N → 1`), taking `/log N → 1` term-by-term in
+this series yields `∑_{n≤N,(n,p)=1}μ²/φ / log N → ∑_k(-1/(p-1))^k = (p-1)/p` (the remaining step is the
+limit/sum interchange). UNCONDITIONAL; no BV, no Euler product. -/
+theorem coprime_geometric_inversion (p : ℕ) (hp : p.Prime) (N : ℕ) :
+    (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime p n)
+      = ∑' k : ℕ, (- (1 / ((p:ℝ)-1)))^k
+          * (∑ n ∈ Finset.Icc 1 (N / p^k), gMoebiusSqTotient n) := by
+  induction N using Nat.strong_induction_on with
+  | _ N ih =>
+    rcases Nat.eq_zero_or_pos N with hN | hN
+    · subst hN
+      have hz : ∀ k : ℕ, (- (1 / ((p:ℝ)-1)))^k
+          * (∑ n ∈ Finset.Icc 1 (0 / p^k), gMoebiusSqTotient n) = 0 := by
+        intro k; rw [Nat.zero_div, U_zero, mul_zero]
+      rw [tsum_congr hz, tsum_zero]
+      simp
+    · rw [(inversion_summable p hp N).tsum_eq_zero_add]
+      have hterm0 : (- (1 / ((p:ℝ)-1)))^0
+          * (∑ n ∈ Finset.Icc 1 (N / p^0), gMoebiusSqTotient n)
+          = ∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n := by
+        rw [pow_zero, one_mul, pow_zero, Nat.div_one]
+      have htail : (∑' k : ℕ, (- (1 / ((p:ℝ)-1)))^(k+1)
+            * (∑ n ∈ Finset.Icc 1 (N / p^(k+1)), gMoebiusSqTotient n))
+          = (- (1 / ((p:ℝ)-1)))
+            * (∑' k : ℕ, (- (1 / ((p:ℝ)-1)))^k
+                * (∑ n ∈ Finset.Icc 1 ((N / p) / p^k), gMoebiusSqTotient n)) := by
+        rw [← tsum_mul_left]
+        apply tsum_congr; intro k
+        have hdiv : N / p^(k+1) = (N / p) / p^k := by
+          rw [pow_succ, Nat.div_div_eq_div_mul, Nat.mul_comm]
+        rw [hdiv, pow_succ]; ring
+      rw [hterm0, htail, ← ih (N / p) (Nat.div_lt_self hN hp.one_lt)]
+      have hrec := coprime_mertens_recursion p hp N
+      linarith [hrec]
 
 end BoundedGaps.CoprimeMertens
