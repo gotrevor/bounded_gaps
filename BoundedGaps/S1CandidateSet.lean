@@ -19,6 +19,7 @@ the separate, BV-gated half).
 import BoundedGaps.SieveExpansion
 
 open scoped BigOperators
+open ArithmeticFunction (moebius)
 
 namespace BoundedGaps.S1CandidateSet
 
@@ -130,5 +131,38 @@ theorem sieve_interval_covers (x : ℝ) (W N : ℕ) (hx : (W * N : ℝ) + 2 ≤ 
     linarith [hx, hlen]
   have hN : W * N ≤ ⌊2 * x⌋₊ - ⌈x⌉₊ := by exact_mod_cast hreal
   omega
+
+/-- **Coordinate-sum restriction to the clean index.** The y-space coordinate diagonal sum over the
+candidate set `Rset` (the divisors that appear) equals the sum over the clean index
+`{r ≤ N : sf ∧ (r,W)=1}`, provided (i) `{r≤N: sf∧(r,W)=1} ⊆ Rset` (every small `r` appears —
+`filter_Icc_subset_filter_sieveDivisors`), (ii) `Rset` carries the `sf∧(r,W)=1` predicate, and
+(iii) `F` vanishes above `1` with `N ≥ ⌊R⌋` (so divisors `r > N`, i.e. `r > R`, give
+`F(log r/log R) = 0`). This bridges `S1YSpace.yr_coord_factor_eq_muphi` (sum over `Rset_i`) to the
+contour-free limit `S1YSpace.yspace_sieve_quadform_tendsto` (sum over `{r≤N: sf∧(r,W)=1}`). -/
+theorem coord_sum_restrict_to_Icc {W : ℕ} (Rset : Finset ℕ) (F : ℝ → ℝ) (R : ℝ) (N : ℕ)
+    (hR : 1 < R) (hNR : R < (N : ℝ) + 1)
+    (hFsupp : ∀ t : ℝ, 1 < t → F t = 0)
+    (hsub : (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W) ⊆ Rset)
+    (hRsf : ∀ r ∈ Rset, Squarefree r ∧ Nat.Coprime r W) :
+    (∑ r ∈ Rset, ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ)) * F (Real.log r / Real.log R) ^ 2)
+      = ∑ r ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+          ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ)) * F (Real.log r / Real.log R) ^ 2 := by
+  symm
+  apply Finset.sum_subset hsub
+  intro r hrRset hrnotIcc
+  obtain ⟨hsf, hcop⟩ := hRsf r hrRset
+  have hr1 : 1 ≤ r := Nat.one_le_iff_ne_zero.mpr hsf.ne_zero
+  have hrN : N < r := by
+    by_contra h
+    exact hrnotIcc
+      (Finset.mem_filter.mpr ⟨Finset.mem_Icc.mpr ⟨hr1, Nat.le_of_not_lt h⟩, hsf, hcop⟩)
+  have hrR : R < (r : ℝ) := by
+    have : (N : ℝ) + 1 ≤ (r : ℝ) := by exact_mod_cast hrN
+    linarith
+  have hlogR : 0 < Real.log R := Real.log_pos hR
+  have hlogr : Real.log R < Real.log r := Real.log_lt_log (by linarith) hrR
+  have hgt1 : 1 < Real.log r / Real.log R := by
+    rw [lt_div_iff₀ hlogR]; linarith
+  rw [hFsupp _ hgt1]; ring
 
 end BoundedGaps.S1CandidateSet
