@@ -90,4 +90,41 @@ theorem yspace_sieve_quadform_bilinear_tendsto {W : ℕ} {F₁ F₂ : ℝ → �
     F₁ F₂ (Real.log N)]
   rfl
 
+/-- The `W = 1` base density `(∑_{n≤N} g_1)/log N → 1` IS `sharp_mertens_unconditional`
+(`g_1 = μ²/φ` since `(n,1)=1` always; `φ(1)/1 = 1`). So the whole y-space chain is UNCONDITIONAL
+at `W = 1` (singular series `𝔖 = 1`). -/
+theorem base_one :
+    Tendsto
+      (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, BoundedGaps.WeightedMertens.gMuSqTotientCoprime 1 n)
+        / Real.log N) atTop (nhds (((1 : ℕ).totient : ℝ) / ((1 : ℕ) : ℝ))) := by
+  have ht : (((1 : ℕ).totient : ℝ) / ((1 : ℕ) : ℝ)) = 1 := by norm_num
+  rw [ht]
+  have heq : ∀ n, BoundedGaps.WeightedMertens.gMuSqTotientCoprime 1 n
+      = BoundedGaps.SingularSeries.gMoebiusSqTotient n := by
+    intro n
+    unfold BoundedGaps.WeightedMertens.gMuSqTotientCoprime
+    rw [if_pos (Nat.coprime_one_right n)]
+  simp only [heq]
+  exact BoundedGaps.SharpMertens.sharp_mertens_unconditional
+
+/-- **UNCONDITIONAL contour-free Path-Y `s1` main term (`𝔖 = 1`).** At `W = 1` the W-coprime base
+is `sharp_mertens_unconditional`, so the y-space Selberg quadratic form converges with NO hypotheses
+beyond `ContDiff ℝ 1 F`:
+`(∑_{d,e ≤ N, sf} λ_d λ_e/[d,e])/log N → ∫₀¹F²`, `λ_d = yLambda {r≤N sf} F (log N) d`. The first
+**fully unconditional** contour-free `s1`-main-term-shaped result — the entire chain (Möbius
+inversion → diagonalisation → sharp Mertens) is machine-checked end-to-end, axiom-clean, no PNT. -/
+theorem yspace_sieve_quadform_tendsto_one {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) :
+    Tendsto
+      (fun N : ℕ =>
+        (∑ d ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r 1),
+          ∑ e ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r 1),
+            yLambda ((Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r 1))
+                F (Real.log N) d
+              * yLambda ((Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r 1))
+                F (Real.log N) e
+              / (Nat.lcm d e : ℝ)) / Real.log N)
+      atTop (nhds (∫ u in (0 : ℝ)..1, F u ^ 2)) := by
+  have h := yspace_sieve_quadform_tendsto (W := 1) (F := F) hF base_one
+  simpa using h
+
 end BoundedGaps.S1YSpace
