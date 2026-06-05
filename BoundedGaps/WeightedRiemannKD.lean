@@ -289,4 +289,340 @@ theorem weighted_riemann_kd_of_pointwise
         (nestedPhi_continuous gs htail_cont).continuousOn ?_
       exact inner_uniform_kd_of_pointwise gs htail_nn htail_cont (hpw gs htail_nn htail_cont)
 
+/-! ### Infrastructure for the generic pointwise scale-change `psi_k_pointwise`.
+
+The remaining lemma `psi_k_pointwise` (`hpw`) is proved by strong induction on `gs.length`, mirroring
+`WeightedRiemann3D.psi3_pointwise`. The new wrinkle vs the concrete 3-D double sum is the **generic
+drift over the nested sum**: at level `N = ⌊R^t⌋` and `c_R = log N/log R → t`, the "real" sum
+`nestedLogSum R gs N` (log-ratios at base `R`) must be compared termwise with the rescaled Riemann
+sum `nestedLogSum N (gs.map (·∘(t*·))) N` (log-ratios at base `N`). Both equal `evalNest (log N) c gs
+N` for `c = c_R` resp. `c = t`, because `log n/log R = c_R · (log n/log N)`. The drift bound
+(`evalNest_dist`) is the telescoping product inequality `|∏ aᵢ - ∏ bᵢ| ≤ ∑ⱼ … |aⱼ-bⱼ| …` summed over
+the nested structure, bounded by the bare nested harmonic sum `harmNest`. -/
+
+/-- The nested log-weighted sum with the log-ratios at "effective log-base" `L` and an extra **scale
+factor** `c` on each argument: term `g (c · (log n / L)) / n`. Both `nestedLogSum R gs N` (base `R`,
+via `c = log N/log R`) and `nestedLogSum N (t-scaled gs) N` (base `N`, via `c = t`) are instances at
+`L = log N` — the common shape for the drift comparison. -/
+noncomputable def evalNest (L c : ℝ) : List (ℝ → ℝ) → ℕ → ℝ
+  | [], _ => 1
+  | g :: gs, Q =>
+      ∑ n ∈ Finset.Icc 2 Q, g (c * (Real.log n / L)) / (n : ℝ) * evalNest L c gs (Q / n)
+
+/-- The bare nested harmonic sum (all functions `≡ 1`): `harmNest 0 _ = 1`,
+`harmNest (k+1) Q = ∑_{n≤Q} (1/n)·harmNest k (Q/n)`. The drift bound's right factor. -/
+noncomputable def harmNest : ℕ → ℕ → ℝ
+  | 0, _ => 1
+  | (k + 1), Q => ∑ n ∈ Finset.Icc 2 Q, (1 : ℝ) / (n : ℝ) * harmNest k (Q / n)
+
+@[simp] lemma evalNest_nil (L c : ℝ) (Q : ℕ) : evalNest L c [] Q = 1 := rfl
+
+@[simp] lemma evalNest_cons (L c : ℝ) (g : ℝ → ℝ) (gs : List (ℝ → ℝ)) (Q : ℕ) :
+    evalNest L c (g :: gs) Q
+      = ∑ n ∈ Finset.Icc 2 Q, g (c * (Real.log n / L)) / (n : ℝ) * evalNest L c gs (Q / n) := rfl
+
+@[simp] lemma harmNest_zero (Q : ℕ) : harmNest 0 Q = 1 := rfl
+
+@[simp] lemma harmNest_succ (k Q : ℕ) :
+    harmNest (k + 1) Q = ∑ n ∈ Finset.Icc 2 Q, (1 : ℝ) / (n : ℝ) * harmNest k (Q / n) := rfl
+
+/-- `harmNest` is nonnegative. -/
+lemma harmNest_nonneg : ∀ (k Q : ℕ), 0 ≤ harmNest k Q
+  | 0, _ => by simp
+  | (k + 1), Q => by
+      rw [harmNest_succ]
+      refine Finset.sum_nonneg (fun n hn => ?_)
+      have : (0 : ℝ) ≤ (1 : ℝ) / (n : ℝ) := by positivity
+      exact mul_nonneg this (harmNest_nonneg k (Q / n))
+
+/-- **Bridge 1.** With effective base `L = log N` and scale `c = log N / log R`, `evalNest` reproduces
+the genuine `nestedLogSum R gs Q` (because `(log N/log R)·(log n/log N) = log n/log R`). Needs
+`log N ≠ 0`. -/
+lemma evalNest_eq_nestedLogSum_base (R N : ℕ) (hN : Real.log (N : ℝ) ≠ 0) :
+    ∀ (gs : List (ℝ → ℝ)) (Q : ℕ),
+      evalNest (Real.log (N : ℝ)) (Real.log (N : ℝ) / Real.log (R : ℝ)) gs Q
+        = nestedLogSum R gs Q
+  | [], _ => by simp
+  | g :: gs, Q => by
+      rw [evalNest_cons, nestedLogSum_cons]
+      refine Finset.sum_congr rfl (fun n _ => ?_)
+      rw [evalNest_eq_nestedLogSum_base R N hN gs (Q / n)]
+      congr 2
+      field_simp
+
+/-- **Bridge 2.** With effective base `L = log N` and scale `c = t`, `evalNest` reproduces the
+rescaled Riemann sum `nestedLogSum N (gs.map (·∘(t*·))) Q` (definitionally: the `t`-scaled function
+applied to `log n/log N` is `g` applied to `t·(log n/log N)`). -/
+lemma evalNest_eq_nestedLogSum_scaled (N : ℕ) (t : ℝ) :
+    ∀ (gs : List (ℝ → ℝ)) (Q : ℕ),
+      evalNest (Real.log (N : ℝ)) t gs Q
+        = nestedLogSum N (gs.map (fun g => fun u => g (t * u))) Q
+  | [], _ => by simp
+  | g :: gs, Q => by
+      rw [evalNest_cons, List.map_cons, nestedLogSum_cons]
+      refine Finset.sum_congr rfl (fun n _ => ?_)
+      rw [evalNest_eq_nestedLogSum_scaled N t gs (Q / n)]
+
+/-- **Sup bound for `evalNest`.** If each `g ∈ gs` satisfies `|g (c·u)| ≤ M` for `u ∈ [0,1]`, and the
+log-ratios stay `≤ 1` (`log m ≤ L` for `m ≤ Q`), then `|evalNest L c gs Q| ≤ (max M 1)^|gs| ·
+harmNest |gs| Q`. Induction on `gs`; each level contributes a factor `≤ max M 1`. -/
+lemma evalNest_abs_le (L : ℝ) (hL : 0 < L) (c M : ℝ) (hM : 0 ≤ M) :
+    ∀ (gs : List (ℝ → ℝ)) (Q : ℕ),
+      (∀ g ∈ gs, ∀ u : ℝ, 0 ≤ u → u ≤ 1 → |g (c * u)| ≤ M) →
+      (∀ m : ℕ, m ≤ Q → Real.log (m : ℝ) ≤ L) →
+      |evalNest L c gs Q| ≤ (max M 1) ^ gs.length * harmNest gs.length Q
+  | [], Q, _, _ => by simp
+  | g :: gs, Q, hbd, hQL => by
+      set K := max M 1 with hKdef
+      have hMK : M ≤ K := le_max_left _ _
+      have hK1 : (1 : ℝ) ≤ K := le_max_right _ _
+      have hK0 : (0 : ℝ) ≤ K := le_trans zero_le_one hK1
+      rw [evalNest_cons]
+      calc |∑ n ∈ Finset.Icc 2 Q,
+                g (c * (Real.log n / L)) / (n : ℝ) * evalNest L c gs (Q / n)|
+          ≤ ∑ n ∈ Finset.Icc 2 Q,
+                |g (c * (Real.log n / L)) / (n : ℝ) * evalNest L c gs (Q / n)| :=
+            Finset.abs_sum_le_sum_abs _ _
+        _ ≤ ∑ n ∈ Finset.Icc 2 Q,
+                K ^ (g :: gs).length * ((1 / (n : ℝ)) * harmNest gs.length (Q / n)) := by
+            refine Finset.sum_le_sum (fun n hn => ?_)
+            obtain ⟨hn2, hnQ⟩ := Finset.mem_Icc.mp hn
+            have hnpos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast (by omega : 0 < n)
+            have hlogn0 : 0 ≤ Real.log (n : ℝ) :=
+              Real.log_nonneg (by exact_mod_cast (by omega : 1 ≤ n))
+            have hu0 : 0 ≤ Real.log (n : ℝ) / L := div_nonneg hlogn0 hL.le
+            have hu1 : Real.log (n : ℝ) / L ≤ 1 := by
+              rw [div_le_one hL]; exact hQL n hnQ
+            have hgbd : |g (c * (Real.log n / L))| ≤ M :=
+              hbd g (List.mem_cons.mpr (Or.inl rfl)) _ hu0 hu1
+            have hQL' : ∀ m : ℕ, m ≤ Q / n → Real.log (m : ℝ) ≤ L :=
+              fun m hm => hQL m (le_trans hm (Nat.div_le_self Q n))
+            have hIH := evalNest_abs_le L hL c M hM gs (Q / n)
+              (fun f hf => hbd f (List.mem_cons.mpr (Or.inr hf))) hQL'
+            have hharm0 : 0 ≤ harmNest gs.length (Q / n) := harmNest_nonneg _ _
+            have hKgs0 : 0 ≤ K ^ gs.length := pow_nonneg hK0 _
+            rw [abs_mul, abs_div, Nat.abs_cast]
+            calc |g (c * (Real.log n / L))| / (n : ℝ) * |evalNest L c gs (Q / n)|
+                ≤ M / (n : ℝ) * (K ^ gs.length * harmNest gs.length (Q / n)) := by
+                  gcongr
+              _ ≤ K ^ (g :: gs).length * ((1 / (n : ℝ)) * harmNest gs.length (Q / n)) := by
+                  rw [List.length_cons, pow_succ]
+                  rw [show M / (n : ℝ) * (K ^ gs.length * harmNest gs.length (Q / n))
+                        = M * (K ^ gs.length * harmNest gs.length (Q / n)) * (1 / (n : ℝ)) from by ring,
+                      show K ^ gs.length * K * ((1 / (n : ℝ)) * harmNest gs.length (Q / n))
+                        = K * (K ^ gs.length * harmNest gs.length (Q / n)) * (1 / (n : ℝ)) from by ring]
+                  apply mul_le_mul_of_nonneg_right _ (by positivity)
+                  exact mul_le_mul_of_nonneg_right hMK (by positivity)
+        _ = K ^ (g :: gs).length * ∑ n ∈ Finset.Icc 2 Q,
+                (1 / (n : ℝ)) * harmNest gs.length (Q / n) := by rw [Finset.mul_sum]
+        _ = K ^ (g :: gs).length * harmNest (g :: gs).length Q := by
+            rw [List.length_cons, harmNest_succ]
+
+/-- **Drift bound for `evalNest`** (the telescoping product inequality over the nested sum). If each
+`g ∈ gs` is bounded by `M` under both scales `c, c'` and the two scaled evaluations differ by `≤ ε`
+on `[0,1]`, then the two nested sums differ by `≤ |gs| · (max M 1)^|gs| · ε · harmNest |gs| Q`. This
+is the generic heart of `psi_k_pointwise`: the `c_R → t` argument drift, absorbed by uniform
+continuity, times the bounded nested-harmonic sum. Induction on `gs`; the head split is
+`a·A − b·B = a·(A−B) + (a−b)·B` (`evalNest_abs_le` bounds `B`, the IH bounds `A−B`). -/
+lemma evalNest_dist (L : ℝ) (hL : 0 < L) (c c' M ε : ℝ) (hM : 0 ≤ M) (hε : 0 ≤ ε) :
+    ∀ (gs : List (ℝ → ℝ)) (Q : ℕ),
+      (∀ g ∈ gs, ∀ u : ℝ, 0 ≤ u → u ≤ 1 → |g (c * u)| ≤ M) →
+      (∀ g ∈ gs, ∀ u : ℝ, 0 ≤ u → u ≤ 1 → |g (c' * u)| ≤ M) →
+      (∀ g ∈ gs, ∀ u : ℝ, 0 ≤ u → u ≤ 1 → |g (c * u) - g (c' * u)| ≤ ε) →
+      (∀ m : ℕ, m ≤ Q → Real.log (m : ℝ) ≤ L) →
+      |evalNest L c gs Q - evalNest L c' gs Q|
+        ≤ (gs.length : ℝ) * (max M 1) ^ gs.length * ε * harmNest gs.length Q
+  | [], Q, _, _, _, _ => by simp
+  | g :: gs, Q, hbd, hbd', hclose, hQL => by
+      set K := max M 1 with hKdef
+      have hMK : M ≤ K := le_max_left _ _
+      have hK1 : (1 : ℝ) ≤ K := le_max_right _ _
+      have hK0 : (0 : ℝ) ≤ K := le_trans zero_le_one hK1
+      rw [evalNest_cons, evalNest_cons, ← Finset.sum_sub_distrib]
+      calc |∑ n ∈ Finset.Icc 2 Q,
+                (g (c * (Real.log n / L)) / (n : ℝ) * evalNest L c gs (Q / n)
+                  - g (c' * (Real.log n / L)) / (n : ℝ) * evalNest L c' gs (Q / n))|
+          ≤ ∑ n ∈ Finset.Icc 2 Q,
+                |g (c * (Real.log n / L)) / (n : ℝ) * evalNest L c gs (Q / n)
+                  - g (c' * (Real.log n / L)) / (n : ℝ) * evalNest L c' gs (Q / n)| :=
+            Finset.abs_sum_le_sum_abs _ _
+        _ ≤ ∑ n ∈ Finset.Icc 2 Q,
+                (((gs.length : ℝ) + 1) * (K ^ gs.length * K) * ε)
+                  * ((1 / (n : ℝ)) * harmNest gs.length (Q / n)) := by
+            refine Finset.sum_le_sum (fun n hn => ?_)
+            obtain ⟨hn2, hnQ⟩ := Finset.mem_Icc.mp hn
+            have hnpos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast (by omega : 0 < n)
+            have hlogn0 : 0 ≤ Real.log (n : ℝ) :=
+              Real.log_nonneg (by exact_mod_cast (by omega : 1 ≤ n))
+            have hu0 : 0 ≤ Real.log (n : ℝ) / L := div_nonneg hlogn0 hL.le
+            have hu1 : Real.log (n : ℝ) / L ≤ 1 := by rw [div_le_one hL]; exact hQL n hnQ
+            have hgM : |g (c * (Real.log n / L))| ≤ M :=
+              hbd g (List.mem_cons.mpr (Or.inl rfl)) _ hu0 hu1
+            have hgcl : |g (c * (Real.log n / L)) - g (c' * (Real.log n / L))| ≤ ε :=
+              hclose g (List.mem_cons.mpr (Or.inl rfl)) _ hu0 hu1
+            have hQL' : ∀ m : ℕ, m ≤ Q / n → Real.log (m : ℝ) ≤ L :=
+              fun m hm => hQL m (le_trans hm (Nat.div_le_self Q n))
+            have hAB := evalNest_dist L hL c c' M ε hM hε gs (Q / n)
+              (fun f hf => hbd f (List.mem_cons.mpr (Or.inr hf)))
+              (fun f hf => hbd' f (List.mem_cons.mpr (Or.inr hf)))
+              (fun f hf => hclose f (List.mem_cons.mpr (Or.inr hf))) hQL'
+            have hB := evalNest_abs_le L hL c' M hM gs (Q / n)
+              (fun f hf => hbd' f (List.mem_cons.mpr (Or.inr hf))) hQL'
+            set A := evalNest L c gs (Q / n) with hAdef
+            set B := evalNest L c' gs (Q / n) with hBdef
+            set hh := harmNest gs.length (Q / n) with hhdef
+            have hh0 : 0 ≤ hh := harmNest_nonneg _ _
+            have hKgs0 : 0 ≤ K ^ gs.length := pow_nonneg hK0 _
+            have hg0 : (0 : ℝ) ≤ (gs.length : ℝ) := Nat.cast_nonneg _
+            rw [show g (c * (Real.log n / L)) / (n : ℝ) * A
+                    - g (c' * (Real.log n / L)) / (n : ℝ) * B
+                  = (1 / (n : ℝ))
+                      * (g (c * (Real.log n / L)) * A - g (c' * (Real.log n / L)) * B) from by ring,
+                abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (n : ℝ))]
+            have hbound : |g (c * (Real.log n / L)) * A - g (c' * (Real.log n / L)) * B|
+                ≤ M * ((gs.length : ℝ) * K ^ gs.length * ε * hh) + ε * (K ^ gs.length * hh) := by
+              rw [show g (c * (Real.log n / L)) * A - g (c' * (Real.log n / L)) * B
+                    = g (c * (Real.log n / L)) * (A - B)
+                      + (g (c * (Real.log n / L)) - g (c' * (Real.log n / L))) * B from by ring]
+              calc |g (c * (Real.log n / L)) * (A - B)
+                      + (g (c * (Real.log n / L)) - g (c' * (Real.log n / L))) * B|
+                  ≤ |g (c * (Real.log n / L)) * (A - B)|
+                      + |(g (c * (Real.log n / L)) - g (c' * (Real.log n / L))) * B| := abs_add_le _ _
+                _ = |g (c * (Real.log n / L))| * |A - B|
+                      + |g (c * (Real.log n / L)) - g (c' * (Real.log n / L))| * |B| := by
+                    rw [abs_mul, abs_mul]
+                _ ≤ M * ((gs.length : ℝ) * K ^ gs.length * ε * hh) + ε * (K ^ gs.length * hh) := by
+                    gcongr
+            have hbase : (0 : ℝ) ≤ 1 / (n : ℝ) * hh * K ^ gs.length * ε := by positivity
+            have hscalar : (gs.length : ℝ) * M + 1 ≤ ((gs.length : ℝ) + 1) * K := by
+              nlinarith [mul_nonneg hg0 (sub_nonneg.mpr hMK), hK1]
+            calc (1 / (n : ℝ)) * |g (c * (Real.log n / L)) * A - g (c' * (Real.log n / L)) * B|
+                ≤ (1 / (n : ℝ))
+                    * (M * ((gs.length : ℝ) * K ^ gs.length * ε * hh) + ε * (K ^ gs.length * hh)) :=
+                  mul_le_mul_of_nonneg_left hbound (by positivity)
+              _ = (1 / (n : ℝ) * hh * K ^ gs.length * ε) * ((gs.length : ℝ) * M + 1) := by ring
+              _ ≤ (1 / (n : ℝ) * hh * K ^ gs.length * ε) * (((gs.length : ℝ) + 1) * K) :=
+                  mul_le_mul_of_nonneg_left hscalar hbase
+              _ = ((gs.length : ℝ) + 1) * (K ^ gs.length * K) * ε
+                    * ((1 / (n : ℝ)) * hh) := by ring
+        _ = (((gs.length : ℝ) + 1) * (K ^ gs.length * K) * ε)
+              * ∑ n ∈ Finset.Icc 2 Q, (1 / (n : ℝ)) * harmNest gs.length (Q / n) := by
+            rw [Finset.mul_sum]
+        _ = ((g :: gs).length : ℝ) * K ^ (g :: gs).length * ε * harmNest (g :: gs).length Q := by
+            rw [List.length_cons, harmNest_succ, pow_succ]; push_cast; ring
+
+/-! ### Change-of-variables for `nestedPhi` (the generic `phi2_scale`).
+
+`nestedPhi gs (1-t) = t^|gs| · nestedPhi (gs.map (t-scale)) 0`. Proved through the explicit-budget
+form `simplexPhi gs a` (bounds `a`, `a-y`, …), via `nestedPhi_eq_simplexPhi` and `simplexPhi_scale`
+(one linear substitution `y = t·z` per level, `intervalIntegral.mul_integral_comp_mul_left`). -/
+
+/-- Iterated simplex cross-section integral, explicit-budget form (outer bound `a`, inner `a-y`, …).
+`simplexPhi gs a = ∫_{∑yᵢ ≤ a, yᵢ≥0} ∏ gᵢ(yᵢ)`. The budget-form sibling of `nestedPhi`. -/
+noncomputable def simplexPhi : List (ℝ → ℝ) → ℝ → ℝ
+  | [], _ => 1
+  | g :: gs, a => ∫ y in (0 : ℝ)..a, g y * simplexPhi gs (a - y)
+
+@[simp] lemma simplexPhi_nil (a : ℝ) : simplexPhi [] a = 1 := rfl
+
+@[simp] lemma simplexPhi_cons (g : ℝ → ℝ) (gs : List (ℝ → ℝ)) (a : ℝ) :
+    simplexPhi (g :: gs) a = ∫ y in (0 : ℝ)..a, g y * simplexPhi gs (a - y) := rfl
+
+/-- `nestedPhi gs (1-a) = simplexPhi gs a` (the offset vs budget forms agree). Induction on `gs`. -/
+lemma nestedPhi_eq_simplexPhi : ∀ (gs : List (ℝ → ℝ)) (a : ℝ),
+    nestedPhi gs (1 - a) = simplexPhi gs a
+  | [], _ => by simp
+  | g :: gs, a => by
+      rw [nestedPhi_cons, simplexPhi_cons, show (1 : ℝ) - (1 - a) = a from by ring]
+      refine intervalIntegral.integral_congr (fun y _ => ?_)
+      rw [show (1 : ℝ) - a + y = 1 - (a - y) from by ring, nestedPhi_eq_simplexPhi gs (a - y)]
+
+/-- **Scaling for `simplexPhi`.** `simplexPhi gs (t·a) = t^|gs| · simplexPhi (gs.map (t-scale)) a`.
+Induction on `gs`; the cons step substitutes `y = t·z` (`mul_integral_comp_mul_left`) then applies
+the IH at budget `a-z`. -/
+lemma simplexPhi_scale (t : ℝ) (ht : t ≠ 0) :
+    ∀ (gs : List (ℝ → ℝ)) (a : ℝ),
+      simplexPhi gs (t * a)
+        = t ^ gs.length * simplexPhi (gs.map (fun g => fun u => g (t * u))) a
+  | [], _ => by simp
+  | g :: gs, a => by
+      rw [List.map_cons, simplexPhi_cons, simplexPhi_cons, List.length_cons, pow_succ]
+      have key : (∫ y in (0 : ℝ)..(t * a), g y * simplexPhi gs (t * a - y))
+          = t * ∫ z in (0 : ℝ)..a, g (t * z) * simplexPhi gs (t * (a - z)) := by
+        have h := intervalIntegral.mul_integral_comp_mul_left (a := (0 : ℝ)) (b := a)
+          (f := fun y => g y * simplexPhi gs (t * a - y)) t
+        simp only [mul_zero] at h
+        rw [← h]
+        congr 1
+        refine intervalIntegral.integral_congr (fun z _ => ?_)
+        rw [show t * a - t * z = t * (a - z) from by ring]
+      rw [key]
+      have hint : (∫ z in (0 : ℝ)..a, g (t * z) * simplexPhi gs (t * (a - z)))
+          = t ^ gs.length
+              * ∫ z in (0 : ℝ)..a, g (t * z)
+                  * simplexPhi (gs.map (fun g => fun u => g (t * u))) (a - z) := by
+        rw [← intervalIntegral.integral_const_mul]
+        refine intervalIntegral.integral_congr (fun z _ => ?_)
+        rw [simplexPhi_scale t ht gs (a - z)]
+        ring
+      rw [hint]
+      beta_reduce
+      ring
+
+/-- **Change of variables for `nestedPhi`** (the generic `phi2_scale`): `nestedPhi gs (1-t) =
+t^|gs| · nestedPhi (gs.map (t-scale)) 0`, for `t ≠ 0`. Chains `nestedPhi_eq_simplexPhi` ∘
+`simplexPhi_scale` at budget `a = 1`. -/
+theorem nestedPhi_scale (gs : List (ℝ → ℝ)) (t : ℝ) (ht : t ≠ 0) :
+    nestedPhi gs (1 - t)
+      = t ^ gs.length * nestedPhi (gs.map (fun g => fun u => g (t * u))) 0 := by
+  rw [nestedPhi_eq_simplexPhi gs t]
+  have h1 := simplexPhi_scale t ht gs 1
+  rw [mul_one] at h1
+  rw [h1, ← nestedPhi_eq_simplexPhi (gs.map (fun g => fun u => g (t * u))) 1]
+  norm_num
+
+/-- `harmNest k Q` is the bare nested log-harmonic sum, i.e. `nestedLogSum N (replicate k 1) Q`.
+Induction on `k`; the cons step matches `harmNest_succ` once the head function `≡ 1` cancels. -/
+lemma harmNest_eq_nestedLogSum (N : ℕ) :
+    ∀ (k Q : ℕ), harmNest k Q = nestedLogSum N (List.replicate k (fun _ : ℝ => (1 : ℝ))) Q
+  | 0, _ => by simp
+  | (k + 1), Q => by
+      rw [harmNest_succ, List.replicate_succ, nestedLogSum_cons]
+      exact Finset.sum_congr rfl (fun n _ => by rw [harmNest_eq_nestedLogSum N k (Q / n)])
+
+/-- A uniform sup bound `M ≥ 0` for a finite list of continuous functions on `[0,1]`. Induction on
+the list (take `max` at each cons). -/
+lemma exists_list_bound : ∀ (gs : List (ℝ → ℝ)), (∀ g ∈ gs, Continuous g) →
+    ∃ M : ℝ, 0 ≤ M ∧ ∀ g ∈ gs, ∀ x ∈ Set.Icc (0 : ℝ) 1, |g x| ≤ M
+  | [], _ => ⟨0, le_refl _, fun g hg => absurd hg (List.not_mem_nil)⟩
+  | g :: gs, hcont => by
+      obtain ⟨Mg, hMg⟩ := isCompact_Icc.exists_bound_of_continuousOn
+        (hcont g (List.mem_cons.mpr (Or.inl rfl))).continuousOn
+      obtain ⟨M', hM'0, hM'⟩ :=
+        exists_list_bound gs (fun f hf => hcont f (List.mem_cons.mpr (Or.inr hf)))
+      have hMg0 : 0 ≤ Mg := le_trans (norm_nonneg _) (hMg 0 ⟨le_refl _, zero_le_one⟩)
+      refine ⟨max Mg M', le_max_of_le_left hMg0, fun f hf x hx => ?_⟩
+      rcases List.mem_cons.mp hf with rfl | hf'
+      · exact le_trans (hMg x hx) (le_max_left _ _)
+      · exact le_trans (hM' f hf' x hx) (le_max_right _ _)
+
+/-- A single uniform-continuity modulus `δ > 0` working for ALL functions in a finite continuous
+list on `[0,1]`. Induction on the list (take `min` at each cons). -/
+lemma exists_list_unif : ∀ (gs : List (ℝ → ℝ)), (∀ g ∈ gs, Continuous g) → ∀ ε > 0,
+    ∃ δ > 0, ∀ g ∈ gs, ∀ a ∈ Set.Icc (0 : ℝ) 1, ∀ b ∈ Set.Icc (0 : ℝ) 1,
+      |a - b| ≤ δ → |g a - g b| ≤ ε
+  | [], _, ε, _ => ⟨1, one_pos, fun g hg => absurd hg (List.not_mem_nil)⟩
+  | g :: gs, hcont, ε, hε => by
+      have hucG : UniformContinuousOn g (Set.Icc (0 : ℝ) 1) :=
+        isCompact_Icc.uniformContinuousOn_of_continuous
+          (hcont g (List.mem_cons.mpr (Or.inl rfl))).continuousOn
+      obtain ⟨δG, hδG0, hδG⟩ := Metric.uniformContinuousOn_iff_le.1 hucG ε hε
+      obtain ⟨δ', hδ'0, hδ'⟩ :=
+        exists_list_unif gs (fun f hf => hcont f (List.mem_cons.mpr (Or.inr hf))) ε hε
+      refine ⟨min δG δ', lt_min hδG0 hδ'0, fun f hf a ha b hb hab => ?_⟩
+      rcases List.mem_cons.mp hf with rfl | hf'
+      · have := hδG a ha b hb (le_trans hab (min_le_left _ _))
+        rwa [Real.dist_eq] at this
+      · exact hδ' f hf' a ha b hb (le_trans hab (min_le_right _ _))
+
 end BoundedGaps.WeightedRiemannKD
