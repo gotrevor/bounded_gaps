@@ -49,3 +49,4 @@ import BoundedGaps.Antiderivative
 import BoundedGaps.S1YSpace
 import BoundedGaps.S1BoxSimplex
 import BoundedGaps.S1KDBox
+import BoundedGaps.S1CandidateSet
