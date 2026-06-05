@@ -56,3 +56,4 @@ import BoundedGaps.S1DiagonalSize
 import BoundedGaps.S1FullLimit
 import BoundedGaps.S1Correction
 import BoundedGaps.S1OffDiagSize
+import BoundedGaps.CoprimeMertens
