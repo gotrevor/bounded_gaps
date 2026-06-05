@@ -95,4 +95,57 @@ theorem hyperbola_count_isLittleO {k : ℕ} (hk : 1 ≤ k) :
     have : (0 : ℝ) < (N : ℝ) * (Real.log N) ^ k := by positivity
     rw [hg] at this; exact lt_irrefl 0 this
 
+/-- **The scale-trick engine: a fixed polynomial over a super-polynomial scale tends to 0.** If the
+scale `M N` eventually dominates `N^{p+1}` (and `c > 0`, `0 ≤ K`), then
+`K·N^p / (c·(log N)^k·M N) → 0` — for `N ≥ 3` the `(log N)^k ≥ 1` factor only helps and the ratio is
+`≤ K·N^p/(c·N^{p+1}) = (K/c)·(1/N) → 0`. This is the analytic core of the **diagonal leg** of the s1
+correction: with the diagonal weight bounded by a fixed polynomial `((C·N³)²)^k = K·N^{6k}`
+(`S1Correction.diag_weight_yLambda_le_poly`, independent of the sieve scale `x`) and the lattice
+density `M = M(N)` taken `≥ N^{6k+1}` (a polynomially-large scale `x`, permitted by the main-term
+chain's free `hcov : (W·N)+2 ≤ x`), the diagonal correction ratio
+`(diag weight)/(sieveB^k·M) = (diag weight)/((φW/W)^k·(log N)^k·M) → 0` — **PNT-free, no Möbius
+cancellation**. -/
+theorem poly_over_scale_tendsto_zero (K c : ℝ) (p k : ℕ) (hc : 0 < c) (hK : 0 ≤ K) {M : ℕ → ℝ}
+    (hM : ∀ᶠ N : ℕ in atTop, (N : ℝ) ^ (p + 1) ≤ M N) :
+    Tendsto (fun N : ℕ => K * (N : ℝ) ^ p / (c * (Real.log N) ^ k * M N)) atTop (nhds 0) := by
+  have hbound : Tendsto (fun N : ℕ => (K / c) * (1 / (N : ℝ))) atTop (nhds 0) := by
+    have h1 : Tendsto (fun N : ℕ => 1 / (N : ℝ)) atTop (nhds 0) :=
+      tendsto_one_div_atTop_nhds_zero_nat
+    simpa using h1.const_mul (K / c)
+  refine squeeze_zero' ?_ ?_ hbound
+  · filter_upwards [eventually_ge_atTop 3, hM] with N hN3 hMN
+    have hNpos : (0 : ℝ) < (N : ℝ) := by positivity
+    have hlog : (0 : ℝ) ≤ Real.log N := Real.log_nonneg (by exact_mod_cast (by omega : 1 ≤ N))
+    have hMpos : (0 : ℝ) < M N := lt_of_lt_of_le (by positivity) hMN
+    positivity
+  · filter_upwards [eventually_ge_atTop 3, hM] with N hN3 hMN
+    have hN1 : (1 : ℝ) < (N : ℝ) := by exact_mod_cast (by omega : 1 < N)
+    have hNpos : (0 : ℝ) < (N : ℝ) := by linarith
+    have hlogN : (1 : ℝ) ≤ Real.log N := by
+      have hmono : Real.log 3 ≤ Real.log N := Real.log_le_log (by norm_num) (by exact_mod_cast hN3)
+      have h3 : (1 : ℝ) ≤ Real.log 3 := by
+        rw [show (1:ℝ) = Real.log (Real.exp 1) by rw [Real.log_exp]]
+        exact Real.log_le_log (by positivity) (by have := Real.exp_one_lt_d9; linarith)
+      linarith
+    have hlogk : (1 : ℝ) ≤ (Real.log N) ^ k := one_le_pow₀ hlogN
+    have hMpos : (0 : ℝ) < M N := lt_of_lt_of_le (by positivity) hMN
+    have hden_pos : (0 : ℝ) < c * (Real.log N) ^ k * M N := by positivity
+    rw [div_le_iff₀ hden_pos]
+    have hcalc : (K / c) * (1 / (N : ℝ)) * (c * (Real.log N) ^ k * M N)
+        = K * (Real.log N) ^ k * (M N / (N : ℝ)) := by field_simp
+    rw [hcalc]
+    have hMdiv : (N : ℝ) ^ p ≤ M N / (N : ℝ) := by
+      rw [le_div_iff₀ hNpos]
+      calc (N : ℝ) ^ p * (N : ℝ) = (N : ℝ) ^ (p + 1) := by rw [pow_succ]
+        _ ≤ M N := hMN
+    calc K * (N : ℝ) ^ p
+        ≤ K * (Real.log N) ^ k * (M N / (N : ℝ)) := by
+          rw [mul_assoc]
+          refine mul_le_mul_of_nonneg_left ?_ hK
+          calc (N : ℝ) ^ p ≤ M N / (N : ℝ) := hMdiv
+            _ = 1 * (M N / (N : ℝ)) := (one_mul _).symm
+            _ ≤ (Real.log N) ^ k * (M N / (N : ℝ)) :=
+                mul_le_mul_of_nonneg_right hlogk (div_nonneg (le_of_lt hMpos) (le_of_lt hNpos))
+        _ = K * (Real.log N) ^ k * (M N / (N : ℝ)) := rfl
+
 end BoundedGaps.S1DiagonalSize
