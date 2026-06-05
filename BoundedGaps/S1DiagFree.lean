@@ -256,4 +256,94 @@ theorem yspace_s1_sieveSum_div_tendsto_diagFree_primorial {k : ℕ} (Fs : Fin k 
   rw [hWeq]
   exact BoundedGaps.CoprimeMertens.hBaseW_of_primes_totient T hT h2
 
+/-- **The off-diagonal singular-series mass** `∑_{¬diag} (∏ᵢ yLambda·yLambda) / ∏ᵢ[dᵢ,eᵢ]` (the
+`M`-free core of the off-diagonal correction). Under the W-trick the off-diagonal *count* vanishes,
+so `offdiagCorr = −M·offDiagMass` (`offdiagCorr_eq_neg_mul_offDiagMass`); hence the off-diagonal
+obligation `offdiagCorr/(B^{+k}·M) → 0` is `M`-free, equal to `offDiagMass/B^{+k} → 0` — confirming
+in-kernel that the scale trick is useless here and isolating the exact remaining target (Leg 2, the
+growing-`W` shared-prime `∑_{p>D₀}1/p²` tail). -/
+noncomputable def offDiagMass {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (b W : ℕ) (x L : ℝ) : ℝ :=
+  ∑ P ∈ (Fintype.piFinset (fun i : Fin k =>
+        ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W))
+          ×ˢ ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W)))).filter
+        (fun P => ¬ ∀ i j : Fin k, i ≠ j →
+          Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)),
+      (∏ i : Fin k,
+        S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).1
+          * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) L (P i).2)
+      / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)
+
+/-- **Off-diagonal correction = `−M·offDiagMass` (the W-trick `M`-cancellation, in-kernel).** Under
+the W-trick admissibility (`hWdvd`/`hshift_le`/`hshift_ne`), every non-diagonal tuple has two
+coordinates sharing a prime `p > D₀`, so its sieve count is exactly `0`
+(`S1Correction.lattice_count_pair_offdiag_vanish_Wtrick`); hence each off-diagonal summand is
+`(∏λλ)·(0 − M/∏[d,e]) = −M·(∏λλ)/∏[d,e]`, giving `offdiagCorr = −M·offDiagMass`. This makes the
+`M`-cancellation explicit: the off-diagonal obligation is `M`-free (the scale trick cannot help) and
+the true remaining target is `offDiagMass = o(B^{+k})` (the growing-`W` nut, Leg 2). -/
+theorem offdiagCorr_eq_neg_mul_offDiagMass {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (x L M : ℝ) (D₀ : ℕ)
+    (hWdvd : ∀ p, p.Prime → p ≤ D₀ → p ∣ W)
+    (hshift_le : ∀ i : Fin k, H.getD i.val 0 ≤ D₀)
+    (hshift_ne : ∀ i j : Fin k, i ≠ j → H.getD i.val 0 ≠ H.getD j.val 0) :
+    offdiagCorr Fs H b W x L M = - (M * offDiagMass Fs H b W x L) := by
+  classical
+  unfold offdiagCorr offDiagMass
+  rw [Finset.mul_sum, ← Finset.sum_neg_distrib]
+  refine Finset.sum_congr rfl (fun P hP => ?_)
+  rw [Finset.mem_filter] at hP
+  obtain ⟨hPmem, hndiag⟩ := hP
+  have hmem := Fintype.mem_piFinset.mp hPmem
+  simp only [not_forall] at hndiag
+  obtain ⟨i, j, hne, hncop⟩ := hndiag
+  have hcopi : Nat.Coprime (Nat.lcm (P i).1 (P i).2) W := by
+    have h2 := Finset.mem_product.mp (hmem i)
+    have hc1 := (Finset.mem_filter.mp h2.1).2.2
+    have hc2 := (Finset.mem_filter.mp h2.2).2.2
+    exact S1Correction.coprime_lcm_of_coprime hc1 hc2
+  have hcount0 : ((((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+        (fun m => ∀ i : Fin k,
+          (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card : ℝ) = 0 := by
+    have hv := S1Correction.lattice_count_pair_offdiag_vanish_Wtrick H
+      ((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)) P D₀ W hWdvd hcopi hncop
+      (hshift_le i) (hshift_le j) (hshift_ne i j hne)
+    rw [hv]; simp
+  rw [hcount0]
+  ring
+
+/-- **The off-diagonal obligation is `M`-free: `offDiagMass/B^{+k} → 0` ⟹ the `hoffdiag` of
+`yspace_s1_sieveSum_div_tendsto_diagFree`.** Via `offdiagCorr_eq_neg_mul_offDiagMass` (the W-trick
+`M`-cancellation), the off-diagonal correction ratio `offdiagCorr/(B^{+k}·M)` equals
+`−offDiagMass/B^{+k}` (the `M` cancels, eventually `M ≠ 0`). So supplying `offDiagMass/B^{+k} → 0`
+(the genuine, `M`-free Leg-2 target — the growing-`W` shared-prime `∑_{p>D₀}1/p²` tail) discharges
+the off-diagonal hypothesis. -/
+theorem hoffdiag_of_offDiagMass {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (b W : ℕ) (D₀ : ℕ)
+    (hWdvd : ∀ p, p.Prime → p ≤ D₀ → p ∣ W)
+    (hshift_le : ∀ i : Fin k, H.getD i.val 0 ≤ D₀)
+    (hshift_ne : ∀ i j : Fin k, i ≠ j → H.getD i.val 0 ≠ H.getD j.val 0)
+    (x : ℕ → ℝ)
+    (hMne : ∀ᶠ N : ℕ in atTop,
+      ((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ) ≠ 0)
+    (hmass : Tendsto (fun N : ℕ =>
+        offDiagMass Fs H b W (x N) (Real.log (N : ℝ)) / Sieve.sieveB W (N : ℝ) ^ k)
+      atTop (nhds 0)) :
+    Tendsto (fun N : ℕ =>
+        offdiagCorr Fs H b W (x N) (Real.log (N : ℝ))
+            (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+          / (Sieve.sieveB W (N : ℝ) ^ k
+              * (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ)))) atTop (nhds 0) := by
+  have hneg := hmass.neg
+  rw [neg_zero] at hneg
+  refine hneg.congr' ?_
+  filter_upwards [hMne] with N hMN
+  rw [offdiagCorr_eq_neg_mul_offDiagMass Fs H b W (x N) (Real.log (N : ℝ))
+      (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ)) D₀ hWdvd hshift_le hshift_ne,
+    neg_div,
+    mul_comm (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+      (offDiagMass Fs H b W (x N) (Real.log (N : ℝ))),
+    mul_div_mul_right _ _ hMN]
+
 end BoundedGaps.S1DiagFree
