@@ -2,6 +2,55 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## ✅✅✅ PROGRESS 2026-06-05 (lap 3) — gap (A) algebraic spine now in the Path-Y `μ²/φ` form
+
+Three axiom-clean commits this lap. The diagonalization spine that gap (A) needs is now expressed in
+**exactly the Path-Y `μ²/φ` weight** the Riemann ladder / `S1MainTermDecomp` consume — closing the
+weight-convention gap between the diagonalized Selberg form (`φ(r)`) and the ladder (`μ²/φ`).
+
+1. **GPY `y_r`-form diagonalization DONE** (`SieveExpansion.lean`, 4 lemmas). The diagonalized form's
+   natural weight is `φ(r)`, but the ladder uses `μ²(r)/φ(r)`. The exact bridge: absorb one `φ(r)` into
+   each inner divisor sum, `y_{i,r} := φ(r)·∑_{r∣d}μ(d)gᵢ(d)/d`, giving termwise
+   `∑_{d,e}μ(d)g₁(d)μ(e)g₂(e)/[d,e] = ∑_r (μ²(r)/φ(r))·y_{1,r}·y_{2,r}` (squarefree: μ²=1; else
+   y_{i,r}=0). Lemmas: `gpy_diagonalize_moebius_bilinear_yform`, `gpy_diagonalize_moebius_yform`,
+   `heuristic_main_term_diagonalized_bilinear_yform`, **`heuristic_main_selberg_nu_yform`** (the full
+   `∑_{j,j'} cⱼcⱼ'` heuristic main term in `∑_{j,j'} cⱼcⱼ'·M·∏ᵢ ∑_r(μ²/φ)y₁y₂` shape — the spine).
+2. **y↔z form bridge DONE** (`gpy_diagonal_yform_eq_zform`): the Path-Y `y_r`-form and the Polymath8b
+   `z_r`-form agree (`y_r = (μ(r)φ(r)/r)·z_r`). Cross-validates the new diagonalization and records the
+   convention split (z route = PNT/contour; y route = contour-free Mertens).
+3. **Antiderivative support viability DONE** (`Antiderivative.lean`, 2 lemmas): the antiderivative-fed
+   sieve weight keeps its level-`R` cutoff iff `∫₀¹F=0` (automatic when `F=f'` for a bump `f`).
+   `antideriv_eq_zero_of_vanishing`, `antideriv_support_subset` (`support(antideriv F) ⊆ [0,1]`).
+
+### gap (A) — REFINED MAP (the algebraic spine is DONE; what remains is analytic)
+The full `s1` chain `sieveSum(selberg_nu) ~ mkF_denominator·norm`:
+- **(A1)** `sieveSum = heuristic_main + correction` — DONE (`sieveSum_selberg_nu_eq_heuristic_add_correction`).
+- **(A2)** `heuristic_main = ∑_{j,j'} cⱼcⱼ'·M·∏ᵢ ∑_r(μ²/φ)y₁ᵢᵣy₂ᵢᵣ` — **DONE this lap**
+  (`heuristic_main_selberg_nu_yform`). The exact `μ²/φ` Path-Y shape, per-coordinate-factorized.
+- **(A3) SMOOTHING** `y_{i,r} ≈ (μ(r)/log R)·Fⱼᵢ(log r/log R)` (with the antiderivative convention) —
+  **gap (B)**, the deep analytic nut. 1-D core ON ARISTOTLE (`678a9ed6`, brick_smooth). NOTE the
+  `1/log R` scale: `y_r = O(1/log R)`, NOT `≈ F` directly — feeding the **antiderivative** 𝔉 (𝔉'=F)
+  makes `z_r[𝔉]~(r/φ(r))(1/log R)F` so `y_r[𝔉]~(μ(r)/log R)F`, and `∑_r(μ²/φ)y_r²~(1/log R)∫F²`.
+- **(A4) box→simplex + Riemann limit** → `∫_{simplex}F²·norm`. The ladder (`weighted_riemann_kd_muphi`,
+  DONE) consumes the SIMPLEX-nested `nestedLogSumW`; (A2)'s output is a BOX product `∏ᵢ∑_{rᵢ∈D}`. They
+  reconcile because **F's simplex support kills off-simplex (`∏rᵢ>R`) box terms** — but this couples the
+  `j`-sum (F's support lives on the full `∑cⱼ∏Fs`, not individual products). NEXT structural lemma.
+- **(A5) correction = o(main)** — **gap (C)**, needs BV/EH. Algebraic split DONE
+  (`correction_split_offdiag`, `diag_error_bound`, `correction_abs_bound`); the size bounds
+  `∑_{diag}|coeff|=o(main)` + off-diagonal singular-series discrepancy remain.
+
+**Axiom restatement caveat (for whoever wires the antiderivative in):** `s1_holds_from_nonprime_asym`
+(Sieve.lean:3024) feeds `selberg_nu k J c Fs` directly → constant is `∫(Fs')²` (landmine, FALSE as
+stated). To make it TRUE/provable, the axiom + its 2 consumers (`selberg_sieve_data_from_F`,
+`_truncated_from_F`, Sieve.lean:3119/3202) must feed `selberg_nu k J c (fun j i => antideriv (Fs j i))`,
+keeping `F=∑c∏Fs` and `mkF_denominator k F` for the witness layer (untouched). `s2` needs the same ν.
+This is a flagship-touching refactor — do it deliberately, ideally AFTER brick_smooth validates the
+chain end-to-end. `antideriv_support_subset` shows the support survives iff `∫Fs=0` per coordinate
+(needs Fs to be a derivative — i.e. M_k-optimal F may need its OWN antiderivative-of-antiderivative, or
+the moment condition imposed; OPEN sub-question).
+
+---
+
 ## ✅✅ PROGRESS 2026-06-05 (lap 2) — s1 ANALYTIC MAIN TERM PROVEN END-TO-END (general-J, axiom-clean)
 
 Four axiom-clean commits this lap (`bd35abf`…`37b42e6`), full build green (8288 jobs). The entire
