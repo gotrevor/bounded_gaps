@@ -253,4 +253,69 @@ theorem yr_coord_factor_eq_muphi (H : List ℕ) (i b W : ℕ) (x : ℝ) (F : ℝ
   rw [← BoundedGaps.Sieve.gpy_diagonalize_yform_muphi Rset h0 hsf hdc F (Real.log R)]
   rfl
 
+/-- **Product-set per-coord factor.** Over `sieveDivisors² ` (the form `piFinset_lattice_main_factor`
+produces), the y-space bilinear factor `= ∑_{r∈Rset}(μ²/φ)F²` (`Rset = sieveDivisors.filter(sf∧coprime)`):
+`Finset.sum_product` + `sum_yLambda_bilinear_eq_of_subset` (drop `∖Rset`) + `yr_coord_factor_eq_muphi`. -/
+theorem yr_coord_sieveDiv_factor (H : List ℕ) (i b W : ℕ) (x : ℝ) (F : ℝ → ℝ) (R : ℝ) :
+    (∑ de ∈ (BoundedGaps.Sieve.sieveDivisors H i b W x
+          ×ˢ BoundedGaps.Sieve.sieveDivisors H i b W x),
+        yLambda ((BoundedGaps.Sieve.sieveDivisors H i b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W)) F (Real.log R) de.1
+          * yLambda ((BoundedGaps.Sieve.sieveDivisors H i b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W)) F (Real.log R) de.2
+          / (Nat.lcm de.1 de.2 : ℝ))
+      = ∑ r ∈ (BoundedGaps.Sieve.sieveDivisors H i b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W),
+          ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ)) * F (Real.log r / Real.log R) ^ 2 := by
+  set Rset := (BoundedGaps.Sieve.sieveDivisors H i b W x).filter
+      (fun r => Squarefree r ∧ Nat.Coprime r W) with hRset
+  obtain ⟨h0, hsf, hdc⟩ := BoundedGaps.Sieve.sieveDivisors_yspace_hyps H i b W x
+  have hsub : Rset ⊆ BoundedGaps.Sieve.sieveDivisors H i b W x := Finset.filter_subset _ _
+  rw [Finset.sum_product]
+  rw [show (∑ d ∈ BoundedGaps.Sieve.sieveDivisors H i b W x,
+        ∑ e ∈ BoundedGaps.Sieve.sieveDivisors H i b W x,
+          yLambda Rset F (Real.log R) d * yLambda Rset F (Real.log R) e / (Nat.lcm d e : ℝ))
+      = ∑ d ∈ BoundedGaps.Sieve.sieveDivisors H i b W x,
+          ∑ e ∈ BoundedGaps.Sieve.sieveDivisors H i b W x,
+            yLambda Rset F (Real.log R) d
+              * (yLambda Rset F (Real.log R) e * (1 / (Nat.lcm d e : ℝ))) from by
+        refine Finset.sum_congr rfl (fun d _ => Finset.sum_congr rfl (fun e _ => by ring))]
+  rw [sum_yLambda_bilinear_eq_of_subset Rset (BoundedGaps.Sieve.sieveDivisors H i b W x) hsub hdc
+    F (Real.log R) (fun d e => 1 / (Nat.lcm d e : ℝ))]
+  rw [← yr_coord_factor_eq_muphi H i b W x F R]
+  refine Finset.sum_congr rfl (fun d _ => Finset.sum_congr rfl (fun e _ => by ring))
+
+
+/-- **The y-space heuristic main term IS `M·∏ᵢ∑_{r}(μ²/φ)Fᵢ²`** — fully diagonalised, contour-free.
+The heuristic main of `sieveSum_selberg_nu_yr_sep_eq_heuristic_add_correction` (with
+`Rset i = sieveDivisors_i.filter(sf∧coprime W)`) reduces, via `piFinset_lattice_main_factor`
+(coeff-general factoring over coordinates) + `yr_coord_sieveDiv_factor` per coordinate, to
+`M·∏ᵢ ∑_{r≤level, sf, (r,W)=1}(μ²/φ)(r)·Fᵢ(log r/log R)²`. Each factor `/log R → (φ(W)/W)∫Fᵢ²`
+(`yspace_muphi_diagonal_tendsto`). The complete contour-free `s1` MAIN TERM for the y-space sieve
+— NO PNT. (The `o(main)` correction is the separate BV-gated obligation, gap C.) -/
+theorem yr_heuristic_main_eq_muphi (k : ℕ) (Fs : Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ)
+    (b W : ℕ) (x : ℝ) (M : ℝ) :
+    (∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+          BoundedGaps.Sieve.sieveDivisors H i.val b W x
+            ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W x),
+        (∏ i : Fin k,
+          yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).1
+            * yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).2)
+        * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      = M * ∏ i : Fin k, ∑ r ∈ (BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+            (fun r => Squarefree r ∧ Nat.Coprime r W),
+          ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ)) * Fs i (Real.log r / Real.log R) ^ 2 := by
+  rw [BoundedGaps.Sieve.piFinset_lattice_main_factor
+    (fun i => BoundedGaps.Sieve.sieveDivisors H i.val b W x
+      ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W x)
+    (fun i de => yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+        (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) de.1
+      * yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+        (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) de.2) M]
+  congr 1
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  exact yr_coord_sieveDiv_factor H i.val b W x (Fs i) R
+
 end BoundedGaps.S1YSpace
