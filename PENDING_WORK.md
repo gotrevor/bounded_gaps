@@ -2,6 +2,58 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
+## ✅✅✅✅ PROGRESS 2026-06-05 (lap 4) — Path-Y `s1` main term WITH singular series + the FIRM `s1` architecture verdict
+
+Two axiom-clean commits (`4bf8830`, `482348f`), full build green (8288 jobs).
+
+### What landed (`WeightedMertens.lean`)
+Abstracted the `μ²/φ` weighted-Mertens machinery over an **arbitrary weight `g` with base
+log-density `c`** (`(∑_{1≤n≤N} g n)/log N → c`), then specialised to the `W`-trick:
+- `weighted_mertens_general` (capstone): for `F` Lipschitz+cont, `(∑ g·F(log n/logN))/logN → c·∫₀¹F`.
+  Helpers `BdiscG`/`sum_sub_eq_BdiscG`/`BdiscG_div_log_tendsto_zero`/`abel_tail_majorant_general`/
+  `abel_tail_general`/`discrepancy_weighted_general` (general Abel-summation tail). Non-vacuity
+  `example` recovers `weighted_mertens` as the `g=μ²/φ, c=1` instance.
+- `weighted_mertens_general_of_contDiff` (Lipschitz from `ContDiff ℝ 1`).
+- `gMuSqTotientCoprime W n := (μ²/φ)(n)·[(n,W)=1]`; **`weighted_mertens_coprime`** and
+  **`weighted_mertens_coprime_sq`**: the Path-Y `s1` main term **WITH the singular series**
+  `𝔖 = φ(W)/W` (Maynard `S1Summation2` / GGPY Lemma 4) —
+  `(∑_{n≤N,(n,W)=1}(μ²/φ)F²(log n/logN))/logN → (φ(W)/W)·∫₀¹F² = (φ(W)/W)·mkF_denominator|_{k=1}`.
+  Conditional only on the **W-coprime sharp Mertens base** `(∑_{n≤N,(n,W)=1}μ²/φ)/logN → φ(W)/W`
+  (Aristotle brick `65d11d89`, in flight); the `W=1` case is exactly the existing `weighted_mertens`.
+
+### ⚠️ THE FIRM `s1` ARCHITECTURE VERDICT (don't re-litigate — verified against the papers + mathlib this lap)
+The repo's `selberg_nu` is built from `lambdaTransform` = Polymath8b `λ_F` (the **`d`-space** GPY/
+Selberg sieve). **Its `s1` constant is `∫(F')²` (a DERIVATIVE), and evaluating it is genuinely
+PNT-strength — there is NO contour-free route for the `d`-space construction.** Three independent
+confirmations:
+1. **Papers** (`archive/findings/…gpy-diagonal-asymptotic.md`): Polymath8b's own `lflg`/`c-def`
+   give `c = ∏∫F'_iG'_i`; their proof IS a contour (`ζ_{WN}`, Fourier `K`). The signed inner sum
+   `z_r = ∑_{(s,r)=1}μ(s)g(rs)/s ~ (r/φ(r))(−g'/logR)` is the `1/ζ(1+w)~(w−1)` behaviour = PNT.
+2. **No mathlib escape**: this mathlib (v4.29.1) has `LSeries/Nonvanishing` (`ζ(1+it)≠0`) and
+   `PrimesInAP` (qualitative Dirichlet), but **NO quantitative PNT** (`ψ(x)~x`) and **no Möbius
+   mean** `∑μ(n)/n→0`. So the `d`-space `z_r` cannot be discharged in-kernel today. (BV is already
+   an axiom and ⟹ PNT in principle, but extracting PNT-from-BV is itself a major formalization.)
+3. **The witness FORCES `y`-space**: the `d`-space sieve's RATIO `∑βᵢ/α` is `M_k(F')` (derivative
+   space), NOT `M_k(F)`. Our witness proves `M_k(F) > 4` for a *variational* `F` — that is the
+   **`y`-space** optimisation. So `s1`'s constant `mkF_denominator = ∫F²` (with the witness `F`) is
+   the `y`-space statement, and pairing it with the `d`-space `selberg_nu` is EXACTLY the
+   "off-by-a-derivative" landmine. The fix is not the antiderivative *relabel* (its proof is still
+   PNT — step (†) is PNT for any smooth weight, `F` or `𝔉`); it is to **change the construction**.
+
+**⟹ CONCRETE NEXT STEP for `s1` (the actual discharge path, contour-free):** define a **`y`-space
+sieve weight `selberg_nu_yr`** ALONGSIDE `selberg_nu` (do NOT touch the flagship yet — handoff's
+explicit warning): smooth `y_{r} := F(log r/logR)·[r squarefree, (r,W)=1, r≤R]`, `λ_d` its Möbius
+inverse, `ν(n)=(∑_{d|n+h_i}λ_d)²`. Re-run a gap-(A)-style diagonalization for THIS `λ` (the existing
+`gpy_diagonalize_moebius_*` are for `λ_d=μ(d)g(d)`, not Maynard's `λ_d` — needs a new diagonalization)
+to land `sieveSum ~ (count)·∑_r(μ²/φ)y² + corr`; then `∑_r(μ²/φ)y²` is **directly**
+`weighted_mertens_coprime_sq` (this lap) → `(φ(W)/W)∫F²`, contour-free. The `k`-D version threads
+through the already-proven `weighted_riemann_kd_muphi`. Only AFTER it validates end-to-end does
+Trevor flip the 3 `s1`/`s2` axioms + `selberg_sieve_data_from_F` to feed `selberg_nu_yr` (witness
+layer `mkF_denominator`/`MkF`/`Mk_200_gt_4` stays UNTOUCHED — it is about `F`, not `ν`).
+KB: `[[s1-derivative-landmine]]`, `[[lean-gpy-yform-muphi-bridge]]`, `[[gpy-diagonalization-route]]`.
+
+---
+
 ## ✅✅✅ PROGRESS 2026-06-05 (lap 3) — gap (A) algebraic spine now in the Path-Y `μ²/φ` form
 
 Three axiom-clean commits this lap. The diagonalization spine that gap (A) needs is now expressed in
