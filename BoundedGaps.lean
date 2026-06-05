@@ -40,3 +40,4 @@ import BoundedGaps.WeightedRiemann2D
 import BoundedGaps.InnerUniformReduction
 import BoundedGaps.WeightedRiemann3D
 import BoundedGaps.WeightedRiemannKD
+import BoundedGaps.WeightedRiemannGen
