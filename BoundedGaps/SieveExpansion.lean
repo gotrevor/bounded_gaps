@@ -1328,6 +1328,60 @@ theorem gpy_diagonalize_moebius_bilinear (T R : Finset ℕ) (g₁ g₂ : ℕ →
   gpy_diagonalize_bilinear T R (fun d => (moebius d : ℝ) * g₁ d)
     (fun e => (moebius e : ℝ) * g₂ e) hT hR
 
+/-- **GPY `y_r`-form diagonalization (bilinear), Path-Y weight `μ²/φ`.** The
+exact algebraic bridge from the diagonalized Selberg form's natural weight `φ(r)`
+(`gpy_diagonalize_moebius_bilinear`) to Maynard's **Path-Y** weight `μ²(r)/φ(r)`,
+by absorbing one factor `φ(r)` into each inner divisor sum. Defining the GPY
+`y`-variable `y_{i,r} := φ(r)·∑_{d∈T, r∣d} μ(d)gᵢ(d)/d`,
+`∑_{d,e} μ(d)g₁(d)·μ(e)g₂(e)/[d,e] = ∑_{r∈R} (μ²(r)/φ(r))·y_{1,r}·y_{2,r}`.
+Holds termwise: on squarefree `r`, `μ²(r)=1` and `(μ²/φ)·(φ y₁)(φ y₂) = φ·y₁y₂`
+recovers `gpy_diagonalize_moebius_bilinear`'s summand; off the squarefree locus
+`μ²(r)=0` *and* `y_{i,r}=0` (`gpy_yvar_eq_zero_of_not_squarefree`), so both sides
+vanish. This exhibits the `μ²/φ` weight that the entire Path-Y Riemann ladder
+(`WeightedRiemann*`, `S1MainTermDecomp`) is built around — the inner `y_{i,r}` is
+exactly what the smoothing step `y_{i,r} ≈ gᵢ(log r/log R)` then replaces, leaving
+`∑_r (μ²/φ)(r)·gᵢ(log r/log R)·gⱼ(log r/log R)` (the 1-D `nestedLogSumW` block). -/
+theorem gpy_diagonalize_moebius_bilinear_yform (T R : Finset ℕ) (g₁ g₂ : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g₁ d * ((moebius e : ℝ) * g₂ e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R, ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+          * (((Nat.totient r : ℝ) * ∑ d ∈ T.filter (fun d => r ∣ d),
+                (moebius d : ℝ) * g₁ d / (d : ℝ))
+             * ((Nat.totient r : ℝ) * ∑ e ∈ T.filter (fun e => r ∣ e),
+                (moebius e : ℝ) * g₂ e / (e : ℝ))) := by
+  classical
+  rw [gpy_diagonalize_moebius_bilinear T R g₁ g₂ hT hR]
+  refine Finset.sum_congr rfl (fun r _ => ?_)
+  by_cases h : Squarefree r
+  · have hmu : ((moebius r : ℝ)) ^ 2 = 1 := by
+      exact_mod_cast ArithmeticFunction.moebius_sq_eq_one_of_squarefree h
+    have hpos : 0 < Nat.totient r := Nat.totient_pos.mpr (Nat.pos_of_ne_zero h.ne_zero)
+    have hne : (Nat.totient r : ℝ) ≠ 0 := by exact_mod_cast hpos.ne'
+    rw [hmu]
+    field_simp
+  · rw [gpy_yvar_eq_zero_of_not_squarefree T g₁ r h]
+    ring
+
+/-- **GPY `y_r`-form diagonalization (single), Path-Y weight `μ²/φ`.** The
+`g₁ = g₂ = g` instance of `gpy_diagonalize_moebius_bilinear_yform`:
+`∑_{d,e} μ(d)g(d)·μ(e)g(e)/[d,e] = ∑_{r∈R} (μ²(r)/φ(r))·y_r²`,
+with `y_r := φ(r)·∑_{d∈T, r∣d} μ(d)g(d)/d`. The Path-Y companion of
+`gpy_diagonal_asymptotic_form` (whose `z_r` route carries the singular `φ/r²`
+weight). -/
+theorem gpy_diagonalize_moebius_yform (T R : Finset ℕ) (g : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    ∑ d ∈ T, ∑ e ∈ T,
+        (moebius d : ℝ) * g d * ((moebius e : ℝ) * g e) / (Nat.lcm d e : ℝ)
+      = ∑ r ∈ R, ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+          * ((Nat.totient r : ℝ) * ∑ d ∈ T.filter (fun d => r ∣ d),
+                (moebius d : ℝ) * g d / (d : ℝ)) ^ 2 := by
+  rw [gpy_diagonalize_moebius_bilinear_yform T R g g hT hR]
+  refine Finset.sum_congr rfl (fun r _ => ?_)
+  ring
+
 /-- **Cross heuristic GPY main term, fully diagonalized** (general `J`-basis).
 The bilinear analogue of `heuristic_main_term_diagonalized`: the heuristic main
 term of one `(j, j')` cross block of `sieveSum_selberg_nu_eq_heuristic_add_correction`
@@ -1541,6 +1595,75 @@ theorem heuristic_main_selberg_nu_canonical (k J : ℕ) (c : Fin J → ℝ)
                 (moebius s : ℝ) * Fs j' i (Real.log ((r * s : ℕ) : ℝ) / Real.log R) / (s : ℝ)))) := by
   refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
   rw [heuristic_main_term_diagonalized_bilinear_canonical
+    (fun i => sieveDivisors H i.val b W x) (fun i => sieveDivisors H i.val b W x)
+    (fun i => Fs j i) (fun i => Fs j' i) R M
+    (fun _ _ hd => sieveDivisors_pos hd)
+    (fun _ _ hd r hr => sieveDivisors_dvd_closed hd hr)]
+
+/-- **Cross heuristic main term in Path-Y (`y_r`, `μ²/φ`) form.** The Path-Y
+companion of `heuristic_main_term_diagonalized_bilinear_canonical`, using
+`gpy_diagonalize_moebius_bilinear_yform` for the per-coordinate factor: one
+`(j, j')` cross block of the heuristic GPY main term equals
+`M · ∏ᵢ ∑_r (μ²(r)/φ(r)) y₁ᵢᵣ y₂ᵢᵣ` with `yₐᵢᵣ := φ(r)·∑_{d∈Dᵢ, r∣d} μ(d)Gsₐᵢ(log d/log R)/d`
+the GPY `y`-variables. The `μ²/φ` weight is precisely the one the Path-Y Riemann
+ladder (`WeightedRiemann*`, `S1MainTermDecomp`) consumes; the inner `yₐᵢᵣ` is what
+the smoothing step `yₐᵢᵣ ≈ Gsₐᵢ(log r/log R)` (Maynard `PartialSummation`) then
+replaces, leaving the `nestedLogSumW (μ²/φ)` block. -/
+theorem heuristic_main_term_diagonalized_bilinear_yform {k : ℕ}
+    (D Rset : Fin k → Finset ℕ) (Gs₁ Gs₂ : Fin k → ℝ → ℝ) (R M : ℝ)
+    (hD : ∀ i, ∀ d ∈ D i, 1 ≤ d)
+    (hR : ∀ i, ∀ d ∈ D i, ∀ r, r ∣ d → r ∈ Rset i) :
+    ∑ P ∈ Fintype.piFinset (fun i => D i ×ˢ D i),
+        (∏ i : Fin k,
+          ((moebius (P i).1 : ℝ) * Gs₁ i (Real.log (P i).1 / Real.log R))
+            * ((moebius (P i).2 : ℝ) * Gs₂ i (Real.log (P i).2 / Real.log R)))
+        * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))
+      = M * ∏ i : Fin k, ∑ r ∈ Rset i,
+          ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+          * (((Nat.totient r : ℝ) * ∑ d ∈ (D i).filter (fun d => r ∣ d),
+                (moebius d : ℝ) * Gs₁ i (Real.log d / Real.log R) / (d : ℝ))
+             * ((Nat.totient r : ℝ) * ∑ e ∈ (D i).filter (fun e => r ∣ e),
+                (moebius e : ℝ) * Gs₂ i (Real.log e / Real.log R) / (e : ℝ))) := by
+  classical
+  rw [piFinset_lattice_main_factor (fun i => D i ×ˢ D i)
+      (fun i de => ((moebius de.1 : ℝ) * Gs₁ i (Real.log de.1 / Real.log R))
+        * ((moebius de.2 : ℝ) * Gs₂ i (Real.log de.2 / Real.log R))) M]
+  congr 1
+  refine Finset.prod_congr rfl (fun i _ => ?_)
+  rw [Finset.sum_product]
+  exact gpy_diagonalize_moebius_bilinear_yform (D i) (Rset i)
+    (fun d => Gs₁ i (Real.log d / Real.log R))
+    (fun e => Gs₂ i (Real.log e / Real.log R)) (hD i) (hR i)
+
+/-- **Full `selberg_nu` heuristic main term in Path-Y (`y_r`, `μ²/φ`) form.** The
+Path-Y companion of `heuristic_main_selberg_nu_canonical`: combining
+`heuristic_main_term_diagonalized_bilinear_yform` over the `∑_{j,j'} cⱼcⱼ'` basis
+combination (at the concrete sieve lattice `D = Rset = sieveDivisors`), the
+heuristic GPY main term of the general `J`-basis Selberg sieve equals
+`∑_{j,j'} cⱼcⱼ' · M · ∏ᵢ ∑_r (μ²(r)/φ(r)) y₁ᵢᵣ y₂ᵢᵣ`,
+each per-coordinate factor a sum over `r` of the Path-Y weight `μ²(r)/φ(r)` times a
+product of GPY `y`-variables of `Fⱼᵢ, Fⱼ'ᵢ`. **This is the heuristic main term in the
+exact `μ²/φ` Path-Y shape** that the smoothing step (`yₐᵢᵣ ≈ Fₐᵢ(log r/log R)`,
+gap (B)) plus the `nestedLogSumW(μ²/φ)` Riemann ladder (`S1MainTermDecomp`, DONE)
+consume — the structural spine of gap (A) in the `y_r`-space convention. -/
+theorem heuristic_main_selberg_nu_yform (k J : ℕ) (c : Fin J → ℝ)
+    (Fs : Fin J → Fin k → ℝ → ℝ) (H : List ℕ) (R : ℝ) (b W : ℕ) (x : ℝ) (M : ℝ) :
+    (∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+        ∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+            sieveDivisors H i.val b W x ×ˢ sieveDivisors H i.val b W x),
+          (∏ i : Fin k,
+            ((moebius (P i).1 : ℝ) * Fs j i (Real.log (P i).1 / Real.log R))
+              * ((moebius (P i).2 : ℝ) * Fs j' i (Real.log (P i).2 / Real.log R)))
+          * (M / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)))
+      = ∑ j : Fin J, ∑ j' : Fin J, c j * c j' *
+          (M * ∏ i : Fin k, ∑ r ∈ sieveDivisors H i.val b W x,
+            ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+            * (((Nat.totient r : ℝ) * ∑ d ∈ (sieveDivisors H i.val b W x).filter (fun d => r ∣ d),
+                  (moebius d : ℝ) * Fs j i (Real.log d / Real.log R) / (d : ℝ))
+               * ((Nat.totient r : ℝ) * ∑ e ∈ (sieveDivisors H i.val b W x).filter (fun e => r ∣ e),
+                  (moebius e : ℝ) * Fs j' i (Real.log e / Real.log R) / (e : ℝ)))) := by
+  refine Finset.sum_congr rfl (fun j _ => Finset.sum_congr rfl (fun j' _ => ?_))
+  rw [heuristic_main_term_diagonalized_bilinear_yform
     (fun i => sieveDivisors H i.val b W x) (fun i => sieveDivisors H i.val b W x)
     (fun i => Fs j i) (fun i => Fs j' i) R M
     (fun _ _ hd => sieveDivisors_pos hd)
