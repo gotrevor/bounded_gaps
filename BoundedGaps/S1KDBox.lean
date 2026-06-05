@@ -69,6 +69,19 @@ theorem quadForm_div_log_tendsto {W : ℕ} {F₁ F₂ : ℝ → ℝ}
       (nhds ((W.totient : ℝ) / W * ∫ u in (0 : ℝ)..1, F₁ u * F₂ u)) :=
   S1YSpace.yspace_sieve_quadform_bilinear_tendsto hF₁ hF₂ hBaseW
 
+/-- **`quadForm` is the clean diagonal sum.** The 1-D y-space bilinear Selberg form over
+`R_N = {r≤N: sf∧(r,W)=1}` diagonalises to `∑_{r∈R_N}(μ²/φ)·F(log r/log N)²` — exactly the clean-index
+coordinate sum produced by `S1CountReconcile.yr_heuristic_main_eq_Icc_product` (with `R = N`). So the
+reconciled heuristic main `M·∏ᵢ(clean sum)` is literally `M·∏ᵢ quadForm`, the (single-family) input to
+`yspace_kd_box_product_tendsto`. -/
+theorem quadForm_eq_muphi_sum (W : ℕ) (F : ℝ → ℝ) (N : ℕ) :
+    quadForm W F F N
+      = ∑ r ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+          ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ)) * F (Real.log r / Real.log N) ^ 2 := by
+  unfold quadForm
+  obtain ⟨h0, hsf, hdc⟩ := BoundedGaps.Sieve.sieveR_yspace_hyps N W
+  exact BoundedGaps.Sieve.gpy_diagonalize_yform_muphi _ h0 hsf hdc F (Real.log N)
+
 /-- **k-D box-product `s1` main term → `(φW/W)^k·mkF_denominator`** (axiom-clean, mod `hBaseW`). For
 `F = ∑_j c_j ∏_i Fs_{j,i}` simplex-supported with `Fs ∈ ContDiff ℝ 1`, the product over coordinates
 of the 1-D y-space bilinear forms, summed over `(j,j')` and normalised by `(log N)^k`, converges to
