@@ -1382,6 +1382,31 @@ theorem gpy_diagonalize_moebius_yform (T R : Finset ℕ) (g : ℕ → ℝ)
   refine Finset.sum_congr rfl (fun r _ => ?_)
   ring
 
+/-- **The Path-Y `y_r`-form and the Polymath8b `z_r`-form of the diagonalized
+Selberg quadratic form agree** (cross-validation of `gpy_diagonalize_moebius_yform`).
+Both `gpy_diagonalize_moebius_yform` (Path-Y: weight `μ²/φ`, GPY variable
+`y_r = φ(r)·∑_{r∣d}μ(d)g(d)/d`) and `gpy_diagonal_asymptotic_form` (Polymath8b
+`d`-space: weight `φ/r²`, coprime-restricted variable `z_r = ∑_{(r,s)=1}μ(s)g(rs)/s`)
+equal the same quadratic form `∑_{d,e}μ(d)g(d)μ(e)g(e)/[d,e]`, so their right-hand
+sides are equal:
+`∑_{r∈R} (μ²/φ)(r)·y_r² = ∑_{r∈R sf} (φ(r)/r²)·z_r²`.
+Termwise this is the substitution `y_r = (μ(r)φ(r)/r)·z_r` (`gpy_yvar_substitution`)
+with `μ(r)²=1` on the squarefree locus — the exact bridge between the two
+conventions. The two asymptotics differ only in *which* sum you evaluate: the `z_r`
+route's `∑μ(s)/s` is PNT-strength (a contour in Polymath8b), while the `y_r` route's
+`∑(μ²/φ)·y_r²` is contour-free (positive Mertens) — hence Path Y. -/
+theorem gpy_diagonal_yform_eq_zform (T R : Finset ℕ) (g : ℕ → ℝ)
+    (hT : ∀ d ∈ T, 1 ≤ d)
+    (hR : ∀ d ∈ T, ∀ r, r ∣ d → r ∈ R) :
+    (∑ r ∈ R, ((moebius r : ℝ) ^ 2 / (Nat.totient r : ℝ))
+        * ((Nat.totient r : ℝ) * ∑ d ∈ T.filter (fun d => r ∣ d),
+              (moebius d : ℝ) * g d / (d : ℝ)) ^ 2)
+      = ∑ r ∈ R.filter (fun r => Squarefree r), ((Nat.totient r : ℝ) / (r : ℝ) ^ 2)
+          * (∑ s ∈ ((T.filter (fun d => r ∣ d)).image (fun d => d / r)).filter
+                (fun s => Nat.Coprime r s),
+              (moebius s : ℝ) * g (r * s) / (s : ℝ)) ^ 2 := by
+  rw [← gpy_diagonalize_moebius_yform T R g hT hR, gpy_diagonal_asymptotic_form T R g hT hR]
+
 /-- **Cross heuristic GPY main term, fully diagonalized** (general `J`-basis).
 The bilinear analogue of `heuristic_main_term_diagonalized`: the heuristic main
 term of one `(j, j')` cross block of `sieveSum_selberg_nu_eq_heuristic_add_correction`
