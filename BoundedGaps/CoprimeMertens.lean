@@ -117,6 +117,95 @@ theorem coprime_mertens_recursion (p : ℕ) (hp : p.Prime) (N : ℕ) :
       rw [← per_term p (a / p) hp, Nat.mul_div_cancel' ha.2]
   rw [← hsplit, hA, hB, add_comm]
 
+/-- **General per-term identity** (coprimality base `V`). For `p` prime with `p ∤ V`,
+`g_V(p·m) = (1/(p-1))·g_{pV}(m)` where `g_W(n) = (μ²/φ)(n)·[(n,W)=1]`. Generalises `per_term`
+(the `V = 1` case). -/
+theorem per_term_general (p m V : ℕ) (hp : p.Prime) (hpV : Nat.Coprime p V) :
+    gMuSqTotientCoprime V (p * m)
+      = (1 / ((p : ℝ) - 1)) * gMuSqTotientCoprime (p * V) m := by
+  unfold gMuSqTotientCoprime
+  by_cases hcm : Nat.Coprime m V
+  · have hpmV : Nat.Coprime (p * m) V := Nat.coprime_mul_iff_left.mpr ⟨hpV, hcm⟩
+    rw [if_pos hpmV]
+    have hpt := per_term p m hp
+    rw [gMoebiusSqTotient_apply, hpt]
+    by_cases hcp : Nat.Coprime m p
+    · have hmpV : Nat.Coprime m (p * V) := Nat.coprime_mul_iff_right.mpr ⟨hcp, hcm⟩
+      rw [if_pos hmpV, if_pos hcp, gMoebiusSqTotient_apply]
+    · have hnmpV : ¬ Nat.Coprime m (p * V) := fun h => hcp (Nat.coprime_mul_iff_right.mp h).1
+      rw [if_neg hnmpV, if_neg hcp, mul_zero]
+  · have hnpmV : ¬ Nat.Coprime (p * m) V := fun h => hcm (Nat.coprime_mul_iff_left.mp h).2
+    rw [if_neg hnpmV]
+    have hnmpV : ¬ Nat.Coprime m (p * V) := fun h => hcm (Nat.coprime_mul_iff_right.mp h).2
+    rw [if_neg hnmpV, mul_zero]
+
+/-- **General single-prime coprime recursion** (the inductive step toward `hBaseW`). For `p`
+prime with `p ∤ V`,
+  `∑_{n≤N,(n,V)=1} μ²/φ = ∑_{n≤N,(n,pV)=1} μ²/φ + (1/(p-1))·∑_{n≤N/p,(n,pV)=1} μ²/φ`,
+i.e. `S_V(N) = S_{pV}(N) + (1/(p-1))·S_{pV}(N/p)`. Generalises `coprime_mertens_recursion`
+(`V = 1`, `S_1 = U`). Inverts geometrically to express `S_{pV}` via `S_V`, the engine of the
+prime-by-prime induction `S_1 = U → S_2 → S_{2·3} → ⋯ → S_W` giving `hBaseW`. -/
+theorem coprime_mertens_recursion_general (p V : ℕ) (hp : p.Prime)
+    (hpV : Nat.Coprime p V) (N : ℕ) :
+    (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime V n)
+      = (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (p * V) n)
+        + (1 / ((p : ℝ) - 1))
+          * ∑ n ∈ Finset.Icc 1 (N / p), gMuSqTotientCoprime (p * V) n := by
+  have hcoe : ∀ n, ¬ p ∣ n → gMuSqTotientCoprime (p * V) n = gMuSqTotientCoprime V n := by
+    intro n hn
+    unfold gMuSqTotientCoprime
+    have hcp : Nat.Coprime n p := (Nat.coprime_comm.mp ((hp.coprime_iff_not_dvd).mpr hn))
+    by_cases hcv : Nat.Coprime n V
+    · rw [if_pos (Nat.coprime_mul_iff_right.mpr ⟨hcp, hcv⟩), if_pos hcv]
+    · rw [if_neg (fun h => hcv (Nat.coprime_mul_iff_right.mp h).2), if_neg hcv]
+  have hzero : ∀ n, p ∣ n → gMuSqTotientCoprime (p * V) n = 0 := by
+    intro n hn
+    unfold gMuSqTotientCoprime
+    rw [if_neg]
+    intro h
+    have hcp : Nat.Coprime n p := (Nat.coprime_mul_iff_right.mp h).1
+    exact absurd hn ((hp.coprime_iff_not_dvd).mp hcp.symm)
+  have hsplit := Finset.sum_filter_add_sum_filter_not (Finset.Icc 1 N) (fun n => p ∣ n)
+    (fun n => gMuSqTotientCoprime V n)
+  -- hA : ∑_{¬p∣n} gV = ∑ g_{pV}
+  have hA : ∑ n ∈ (Finset.Icc 1 N).filter (fun n => ¬ p ∣ n), gMuSqTotientCoprime V n
+      = ∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime (p * V) n := by
+    rw [Finset.sum_filter]
+    apply Finset.sum_congr rfl
+    intro n _
+    by_cases hpd : p ∣ n
+    · rw [if_neg (not_not.mpr hpd), hzero n hpd]
+    · rw [if_pos hpd, hcoe n hpd]
+  -- hB : ∑_{p∣n} gV = (1/(p-1)) ∑_{n≤N/p} g_{pV}
+  have hB : ∑ n ∈ (Finset.Icc 1 N).filter (fun n => p ∣ n), gMuSqTotientCoprime V n
+      = (1 / ((p : ℝ) - 1)) * ∑ n ∈ Finset.Icc 1 (N / p), gMuSqTotientCoprime (p * V) n := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_bij' (fun a _ => a / p) (fun b _ => p * b) ?_ ?_ ?_ ?_ ?_
+    · intro a ha
+      rw [Finset.mem_filter, Finset.mem_Icc] at ha
+      obtain ⟨⟨ha1, ha2⟩, hpa⟩ := ha
+      rw [Finset.mem_Icc]
+      exact ⟨Nat.one_le_div_iff hp.pos |>.mpr (Nat.le_of_dvd (by omega) hpa),
+        Nat.div_le_div_right ha2⟩
+    · intro b hb
+      rw [Finset.mem_Icc] at hb
+      obtain ⟨hb1, hb2⟩ := hb
+      show p * b ∈ (Finset.Icc 1 N).filter (fun n => p ∣ n)
+      rw [Finset.mem_filter, Finset.mem_Icc]
+      refine ⟨⟨?_, ?_⟩, dvd_mul_right p b⟩
+      · calc 1 ≤ p := hp.one_le
+          _ ≤ p * b := Nat.le_mul_of_pos_right p hb1
+      · rw [Nat.mul_comm]; exact (Nat.le_div_iff_mul_le hp.pos).mp hb2
+    · intro a ha
+      rw [Finset.mem_filter] at ha
+      exact Nat.mul_div_cancel' ha.2
+    · intro b _
+      exact Nat.mul_div_cancel_left b hp.pos
+    · intro a ha
+      rw [Finset.mem_filter] at ha
+      rw [← per_term_general p (a / p) V hp hpV, Nat.mul_div_cancel' ha.2]
+  rw [← hsplit, hA, hB, add_comm]
+
 /-- The unrestricted `μ²/φ` partial sum vanishes at `N = 0` (empty range). -/
 theorem U_zero : (∑ n ∈ Finset.Icc 1 0, gMoebiusSqTotient n) = 0 := by simp
 
