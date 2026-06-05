@@ -217,6 +217,141 @@ theorem abs_yLambda_le (R : Finset ℕ) (F : ℝ → ℝ) (L : ℝ) (d : ℕ) (C
     _ = C * ∑ s ∈ R.filter (fun s => d ∣ s), 1 / (Nat.totient s : ℝ) := by
         rw [Finset.mul_sum]; refine Finset.sum_congr rfl (fun s _ => ?_); ring
 
+/-- **x-independent polynomial bound on the y-space coefficient.** With the test function `F` cut
+off above `1` (`F t = 0` for `t > 1`) and `|F| ≤ C`, the y-space coefficient at level `N`
+(`L = log N`, `N ≥ 2`) is bounded by `|yLambda R F (log N) d| ≤ d·C·N`, **independent of the size of
+`R`** (hence of the sieve scale `x`): the support cutoff kills every `s > N`, so at most `N` terms
+survive, each `≤ C`. This is the elementary (PNT-free) ingredient for the *diagonal* leg of the s1
+correction — combined with a large scale `x` it forces the diagonal error `o(main)` with no Möbius
+cancellation. -/
+theorem abs_yLambda_le_level (R : Finset ℕ) (F : ℝ → ℝ) (N d : ℕ) (C : ℝ)
+    (hN : 2 ≤ N) (hC : ∀ t, |F t| ≤ C) (hFcut : ∀ t, 1 < t → F t = 0)
+    (hR1 : ∀ s ∈ R, 1 ≤ s) :
+    |S1YSpace.yLambda R F (Real.log N) d| ≤ (d : ℝ) * C * (N : ℝ) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  have hlogN : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast (by omega : 1 < N))
+  unfold S1YSpace.yLambda
+  rw [abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ (d:ℝ)), mul_assoc]
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  classical
+  -- termwise bound by `if s ≤ N then C else 0`
+  have key : ∀ s ∈ R.filter (fun s => d ∣ s),
+      |(moebius (s / d) : ℝ) * (F (Real.log s / Real.log N) / (Nat.totient s : ℝ))|
+        ≤ (if s ≤ N then C else 0) := by
+    intro s hs
+    have hsR : s ∈ R := (Finset.mem_filter.mp hs).1
+    have hs1 : 1 ≤ s := hR1 s hsR
+    have hφpos : (0:ℝ) < (Nat.totient s : ℝ) := by
+      have := Nat.totient_pos.mpr (by omega : 0 < s); exact_mod_cast this
+    by_cases hsN : s ≤ N
+    · rw [if_pos hsN, abs_mul, abs_div, abs_of_pos hφpos]
+      have hmu : |(moebius (s / d) : ℝ)| ≤ 1 := by
+        exact_mod_cast ArithmeticFunction.abs_moebius_le_one
+      have hφ1 : (1:ℝ) ≤ (Nat.totient s : ℝ) := by
+        have := Nat.totient_pos.mpr (by omega : 0 < s); exact_mod_cast this
+      calc |(moebius (s / d) : ℝ)| * (|F (Real.log s / Real.log N)| / (Nat.totient s : ℝ))
+          ≤ 1 * (C / 1) := by
+            gcongr
+            · exact hC _
+        _ = C := by ring
+    · -- s > N : log s / log N > 1, so F = 0
+      rw [if_neg hsN]
+      have hsgt : (N : ℝ) < (s : ℝ) := by exact_mod_cast (by omega : N < s)
+      have hlogs : Real.log N < Real.log s :=
+        Real.log_lt_log (by exact_mod_cast (by omega : 0 < N)) hsgt
+      have hgt1 : 1 < Real.log s / Real.log N := by
+        rw [lt_div_iff₀ hlogN]; linarith
+      rw [hFcut _ hgt1]
+      simp
+  calc |∑ s ∈ R.filter (fun s => d ∣ s),
+            (moebius (s / d) : ℝ) * (F (Real.log s / Real.log N) / (Nat.totient s : ℝ))|
+      ≤ ∑ s ∈ R.filter (fun s => d ∣ s),
+            |(moebius (s / d) : ℝ) * (F (Real.log s / Real.log N) / (Nat.totient s : ℝ))| :=
+        Finset.abs_sum_le_sum_abs _ _
+    _ ≤ ∑ s ∈ R.filter (fun s => d ∣ s), (if s ≤ N then C else 0) := Finset.sum_le_sum key
+    _ = ∑ s ∈ (R.filter (fun s => d ∣ s)).filter (fun s => s ≤ N), C := (Finset.sum_filter _ _).symm
+    _ = ((R.filter (fun s => d ∣ s)).filter (fun s => s ≤ N)).card • C := Finset.sum_const C
+    _ ≤ (N : ℝ) * C := by
+        rw [nsmul_eq_mul]
+        refine mul_le_mul_of_nonneg_right ?_ hC0
+        have hsub : (R.filter (fun s => d ∣ s)).filter (fun s => s ≤ N) ⊆ Finset.Icc 1 N := by
+          intro s hs
+          rw [Finset.mem_filter] at hs
+          have hsR : s ∈ R := (Finset.mem_filter.mp hs.1).1
+          exact Finset.mem_Icc.mpr ⟨hR1 s hsR, hs.2⟩
+        have := Finset.card_le_card hsub
+        rw [Nat.card_Icc] at this
+        have : ((R.filter (fun s => d ∣ s)).filter (fun s => s ≤ N)).card ≤ N := by omega
+        exact_mod_cast this
+    _ = C * (N : ℝ) := by ring
+
+/-- **The y-space coefficient vanishes above the level.** For `d > N` (and `N ≥ 2`), the support
+cutoff forces every surviving divisor `s` (with `d ∣ s`, `s ≥ d > N`) to have `F (log s/log N) = 0`,
+so `yLambda R F (log N) d = 0`. Combined with `abs_yLambda_le_level` this confines the coefficient's
+support to `d ≤ N`. -/
+theorem yLambda_eq_zero_of_gt_level (R : Finset ℕ) (F : ℝ → ℝ) (N d : ℕ)
+    (hN : 2 ≤ N) (hd : N < d) (hFcut : ∀ t, 1 < t → F t = 0) (hR1 : ∀ s ∈ R, 1 ≤ s) :
+    S1YSpace.yLambda R F (Real.log N) d = 0 := by
+  have hlogN : (0 : ℝ) < Real.log N := Real.log_pos (by exact_mod_cast (by omega : 1 < N))
+  unfold S1YSpace.yLambda
+  rw [Finset.sum_eq_zero, mul_zero]
+  intro s hs
+  rw [Finset.mem_filter] at hs
+  have hsR : s ∈ R := hs.1
+  have hds : d ∣ s := hs.2
+  have hs1 : 1 ≤ s := hR1 s hsR
+  have hsd : d ≤ s := Nat.le_of_dvd (by omega) hds
+  have hsgt : (N : ℝ) < (s : ℝ) := by exact_mod_cast (by omega : N < s)
+  have hlogs : Real.log N < Real.log s :=
+    Real.log_lt_log (by exact_mod_cast (by omega : 0 < N)) hsgt
+  have hgt1 : 1 < Real.log s / Real.log N := by rw [lt_div_iff₀ hlogN]; linarith
+  rw [hFcut _ hgt1]; simp
+
+/-- **x-independent polynomial bound on the y-space coefficient `ℓ¹`-mass.** Summed over the whole
+(arbitrarily large) candidate set `R`, the absolute y-space coefficients satisfy
+`∑_{d∈R} |yLambda R F (log N) d| ≤ C·N³` — a fixed polynomial in the level `N`, **independent of the
+sieve scale `x`** (which controls `|R|`). The coefficient vanishes for `d > N`
+(`yLambda_eq_zero_of_gt_level`) and is `≤ d·C·N ≤ C·N²` for `d ≤ N` (`abs_yLambda_le_level`), and at
+most `N` values of `d ≤ N` occur. This is the elementary, PNT-free `λ_max`-type control that — with a
+scale `x` taken polynomially large in `N` — drives the *diagonal* leg of the s1 correction to
+`o(B^{+k}·M)` with NO Möbius cancellation / no PNT. The expensive cancellation (the lap-8 "smoothing"
+estimate) is only needed for the *off-diagonal* leg, where the `M` factor cancels against the main
+term and the scale trick does not apply. -/
+theorem sum_abs_yLambda_le_level (R : Finset ℕ) (F : ℝ → ℝ) (N : ℕ) (C : ℝ)
+    (hN : 2 ≤ N) (hC : ∀ t, |F t| ≤ C) (hFcut : ∀ t, 1 < t → F t = 0)
+    (hR1 : ∀ s ∈ R, 1 ≤ s) :
+    ∑ d ∈ R, |S1YSpace.yLambda R F (Real.log N) d| ≤ C * (N : ℝ) ^ 3 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  classical
+  have key : ∀ d ∈ R, |S1YSpace.yLambda R F (Real.log N) d|
+      ≤ (if d ≤ N then C * (N : ℝ) ^ 2 else 0) := by
+    intro d hd
+    by_cases hdN : d ≤ N
+    · rw [if_pos hdN]
+      refine le_trans (abs_yLambda_le_level R F N d C hN hC hFcut hR1) ?_
+      have hdNr : (d : ℝ) ≤ (N : ℝ) := by exact_mod_cast hdN
+      calc (d : ℝ) * C * (N : ℝ) ≤ (N : ℝ) * C * (N : ℝ) := by
+            apply mul_le_mul_of_nonneg_right _ (by positivity)
+            exact mul_le_mul_of_nonneg_right hdNr hC0
+        _ = C * (N : ℝ) ^ 2 := by ring
+    · rw [if_neg hdN, yLambda_eq_zero_of_gt_level R F N d hN (by omega) hFcut hR1, abs_zero]
+  calc ∑ d ∈ R, |S1YSpace.yLambda R F (Real.log N) d|
+      ≤ ∑ d ∈ R, (if d ≤ N then C * (N : ℝ) ^ 2 else 0) := Finset.sum_le_sum key
+    _ = ∑ d ∈ R.filter (fun d => d ≤ N), C * (N : ℝ) ^ 2 := (Finset.sum_filter _ _).symm
+    _ = (R.filter (fun d => d ≤ N)).card • (C * (N : ℝ) ^ 2) := Finset.sum_const _
+    _ ≤ (N : ℝ) * (C * (N : ℝ) ^ 2) := by
+        rw [nsmul_eq_mul]
+        refine mul_le_mul_of_nonneg_right ?_ (by positivity)
+        have hsub : R.filter (fun d => d ≤ N) ⊆ Finset.Icc 1 N := by
+          intro d hd
+          rw [Finset.mem_filter] at hd
+          exact Finset.mem_Icc.mpr ⟨hR1 d hd.1, hd.2⟩
+        have hcard := Finset.card_le_card hsub
+        rw [Nat.card_Icc] at hcard
+        have : (R.filter (fun d => d ≤ N)).card ≤ N := by omega
+        exact_mod_cast this
+    _ = C * (N : ℝ) ^ 3 := by ring
+
 /-- **The y-space S1 correction, bounded by the diagonal + off-diagonal size sums (the `hcorr`
 reduction).** Instantiates `SieveExpansion.correction_abs_bound_offdiag` on the *actual* y-space
 correction (the numerator of `S1FullLimit.yspace_s1_sieveSum_div_tendsto`'s `hcorr`). After
