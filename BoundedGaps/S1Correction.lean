@@ -291,4 +291,128 @@ theorem yspace_correction_abs_bound {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : 
     rw [hmndef]
     exact div_nonneg hMnonneg (Finset.prod_nonneg (fun i _ => by positivity))
 
+/-- **Diagonal `O(1)` count error (the `herr` leg, UNCONDITIONAL).** For a diagonal tuple `P`
+(pairwise-coprime moduli `lcm(P i)`, each positive and `W`-coprime), the sieve count differs from
+the lattice main density `M/∏[dᵢ,eᵢ]` — with `M = (⌊2x⌋−(⌈x⌉−1))/W` the exact lattice density — by at
+most `1`. Composes `sieve_count_eq_lattice_count` (Icc→Ioc, two moduli → lcm) with
+`SieveExpansion.lattice_count_main_term` (CRT count, single modulus). This is the `herr` hypothesis of
+`yspace_correction_abs_bound`, now discharged from natural diagonal hypotheses — pure lattice
+geometry, **no BV**. (The cross-coordinate coprimality `hdiag` ⟹ pairwise-coprime moduli via
+`List.Nodup.pairwise_of_forall_ne`; the `W`-coprimality and positivity come from the candidate set.) -/
+theorem yspace_diag_count_err (k : ℕ) (H : List ℕ) (b W : ℕ) (x : ℝ) (hx : 0 < x) (hW : 0 < W)
+    (hAB : ⌈x⌉₊ - 1 ≤ ⌊2 * x⌋₊) (P : Fin k → ℕ × ℕ)
+    (hpos : ∀ i, 0 < Nat.lcm (P i).1 (P i).2)
+    (hcopW : ∀ i, Nat.Coprime (Nat.lcm (P i).1 (P i).2) W)
+    (hdiag : ∀ i j : Fin k, i ≠ j →
+      Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)) :
+    |((((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+        (fun m => ∀ i : Fin k,
+          (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card : ℝ)
+      - ((⌊2 * x⌋₊ : ℝ) - ((⌈x⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ)
+          / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)| ≤ 1 := by
+  rw [sieve_count_eq_lattice_count k H b W x hx P]
+  have hco : (List.finRange k).Pairwise
+      (fun i j => Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)) :=
+    (List.nodup_finRange k).pairwise_of_forall_ne (fun a _ b _ hab => hdiag a b hab)
+  have hqpos : ∀ i ∈ List.finRange k, 0 < Nat.lcm (P i).1 (P i).2 := fun i _ => hpos i
+  have hlistprod :
+      ((List.finRange k).map (fun i => Nat.lcm (P i).1 (P i).2)).prod
+        = ∏ i : Fin k, Nat.lcm (P i).1 (P i).2 := by
+    rw [← List.ofFn_eq_map, List.prod_ofFn]
+  have hWcop : Nat.Coprime W
+      (((List.finRange k).map (fun i => Nat.lcm (P i).1 (P i).2)).prod) := by
+    rw [hlistprod]
+    exact Nat.Coprime.prod_right (fun i _ => (hcopW i).symm)
+  have hmaineq : ((⌊2 * x⌋₊ : ℝ) - ((⌈x⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ)
+        / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)
+      = ((⌊2 * x⌋₊ : ℝ) - ((⌈x⌉₊ - 1 : ℕ) : ℝ))
+          / ((W * ((List.finRange k).map (fun i => Nat.lcm (P i).1 (P i).2)).prod : ℕ) : ℝ) := by
+    rw [Nat.cast_mul, hlistprod, Nat.cast_prod, div_div]
+  rw [hmaineq]
+  have hmain := BoundedGaps.Sieve.lattice_count_main_term (List.finRange k)
+    (fun i => Nat.lcm (P i).1 (P i).2) (fun i => H.getD i.val 0) W b
+    (⌈x⌉₊ - 1) ⌊2 * x⌋₊ hco hqpos hWcop hW hAB
+  convert hmain using 6
+
+/-- **The y-space S1 correction bound with the diagonal error DISCHARGED (no `herr` hypothesis).**
+Specialises `yspace_correction_abs_bound` to the exact lattice density `M = (⌊2x⌋−(⌈x⌉−1))/W` and
+discharges `herr` internally via `yspace_diag_count_err` (positivity + `W`-coprimality of the diagonal
+moduli come from the candidate set; the diagonal pairwise-coprimality is the filter predicate). So the
+y-space correction is bounded, **with no BV and no count-side hypothesis** (only the W-trick
+admissibility `hWdvd`/`hshift_le`/`hshift_ne` + `hAB`), by
+`∑_{diag}|∏λλ| + ∑_{¬diag}|∏λλ|·(M/∏[dᵢ,eᵢ])`. Both count-side obligations of the s1 off-diagonal
+correction (the off-diagonal vanishing AND the diagonal `O(1)` error) are now machine-checked
+unconditionally. The remaining work to `hcorr` (`correction = o(main)`) is the two purely-analytic SIZE
+estimates on the RHS sums (diagonal via `abs_yLambda_le` + `S1DiagonalSize`; off-diagonal via the
+`∑_{p>D₀}1/p²` tail of `S1OffDiagSize`). -/
+theorem yspace_correction_abs_bound_explicit {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (x R : ℝ) (D₀ : ℕ) (hx : 0 < x) (hW : 0 < W)
+    (hAB : ⌈x⌉₊ - 1 ≤ ⌊2 * x⌋₊)
+    (hWdvd : ∀ p, p.Prime → p ≤ D₀ → p ∣ W)
+    (hshift_le : ∀ i : Fin k, H.getD i.val 0 ≤ D₀)
+    (hshift_ne : ∀ i j : Fin k, i ≠ j → H.getD i.val 0 ≠ H.getD j.val 0) :
+    |∑ P ∈ Fintype.piFinset (fun i : Fin k =>
+          BoundedGaps.Sieve.sieveDivisors H i.val b W x
+            ×ˢ BoundedGaps.Sieve.sieveDivisors H i.val b W x),
+        (∏ i : Fin k,
+          S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).1
+            * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).2)
+          * ((((Finset.Icc ⌈x⌉₊ ⌊2 * x⌋₊).filter (fun n => n % W = b % W)).filter
+                (fun m => ∀ i : Fin k,
+                  (P i).1 ∣ (m + H.getD i.val 0) ∧ (P i).2 ∣ (m + H.getD i.val 0))).card
+              - (((⌊2 * x⌋₊ : ℝ) - ((⌈x⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+                  / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ))|
+      ≤ (∑ P ∈ (Fintype.piFinset (fun i : Fin k =>
+            ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W))
+              ×ˢ ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W)))).filter
+            (fun P => ∀ i j : Fin k, i ≠ j →
+              Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)),
+          |∏ i : Fin k,
+            S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).1
+              * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).2|)
+        + ∑ P ∈ (Fintype.piFinset (fun i : Fin k =>
+            ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W))
+              ×ˢ ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W)))).filter
+            (fun P => ¬ ∀ i j : Fin k, i ≠ j →
+              Nat.Coprime (Nat.lcm (P i).1 (P i).2) (Nat.lcm (P j).1 (P j).2)),
+          |∏ i : Fin k,
+            S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).1
+              * S1YSpace.yLambda ((BoundedGaps.Sieve.sieveDivisors H i.val b W x).filter
+                (fun r => Squarefree r ∧ Nat.Coprime r W)) (Fs i) (Real.log R) (P i).2|
+            * ((((⌊2 * x⌋₊ : ℝ) - ((⌈x⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+                / ∏ i : Fin k, (Nat.lcm (P i).1 (P i).2 : ℝ)) := by
+  have hMnonneg : (0:ℝ) ≤ ((⌊2 * x⌋₊ : ℝ) - ((⌈x⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ) := by
+    apply div_nonneg _ (by positivity)
+    have : ((⌈x⌉₊ - 1 : ℕ) : ℝ) ≤ (⌊2 * x⌋₊ : ℝ) := by exact_mod_cast hAB
+    linarith
+  refine yspace_correction_abs_bound Fs H b W x R
+    (((⌊2 * x⌋₊ : ℝ) - ((⌈x⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ)) D₀ hMnonneg hWdvd hshift_le hshift_ne ?_
+  intro P hP
+  rw [Finset.mem_filter] at hP
+  obtain ⟨hPmem, hdiagP⟩ := hP
+  have hmem := Fintype.mem_piFinset.mp hPmem
+  have hyhyp := fun (i : Fin k) => BoundedGaps.Sieve.sieveDivisors_yspace_hyps H i.val b W x
+  have hpos : ∀ i, 0 < Nat.lcm (P i).1 (P i).2 := by
+    intro i
+    have h2 := Finset.mem_product.mp (hmem i)
+    have h1a : 1 ≤ (P i).1 := (hyhyp i).1 (P i).1 h2.1
+    have h1b : 1 ≤ (P i).2 := (hyhyp i).1 (P i).2 h2.2
+    exact Nat.pos_of_ne_zero (Nat.lcm_ne_zero (by omega) (by omega))
+  have hcopW : ∀ i, Nat.Coprime (Nat.lcm (P i).1 (P i).2) W := by
+    intro i
+    have h2 := Finset.mem_product.mp (hmem i)
+    have hc1 := (Finset.mem_filter.mp h2.1).2.2
+    have hc2 := (Finset.mem_filter.mp h2.2).2.2
+    exact coprime_lcm_of_coprime hc1 hc2
+  exact yspace_diag_count_err k H b W x hx hW hAB P hpos hcopW hdiagP
+
 end BoundedGaps.S1Correction
