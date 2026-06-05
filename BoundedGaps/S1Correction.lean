@@ -26,6 +26,7 @@ Both `lattice_count_*` are stated for a **single** modulus `q i ∣ (m+hᵢ)`; t
 import BoundedGaps.S1YSpace
 
 open scoped BigOperators
+open ArithmeticFunction (moebius)
 
 namespace BoundedGaps.S1Correction
 
@@ -145,6 +146,41 @@ theorem coprime_lcm_of_coprime {a b W : ℕ} (ha : Nat.Coprime a W) (hb : Nat.Co
     Nat.Coprime (Nat.lcm a b) W :=
   Nat.Coprime.coprime_dvd_left (Nat.lcm_dvd (dvd_mul_right a b) (dvd_mul_left b a))
     (Nat.Coprime.mul_left ha hb)
+
+/-- **Closed-form bound on the y-space coefficient.** With `|F| ≤ C` and `R` consisting of positive
+integers, the y-space sieve coefficient is bounded by `|yLambda R F L d| ≤ d·C·∑_{s∈R, d∣s} 1/φ(s)`
+(triangle inequality + `|μ| ≤ 1` + `|F| ≤ C`). The first reduction toward the diagonal SIZE bound
+(`∑_{diag}|∏λλ| = o(M(log R)^k)`, the diagonal leg of `yspace_correction_abs_bound`): `yLambda` is
+NOT uniformly `O(1)`, but its magnitude is controlled by `d` and the `1/φ` tail of its support.
+[Fully controlling the diagonal size further needs the smoothing `yLambda ≈ (d/φ(d))·C/log R`
+(Maynard `PartialSummation`, the `brick_smooth` content) to beat the naive `d`-factor.] -/
+theorem abs_yLambda_le (R : Finset ℕ) (F : ℝ → ℝ) (L : ℝ) (d : ℕ) (C : ℝ)
+    (hC : ∀ t, |F t| ≤ C) (hR1 : ∀ s ∈ R, 1 ≤ s) :
+    |S1YSpace.yLambda R F L d|
+      ≤ (d : ℝ) * C * ∑ s ∈ R.filter (fun s => d ∣ s), 1 / (Nat.totient s : ℝ) := by
+  unfold S1YSpace.yLambda
+  rw [abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ (d:ℝ)), mul_assoc]
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  calc |∑ s ∈ R.filter (fun s => d ∣ s),
+            (moebius (s / d) : ℝ) * (F (Real.log s / L) / (Nat.totient s : ℝ))|
+      ≤ ∑ s ∈ R.filter (fun s => d ∣ s),
+            |(moebius (s / d) : ℝ) * (F (Real.log s / L) / (Nat.totient s : ℝ))| :=
+        Finset.abs_sum_le_sum_abs _ _
+    _ ≤ ∑ s ∈ R.filter (fun s => d ∣ s), C / (Nat.totient s : ℝ) := by
+        refine Finset.sum_le_sum (fun s hs => ?_)
+        have hs1 : 1 ≤ s := hR1 s (Finset.mem_filter.mp hs).1
+        have hφpos : (0:ℝ) < (Nat.totient s : ℝ) := by
+          have := Nat.totient_pos.mpr (by omega : 0 < s); exact_mod_cast this
+        rw [abs_mul, abs_div]
+        have hmu : |(moebius (s / d) : ℝ)| ≤ 1 := by
+          exact_mod_cast ArithmeticFunction.abs_moebius_le_one
+        have hFC : |F (Real.log s / L)| ≤ C := hC _
+        rw [abs_of_pos hφpos]
+        calc |(moebius (s / d) : ℝ)| * (|F (Real.log s / L)| / (Nat.totient s : ℝ))
+            ≤ 1 * (C / (Nat.totient s : ℝ)) := by gcongr
+          _ = C / (Nat.totient s : ℝ) := one_mul _
+    _ = C * ∑ s ∈ R.filter (fun s => d ∣ s), 1 / (Nat.totient s : ℝ) := by
+        rw [Finset.mul_sum]; refine Finset.sum_congr rfl (fun s _ => ?_); ring
 
 /-- **The y-space S1 correction, bounded by the diagonal + off-diagonal size sums (the `hcorr`
 reduction).** Instantiates `SieveExpansion.correction_abs_bound_offdiag` on the *actual* y-space
