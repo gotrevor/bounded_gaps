@@ -2,11 +2,42 @@
 
 Last updated: 2026-06-05. Branch `path-a-selberg-nu`.
 
-## ✅✅✅✅ PROGRESS 2026-06-05 (lap 4) — Path-Y `s1` main term WITH singular series + the FIRM `s1` architecture verdict
+## ✅✅✅✅ PROGRESS 2026-06-05 (lap 4) — contour-free Path-Y `s1` ANALYTIC MAIN TERM FULLY ASSEMBLED + FIRM `s1` verdict
 
-Two axiom-clean commits (`4bf8830`, `482348f`), full build green (8288 jobs).
+Eight axiom-clean commits (`4bf8830`…`bc6317e`), full build green (8288 jobs) at every gate. The
+**entire analytic backbone** of the contour-free Path-Y `s1` main term is now machine-checked: from
+the explicit y-space sieve coefficient through the diagonalization to the `(φ(W)/W)·∫F²` limit, with
+NO PNT. What remains is purely structural (the `selberg_nu_yr` *definition* + lattice-count
+reduction) plus the W-coprime base (Aristotle).
 
-### What landed (`WeightedMertens.lean`)
+### THE ASSEMBLED CHAIN (all axiom-clean, this lap)
+`SieveExpansion.lean`:
+- `moebius_div_collapse` (`∑_{e|m}μ(e)=[m=1]`), `inner_moebius_collapse` (`∑_{d|s,r|d}μ(s/d)=[s=r]`),
+  **`moebius_inversion_multiples`** (divisor-closed `R`, `a(d)=∑_{s∈R,d|s}μ(s/d)Y(s)` ⟹
+  `∑_{d∈R,r|d}a(d)=Y(r)`) — the exact `λ_d ↔ smooth-y_r` duality.
+- **`gpy_diagonalize_yform_smooth`** (`λ_d=d·a(d)` ⟹ `∑_{d,e∈R}λ_dλ_e/[d,e]=∑_{r∈R}φ(r)Y(r)²`,
+  via `gpy_diagonalize`+inversion) and **`gpy_diagonalize_yform_muphi`** (with `Y(s)=F(log s/L)/φ(s)`
+  on squarefree `R`: `= ∑_{r∈R}(μ²/φ)F(log r/L)²`).
+- `sieveR_yspace_hyps` (the real sieve index set `R_N={r≤N: sf ∧ (r,W)=1}` is `≥1`, squarefree,
+  divisor-closed ⟹ all the above apply to it).
+`WeightedMertens.lean`:
+- `gMuSqTotientCoprime_sum_eq_filter` (connector: `∑_{n≤N}g_W·G = ∑_{r∈R_N}(μ²/φ)·G`),
+- **`yspace_muphi_diagonal_tendsto`**: `(∑_{r∈R_N}(μ²/φ)F(log r/logN)²)/logN → (φ(W)/W)·∫F²`
+  = the limit of `gpy_diagonalize_yform_muphi`'s output. **The Path-Y `s1` main term, contour-free.**
+  Conditional only on `hBaseW` = W-coprime sharp Mertens (Aristotle brick `65d11d89`, in flight).
+
+### NEXT (the structural piece — fresh-lap work)
+1. **Define `selberg_nu_yr`**: `ν(n) = (∑_{d∣n+hᵢ} λ_{d,i})²` with the y-space coefficient
+   `λ_{d,i} = d·∑_{s∈R_N, d∣s} μ(s/d)·Fⱼᵢ(log s/logR)/φ(s)` (per coordinate, per `j`-term). Prove
+   nonneg.
+2. **Lattice expansion** for THIS `λ` via the GENERAL engine `prod_sum_active_expand` (NOT
+   `sieveSum_lambdaProd_expand`, which is hard-wired to `lambdaTransform`): `sieveSum ≈ (count)·∏ᵢ
+   ∑_{d,e}λλ/[d,e] + correction`. Then `∑λλ/[d,e] = gpy_diagonalize_yform_muphi → yspace_muphi_diagonal_tendsto`.
+3. k-D lift (per-coord product → `∫_simplex F²` = `mkF_denominator`) via the proven `weighted_riemann_kd_muphi`.
+4. The W-coprime base `hBaseW` (brick) ⟹ unconditional. Then Trevor flips the 3 `s1`/`s2` axioms +
+   `selberg_sieve_data_from_F` to `selberg_nu_yr` (witness layer untouched).
+
+### What landed (`WeightedMertens.lean`) — the abstraction layer
 Abstracted the `μ²/φ` weighted-Mertens machinery over an **arbitrary weight `g` with base
 log-density `c`** (`(∑_{1≤n≤N} g n)/log N → c`), then specialised to the `W`-trick:
 - `weighted_mertens_general` (capstone): for `F` Lipschitz+cont, `(∑ g·F(log n/logN))/logN → c·∫₀¹F`.
