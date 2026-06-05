@@ -218,4 +218,42 @@ theorem yspace_s1_sieveSum_div_tendsto_diagFree {k : ℕ} (Fs : Fin k → ℝ �
   beta_reduce
   ring
 
+/-- **The full y-space S1 sieve-sum limit for primorial `W`, conditional ONLY on the off-diagonal.**
+Specialises `yspace_s1_sieveSum_div_tendsto_diagFree` to a primorial modulus `W = ∏_{p∈T} p`
+(`2 ∈ T`, exactly the sieve's `W = ∏_{p≤D₀} p`), discharging the W-coprime sharp Mertens base
+`hBaseW` IN-KERNEL via `CoprimeMertens.hBaseW_of_primes_totient`. So for the actual sieve modulus the
+contour-free y-space `s1` rests on **no analytic axiom and only the off-diagonal correction**
+(`hoffdiag`): the heuristic main term AND the entire diagonal half of `hcorr` are machine-checked
+unconditional (PNT-free). The sole remaining obligation is the off-diagonal leg, which needs a growing
+modulus `W = W(N)` (Leg 2). -/
+theorem yspace_s1_sieveSum_div_tendsto_diagFree_primorial {k : ℕ} (Fs : Fin k → ℝ → ℝ) (H : List ℕ)
+    (b W : ℕ) (C : ℝ) (T : Finset ℕ) (hT : ∀ p ∈ T, p.Prime) (h2 : 2 ∈ T)
+    (hWeq : W = ∏ p ∈ T, p)
+    (hC : ∀ i, ∀ t, |Fs i t| ≤ C)
+    (hFs : ∀ i, ContDiff ℝ 1 (Fs i))
+    (hsupp : Function.support (fun t => ∏ i, Fs i (t i)) ⊆ Sieve.simplex k)
+    (hFsupp : ∀ i : Fin k, ∀ t : ℝ, 1 < t → Fs i t = 0)
+    (x : ℕ → ℝ) (hcov : ∀ N : ℕ, (W * N : ℝ) + 2 ≤ x N)
+    (hgrow : ∀ᶠ N : ℕ in atTop,
+      (N : ℝ) ^ (6 * k + 1)
+        ≤ ((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+    (hoffdiag : Tendsto (fun N : ℕ =>
+        offdiagCorr Fs H b W (x N) (Real.log (N : ℝ))
+            (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))
+          / (Sieve.sieveB W (N : ℝ) ^ k
+              * (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ)))) atTop (nhds 0)) :
+    Tendsto (fun N : ℕ =>
+        BoundedGaps.Sieve.sieveSum (S1YSpace.selberg_nu_yr_sep k Fs H (N : ℝ)
+            (fun i => (BoundedGaps.Sieve.sieveDivisors H i.val b W (x N)).filter
+              (fun r => Squarefree r ∧ Nat.Coprime r W))) b W (x N)
+          / (Sieve.sieveB W (N : ℝ) ^ k
+              * (((⌊2 * x N⌋₊ : ℝ) - ((⌈x N⌉₊ - 1 : ℕ) : ℝ)) / (W : ℝ))))
+      atTop (nhds (Sieve.mkF_denominator k (fun t => ∏ i, Fs i (t i)))) := by
+  have hW : 0 < W := by
+    rw [hWeq]; exact Finset.prod_pos (fun p hp => (hT p hp).pos)
+  refine yspace_s1_sieveSum_div_tendsto_diagFree Fs H b W C hW hC hFs hsupp hFsupp x hcov hgrow
+    ?_ hoffdiag
+  rw [hWeq]
+  exact BoundedGaps.CoprimeMertens.hBaseW_of_primes_totient T hT h2
+
 end BoundedGaps.S1DiagFree
