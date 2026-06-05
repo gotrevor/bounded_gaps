@@ -2415,4 +2415,26 @@ theorem gpy_diagonalize_yform_muphi (R : Finset ℕ)
   rw [hμ]
   field_simp
 
+/-- **The concrete y-space sieve index set satisfies the diagonalisation hypotheses.** The actual
+support `R_N = {r ≤ N : Squarefree r ∧ (r,W)=1}` is `≥ 1`, squarefree, and **divisor-closed** (a
+divisor of a squarefree `W`-coprime `r ≤ N` is again squarefree, `W`-coprime, and `≤ N`). Hence
+`gpy_diagonalize_yform_muphi`/`gpy_diagonalize_yform_smooth`/`moebius_inversion_multiples` all apply
+to `R_N` — the y-space construction is non-vacuous on the real sieve index set. -/
+theorem sieveR_yspace_hyps (N W : ℕ) :
+    (∀ s ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W), 1 ≤ s)
+    ∧ (∀ s ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W), Squarefree s)
+    ∧ (∀ s ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W),
+        ∀ d, d ∣ s → d ∈ (Finset.Icc 1 N).filter (fun r => Squarefree r ∧ Nat.Coprime r W)) := by
+  refine ⟨?_, ?_, ?_⟩
+  · intro s hs
+    exact (Finset.mem_Icc.mp (Finset.mem_filter.mp hs).1).1
+  · intro s hs
+    exact (Finset.mem_filter.mp hs).2.1
+  · intro s hs d hds
+    rw [Finset.mem_filter, Finset.mem_Icc] at hs ⊢
+    obtain ⟨⟨hs1, hsN⟩, hsf, hcop⟩ := hs
+    have hd1 : 1 ≤ d := Nat.pos_of_dvd_of_pos hds (by omega)
+    have hdN : d ≤ N := le_trans (Nat.le_of_dvd (by omega) hds) hsN
+    exact ⟨⟨hd1, hdN⟩, hsf.squarefree_of_dvd hds, Nat.Coprime.coprime_dvd_left hds hcop⟩
+
 end BoundedGaps.Sieve
