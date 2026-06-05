@@ -283,9 +283,10 @@ theorem U_shift_div_log_tendsto_one (p k : ℕ) (hp : p.Prime) :
 (`U_shift_div_log_tendsto_one`) to `∑'_k(-1/(p-1))^k = (p-1)/p` (`geom_value`), the interchange
 justified by dominated convergence (`tendsto_tsum_of_dominated_convergence`, bound `(1/(p-1))^k·2`,
 summable since `1/(p-1) < 1` for `p ≥ 3`). No BV, no Euler product — only the repo's unrestricted sharp
-Mertens. [The `p = 2` case `1/(p-1) = 1` defeats this DCT and is the remaining nut.] The general `W`
-follows by induction over the primes of squarefree `W` (the relevant case has `W` odd-free? no — `W`
-includes `2`; the induction's `2`-step needs the `p=2` single-prime result). -/
+Mertens. [The `p = 2` case `1/(p-1) = 1` defeats this DCT (the limit series `∑(-1)^k` diverges) and is
+the remaining nut — it needs the bounded-difference form `U(M) = log M + O(1)` or a signed Abel
+argument. The general `W = ∏_{p≤D₀}p` then follows by induction over its prime factors, but since `W`
+includes `2`, the induction's `2`-step requires the `p = 2` single-prime result.] -/
 theorem single_prime_coprime_mertens (p : ℕ) (hpp : p.Prime) (hp3 : 3 ≤ p) :
     Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMuSqTotientCoprime p n) / Real.log (N:ℝ))
       atTop (𝓝 (((p:ℝ)-1)/p)) := by

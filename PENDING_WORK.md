@@ -37,7 +37,36 @@ exact lattice density, **no `herr`/count hypothesis, no BV** — only W-trick ad
   (any finite recip-sq sum over naturals `>D₀` ≤ the tail). STILL NEEDED: assemble
   `∑_{¬diag} ≤ (∑_{i<j}∑_{p>D₀}1/p²)·∏Q'ᵢ` with `Q'ᵢ=∑|λλ|/[d,e]=O(log R)` (the shared-prime factor →0).
 
-### hBaseW (W-coprime sharp Mertens `∑gMuSqTotientCoprime/log → φ(W)/W`) — CLEAN ELEMENTARY ROUTE FOUND
+### hBaseW (W-coprime sharp Mertens) — ROUTE BUILT END-TO-END; SINGLE-PRIME p≥3 COMPLETE & UNCONDITIONAL
+**`BoundedGaps/CoprimeMertens.lean` (NEW, all axiom-clean):** the entire geometric route to `hBaseW`,
+with the odd-prime single-prime case fully discharged in-kernel.
+- **`coprime_mertens_recursion`** — `∑_{n≤N}μ²/φ = ∑_{n≤N,(n,p)=1}μ²/φ + (1/(p-1))∑_{n≤N/p,(n,p)=1}μ²/φ`
+  (split by `p∣n`; the `p∣n` part reindexes `n=p·m`, squarefree ⟹ `p∤m`, via `per_term`).
+- **`coprime_geometric_inversion`** — `∑_{n≤N,(n,p)=1}μ²/φ = ∑'_k(-1/(p-1))^k·∑_{n≤N/p^k}μ²/φ`
+  (strong induction on `N`: split off `k=0`, reindex `k↦k+1`, IH + recursion). `+ inversion_summable`.
+- **`geom_value`** (p≥3) — `∑'_k(-1/(p-1))^k = (p-1)/p`.
+- **`U_shift_div_log_tendsto_one`** — `(∑_{n≤N/p^k}μ²/φ)/log N → 1` (sharp Mertens ∘ `N/p^k` + the
+  log-ratio squeeze `log_div_ratio_tendsto_one`/`const_div_log_tendsto_zero`).
+- **`single_prime_coprime_mertens` (p≥3) — COMPLETE, UNCONDITIONAL:**
+  `(∑_{n≤N,(n,p)=1}μ²/φ)/log N → (p-1)/p`, via DCT (`tendsto_tsum_of_dominated_convergence`, bound
+  `(1/(p-1))^k·2`, summable since `1/(p-1)<1`). Helpers `U_mono`/`gMoebiusSqTotient_nonneg`/
+  `U_div_log_tendsto_one`. **No BV, no Euler product — only `SharpMertens.sharp_mertens_unconditional`.**
+
+**REMAINING for full hBaseW (two pieces):**
+1. **`p = 2` single-prime.** DCT fails (`1/(p-1)=1`, limit series `∑(-1)^k` diverges). Needs EITHER
+   the **bounded-difference** form `U(M)=log M+O(1)` (then pair the finite inverted sum:
+   `U(N/2^{2j})−U(N/2^{2j+1}) ~ log 2`, ~`(log₂N)/2` pairs ⟹ `S(N)~½log N`), OR a signed Abel
+   argument on `coprime_geometric_inversion`'s finite sum (the `|·|`-bound loses the needed
+   cancellation — verified the crude Toeplitz bound is insufficient). The repo's `sharp_mertens_tendsto`
+   comes from partial-sum bounds — check whether the bounded form is extractable from them.
+2. **General-`W` induction.** With single-prime for ALL primes `p∣W`: induct over primes of squarefree
+   `W` via the general recursion `S_V(N)=S_{pV}(N)+(1/(p-1))S_{pV}(N/p)` (the `V=1` case is
+   `coprime_mertens_recursion`); limit ⟹ `L_W = ∏_{p∣W}(p-1)/p = φ(W)/W`. Since `W=∏_{p≤D₀}p` includes
+   `2`, this needs piece (1).
+Aristotle `dd98b9c1` (brick_singleprime, `/tmp/brick_singleprime/Problem.lean`) is grinding the single-
+prime case with `sharp_mertens` inlined — may crack `p=2`.
+
+### hBaseW geometric route (original sketch, now realised above)
 Aristotle brick `65d11d89` (lap-6) returned COMPLETE_WITH_ERRORS: it tried to prove the *unrestricted*
 sharp Mertens `∑μ²/φ = log N + O(1)` **from scratch** (its sole remaining `sorry`) — but the repo
 ALREADY has `SharpMertens.sharp_mertens_unconditional` (the tendsto). Its complete by-product
