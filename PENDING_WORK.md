@@ -15,12 +15,27 @@ from `WeightedRiemannKD`. Instances landed:
 - 1-D input `weighted1DLimit_muphi` from NEW `WeightedMertens.weighted_mertens_continuous` (μ²/φ
   Mertens extended Lipschitz→continuous via Weierstrass + 3ε; axiom-clean).
 
-**REMAINING to connect to `s1`:** the simplex-Fubini bridge `∫_{simplex k} ∏gᵢ = nestedPhi (ofFn g) 0`
-(connects `nestedPhi (ofFn Fs²) 0` to `mkF_denominator k F = ∫_simplex F²` for separable F). The repo
-already has `SievePolynomial.simplex_fubini` (one-coordinate peel) + `nestedPhi_eq_simplexPhi`; the
-bridge is a k-induction with ONE Fubini order-swap. **ON ARISTOTLE 2026-06-05** (job
-`58f76560-3dbb-46be-98ee-2bdf4325079c`, brick `/tmp/brick_fubini/Fubini.lean`). After it: re-target
-s1's `selberg_nu` main term to y_r-space (the antiderivative convention) and apply the ladder.
+**REMAINING to connect to `s1` (the ONLY analytic gap left in the s1 MAIN TERM):** the simplex-Fubini
+bridge `∫_{simplex k} ∏gᵢ = nestedPhi (ofFn g) 0`. Once it lands, `S1ConnectionK1`'s
+`s1_yr_mainTerm_eq_mkF_denominator_sep` (already a COMPLETE theorem taking it as hyp `hFubini`)
+discharges → the k-D s1 analytic main term is PROVEN end-to-end. **PROVEN at k=1**
+(`s1_yr_mainTerm_eq_mkF_denominator_one`, axiom-clean). **ON ARISTOTLE 2026-06-05** (job
+`58f76560-3dbb-46be-98ee-2bdf4325079c`, brick `/tmp/brick_fubini/Fubini.lean`, still IN_PROGRESS @17min).
+
+Three attack paths for the Fubini bridge (k-induction; the crux is ONE Fubini order-swap because
+`SievePolynomial.simplex_fubini` peels with the peeled coord INNER, while `nestedPhi`/`simplexPhi` are
+HEAD-recursive = peeled coord OUTER):
+1. **Order-swap via product indicator** (most direct): express both `∫_{s∈simplex n}∫_{y∈[0,1-∑s]} f`
+   and `∫_{y∈[0,1]}∫_{s∈simplexBudget n (1-y)} f` as `∫` over `[0,1]×simplex n` of `R.indicator f`
+   (`R = {(y,s): y≥0, s≥0, y+∑s≤1}`), then `MeasureTheory.integral_integral_swap` (f continuous on
+   compact ⇒ integrable). ~60–80 lines; the measurability/integrability of the indicator is the fiddle.
+2. **Peel LAST coordinate** (`simplex_fubini (Fin.last n)`) → gives the marginal form
+   `∫_{simplex n}(∏ first-n)·(∫₀^{1-∑s} g_last)`; then relate to `simplexPhi` by a SEPARATE 1-step
+   swap (smaller, but still a swap). Reuses the `Jᵢ`/marginal machinery shape (`Ji_bridge`).
+3. **Generalize the repo's `EpsScaling.monomialIntegral_eq`/`dirichlet_slack` reduction** (it already
+   does `∫_{simplex} ∏tᵢ^αᵢ` = iterated, by dimension induction) from monomials to general continuous
+   `gᵢ` — the same induction skeleton, integrand abstracted. Likely the least new measure theory since
+   that proof already crossed the order-swap for monomials.
 
 ## ⚠️ CORRECTNESS RISK (recorded 2026-06-04, from `ON-LINE-FINDINGS-2026-06-04-gpy-diagonal-asymptotic.md`)
 
