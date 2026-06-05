@@ -120,6 +120,18 @@ theorem coprime_mertens_recursion (p : ℕ) (hp : p.Prime) (N : ℕ) :
 /-- The unrestricted `μ²/φ` partial sum vanishes at `N = 0` (empty range). -/
 theorem U_zero : (∑ n ∈ Finset.Icc 1 0, gMoebiusSqTotient n) = 0 := by simp
 
+/-- The `μ²/φ` weight is nonnegative. -/
+theorem gMoebiusSqTotient_nonneg (n : ℕ) : 0 ≤ gMoebiusSqTotient n := by
+  rw [gMoebiusSqTotient_apply]; positivity
+
+/-- The unrestricted `μ²/φ` partial sum is monotone in the cutoff (nonnegative terms). Feeds the
+dominated-convergence bound for the single-prime limit (`U(N/p^k) ≤ U(N)`). -/
+theorem U_mono {M M' : ℕ} (h : M ≤ M') :
+    (∑ n ∈ Finset.Icc 1 M, gMoebiusSqTotient n)
+      ≤ ∑ n ∈ Finset.Icc 1 M', gMoebiusSqTotient n :=
+  Finset.sum_le_sum_of_subset_of_nonneg (Finset.Icc_subset_Icc_right h)
+    (fun i _ _ => gMoebiusSqTotient_nonneg i)
+
 /-- **Summability of the geometric-inversion series.** For each `N`, only finitely many terms
 `(-1/(p-1))^k·(∑_{n≤N/p^k}μ²/φ)` are nonzero (`N/p^k = 0` once `p^k > N`), so the series is summable. -/
 theorem inversion_summable (p : ℕ) (hp : p.Prime) (N : ℕ) :
