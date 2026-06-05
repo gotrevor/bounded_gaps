@@ -625,4 +625,217 @@ lemma exists_list_unif : ∀ (gs : List (ℝ → ℝ)), (∀ g ∈ gs, Continuou
         rwa [Real.dist_eq] at this
       · exact hδ' f hf' a ha b hb (le_trans hab (min_le_right _ _))
 
+/-- At `t = 0`, `PsiK R gs 0 = nestedPhi gs 1` exactly (independent of `R`): for `gs = []` both are
+`1`; for a cons the sum range `Icc 2 ⌊R^0⌋ = Icc 2 1 = ∅` and the integral over `[0,0]` both vanish. -/
+lemma psiK_zero (R : ℕ) : ∀ (gs : List (ℝ → ℝ)), PsiK R gs 0 = nestedPhi gs 1
+  | [] => by simp [PsiK, Real.rpow_zero]
+  | g :: gs => by
+      simp only [PsiK, Real.rpow_zero, Nat.floor_one, nestedLogSum_cons]
+      rw [show Finset.Icc 2 1 = (∅ : Finset ℕ) from rfl]
+      simp only [Finset.sum_empty, zero_div]
+      rw [nestedPhi_cons, show (1 : ℝ) - 1 = 0 from by ring, intervalIntegral.integral_same]
+
+open BoundedGaps.InnerUniformReduction (tendsto_logFloor_rpow_div) in
+/-- **Generic pointwise scale-change** (the generic `psi3_pointwise`), MODULO the full `k`-D limit for
+same-length lists (`hkd`). For `t ∈ [0,1]` and nonnegative continuous `gs`, `PsiK R gs t →
+nestedPhi gs (1-t)`. Strategy (mirroring `psi3_pointwise` via the `evalNest`/`harmNest` drift
+machinery): set `N = ⌊R^t⌋`, `c_R = log N/log R → t`, rescaled list `gss = gs.map (·∘(t·))`. Then
+`PsiK R gs t = c_R^k · (nestedLogSum N gss N/(log N)^k + drift/(log N)^k)`, where the scaled Riemann
+sum converges by `hkd gss` and the `c_R → t` drift `→ 0` (`evalNest_dist`, uniform continuity over the
+finite list); the limit is `t^k · nestedPhi gss 0 = nestedPhi gs (1-t)` (`nestedPhi_scale`). -/
+theorem psi_k_pointwise (gs : List (ℝ → ℝ))
+    (hnn : ∀ g ∈ gs, ∀ x, 0 ≤ g x) (hcont : ∀ g ∈ gs, Continuous g)
+    (hkd : ∀ (hs : List (ℝ → ℝ)), hs.length = gs.length → (∀ g ∈ hs, ∀ x, 0 ≤ g x) →
+        (∀ g ∈ hs, Continuous g) →
+        Tendsto (fun R : ℕ => nestedLogSum R hs R / (Real.log R) ^ hs.length) atTop
+          (nhds (nestedPhi hs 0)))
+    (t : ℝ) (ht : t ∈ Set.Icc (0 : ℝ) 1) :
+    Tendsto (fun R : ℕ => PsiK R gs t) atTop (nhds (nestedPhi gs (1 - t))) := by
+  obtain ⟨ht0, ht1⟩ := ht
+  rcases eq_or_lt_of_le ht0 with hteq | htpos
+  · -- `t = 0`: constant sequence `nestedPhi gs 1`.
+    rw [← hteq]
+    simp only [psiK_zero, sub_zero]
+    exact tendsto_const_nhds
+  · -- `t > 0`.
+    set gss : List (ℝ → ℝ) := gs.map (fun g => fun u => g (t * u)) with hgss
+    have hgss_len : gss.length = gs.length := by rw [hgss, List.length_map]
+    have hgss_nn : ∀ f ∈ gss, ∀ x, 0 ≤ f x := by
+      intro f hf x; rw [hgss, List.mem_map] at hf
+      obtain ⟨g, hg, rfl⟩ := hf; exact hnn g hg (t * x)
+    have hgss_cont : ∀ f ∈ gss, Continuous f := by
+      intro f hf; rw [hgss, List.mem_map] at hf
+      obtain ⟨g, hg, rfl⟩ := hf
+      exact (hcont g hg).comp (continuous_const.mul continuous_id)
+    set N : ℕ → ℕ := fun R => ⌊(R : ℝ) ^ t⌋₊ with hN
+    have hNtop : Tendsto N atTop atTop := by
+      have : Tendsto (fun R : ℕ => (R : ℝ) ^ t) atTop atTop :=
+        (tendsto_rpow_atTop htpos).comp tendsto_natCast_atTop_atTop
+      exact tendsto_nat_floor_atTop.comp this
+    have hcR : Tendsto (fun R : ℕ => Real.log (N R : ℝ) / Real.log (R : ℝ)) atTop (𝓝 t) :=
+      tendsto_logFloor_rpow_div t htpos
+    -- scaled Riemann sum at level `N` → `nestedPhi gss 0`.
+    have hB : Tendsto (fun R : ℕ =>
+        nestedLogSum (N R) gss (N R) / (Real.log (N R : ℝ)) ^ gs.length) atTop
+        (𝓝 (nestedPhi gss 0)) := by
+      have hlim := hkd gss hgss_len hgss_nn hgss_cont
+      rw [hgss_len] at hlim
+      exact hlim.comp hNtop
+    -- list sup bound `M` and the nested-harmonic bound `C`.
+    obtain ⟨M, hM0, hM⟩ := exists_list_bound gs hcont
+    obtain ⟨C, hC0, hharm⟩ : ∃ C : ℝ, 0 < C ∧ ∀ᶠ R : ℕ in atTop,
+        harmNest gs.length (N R) / (Real.log (N R : ℝ)) ^ gs.length ≤ C := by
+      have hones_nn : ∀ g ∈ List.replicate gs.length (fun _ : ℝ => (1 : ℝ)), ∀ x, 0 ≤ g x := by
+        intro g hg; rw [List.eq_of_mem_replicate hg]; intro x; norm_num
+      have hones_cont : ∀ g ∈ List.replicate gs.length (fun _ : ℝ => (1 : ℝ)), Continuous g := by
+        intro g hg; rw [List.eq_of_mem_replicate hg]; exact continuous_const
+      have hlim := (hkd (List.replicate gs.length (fun _ : ℝ => (1 : ℝ)))
+        (by rw [List.length_replicate]) hones_nn hones_cont).comp hNtop
+      rw [List.length_replicate] at hlim
+      refine ⟨|nestedPhi (List.replicate gs.length (fun _ : ℝ => (1 : ℝ))) 0| + 1, by positivity, ?_⟩
+      have h1 := (Metric.tendsto_nhds.1 hlim) 1 one_pos
+      filter_upwards [h1] with R hR
+      simp only [Function.comp_apply] at hR
+      rw [Real.dist_eq, ← harmNest_eq_nestedLogSum (N R) gs.length (N R)] at hR
+      have h2 := (abs_lt.1 hR).2
+      have h3 := le_abs_self (nestedPhi (List.replicate gs.length (fun _ : ℝ => (1 : ℝ))) 0)
+      linarith
+    -- drift `→ 0`.
+    have hdrift : Tendsto (fun R : ℕ =>
+        (nestedLogSum R gs (N R) - nestedLogSum (N R) gss (N R)) / (Real.log (N R : ℝ)) ^ gs.length)
+        atTop (𝓝 0) := by
+      rw [NormedAddGroup.tendsto_nhds_zero]
+      intro ε hε
+      have hKp0 : (0 : ℝ) < (max M 1) ^ gs.length := by positivity
+      have hkn : (0 : ℝ) ≤ (gs.length : ℝ) := Nat.cast_nonneg _
+      have hP0 : (0 : ℝ) ≤ (gs.length : ℝ) * (max M 1) ^ gs.length * C :=
+        mul_nonneg (mul_nonneg hkn hKp0.le) hC0.le
+      have hden0 : (0 : ℝ) < 2 * ((gs.length : ℝ) * (max M 1) ^ gs.length * C + 1) := by
+        have := hP0; linarith
+      set εpp : ℝ := ε / (2 * ((gs.length : ℝ) * (max M 1) ^ gs.length * C + 1)) with hεppdef
+      have hεpp0 : 0 < εpp := by rw [hεppdef]; exact div_pos hε hden0
+      have hεppfin : (gs.length : ℝ) * (max M 1) ^ gs.length * C * εpp < ε := by
+        rw [hεppdef, ← mul_div_assoc, div_lt_iff₀ hden0]
+        nlinarith [mul_nonneg hP0 hε.le, hε]
+      obtain ⟨δ, hδ0, hδ⟩ := exists_list_unif gs hcont εpp hεpp0
+      have hcRδ : ∀ᶠ R : ℕ in atTop, |Real.log (N R : ℝ) / Real.log (R : ℝ) - t| ≤ δ := by
+        have := Metric.tendsto_nhds.1 hcR δ hδ0
+        filter_upwards [this] with R hR; rw [Real.dist_eq] at hR; linarith
+      filter_upwards [hcRδ, hharm, hNtop.eventually_ge_atTop 2, eventually_ge_atTop 2]
+        with R hcRδR hharmR hNR2 hR2
+      have hNR1 : (1 : ℝ) < (N R : ℝ) := by exact_mod_cast (by omega : 1 < N R)
+      have hlogNpos : 0 < Real.log (N R : ℝ) := Real.log_pos hNR1
+      have hlogNne : Real.log (N R : ℝ) ≠ 0 := ne_of_gt hlogNpos
+      have hR1 : (1 : ℝ) < (R : ℝ) := by exact_mod_cast (by omega : 1 < R)
+      have hlogRpos : 0 < Real.log (R : ℝ) := Real.log_pos hR1
+      have hNRleR : (N R : ℝ) ≤ (R : ℝ) := by
+        have ha : (N R : ℝ) ≤ (R : ℝ) ^ t := Nat.floor_le (by positivity)
+        have hb : (R : ℝ) ^ t ≤ (R : ℝ) ^ (1 : ℝ) := Real.rpow_le_rpow_of_exponent_le hR1.le ht1
+        rw [Real.rpow_one] at hb; linarith
+      set cR : ℝ := Real.log (N R : ℝ) / Real.log (R : ℝ) with hcRdef
+      have hcR0 : 0 ≤ cR := by rw [hcRdef]; positivity
+      have hcR1 : cR ≤ 1 := by
+        rw [hcRdef, div_le_one hlogRpos]; exact Real.log_le_log (by positivity) hNRleR
+      have hmem : ∀ c : ℝ, 0 ≤ c → c ≤ 1 → ∀ u : ℝ, 0 ≤ u → u ≤ 1 → c * u ∈ Set.Icc (0 : ℝ) 1 :=
+        fun c hc0 hc1 u hu0 hu1 =>
+          ⟨mul_nonneg hc0 hu0, by nlinarith [mul_le_mul hc1 hu1 hu0 (zero_le_one : (0:ℝ) ≤ 1)]⟩
+      have hbdc : ∀ g ∈ gs, ∀ u : ℝ, 0 ≤ u → u ≤ 1 → |g (cR * u)| ≤ M :=
+        fun g hg u hu0 hu1 => hM g hg (cR * u) (hmem cR hcR0 hcR1 u hu0 hu1)
+      have hbdt : ∀ g ∈ gs, ∀ u : ℝ, 0 ≤ u → u ≤ 1 → |g (t * u)| ≤ M :=
+        fun g hg u hu0 hu1 => hM g hg (t * u) (hmem t ht0 ht1 u hu0 hu1)
+      have hclose : ∀ g ∈ gs, ∀ u : ℝ, 0 ≤ u → u ≤ 1 → |g (cR * u) - g (t * u)| ≤ εpp := by
+        intro g hg u hu0 hu1
+        refine hδ g hg (cR * u) (hmem cR hcR0 hcR1 u hu0 hu1) (t * u) (hmem t ht0 ht1 u hu0 hu1) ?_
+        rw [show cR * u - t * u = (cR - t) * u from by ring, abs_mul, abs_of_nonneg hu0]
+        calc |cR - t| * u ≤ δ * 1 := mul_le_mul hcRδR hu1 hu0 hδ0.le
+          _ = δ := mul_one δ
+      have hQL : ∀ m : ℕ, m ≤ N R → Real.log (m : ℝ) ≤ Real.log (N R : ℝ) := by
+        intro m hm
+        rcases Nat.eq_zero_or_pos m with rfl | hmpos
+        · rw [Nat.cast_zero, Real.log_zero]; exact hlogNpos.le
+        · exact Real.log_le_log (by exact_mod_cast hmpos) (by exact_mod_cast hm)
+      have hdist := evalNest_dist (Real.log (N R : ℝ)) hlogNpos cR t M εpp hM0 hεpp0.le gs (N R)
+        hbdc hbdt hclose hQL
+      have hDeq : nestedLogSum R gs (N R) - nestedLogSum (N R) gss (N R)
+          = evalNest (Real.log (N R : ℝ)) cR gs (N R)
+            - evalNest (Real.log (N R : ℝ)) t gs (N R) := by
+        rw [hcRdef, evalNest_eq_nestedLogSum_base R (N R) hlogNne gs (N R),
+            evalNest_eq_nestedLogSum_scaled (N R) t gs (N R)]
+      rw [← hDeq] at hdist
+      rw [Real.norm_eq_abs, abs_div, abs_of_pos (pow_pos hlogNpos gs.length)]
+      have hlogNk : (0 : ℝ) < (Real.log (N R : ℝ)) ^ gs.length := pow_pos hlogNpos gs.length
+      have hpre0 : 0 ≤ (gs.length : ℝ) * (max M 1) ^ gs.length * εpp :=
+        mul_nonneg (mul_nonneg hkn hKp0.le) hεpp0.le
+      calc |nestedLogSum R gs (N R) - nestedLogSum (N R) gss (N R)|
+              / (Real.log (N R : ℝ)) ^ gs.length
+          ≤ ((gs.length : ℝ) * (max M 1) ^ gs.length * εpp * harmNest gs.length (N R))
+              / (Real.log (N R : ℝ)) ^ gs.length := by
+            apply div_le_div_of_nonneg_right hdist hlogNk.le
+        _ = (gs.length : ℝ) * (max M 1) ^ gs.length * εpp
+              * (harmNest gs.length (N R) / (Real.log (N R : ℝ)) ^ gs.length) := by ring
+        _ ≤ (gs.length : ℝ) * (max M 1) ^ gs.length * εpp * C :=
+            mul_le_mul_of_nonneg_left hharmR hpre0
+        _ = (gs.length : ℝ) * (max M 1) ^ gs.length * C * εpp := by ring
+        _ < ε := hεppfin
+    -- assemble: `PsiK = c_R^k · (B + drift)`, limit `t^k · nestedPhi gss 0 = nestedPhi gs (1-t)`.
+    have hAk : Tendsto (fun R : ℕ => (Real.log (N R : ℝ) / Real.log (R : ℝ)) ^ gs.length) atTop
+        (𝓝 (t ^ gs.length)) := hcR.pow gs.length
+    have hcomb := hAk.mul (hB.add hdrift)
+    rw [show nestedPhi gs (1 - t) = t ^ gs.length * (nestedPhi gss 0 + 0) from by
+      rw [add_zero]; exact nestedPhi_scale gs t (ne_of_gt htpos)]
+    refine hcomb.congr' ?_
+    filter_upwards [hNtop.eventually_ge_atTop 2, eventually_ge_atTop 2] with R hNR2 hR2
+    have hlogNne : Real.log (N R : ℝ) ≠ 0 :=
+      ne_of_gt (Real.log_pos (by exact_mod_cast (by omega : 1 < N R)))
+    have hlogRne : Real.log (R : ℝ) ≠ 0 :=
+      ne_of_gt (Real.log_pos (by exact_mod_cast (by omega : 1 < R)))
+    show (Real.log (N R : ℝ) / Real.log (R : ℝ)) ^ gs.length
+        * (nestedLogSum (N R) gss (N R) / (Real.log (N R : ℝ)) ^ gs.length
+           + (nestedLogSum R gs (N R) - nestedLogSum (N R) gss (N R))
+             / (Real.log (N R : ℝ)) ^ gs.length)
+      = nestedLogSum R gs (N R) / (Real.log (R : ℝ)) ^ gs.length
+    rw [div_pow]
+    field_simp
+    ring
+
+/-- **The unconditional generic `k`-D weighted Riemann limit** (strong induction on the list length).
+For every nonnegative continuous list `Gs`, the fully-coupled `k`-D log-weighted Riemann sum over
+`∏ nᵢ ≤ R` converges to the iterated simplex integral `nestedPhi Gs 0 = ∫_{simplex} ∏ Gs`. The cons
+step builds `psi_k_pointwise gs` (length `k`) from the IH (full limits for all length-`k` lists, the
+scaled and all-ones lists in particular), then upgrades to inner-uniform and applies the engine. -/
+theorem weighted_riemann_kd_aux : ∀ (n : ℕ) (Gs : List (ℝ → ℝ)), Gs.length = n →
+    (∀ g ∈ Gs, ∀ x, 0 ≤ g x) → (∀ g ∈ Gs, Continuous g) →
+    Tendsto (fun R : ℕ => nestedLogSum R Gs R / (Real.log R) ^ Gs.length) atTop
+      (nhds (nestedPhi Gs 0)) := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n IH =>
+    intro Gs hlen hnn hcont
+    cases Gs with
+    | nil => exact weighted_riemann_kd_nil
+    | cons g gs =>
+        have htail_nn : ∀ f ∈ gs, ∀ x, 0 ≤ f x :=
+          fun f hf => hnn f (List.mem_cons.mpr (Or.inr hf))
+        have htail_cont : ∀ f ∈ gs, Continuous f :=
+          fun f hf => hcont f (List.mem_cons.mpr (Or.inr hf))
+        have hgslt : gs.length < n := by rw [← hlen, List.length_cons]; omega
+        have hkd_gs : ∀ (hs : List (ℝ → ℝ)), hs.length = gs.length → (∀ g ∈ hs, ∀ x, 0 ≤ g x) →
+            (∀ g ∈ hs, Continuous g) →
+            Tendsto (fun R : ℕ => nestedLogSum R hs R / (Real.log R) ^ hs.length) atTop
+              (nhds (nestedPhi hs 0)) :=
+          fun hs hhs hnn' hcont' => IH gs.length hgslt hs hhs hnn' hcont'
+        refine weighted_riemann_cons_of_inner g gs
+          (hcont g (List.mem_cons.mpr (Or.inl rfl))).continuousOn
+          (nestedPhi_continuous gs htail_cont).continuousOn ?_
+        exact inner_uniform_kd_of_pointwise gs htail_nn htail_cont
+          (fun t ht => psi_k_pointwise gs htail_nn htail_cont hkd_gs t ht)
+
+/-- **Generic `k`-D weighted Riemann limit** (the headline). `nestedLogSum R Gs R / (log R)^|Gs| →
+nestedPhi Gs 0 = ∫_{simplex} ∏ Gs`, unconditional for every nonnegative continuous `Gs`. -/
+theorem weighted_riemann_kd (Gs : List (ℝ → ℝ)) (hnn : ∀ g ∈ Gs, ∀ x, 0 ≤ g x)
+    (hcont : ∀ g ∈ Gs, Continuous g) :
+    Tendsto (fun R : ℕ => nestedLogSum R Gs R / (Real.log R) ^ Gs.length) atTop
+      (nhds (nestedPhi Gs 0)) :=
+  weighted_riemann_kd_aux Gs.length Gs rfl hnn hcont
+
 end BoundedGaps.WeightedRiemannKD
