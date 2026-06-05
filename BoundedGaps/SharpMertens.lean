@@ -1094,4 +1094,234 @@ theorem sharp_mertens_of_log_bound {C₂ : ℝ}
       Filter.atTop (nhds 1) :=
   sharp_mertens_tendsto summable_norm_bAF (summable_norm_bAF_log_of_bound h2)
 
+/-! ## The SECOND-ORDER asymptotic `∑_{n≤N} μ²/φ = log N + β + o(1)`
+
+The first-order `sharp_mertens_unconditional` (`U(N)/log N → 1`) is NOT enough for the
+W-coprime Mertens base at the prime `p = 2` (the geometric inversion in `CoprimeMertens`
+becomes the alternating series `∑_k (-1)^k U(N/2^k)`, whose `(p-1)/p = 1/2` value relies on
+the *convergent* correction `U(N) - log N → β`, not merely a bounded one). Here we upgrade
+`sum_g_decomp` (`U = P·log − Q + R`) to that convergent second-order form, **fully
+unconditionally** (both summability inputs are already discharged via `summable_norm_bAF` /
+`summable_norm_bAF_log_of_bound sum_norm_bAF_log_le`). The limit constant is
+`β = γ − ∑'_e b(e)·log e` (Euler–Mascheroni `γ` minus the convergent log-weighted b-series). -/
+
+open Filter Topology
+
+/-- **Pointwise harmonic remainder limit.** For each fixed `e ≥ 1`,
+`r_e(N) = (∑_{m≤⌊N/e⌋} 1/m) − log(N/e) → γ` (Euler–Mascheroni). Proved by squeezing between
+mathlib's `eulerMascheroniSeq M = harmonic M − log(M+1)` and
+`eulerMascheroniSeq' M = harmonic M − log M` at `M = ⌊N/e⌋ → ∞`, using
+`⌊N/e⌋ ≤ N/e < ⌊N/e⌋+1`. -/
+theorem r_e_tendsto_gamma (e : ℕ) (he : 1 ≤ e) :
+    Tendsto (fun N : ℕ =>
+      (∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ)))
+      atTop (𝓝 Real.eulerMascheroniConstant) := by
+  have he0 : (0 : ℝ) < e := by exact_mod_cast he
+  have he0n : 0 < e := he
+  have hMtop : Tendsto (fun N : ℕ => N / e) atTop atTop := by
+    apply tendsto_atTop_atTop_of_monotone
+    · intro a b hab; exact Nat.div_le_div_right hab
+    · intro K; exact ⟨K * e, by rw [Nat.mul_div_cancel _ he0n]⟩
+  have hlow : Tendsto (fun N : ℕ => Real.eulerMascheroniSeq (N / e)) atTop
+      (𝓝 Real.eulerMascheroniConstant) := Real.tendsto_eulerMascheroniSeq.comp hMtop
+  have hupp : Tendsto (fun N : ℕ => Real.eulerMascheroniSeq' (N / e)) atTop
+      (𝓝 Real.eulerMascheroniConstant) := Real.tendsto_eulerMascheroniSeq'.comp hMtop
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le' hlow hupp ?_ ?_
+  · filter_upwards [eventually_ge_atTop e] with N hN
+    have hM1 : 1 ≤ N / e := (Nat.one_le_div_iff he0n).mpr hN
+    have hcastle : ((N / e : ℕ) : ℝ) ≤ (N : ℝ) / (e : ℝ) := by exact_mod_cast Nat.cast_div_le
+    have hNlt : (N : ℝ) / (e : ℝ) < ((N / e : ℕ) : ℝ) + 1 := by
+      rw [div_lt_iff₀ he0]
+      have hnat : N < (N / e + 1) * e := by
+        have hdm := Nat.div_add_mod N e
+        have hmod := Nat.mod_lt N he0n
+        have hh : (N / e + 1) * e = e * (N / e) + e := by ring
+        omega
+      calc (N : ℝ) < (((N / e + 1) * e : ℕ) : ℝ) := by exact_mod_cast hnat
+        _ = (((N / e : ℕ) : ℝ) + 1) * (e : ℝ) := by push_cast; ring
+    have hharm : (∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) = (harmonic (N / e) : ℝ) :=
+      (BoundedGaps.Mertens.harmonic_eq_icc_sum (N / e)).symm
+    have hNepos : (0 : ℝ) < (N : ℝ) / (e : ℝ) :=
+      lt_of_lt_of_le (by exact_mod_cast hM1) hcastle
+    simp only [Real.eulerMascheroniSeq]
+    rw [hharm]
+    have hlog : Real.log ((N : ℝ) / (e : ℝ)) ≤ Real.log (((N / e : ℕ) : ℝ) + 1) :=
+      Real.log_le_log hNepos hNlt.le
+    linarith
+  · filter_upwards [eventually_ge_atTop e] with N hN
+    have hM1 : 1 ≤ N / e := (Nat.one_le_div_iff he0n).mpr hN
+    have hcastle : ((N / e : ℕ) : ℝ) ≤ (N : ℝ) / (e : ℝ) := by exact_mod_cast Nat.cast_div_le
+    have hMpos : (0 : ℝ) < ((N / e : ℕ) : ℝ) := by exact_mod_cast hM1
+    have hharm : (∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) = (harmonic (N / e) : ℝ) :=
+      (BoundedGaps.Mertens.harmonic_eq_icc_sum (N / e)).symm
+    have hM0 : N / e ≠ 0 := by omega
+    simp only [Real.eulerMascheroniSeq', if_neg hM0]
+    rw [hharm]
+    have hlog : Real.log ((N / e : ℕ) : ℝ) ≤ Real.log ((N : ℝ) / (e : ℝ)) :=
+      Real.log_le_log hMpos hcastle
+    linarith
+
+/-- **The remainder term `R(N) → γ`** (dominated convergence). `R(N) = ∑_{e≤N} b(e)·r_e(N)`
+with `r_e(N) → γ` pointwise (`r_e_tendsto_gamma`) and `|b(e)·r_e| ≤ ‖b(e)‖` (summable,
+`r_e ∈ [0,1]`); Tannery / DCT (`tendsto_tsum_of_dominated_convergence`) gives
+`R(N) → γ·∑'_e b(e) = γ·1 = γ`. -/
+theorem R_tendsto_gamma :
+    Tendsto (fun N : ℕ => ∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) *
+        ((∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ))))
+      atTop (𝓝 Real.eulerMascheroniConstant) := by
+  classical
+  set rterm : ℕ → ℕ → ℝ := fun N e =>
+    (BSharp e / (e : ℝ)) *
+      ((∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ))) with hrterm
+  set rfun : ℕ → ℕ → ℝ := fun N e => if e ∈ Finset.Icc 1 N then rterm N e else 0 with hrfun
+  have hsum : Summable (fun e => ‖bAF e‖) := summable_norm_bAF
+  have hab : ∀ e : ℕ, Tendsto (fun N => rfun N e) atTop
+      (𝓝 (bAF e * Real.eulerMascheroniConstant)) := by
+    intro e
+    rcases Nat.eq_zero_or_pos e with rfl | he
+    · have h0 : (fun N : ℕ => rfun N 0) = fun _ => (0 : ℝ) := by
+        funext N; simp [hrfun]
+      rw [h0, show bAF 0 * Real.eulerMascheroniConstant = 0 by
+        rw [ArithmeticFunction.map_zero]; ring]
+      exact tendsto_const_nhds
+    · have hlim : Tendsto (fun N : ℕ => rterm N e) atTop
+          (𝓝 (bAF e * Real.eulerMascheroniConstant)) := by
+        have := (tendsto_const_nhds (x := BSharp e / (e : ℝ))).mul (r_e_tendsto_gamma e he)
+        rw [hrterm]
+        simp only
+        rw [bAF_apply]
+        exact this
+      refine hlim.congr' ?_
+      filter_upwards [eventually_ge_atTop e] with N hN
+      simp only [hrfun]
+      rw [if_pos (Finset.mem_Icc.mpr ⟨he, hN⟩)]
+  have hbound : ∀ᶠ N in atTop, ∀ e, ‖rfun N e‖ ≤ ‖bAF e‖ := by
+    refine Eventually.of_forall (fun N e => ?_)
+    simp only [hrfun]
+    split_ifs with hmem
+    · obtain ⟨he1, heN⟩ := Finset.mem_Icc.mp hmem
+      have hr := harmonic_remainder_mem he1 heN
+      have hr1 : |(∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m) - Real.log ((N : ℝ) / (e : ℝ))| ≤ 1 := by
+        rw [abs_le]; exact ⟨by linarith [hr.1], by linarith [hr.2]⟩
+      rw [hrterm]
+      simp only
+      rw [norm_mul]
+      have habs : ‖(∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m)
+          - Real.log ((N : ℝ) / (e : ℝ))‖ ≤ 1 := by rw [Real.norm_eq_abs]; exact hr1
+      calc ‖BSharp e / (e : ℝ)‖ * ‖(∑ m ∈ Finset.Icc 1 (N / e), (1 : ℝ) / m)
+              - Real.log ((N : ℝ) / (e : ℝ))‖
+          ≤ ‖BSharp e / (e : ℝ)‖ * 1 := mul_le_mul_of_nonneg_left habs (norm_nonneg _)
+        _ = ‖BSharp e / (e : ℝ)‖ := mul_one _
+        _ = ‖bAF e‖ := by rw [bAF_apply]
+    · rw [norm_zero]; exact norm_nonneg _
+  have hfinal := tendsto_tsum_of_dominated_convergence hsum hab hbound
+  have hg : (∑' e : ℕ, bAF e * Real.eulerMascheroniConstant) = Real.eulerMascheroniConstant := by
+    rw [tsum_mul_right, tsum_bAF_eq_one summable_norm_bAF, one_mul]
+  rw [hg] at hfinal
+  refine hfinal.congr (fun N => ?_)
+  rw [tsum_eq_sum (s := Finset.Icc 1 N) (fun e he => by simp only [hrfun]; rw [if_neg he])]
+  apply Finset.sum_congr rfl
+  intro e he
+  simp only [hrfun]; rw [if_pos he, hrterm]
+
+/-- **The log-weighted term `Q(N) → ∑'_e b(e)·log e`** (a convergent constant, since
+`∑|b(e)|·|log e| < ∞`). -/
+theorem Q_tendsto :
+    Tendsto (fun N : ℕ => ∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) * Real.log e) atTop
+      (𝓝 (∑' e : ℕ, bAF e * Real.log e)) := by
+  have hsummable : Summable (fun e => bAF e * Real.log e) := by
+    apply Summable.of_norm
+    have heq : (fun e => ‖bAF e * Real.log (e : ℝ)‖) = fun e => ‖bAF e‖ * |Real.log (e : ℝ)| := by
+      funext e; rw [norm_mul, Real.norm_eq_abs (Real.log (e : ℝ))]
+    rw [heq]; exact summable_norm_bAF_log_of_bound sum_norm_bAF_log_le
+  have hHS : HasSum (fun e => bAF e * Real.log e) (∑' e, bAF e * Real.log e) := hsummable.hasSum
+  have hshift : Tendsto (fun N : ℕ => ∑ n ∈ Finset.range (N + 1), bAF n * Real.log n) atTop
+      (𝓝 (∑' e, bAF e * Real.log e)) := by
+    have := hHS.tendsto_sum_nat.comp (Filter.tendsto_add_atTop_nat 1)
+    simpa [Function.comp] using this
+  have hg0 : (fun n : ℕ => bAF n * Real.log (n : ℝ)) 0 = 0 := by
+    simp only [ArithmeticFunction.map_zero, zero_mul]
+  have hbridge : ∀ N : ℕ, ∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) * Real.log e
+      = ∑ n ∈ Finset.range (N + 1), bAF n * Real.log n := by
+    intro N
+    rw [← sum_Icc_eq_sum_range_succ hg0 N]
+    exact Finset.sum_congr rfl (fun e _ => by rw [bAF_apply])
+  simpa only [hbridge] using hshift
+
+set_option maxHeartbeats 400000 in
+-- The tail-tsum `≤`-chain (norm_tsum_le_tsum_norm, tsum_mul_right, Summable.tsum_le_tsum)
+-- pushes elaboration past the 200k default; 400k suffices.
+/-- **The main coefficient gives `(P(N) − 1)·log N → 0`.** Since `P(N) = ∑_{e≤N} b(e) → 1`
+with `1 − P(N) = ∑'_{i} b(i+N+1)`, and the log-weighted b-series is summable, the tail
+satisfies `log N · ∑'_{i}|b(i+N+1)| ≤ ∑'_{i} ‖b(i+N+1)‖·|log(i+N+1)| → 0` (because for
+`e > N`, `log N ≤ log e`). This is the rate `P(N) − 1 = o(1/log N)` that the second-order
+asymptotic needs. -/
+theorem P_minus_one_mul_log_tendsto_zero :
+    Tendsto (fun N : ℕ => ((∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ)) - 1) * Real.log N) atTop
+      (𝓝 0) := by
+  set h : ℕ → ℝ := fun e => ‖bAF e‖ * |Real.log (e : ℝ)| with hh
+  have hsumh : Summable h := by
+    rw [hh]; exact summable_norm_bAF_log_of_bound sum_norm_bAF_log_le
+  have hsumb : Summable bAF := summable_norm_bAF.of_norm
+  have htail0 : Tendsto (fun N : ℕ => ∑' i, h (i + (N + 1))) atTop (𝓝 0) := by
+    have := (tendsto_sum_nat_add h).comp (Filter.tendsto_add_atTop_nat 1)
+    simpa [Function.comp] using this
+  have hbz : (fun n : ℕ => bAF n) 0 = 0 := ArithmeticFunction.map_zero
+  have hbridgeP : ∀ N : ℕ, ∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ)
+      = ∑ n ∈ Finset.range (N + 1), bAF n := by
+    intro N
+    rw [← sum_Icc_eq_sum_range_succ hbz N]
+    exact Finset.sum_congr rfl (fun e _ => by rw [bAF_apply])
+  refine squeeze_zero_norm' ?_ htail0
+  filter_upwards [eventually_ge_atTop 1] with N hN1
+  have hlogN : (0 : ℝ) ≤ Real.log N := Real.log_nonneg (by exact_mod_cast hN1)
+  have hPtail : (∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ)) - 1 = -(∑' i, bAF (i + (N + 1))) := by
+    have hsplit := hsumb.sum_add_tsum_nat_add (N + 1)
+    rw [tsum_bAF_eq_one summable_norm_bAF] at hsplit
+    rw [hbridgeP N]; linarith
+  rw [Real.norm_eq_abs, hPtail, neg_mul, abs_neg, abs_mul, abs_of_nonneg hlogN]
+  have hnormtail_sum : Summable (fun i => ‖bAF (i + (N + 1))‖) :=
+    (summable_nat_add_iff (N + 1)).mpr summable_norm_bAF
+  have htailsum : Summable (fun i => h (i + (N + 1))) := (summable_nat_add_iff (N + 1)).mpr hsumh
+  calc |∑' i, bAF (i + (N + 1))| * Real.log N
+      ≤ (∑' i, ‖bAF (i + (N + 1))‖) * Real.log N := by
+        apply mul_le_mul_of_nonneg_right _ hlogN
+        rw [← Real.norm_eq_abs]
+        exact norm_tsum_le_tsum_norm hnormtail_sum
+    _ = ∑' i, ‖bAF (i + (N + 1))‖ * Real.log N := by rw [tsum_mul_right]
+    _ ≤ ∑' i, h (i + (N + 1)) := by
+        refine Summable.tsum_le_tsum (fun i => ?_) (hnormtail_sum.mul_right _) htailsum
+        rw [hh]
+        simp only
+        apply mul_le_mul_of_nonneg_left _ (norm_nonneg _)
+        rw [abs_of_nonneg (Real.log_nonneg (by
+          have : (1 : ℝ) ≤ ((i + (N + 1) : ℕ) : ℝ) := by
+            exact_mod_cast Nat.one_le_iff_ne_zero.mpr (by omega)
+          exact this))]
+        apply Real.log_le_log (by exact_mod_cast hN1)
+        exact_mod_cast by omega
+
+/-- **Sharp Mertens, second order (UNCONDITIONAL): `∑_{n≤N} μ²/φ − log N → β`.**
+With `β = γ − ∑'_e b(e)·log e`. Combines `sum_g_decomp` (`U = P·log − Q + R`) with the three
+sub-limits `(P−1)·log → 0`, `Q → ∑'b·log`, `R → γ`. This is the convergent correction needed
+to evaluate the `p = 2` W-coprime Mertens base (`CoprimeMertens`), where the first-order
+`sharp_mertens_unconditional` is insufficient. -/
+theorem sum_g_second_order :
+    Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) - Real.log N)
+      atTop (𝓝 (Real.eulerMascheroniConstant - ∑' e : ℕ, bAF e * Real.log e)) := by
+  have key := ((P_minus_one_mul_log_tendsto_zero.sub Q_tendsto).add R_tendsto_gamma)
+  have hval : (0 : ℝ) - (∑' e : ℕ, bAF e * Real.log e) + Real.eulerMascheroniConstant
+      = Real.eulerMascheroniConstant - ∑' e : ℕ, bAF e * Real.log e := by ring
+  rw [hval] at key
+  refine key.congr' ?_
+  filter_upwards [eventually_ge_atTop 1] with N hN1
+  rw [sum_g_decomp N hN1]; ring
+
+/-- **Existential second-order form.** There is a constant `β` with `U(N) − log N → β`.
+The convenient interface for the `p = 2` alternating-sum cancellation in `CoprimeMertens`. -/
+theorem exists_sum_g_second_order :
+    ∃ β : ℝ, Tendsto (fun N : ℕ => (∑ n ∈ Finset.Icc 1 N, gMoebiusSqTotient n) - Real.log N)
+      atTop (𝓝 β) :=
+  ⟨_, sum_g_second_order⟩
+
 end BoundedGaps.SharpMertens
