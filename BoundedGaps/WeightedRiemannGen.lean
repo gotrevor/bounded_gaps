@@ -698,6 +698,37 @@ theorem weighted_riemann_kd_muphi (Gs : List (ℝ → ℝ)) (hnn : ∀ g ∈ Gs,
   weighted_riemann_kd_w (fun n => gMoebiusSqTotient n) gMoebiusSqTotient_nonneg
     weighted1DLimit_muphi Gs hnn hcont
 
+open BoundedGaps.SingularSeries in
+/-- **Separable `(μ²/φ)` `y_r`-space main term** (the GPY/Maynard `s1` diagonal constant, Path Y).
+For continuous coordinate functions `Fs : Fin k → ℝ → ℝ`, the fully-coupled simplex sum of the
+**squared** weights converges to the iterated simplex integral of `∏ᵢ (Fs i)²`:
+`(∑_{∏rᵢ≤R} ∏ᵢ (μ²/φ)(rᵢ)·Fs i (log rᵢ/log R)²) / (log R)^k → nestedPhi [Fs₀²,…] 0`.
+For a separable cutoff `F t = ∏ᵢ Fs i (t i)`, the limit `nestedPhi (ofFn Fs²) 0 = ∫_{simplex} ∏ᵢ Fs
+i² = ∫_{simplex} F² = mkF_denominator k F` (the last equality is the simplex-Fubini bridge
+`∫_{simplex k} ∏ gᵢ = nestedPhi (ofFn g) 0`, the next connection step). This is the exact analytic
+input `s1_holds_from_nonprime_asym` needs in `y_r`-space. -/
+theorem weighted_riemann_kd_muphi_sep (k : ℕ) (Fs : Fin k → ℝ → ℝ)
+    (hcont : ∀ i, Continuous (Fs i)) :
+    Tendsto (fun R : ℕ =>
+        nestedLogSumW (fun n => gMoebiusSqTotient n) R
+            (List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2)) R
+          / (Real.log R) ^ k)
+      atTop (nhds (nestedPhi (List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2)) 0)) := by
+  have hlen : (List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2)).length = k := List.length_ofFn
+  have hnn : ∀ g ∈ List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2), ∀ x, 0 ≤ g x := by
+    intro g hg x
+    rw [List.mem_ofFn] at hg
+    obtain ⟨i, rfl⟩ := hg
+    exact sq_nonneg _
+  have hgcont : ∀ g ∈ List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2), Continuous g := by
+    intro g hg
+    rw [List.mem_ofFn] at hg
+    obtain ⟨i, rfl⟩ := hg
+    exact (hcont i).pow 2
+  have h := weighted_riemann_kd_muphi (List.ofFn (fun i : Fin k => fun x => (Fs i x) ^ 2)) hnn hgcont
+  rw [hlen] at h
+  exact h
+
 /-! ### Validation: the bare `1/n` ladder is the generic ladder at `w = 1/n`.
 
 Recovering `WeightedRiemannKD.weighted_riemann_kd` as the instance `w n = 1/n` is kernel-checked
