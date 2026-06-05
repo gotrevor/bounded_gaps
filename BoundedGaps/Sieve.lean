@@ -2808,7 +2808,7 @@ The analytic core `selberg_sieve_data_from_F` is twig-split into:
    `nonprime-asym`, line 889, case (i) "Trivial"): with $\nu$ the Selberg
    weight, the (s1) asymptotic holds with $\alpha = I(F) =
    \int_{\mathcal{R}_k} F^2$ (i.e. `mkF_denominator k F`).
-4. **`s2_holds_from_prime_asym_under_EH`** — cited axiom (Polymath8b §3 Theorem
+4. **`s2_holds_from_prime_asym_at_level`** — cited axiom (Polymath8b §3 Theorem
    `prime-asym`, line 862, case (i) EH): same setup, (s2) holds with
    $\beta_i = (\vartheta / 2) \cdot J_i(F)$ for each $i$. The $\vartheta / 2$
    factor encodes the $B^{-k}\,x/W$ vs $B^{1-k}\,x/\phi(W)$ scaling between
@@ -3041,8 +3041,14 @@ simplex, the (s2) asymptotic holds eventually with $\beta_i =
 The $\vartheta/2$ factor is the Polymath8b normalization absorbing the ratio
 $B^{-k}\,x/W$ vs $B^{1-k}\,x/\phi(W)$ from `nonprime-asym` vs `prime-asym`,
 together with the $\vartheta$ from the EH window. Future PR can replace with
-a real proof from the divisor-sum expansion (Polymath8b §3 eqn (theta-oo)). -/
-axiom s2_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
+a real proof from the divisor-sum expansion (Polymath8b §3 eqn (theta-oo)).
+
+Named `_at_level` (not `_under_EH`): the `EH ϑ` hypothesis is at a *generic*
+level ϑ, so for ϑ < 1/2 it is discharged unconditionally by Bombieri-Vinogradov.
+This axiom is therefore **not** conditional on the EH conjecture — only callers
+feeding ϑ ≥ 1/2 invoke EH proper. The old name made the unconditional
+`H1_le_246` look EH-conditional in `#print axioms`. -/
+axiom s2_holds_from_prime_asym_at_level {k : ℕ} (_hk : k ≥ 2)
     {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ϑ : ℝ} (_hϑ : 0 < ϑ ∧ ϑ < 1) (_hEH : Prerequisites.EH ϑ)
     {F : (Fin k → ℝ) → ℝ}
@@ -3061,7 +3067,7 @@ supported on the truncated simplex $\{t \in [0, \delta/(1/4+\varpi)]^k :
 \sum_i t_i \le 1\}$, the (s2) asymptotic holds eventually with
 $\beta_i = (1/4 + \varpi) \cdot J_i(F)$ for each $i$.
 
-This is the MPZ analog of `s2_holds_from_prime_asym_under_EH`: the effective
+This is the MPZ analog of `s2_holds_from_prime_asym_at_level`: the effective
 EH level is $\vartheta := 1/2 + 2\varpi$, the $\vartheta/2$ factor becomes
 $1/4 + \varpi$, and the smooth-moduli restriction is encoded by F's
 per-coordinate truncation at $\delta/(1/4+\varpi)$.
@@ -3089,7 +3095,7 @@ under $\EH[\vartheta]$, construct Selberg sieve data $(b, W, \nu,
 and the key ratio $\sum_i \beta_i / \alpha > m$.
 
 Real proof — twig-split composition of `wtrick_data`,
-`s1_holds_from_nonprime_asym`, `s2_holds_from_prime_asym_under_EH`, plus the
+`s1_holds_from_nonprime_asym`, `s2_holds_from_prime_asym_at_level`, plus the
 algebraic key step
 $(\vartheta/2) \cdot M_k(F) > (\vartheta/2) \cdot (2m/\vartheta) = m$. -/
 theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
@@ -3131,7 +3137,7 @@ theorem selberg_sieve_data_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
     exact s1_holds_from_nonprime_asym hk hFdecomp hF_smooth hF_supp hF_den hAdm hLen b W hW
   · -- (s2)
     intro i
-    exact s2_holds_from_prime_asym_under_EH hk hϑ hEH hFdecomp hF_smooth hF_supp hF_den
+    exact s2_holds_from_prime_asym_at_level hk hϑ hEH hFdecomp hF_smooth hF_supp hF_den
       hAdm hLen b W hW i
 
 /-- **Theorem 5.2 / "maynard-thm"** (under EH): if $M_k > 2m/\vartheta$ for
@@ -3830,8 +3836,12 @@ Under $\EH[\vartheta]$ and the support-fitting condition $1 + \varepsilon <
 J_{i,1-\varepsilon}(F)$. The $(1-\varepsilon)$-shrunken outer integration in
 the numerator is what lets prime-asym case (i)'s support bound be satisfied
 even with the $(1+\varepsilon)$-enlarged $F$. Future PR can replace with a
-real proof. -/
-axiom s2_eps_holds_from_prime_asym_under_EH {k : ℕ} (_hk : k ≥ 2)
+real proof.
+
+Named `_at_level` (not `_under_EH`): the `EH ϑ` hypothesis is at a *generic*
+level ϑ, discharged unconditionally by Bombieri-Vinogradov for ϑ < 1/2. Not
+conditional on the EH conjecture; only ϑ ≥ 1/2 callers invoke EH proper. -/
+axiom s2_eps_holds_from_prime_asym_at_level {k : ℕ} (_hk : k ≥ 2)
     {J : ℕ} {c : Fin J → ℝ} {Fs : Fin J → Fin k → ℝ → ℝ} {R : ℝ}
     {ε ϑ : ℝ} (_hε : 0 < ε) (_hϑ : 0 < ϑ ∧ ϑ < 1)
     (_hEH : Prerequisites.EH ϑ) (_hSupp : 1 + ε < 1 / ϑ)
@@ -3859,7 +3869,7 @@ window $\EH[\vartheta]$ provides; below that line the sieve construction
 is the same as `maynard_thm`.
 
 Real proof — mirror of `selberg_sieve_data_from_F` (PR-A5). Uses
-`wtrick_data` + `s1_eps_holds_from_nonprime_asym` + `s2_eps_holds_from_prime_asym_under_EH`
+`wtrick_data` + `s1_eps_holds_from_nonprime_asym` + `s2_eps_holds_from_prime_asym_at_level`
 + the algebraic key step $(\vartheta/2) \cdot M_{k,\varepsilon}(F)
 > (\vartheta/2) \cdot (2m/\vartheta) = m$. -/
 theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
@@ -3905,7 +3915,7 @@ theorem selberg_sieve_data_eps_from_F {k m : ℕ} (hk : k ≥ 2) (_hm : m ≥ 1)
       hAdm hLen b W hW
   · -- (s2ε)
     intro i
-    exact s2_eps_holds_from_prime_asym_under_EH hk hε hϑ hEH hSupp hFdecomp
+    exact s2_eps_holds_from_prime_asym_at_level hk hε hϑ hEH hSupp hFdecomp
       hF_smooth hF_supp hF_den hAdm hLen b W hW i
 
 /-- **Theorem 5.4 / "epsilon-trick"** (Polymath8b §5 line 997,

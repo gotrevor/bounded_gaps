@@ -45,6 +45,22 @@ Checked against `.lake/packages/mathlib` directly, not from memory:
 (`grep -rc '^axiom ' BoundedGaps/`: Prerequisites 4, Sieve 10, Polymath8b 23,
 SymmetricReductionOrbitFree 1. Re-derive before acting; counts drift.)
 
+> **⚠️ Verified per-theorem 2026-06-04 (`#print axioms`).** "How many axioms"
+> is *per-theorem*, not a repo-wide count. The flagship `H1_le_246` rests on
+> exactly **4 math axioms**: `BombieriVinogradov`, `s1_holds_from_nonprime_asym`,
+> `s2_eps_holds_from_prime_asym_at_level`, `mk_eps_50_witness` — plus the trust
+> base (`propext, Classical.choice, Quot.sound` + 18 `native_decide` reductions
+> from the Engelsma 50-tuple; trust base, **not** debt — never count these as
+> "axioms left", see `feedback_axiom_discharge_doctrine`). Zero `sorry`.
+>
+> **`GeneralizedBombieriVinogradov` and `MPZ_polymath8a` are DEAD axioms** — in
+> *no* headline theorem's base. Each is reachable only through a demo wrapper
+> (`GEH_one_third`, `MPZ_small`) that nothing downstream consumes. The MPZ/GEH
+> dependence of `H2_le_398130`…`H5_*` and the GEH chain is *bundled inside* the
+> `mk_*_witness*` axioms (`∃ ϖ δ, … ∧ MPZ ϖ δ ∧ …`) and the `s2_*_under_MPZ` /
+> `s2_beyond_*_under_GEH` sieve axioms — not routed through the standalone ones.
+> So the "38" census **overcounts** the live dependency surface.
+
 ### Family A — deep analytic NT (the real literature targets)
 
 `Prerequisites.lean`:
@@ -52,22 +68,28 @@ SymmetricReductionOrbitFree 1. Re-derive before acting; counts drift.)
   carries a *real quantitative body* (`∑ maxDisc(Λ) ≤ C·x/(log x)^A`), so this
   is a fully-stated theorem, not a `Prop` stub.
 - `GeneralizedBombieriVinogradov : GEH ϑ` — Motohashi's version (over Dirichlet
-  convolutions α⋆β). Strictly harder than BV. NB: `GEH` itself is still an
-  opaque `axiom GEH : Prop` (no real body yet), so GBV can't be attacked until
-  `GEH` is given a faithful definition.
+  convolutions α⋆β). Strictly harder than BV. **DEAD axiom** (see verified note
+  above: only the unused `GEH_one_third` wrapper reaches it). NB: `GEH` itself is
+  still an opaque `axiom GEH : Prop` (no real body yet), so GBV can't be attacked
+  until `GEH` is given a faithful definition like `EH`/`MPZ` have — *and* a live
+  consumer would first have to route through it instead of the bundled witnesses.
 - `MPZ_polymath8a : MPZ ϖ δ` — Zhang's smooth-moduli estimate (level past 1/2).
   The docstring calls it "the most analytically demanding input we use"
   (Kloosterman sums, Deligne/Weil bounds, type I/II/III sums). **Do not chase
-  this** — arguably harder than BV itself.
+  this** — arguably harder than BV itself. **DEAD axiom** (only the unused
+  `MPZ_small` wrapper reaches it; H₂–H₅ get MPZ bundled inside `mk_*_witness`).
 
 ### Family B — sieve + combinatorial (tractable, "elementary")
 
 `Sieve.lean` (10): the GPY/Maynard sieve-sum evaluations.
 - `s1_*_holds_from_nonprime_asym` — main-term (nonprime) asymptotics,
   **unconditional**.
-- `s2_*_holds_from_prime_asym_under_{EH,MPZ,GEH}` — prime-sum asymptotics.
-  **This is where EH/GEH/MPZ (hence BV) actually gets consumed by the sieve.**
-  Even fully proven, the `_under_EH` ones stay conditional on Family A.
+- `s2_*_holds_from_prime_asym_at_level` (EH-level; **renamed 2026-06-04** from
+  `_under_EH`) and `s2_*_under_{MPZ,GEH}` — prime-sum asymptotics.
+  **This is where the level-of-distribution input gets consumed by the sieve.**
+  The `_at_level` ones take `EH ϑ` at a *generic* ϑ, so for ϑ<1/2 they are
+  unconditional via BV — only ϑ≥1/2 callers invoke the EH conjecture. (The old
+  `_under_EH` name made the unconditional `H1_le_246` look EH-conditional.)
 - `exists_separable_F_*` — the variational claim that a near-optimal weight
   admits a finite separable representation F = ∑ⱼ cⱼ ∏ᵢ Fⱼᵢ. (Also the gate on
   discharging the `selberg_nu` opaque — see its docstring + ROADMAP Tier 1.)
