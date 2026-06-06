@@ -235,3 +235,39 @@ showing the *polynomial-`F`* sub-case is **not** — which is the practically re
   `lean-toolchain`, `lake-manifest.json`, `lakefile.toml`, `LICENSE`.
 
 — host, 2026-06-05
+
+---
+
+## ADDENDUM 2026-06-06 (host) — Step 0 CONFIRMED: the witness IS polynomial ✅
+
+The §4b recommendation's gating precondition ("confirm `mk_eps_50_witness`'s `F` is
+polynomial before betting the route on it") is now **verified from source**. The
+PNT-free telescoping route is GREEN-LIT.
+
+- `PolynomialSieveWeight k` (`BoundedGaps/SievePolynomial.lean:54`) is literally a
+  finite `Finset (MultiIndex k × ℚ)`; `toFun t = ∑ c_α ∏ᵢ tᵢ^(αᵢ)` — a finite sum of
+  monomials with rational coefficients (a polynomial by construction).
+- The §6 witness is `symWeight R c` (`SymmetricReductionOrbitFree.lean:1024`), which
+  **produces** a `PolynomialSieveWeight` — a symmetric polynomial, rational coeffs,
+  monomial/orbit basis.
+- Discharge chain: `mk_eps_50_witness_of_symWeight`
+  (`SymmetricReductionEpsOrbitFree.lean:379`) → `mk_eps_50_witness_of_poly`
+  (`EpsBridge.lean:539`) feeds exactly that polynomial. `mk_eps_50_witness` itself is
+  still an axiom, but its discharge route is `native_decide`-ready over a polynomial `P`.
+
+**Nuance (carry into the reduction):** the function entering the smooth class `MkSet`
+is `Fapprox = χₙ · P` (smooth simplex cutoff × polynomial; `SievePolynomial.lean:162`,
+ε-analog `FapproxEps` `EpsBridge.lean:201`), NOT the bare polynomial. But the cutoff is
+only a limiting device — `χₙ → 1` on the simplex interior, `Mk ≥ MkF(P)` via DCT — so
+`F` is **"polynomial on its support"** (a truncated polynomial; the `d ≤ R` support
+restriction is intrinsic to the sieve anyway). That is precisely the standard Maynard
+situation the `μ ∗ log = Λ` telescoping handles. ~90% confidence the cutoff does not
+obstruct the route; the residual is the usual "check the boundary/support terms when
+you do the μ/φ→μ/n reduction (§4b-2)."
+
+Also re-verified live against GitHub this session: `sum_mangoldt_div_eq_log`
+(the sorry-free PNT-free anchor, with the `log 4 + 4` bound) in
+`PrimeNumberTheoremAnd/IEANTN/Mertens.lean`, and `log_mul_moebius_eq_vonMangoldt`
+(`log * μ = Λ`) in mathlib `ArithmeticFunction/VonMangoldt.lean`. Both present.
+
+— host, 2026-06-06
