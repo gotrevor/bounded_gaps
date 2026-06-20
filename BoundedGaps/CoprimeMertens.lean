@@ -747,7 +747,7 @@ theorem halving_recursion_o_log (d : ℕ → ℝ) (L : ℝ)
   have hsum := hcore.add hconst
   rw [add_zero] at hsum
   refine hsum.congr (fun N => ?_)
-  simp only
+  try simp only
   rw [← add_div]
   ring_nf
 

@@ -224,8 +224,8 @@ theorem singular_sum_bounded (N : ℕ) :
         intro x hx y hy; simp_all +decide [ Nat.primeFactors_mul ] ;
         intro h; have := Nat.prod_primeFactors_of_squarefree hx.2; have := Nat.prod_primeFactors_of_squarefree hy.2; aesop;
       · exact fun _ _ _ => Finset.prod_nonneg fun p hp => one_div_nonneg.2 <| mul_nonneg ( Nat.cast_nonneg _ ) <| sub_nonneg.2 <| Nat.one_le_cast.2 <| Nat.Prime.pos <| Finset.mem_filter.1 ( Finset.mem_powerset.1 ‹_› hp ) |>.2;
-    convert h_squarefree_prod.trans h_subset_prod using 1;
-    simp +decide [ add_comm ( 1 : ℝ ), Finset.prod_add ];
+    convert h_squarefree_prod.trans h_subset_prod using 1 <;>
+      first | rfl | exact Finset.prod_one_add _
   have h_exp : (∏ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 + 1 / ((p : ℝ) * (p - 1)))) ≤ Real.exp (∑ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 / ((p : ℝ) * (p - 1)))) := by
     rw [ Real.exp_sum ] ; exact Finset.prod_le_prod ( fun _ _ => by exact add_nonneg zero_le_one <| one_div_nonneg.mpr <| mul_nonneg ( Nat.cast_nonneg _ ) <| sub_nonneg.mpr <| Nat.one_le_cast.mpr <| Nat.Prime.pos <| by aesop ) fun _ _ => by rw [ add_comm ] ; exact Real.add_one_le_exp _;
   have h_sum : (∑ p ∈ Finset.filter Nat.Prime (Finset.Icc 2 N), (1 / ((p : ℝ) * (p - 1)))) ≤ 1 := by

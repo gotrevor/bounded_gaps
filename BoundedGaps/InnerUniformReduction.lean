@@ -67,7 +67,7 @@ lemma tendsto_logFloor_rpow_div (t : ℝ) (ht : 0 < t) :
       have h1 : Tendsto (fun R : ℕ => 1 - (R : ℝ) ^ (-t)) atTop (𝓝 1) := by
         simpa using tendsto_const_nhds.sub hpow0
       have := (Real.continuousAt_log (by norm_num : (1 : ℝ) ≠ 0)).tendsto.comp h1
-      simpa [Real.log_one] using this
+      simpa [Real.log_one, Function.comp_def] using this
     exact hnum.div_atTop hlogR_atTop
   have hlower : Tendsto
       (fun R : ℕ => t + Real.log (1 - (R : ℝ) ^ (-t)) / Real.log (R : ℝ)) atTop (𝓝 t) := by

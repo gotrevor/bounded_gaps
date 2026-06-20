@@ -509,8 +509,8 @@ theorem Mk_ge_polynomialMkF {k : ℕ} (P : PolynomialSieveWeight k) :
   · have hpos : mkF_denominator k P.toFun > 0 :=
       lt_of_le_of_ne (denom_nonneg _) (Ne.symm hden)
     have hMkF : Tendsto (fun n => MkF k (Fapprox P n)) atTop (𝓝 (MkF k P.toFun)) := by
-      simpa only [MkF] using
-        (numer_tendsto P).div (denom_tendsto P) (ne_of_gt hpos)
+      simp only [MkF]
+      exact (numer_tendsto P).div (denom_tendsto P) (ne_of_gt hpos)
     have hden_ev : ∀ᶠ n in atTop, mkF_denominator k (Fapprox P n) > 0 :=
       (denom_tendsto P).eventually (eventually_gt_nhds hpos)
     refine ge_iff_le.mpr (le_of_tendsto hMkF ?_)
@@ -541,16 +541,19 @@ theorem dirichlet_1d (a b : ℕ) (c : ℝ) :
           HasDerivAt (fun x => (c - x) ^ (b + 1)) (-((b:ℝ) + 1) * (c - x) ^ b) x := by
         intro x _
         have h1 : HasDerivAt (fun x : ℝ => c - x) (-1) x := (hasDerivAt_id x).const_sub c
-        have := h1.pow (b + 1)
-        convert this using 1
-        simp only [Nat.add_sub_cancel]; push_cast; ring
+        have hp := h1.pow (b + 1)
+        have hval : (↑(b + 1) * (c - x) ^ (b + 1 - 1) * (-1) : ℝ)
+            = -((b : ℝ) + 1) * (c - x) ^ b := by
+          rw [Nat.add_sub_cancel]; push_cast; ring
+        rw [← hval]; exact hp
       have hv : ∀ x ∈ Set.uIcc (0:ℝ) c,
           HasDerivAt (fun x => x ^ (a + 1) / ((a:ℝ) + 1)) (x ^ a) x := by
         intro x _
-        have := (hasDerivAt_pow (a + 1) x).div_const ((a:ℝ) + 1)
-        convert this using 1
+        have hp := (hasDerivAt_pow (a + 1) x).div_const ((a:ℝ) + 1)
         have hne : ((a:ℝ) + 1) ≠ 0 := by positivity
-        simp only [Nat.add_sub_cancel]; push_cast; field_simp
+        have hval : (↑(a + 1) * x ^ (a + 1 - 1) / ((a : ℝ) + 1) : ℝ) = x ^ a := by
+          rw [Nat.add_sub_cancel]; push_cast; field_simp
+        rw [← hval]; exact hp
       have hu' : IntervalIntegrable (fun x => -((b:ℝ) + 1) * (c - x) ^ b) volume 0 c :=
         (Continuous.intervalIntegrable (by continuity) 0 c)
       have hv' : IntervalIntegrable (fun x => x ^ a) volume 0 c :=

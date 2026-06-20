@@ -233,7 +233,7 @@ theorem orbitCore_eq_multinomial_sum_orbitFree :
     (j := fun T _ => tableToMultiset α β T) ?_ ?_ ?_ ?_ ?_
   · intro X hX
     obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
-    dsimp only
+    try dsimp only
     rw [multisetToTable_jointMultiset]
     exact orbitTable_mem α β p hp
   · intro T hT
@@ -241,14 +241,14 @@ theorem orbitCore_eq_multinomial_sum_orbitFree :
     exact Finset.mem_image.mpr ⟨p, hp, heq⟩
   · intro X hX
     obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
-    dsimp only
+    try dsimp only
     rw [multisetToTable_jointMultiset]
     exact tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)
   · intro T _
     exact multisetToTable_tableToMultiset α β T
   · intro X hX
     obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
-    dsimp only
+    try dsimp only
     rw [multisetToTable_jointMultiset,
         tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)]
     simp only [orbitTable]
@@ -861,7 +861,7 @@ theorem numerator_orbitFree :
     (j := fun T _ => tableToMultiset α β T) ?_ ?_ ?_ ?_ ?_
   · intro X hX
     obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
-    dsimp only
+    try dsimp only
     rw [multisetToTable_jointMultiset]
     exact orbitTable_mem α β p hp
   · intro T hT
@@ -869,7 +869,7 @@ theorem numerator_orbitFree :
     exact Finset.mem_image.mpr ⟨p, hp, heq⟩
   · intro X hX
     obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hX
-    dsimp only
+    try dsimp only
     rw [multisetToTable_jointMultiset]
     exact tableToMultiset_orbitTable α β p (fun i => orbit_vals_mem α hp i)
   · intro T _
@@ -879,7 +879,7 @@ theorem numerator_orbitFree :
     have hvals : ∀ i, p i ∈ univ.image α := fun i => orbit_vals_mem α hp i
     have hround : tableToMultiset α β (orbitTable α β p) = jointMultiset β p :=
       tableToMultiset_orbitTable α β p hvals
-    dsimp only
+    try dsimp only
     rw [multisetToTable_jointMultiset, hround]
     congr 1
     norm_cast

@@ -31,8 +31,9 @@ lemma exists_alpha_equiv {k : ℕ} (α β : Fin k → ℕ)
   have h_bij : ∀ v : ↥(image α univ), ∃ e : (Σ b : ↥(image β univ), Fin (X v b)) ≃ {i : Fin k // α i = v.val}, True := by
     intro v
     have h_card : Fintype.card (Σ b : ↥(image β univ), Fin (X v b)) = Fintype.card {i : Fin k // α i = v.val} := by
-      simp +decide [Fintype.card_subtype];
-      convert hrow v using 1;
+      rw [Fintype.card_sigma, Fintype.card_subtype]
+      simp only [Fintype.card_fin]
+      exact hrow v
     exact ⟨ Fintype.equivOfCardEq h_card, trivial ⟩;
   choose e he using h_bij;
   refine' ⟨ _, _ ⟩;

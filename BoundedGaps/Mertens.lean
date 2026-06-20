@@ -215,11 +215,8 @@ lemma fiber_le_mertensSummand (N d : ℕ) :
 Sum-over-fibers of the radical map, each fiber bounded by `fiber_le_mertensSummand`. -/
 theorem mertens_crux (N : ℕ) :
     ∑ n ∈ Finset.Icc 1 N, (1 : ℝ) / n ≤ ∑ n ∈ Finset.Icc 1 N, mertensSummand n := by
-  convert Finset.sum_le_sum fun x hx => fiber_le_mertensSummand N x using 1;
-  convert Finset.sum_fiberwise_of_maps_to ( fun n hn => radical_mem_Icc hn ) ( fun n => 1 / ( n : ℝ ) ) using 1;
-  rw [ Finset.sum_fiberwise_of_maps_to ];
-  · exact fun i a => radical_mem_Icc a
-  · convert Finset.sum_fiberwise_of_maps_to ( fun n hn => radical_mem_Icc hn ) ( fun n => 1 / ( n : ℝ ) ) using 1
+  rw [← Finset.sum_fiberwise_of_maps_to (fun n hn => radical_mem_Icc hn) (fun n => (1 : ℝ) / n)]
+  exact Finset.sum_le_sum fun d _ => fiber_le_mertensSummand N d
 
 /-! ## Endpoints and assembled lower bound -/
 
@@ -586,8 +583,7 @@ theorem hasDerivAt_log_log {t : ℝ} (ht : 1 < t) :
   have h1 : HasDerivAt Real.log t⁻¹ t := Real.hasDerivAt_log ht0
   have h2 : HasDerivAt Real.log (Real.log t)⁻¹ (Real.log t) := Real.hasDerivAt_log hlog
   have hcomp := h2.comp t h1
-  convert hcomp using 1
-  rw [one_div, mul_inv, mul_comm]
+  convert hcomp using 1 <;> first | rfl | (field_simp <;> ring)
 
 /-- `fun x => 1/(x log x)` is continuous on `[2, N]` (denominator nonzero there). -/
 theorem continuousOn_one_div_x_log_x {N : ℕ} :
@@ -793,8 +789,8 @@ theorem vonMangoldt_hyperbola (N : ℕ) :
     simp +contextual [ Finset.ext_iff, Nat.mem_divisors ];
     exact fun m hm₁ hm₂ a => ⟨ fun h => ⟨ h.2, by linarith ⟩, fun h => ⟨ ⟨ Nat.pos_of_dvd_of_pos h.1 hm₁, Nat.le_trans ( Nat.le_of_dvd hm₁ h.1 ) hm₂ ⟩, h.1 ⟩ ⟩;
   convert h_interchange using 1;
-  · convert rfl;
-    convert Nat.Ioc_filter_dvd_card_eq_div N ‹_› using 1;
+  · refine Finset.sum_congr rfl (fun n _ => ?_)
+    rw [show Finset.Icc 1 N = Finset.Ioc 0 N from rfl, Nat.Ioc_filter_dvd_card_eq_div]
   · rw [ Finset.sum_congr rfl ];
     intro m hm; rw [ ← ArithmeticFunction.vonMangoldt_sum ] ; aesop;
 
@@ -1044,7 +1040,6 @@ theorem mertens2_abel (N : ℕ) :
   have habel := abel_summation_identity N
       (fun n => if n.Prime then Real.log (n : ℝ) / (n : ℝ) else 0)
       (fun n => 1 / Real.log (n : ℝ))
-  simp only [] at habel
   push_cast at habel
   have hLHS : ∑ n ∈ Finset.Icc 1 N,
         (if n.Prime then Real.log (n : ℝ) / (n : ℝ) else 0) * (1 / Real.log (n : ℝ))
@@ -1309,9 +1304,7 @@ theorem hasDerivAt_neg_log_succ_div {x : ℝ} (hx : x ≠ 0) :
     (hlog.add_const (1 : ℝ)).neg
   have hid : HasDerivAt (fun t : ℝ => t) 1 x := hasDerivAt_id x
   have hquot := hnum.div hid hx
-  convert hquot using 1
-  field_simp
-  ring
+  convert hquot using 1 <;> first | rfl | (field_simp <;> ring)
 
 /-- `d/dx[(log x)/x²] = (1 − 2 log x)/x³`. -/
 theorem hasDerivAt_log_div_sq {x : ℝ} (hx : x ≠ 0) :
@@ -1319,8 +1312,7 @@ theorem hasDerivAt_log_div_sq {x : ℝ} (hx : x ≠ 0) :
   have hlog : HasDerivAt Real.log x⁻¹ x := Real.hasDerivAt_log hx
   have hsq : HasDerivAt (fun t : ℝ => t ^ 2) (2 * x) x := by simpa using hasDerivAt_pow 2 x
   have hquot := hlog.div hsq (pow_ne_zero 2 hx)
-  convert hquot using 1
-  field_simp
+  convert hquot using 1 <;> first | rfl | (field_simp <;> ring)
 
 /-- `(log x)/x²` is continuous on `[2, N]`. -/
 theorem continuousOn_log_div_sq {N : ℕ} :

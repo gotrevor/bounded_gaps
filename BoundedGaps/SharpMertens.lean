@@ -396,7 +396,7 @@ theorem P_tendsto_one (hsum : Summable (fun n => ‖bAF n‖)) :
   have hshift : Filter.Tendsto (fun N : ℕ => ∑ n ∈ Finset.range (N + 1), bAF n)
       Filter.atTop (nhds 1) := by
     have := htnat.comp (Filter.tendsto_add_atTop_nat 1)
-    simpa [Function.comp] using this
+    simpa [Function.comp_def] using this
   have hbridge : ∀ N : ℕ, ∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ)
       = ∑ n ∈ Finset.range (N + 1), bAF n := by
     intro N
@@ -917,8 +917,8 @@ lemma term_log_div_le (n : ℕ) (hn : 2 ≤ n) :
 
 /-- The majorant `∑ 4·n^{-3/2}` is summable (`p`-series with `p = 3/2 > 1`). -/
 lemma summable_four_div_rpow : Summable (fun n : ℕ => (4 : ℝ) / (n : ℝ) ^ ((3 : ℝ) / 2)) := by
-  have := (Real.summable_one_div_nat_rpow.mpr (show (1 : ℝ) < 3 / 2 by norm_num)).mul_left 4
-  simpa [mul_one_div] using this
+  have h := (Real.summable_one_div_nat_rpow.mpr (show (1 : ℝ) < 3 / 2 by norm_num)).mul_left 4
+  exact h.congr fun n => mul_one_div 4 _
 
 /-- **Analytic crux**: the partial sums `∑_{2≤n≤N} (log n)/(n(n-1))` are uniformly bounded
 by the convergent `∑' 4·n^{-3/2}`. -/
@@ -1238,7 +1238,7 @@ theorem Q_tendsto :
   have hshift : Tendsto (fun N : ℕ => ∑ n ∈ Finset.range (N + 1), bAF n * Real.log n) atTop
       (𝓝 (∑' e, bAF e * Real.log e)) := by
     have := hHS.tendsto_sum_nat.comp (Filter.tendsto_add_atTop_nat 1)
-    simpa [Function.comp] using this
+    simpa [Function.comp_def] using this
   have hg0 : (fun n : ℕ => bAF n * Real.log (n : ℝ)) 0 = 0 := by
     simp only [ArithmeticFunction.map_zero, zero_mul]
   have hbridge : ∀ N : ℕ, ∑ e ∈ Finset.Icc 1 N, (BSharp e / (e : ℝ)) * Real.log e
@@ -1265,7 +1265,7 @@ theorem P_minus_one_mul_log_tendsto_zero :
   have hsumb : Summable bAF := summable_norm_bAF.of_norm
   have htail0 : Tendsto (fun N : ℕ => ∑' i, h (i + (N + 1))) atTop (𝓝 0) := by
     have := (tendsto_sum_nat_add h).comp (Filter.tendsto_add_atTop_nat 1)
-    simpa [Function.comp] using this
+    simpa [Function.comp_def] using this
   have hbz : (fun n : ℕ => bAF n) 0 = 0 := ArithmeticFunction.map_zero
   have hbridgeP : ∀ N : ℕ, ∑ e ∈ Finset.Icc 1 N, BSharp e / (e : ℝ)
       = ∑ n ∈ Finset.range (N + 1), bAF n := by

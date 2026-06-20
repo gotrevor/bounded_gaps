@@ -425,8 +425,8 @@ theorem Mk_eps_ge_MkF_eps {ε : ℝ} (hε0 : 0 ≤ ε) (hε1 : ε < 1)
       rw [mkF_eps_denominator]; exact integral_nonneg fun _ => sq_nonneg _
     have hMkF : Tendsto (fun n => MkF_eps k ε (FapproxEps P ε n)) atTop
         (𝓝 (MkF_eps k ε P.toFun)) := by
-      simpa only [MkF_eps] using
-        (numerEps_tendsto hε0 hε1 P).div (denomEps_tendsto hε0 P) (ne_of_gt hpos)
+      simp only [MkF_eps]
+      exact (numerEps_tendsto hε0 hε1 P).div (denomEps_tendsto hε0 P) (ne_of_gt hpos)
     have hden_ev : ∀ᶠ n in atTop, mkF_eps_denominator k ε (FapproxEps P ε n) > 0 :=
       (denomEps_tendsto hε0 P).eventually (eventually_gt_nhds hpos)
     refine ge_iff_le.mpr (le_of_tendsto hMkF ?_)

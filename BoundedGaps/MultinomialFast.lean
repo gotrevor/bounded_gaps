@@ -29,11 +29,14 @@ def multinomialFast {V : Type*} (f : V → ℕ) : List V → ℕ
 This is the form that lets `native_decide` avoid large factorials. -/
 theorem multinomialFast_eq {V : Type*} [DecidableEq V] (l : List V) (hl : l.Nodup) (f : V → ℕ) :
     multinomialFast f l = Nat.multinomial l.toFinset f := by
-  induction' l with x xs ih <;>
-    simp_all +decide [Finset.sum_insert, Nat.multinomial_insert, Nat.choose_succ_succ, add_comm]
-  · rfl
-  · convert congr_arg _ ih using 1
-    rw [List.sum_toFinset]; aesop
+  induction l with
+  | nil => simp [multinomialFast, Nat.multinomial]
+  | cons x xs ih =>
+    rw [List.nodup_cons] at hl
+    simp only [multinomialFast]
+    rw [ih hl.2, List.toFinset_cons,
+        Nat.multinomial_insert (show x ∉ xs.toFinset by simpa using hl.1) f,
+        List.sum_toFinset f hl.2]
 
 /-- Specialization to a `Finset`'s own `toList` (what the application uses): the fast list
 multinomial over `s.toList` equals `Nat.multinomial s f`. -/

@@ -1954,7 +1954,7 @@ theorem J_i_sub_le_const (n : ℕ) (F G : (Fin (n + 1) → ℝ) → ℝ) (A ε :
   have hIabs : IntegrableOn
       (fun s => |(∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
         - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2|) (simplex n) := by
-    simpa only [Pi.sub_apply] using (hIF2.sub hIG2).abs
+    exact (hIF2.sub hIG2).abs
   refine habs.trans ?_
   calc ∫ s in simplex n, |(∫ ti in Icc 0 (1 - ∑ j, s j), F (i.insertNth ti s)) ^ 2
             - (∫ ti in Icc 0 (1 - ∑ j, s j), G (i.insertNth ti s)) ^ 2|
@@ -3551,7 +3551,7 @@ theorem J_i_eps_sub_le_const (n : ℕ) (ε : ℝ) (hε : 0 ≤ ε) (F G : (Fin (
   have hIabs : IntegrableOn
       (fun s => |(∫ ti in Icc 0 (1 + ε - ∑ j, s j), F (i.insertNth ti s)) ^ 2
         - (∫ ti in Icc 0 (1 + ε - ∑ j, s j), G (i.insertNth ti s)) ^ 2|) (simplex_shrunk n ε) := by
-    simpa only [Pi.sub_apply] using (hIF2.sub hIG2).abs
+    exact (hIF2.sub hIG2).abs
   refine habs.trans ?_
   calc ∫ s in simplex_shrunk n ε,
           |(∫ ti in Icc 0 (1 + ε - ∑ j, s j), F (i.insertNth ti s)) ^ 2
