@@ -113,3 +113,7 @@ The hard ones (Maynard's main theorem, Zhang's MPZ-dependent argument) stay `sor
 ## Status: 🟡 scaffold
 
 Last touched 2026-05-24. Created in one sitting as a "minimum compiling skeleton" so subsequent work has a target structure rather than a blank page.
+
+## License
+
+[Apache License 2.0](LICENSE), Copyright 2026 Trevor Morris
