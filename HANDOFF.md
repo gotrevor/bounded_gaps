@@ -1,5 +1,13 @@
 # HANDOFF.md — Bounded Gaps Lean project
 
+> 🔀 **2026-08-23: master now IS the expedition.**  The `bump-v4.31.0` branch (which extended
+> `path-a-selberg-nu` — 492 commits: the k-D weighted-Riemann build, the μ²/φ engine, the Mertens
+> machinery, and the v4.29.1→v4.31.0→v4.33.1 forward-ports, all 5 headlines axiom-gated unchanged)
+> was fast-forward merged to `master` and pushed.  No PR was needed and the long-parked "open the
+> bounded_gaps PR" todo is retired.  **Everything below reflects the pre-merge 2026-05-28 state**
+> (master@0946c81) and is stale in detail — trust the build commands, not the counts or line
+> numbers.  Fresher state: `HANDOFF-v431-bump.md` (the port), `ANALYTIC_AXIOM_BURNDOWN.md`.
+
 Written 2026-05-28, superseding the earlier 2026-05-28 version. Reflects
 state at `master` commit `0946c81` (PR #62 merged), **5 PRs after the
 previous handoff** (#55 selberg_nu_separable, #56 selberg_nu_basis, #59
