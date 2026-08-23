@@ -384,7 +384,7 @@ theorem core_positive {k : ℕ} (H : List ℕ) {m : ℕ} {b W : ℕ} {ν : ℕ �
       =o[atTop] (betaMainTerm k W) := by
     refine ((?_ : _ =o[atTop] _).add (?_ : _ =o[atTop] _)).add (?_ : _ =o[atTop] _)
     · exact (alphaMainTerm_isLittleO_betaMainTerm k W hW).const_mul_left _
-    · exact IsLittleO.sum (fun i _ => hS2 i)
+    · simpa [Finset.sum_fn] using IsLittleO.sum (fun i _ => hS2 i)
     · exact m_log3x_err1_isLittleO hW m _ hS1
   filter_upwards [hRo.def (half_pos hδ), eventually_gt_atTop (1:ℝ),
     (alphaMainTerm_isLittleO_betaMainTerm k W hW).def (c := 1) one_pos]
