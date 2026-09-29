@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Polymath8b — Variants of the Selberg sieve, bounded intervals containing many primes.
 
 Tao, Maynard, et al. (2014). The 246 paper.

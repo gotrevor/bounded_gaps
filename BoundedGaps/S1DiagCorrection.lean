@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The DIAGONAL leg of the y-space S1 correction is `o(B^{+k}·M)` — PNT-FREE (Leg 1, instantiated)
 
 This file wires together the abstract, machine-checked pieces built across laps 7–9 into the

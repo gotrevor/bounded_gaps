@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # GPY/Maynard sieve-sum expansion (Polymath8b §3, sub-step (a)).
 
 The `s1`/`s2` sieve asymptotics (`Sieve.lean`, `s1_holds_from_nonprime_asym`

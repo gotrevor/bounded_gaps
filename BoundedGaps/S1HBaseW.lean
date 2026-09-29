@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Unconditional `hBaseW` instantiation of the y-space `s1` box-product main term
 
 `CoprimeMertens.hBaseW_of_primes_totient` discharges the W-coprime sharp Mertens base `hBaseW`

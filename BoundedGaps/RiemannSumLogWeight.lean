@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Riemann-sum model limit for the weighted Mertens (front #4)  — PROVED (was an axiom)
 
 `riemann_sum_log_weight : (∑_{2≤n≤R} F(log n/log R)/n)/log R → ∫₀¹ F` for `F` continuous on

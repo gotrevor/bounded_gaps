@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Multidimensional Selberg sieves (Polymath8b §4-§6).
 
 The Maynard-Tao sieve replaces GPY's one-dimensional weight by a

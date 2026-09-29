@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Zhang 2013 — Bounded gaps between primes.
 
 The 70-million breakthrough. Proof relies on the MPZ distributional estimate

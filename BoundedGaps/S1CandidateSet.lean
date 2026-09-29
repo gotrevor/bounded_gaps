@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Candidate-set inclusion for the count→`M` reconciliation (the "delicate bit")
 
 The separable y-space sieve weight `selberg_nu_yr_sep` diagonalises (after the count→`M` density step)

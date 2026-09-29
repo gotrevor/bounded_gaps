@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # ε-enlarged simplex: the homothety scaling law (foundation for the `Mk_eps` polynomial bridge)
 
 The unconditional flagship (`H₁ ≤ 246`) routes through `Sieve.Mk_eps 50 ε` — the ε-trick /

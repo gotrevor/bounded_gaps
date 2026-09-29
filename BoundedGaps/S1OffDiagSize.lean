@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The y-space S1 off-diagonal size bound — the `∑_{p>D₀} 1/p²` tail (UNCONDITIONAL)
 
 The off-diagonal leg of the y-space S1 correction bound (`S1Correction.yspace_correction_abs_bound`)

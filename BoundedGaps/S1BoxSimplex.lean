@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The box→simplex bridge for the separable y-space `s1` main term (gap A4 analytic core)
 
 The separable Path-Y sieve weight `selberg_nu_yr_sep` produces a **box-product** heuristic main

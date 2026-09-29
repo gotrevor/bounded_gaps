@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The `Mk_eps` polynomial bridge: DCT over the ε-enlarged / shrunken geometry.
 
 `EpsScaling.lean` reduced both sides of the `Mk_eps` Rayleigh ratio to closed

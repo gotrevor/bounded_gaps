@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Path-Y (y_r-space) `s1` main term — the contour-free assembly
 
 The explicit y-space Selberg quadratic form, with the inversion-defined coefficient

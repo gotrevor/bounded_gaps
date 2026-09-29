@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The y-space S1 correction decomposition (towards `correction = o(main)`, UNCONDITIONAL)
 
 Per the lap-6 strategic correction (`PENDING_WORK.md`): the s1 correction is **NOT** BV-gated — only

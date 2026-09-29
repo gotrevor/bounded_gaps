@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The k-D box-product `s1` main term → `(φW/W)^k·mkF_denominator` (contour-free)
 
 This assembles the per-coordinate 1-D Path-Y bilinear quadratic forms into the full k-dimensional

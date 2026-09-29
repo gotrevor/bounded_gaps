@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Bound-tightening targets.
 
 This file makes the path to a lower bound on $H_1$ explicit. Three theorems:

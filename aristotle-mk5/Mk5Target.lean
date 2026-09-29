@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
 import Mathlib
 
 /-! Standalone target: discharge Maynard's `M₅ > 2` lower bound at the

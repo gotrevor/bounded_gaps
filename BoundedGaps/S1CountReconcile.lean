@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The count→`M` candidate-set reconciliation, assembled (per-coordinate bridge)
 
 The separable y-space sieve's heuristic main term (`S1YSpace.yr_heuristic_main_eq_muphi`) is a box

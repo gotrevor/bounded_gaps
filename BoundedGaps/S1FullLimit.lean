@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # The full y-space S1 sieve-sum limit, conditional only on the correction
 
 This file assembles the honest top-level statement of the contour-free Path-Y `s1` programme:

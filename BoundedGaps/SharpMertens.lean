@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Sharp Mertens `∑_{n≤x} μ²(n)/φ(n) = log x + O(1)` — algebraic core.
 
 GPY/Maynard sub-step (c) needs the sieve sum `∑μ²/φ ∼ log x` with **leading

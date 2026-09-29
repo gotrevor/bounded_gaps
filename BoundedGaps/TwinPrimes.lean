@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Twin Primes Conjecture — the asymptote.
 
 Open since antiquity. The conjecture every result in this project is reaching

@@ -1,4 +1,10 @@
 /-
+Copyright (c) 2026 Trevor Morris. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Trevor Morris
+-/
+
+/-
 # Basic definitions for the bounded-gaps project.
 
 Admissible k-tuples, narrowness $H(k)$, $\liminf$ prime-gap notation $H_m$,
